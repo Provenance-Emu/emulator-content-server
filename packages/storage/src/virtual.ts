@@ -3,14 +3,15 @@ import {
   type MaterializeQuota,
   type VirtualContentProvider,
   type VirtualEntry,
-  type VirtualEntryLocation,
+  type VirtualResolution,
+  type VirtualWindow,
 } from '@ecs/domain';
 
 export const DEFAULT_MATERIALIZE_QUOTA: MaterializeQuota = {
   maxExpandedBytes: 8 * 1024 * 1024 * 1024,
   maxCompressionRatio: 100,
   maxEntries: 10_000,
-  maxNesting: 1,
+  maxNesting: 2,
   timeoutMs: 60_000,
 };
 
@@ -24,21 +25,24 @@ export class VirtualProviderRegistry {
     return this.providers.map((provider) => provider.format);
   }
 
-  async inspect(filePath: string): Promise<{ format: string; entries: VirtualEntry[] } | null> {
+  async inspect(
+    filePath: string,
+    window?: VirtualWindow,
+  ): Promise<{ format: string; entries: VirtualEntry[] } | null> {
     for (const provider of this.providers) {
-      const found = await provider.inspect(filePath, this.quota);
+      const found = await provider.inspect(filePath, this.quota, window);
       if (found) return { format: provider.format, entries: found.entries };
     }
     return null;
   }
 
-  async locate(
+  async resolve(
     filePath: string,
     entryId: string,
-  ): Promise<(VirtualEntryLocation & { format: string }) | null> {
+  ): Promise<{ format: string; resolution: VirtualResolution } | null> {
     for (const provider of this.providers) {
-      const found = await provider.locate?.(filePath, entryId, this.quota);
-      if (found) return { ...found, format: provider.format };
+      const found = await provider.resolve?.(filePath, entryId, this.quota);
+      if (found) return { format: provider.format, resolution: found };
     }
     return null;
   }

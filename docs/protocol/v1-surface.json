@@ -507,6 +507,7 @@
     "VirtualEntry": {
       "properties": [
         "compressedSize",
+        "crc",
         "entryId",
         "method",
         "path",

@@ -484,13 +484,15 @@ public struct VirtualEntry: Codable, Equatable, Sendable {
     public var compressedSize: Int64
     public var uncompressedSize: Int64
     public var method: String
+    public var crc: String?
 
-    public init(entryId: String, path: String, compressedSize: Int64, uncompressedSize: Int64, method: String) {
+    public init(entryId: String, path: String, compressedSize: Int64, uncompressedSize: Int64, method: String, crc: String? = nil) {
         self.entryId = entryId
         self.path = path
         self.compressedSize = compressedSize
         self.uncompressedSize = uncompressedSize
         self.method = method
+        self.crc = crc
     }
 }
 

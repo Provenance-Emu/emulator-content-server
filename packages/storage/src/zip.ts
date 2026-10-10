@@ -9,7 +9,8 @@ import {
   type MaterializeQuota,
   type VirtualContentProvider,
   type VirtualEntry,
-  type VirtualEntryLocation,
+  type VirtualResolution,
+  type VirtualWindow,
 } from '@ecs/domain';
 import { crc32 } from './hash.js';
 
@@ -31,8 +32,7 @@ const MAX_CENTRAL_DIRECTORY_BYTES = 32 * 1024 * 1024;
 const FLAG_ENCRYPTED = 0x0001;
 const METHOD_STORE = 0;
 const METHOD_DEFLATE = 8;
-const DECIMAL_INDEX = /^\d{1,10}$/;
-const NESTED_ARCHIVE = /\.(7z|bz2|gz|rar|tar|tgz|xz|zip|zst)$/i;
+const ENTRY_ID = /^\d{1,10}(\.\d{1,10}){0,3}$/;
 
 // A high ratio on a small entry is ordinary compression, so the ratio limit only
 // applies once an entry is large enough for the expansion to matter.
@@ -49,10 +49,14 @@ interface CentralRecord {
   localHeaderOffset: number;
 }
 
-interface Archive {
-  size: number;
-  records: CentralRecord[];
+interface Budget {
+  entries: number;
+  expanded: number;
 }
+
+type Walk =
+  | { kind: 'found'; window: VirtualWindow; record: CentralRecord; path: string }
+  | { kind: 'blocked'; entryId: string; remainder: string | null; path: string };
 
 export class ZipProvider implements VirtualContentProvider {
   readonly format = 'zip';
@@ -60,25 +64,42 @@ export class ZipProvider implements VirtualContentProvider {
   async inspect(
     filePath: string,
     quota: MaterializeQuota,
+    window?: VirtualWindow,
   ): Promise<{ entries: VirtualEntry[] } | null> {
-    return withArchive(filePath, quota, async (_handle, archive) => ({
-      entries: archive.records.map(toEntry),
-    }));
+    return withArchive(filePath, window, async (handle, root) => {
+      const budget: Budget = { entries: quota.maxEntries, expanded: quota.maxExpandedBytes };
+      const entries = await collectEntries(handle, root, quota, budget, '', '', 1);
+      return entries === null ? null : { entries };
+    });
   }
 
-  async locate(
+  async resolve(
     filePath: string,
     entryId: string,
     quota: MaterializeQuota,
-  ): Promise<VirtualEntryLocation | null> {
-    if (!DECIMAL_INDEX.test(entryId)) return null;
-    return withArchive(filePath, quota, async (handle, archive) => {
-      const record = findRecord(archive, entryId);
-      if (!record) return null;
-      if (record.method !== METHOD_STORE || isEncrypted(record)) {
-        return { entry: toEntry(record), sourceOffset: null };
+  ): Promise<VirtualResolution | null> {
+    if (!ENTRY_ID.test(entryId)) return null;
+    return withArchive(filePath, undefined, async (handle, root) => {
+      const found = await walk(handle, root, entryId, quota);
+      if (!found) return null;
+      if (found.kind === 'blocked') {
+        return {
+          kind: 'expand',
+          entryId: found.entryId,
+          remainder: found.remainder,
+          path: found.path,
+        };
       }
-      return { entry: toEntry(record), sourceOffset: await dataOffset(handle, archive, record) };
+      const { record, window } = found;
+      if (record.method !== METHOD_STORE || isEncrypted(record)) {
+        return { kind: 'expand', entryId, remainder: null, path: found.path };
+      }
+      const start = await dataOffset(handle, window, record);
+      return {
+        kind: 'range',
+        entry: toEntry(record, entryId, found.path),
+        offset: window.offset + start,
+      };
     });
   }
 
@@ -88,10 +109,11 @@ export class ZipProvider implements VirtualContentProvider {
     destination: string,
     quota: MaterializeQuota,
   ): Promise<{ sha256: string; size: number }> {
-    const expanded = DECIMAL_INDEX.test(entryId)
-      ? await withArchive(filePath, quota, async (handle, archive) => {
-          const record = findRecord(archive, entryId);
-          if (!record) return null;
+    const expanded = ENTRY_ID.test(entryId)
+      ? await withArchive(filePath, undefined, async (handle, root) => {
+          const found = await walk(handle, root, entryId, quota);
+          if (!found || found.kind === 'blocked') return null;
+          const { record, window } = found;
           if (isEncrypted(record)) {
             throw new DomainError(
               'unsupported-entry',
@@ -106,8 +128,8 @@ export class ZipProvider implements VirtualContentProvider {
               `Archive entries stored as ${methodName(record.method)} are not served`,
             );
           }
-          const start = await dataOffset(handle, archive, record);
-          return inflateEntry(filePath, start, record, destination, quota);
+          const start = await dataOffset(handle, window, record);
+          return inflateEntry(filePath, window.offset + start, record, destination, quota);
         })
       : null;
     if (!expanded) throw new DomainError('not-found', 404, 'Archive entry not found');
@@ -115,19 +137,29 @@ export class ZipProvider implements VirtualContentProvider {
   }
 }
 
-function toEntry(record: CentralRecord): VirtualEntry {
+function toEntry(record: CentralRecord, entryId: string, path: string): VirtualEntry {
   return {
-    entryId: String(record.index),
-    path: record.name,
+    entryId,
+    path,
     compressedSize: record.compressedSize,
     uncompressedSize: record.uncompressedSize,
     method: methodName(record.method),
+    crc: record.crc.toString(16).padStart(8, '0'),
   };
 }
 
-function findRecord(archive: Archive, entryId: string): CentralRecord | undefined {
-  const index = Number(entryId);
-  return archive.records.find((record) => record.index === index);
+// Every path that can reach an entry has to apply these, because a client may
+// ask for an entry by id without ever listing the archive.
+function checkEntryLimits(record: CentralRecord, quota: MaterializeQuota): void {
+  if (
+    record.uncompressedSize >= RATIO_FLOOR_BYTES &&
+    record.uncompressedSize / record.compressedSize > quota.maxCompressionRatio
+  ) {
+    reject('Archive entry exceeds the allowed compression ratio');
+  }
+  if (record.uncompressedSize > quota.maxExpandedBytes) {
+    reject('Archive entry expands past the allowed total size');
+  }
 }
 
 function isEncrypted(record: CentralRecord): boolean {
@@ -146,8 +178,8 @@ function reject(message: string): never {
 
 async function withArchive<T>(
   filePath: string,
-  quota: MaterializeQuota,
-  use: (handle: FileHandle, archive: Archive) => Promise<T | null>,
+  window: VirtualWindow | undefined,
+  use: (handle: FileHandle, root: VirtualWindow) => Promise<T | null>,
 ): Promise<T | null> {
   let handle: FileHandle;
   try {
@@ -158,17 +190,28 @@ async function withArchive<T>(
   }
   try {
     const { size } = await handle.stat();
-    const records = await readCentralDirectory(handle, size, quota);
-    if (!records) return null;
-    return await use(handle, { size, records });
+    if (window && window.offset + window.length > size) {
+      reject('Archive window falls outside the file');
+    }
+    return await use(handle, window ?? { offset: 0, length: size });
   } finally {
     await handle.close();
   }
 }
 
-async function readAt(handle: FileHandle, position: number, length: number): Promise<Buffer> {
+// Positions are relative to the start of the archive, which is not the start of
+// the file when the archive is a stored entry of an outer container.
+async function readAt(
+  handle: FileHandle,
+  window: VirtualWindow,
+  position: number,
+  length: number,
+): Promise<Buffer> {
+  if (position < 0 || position + length > window.length) {
+    reject('Archive ends before a structure it declares');
+  }
   const buffer = Buffer.alloc(length);
-  const { bytesRead } = await handle.read(buffer, 0, length, position);
+  const { bytesRead } = await handle.read(buffer, 0, length, window.offset + position);
   if (bytesRead !== length) reject('Archive ends before a structure it declares');
   return buffer;
 }
@@ -184,10 +227,10 @@ interface EndRecord {
   directoryOffset: number;
 }
 
-async function readEndRecord(handle: FileHandle, size: number): Promise<EndRecord | null> {
-  if (size < EOCD_FIXED_SIZE) return null;
-  const tailLength = Math.min(size, MAX_COMMENT_BYTES + EOCD_FIXED_SIZE);
-  const tail = await readAt(handle, size - tailLength, tailLength);
+async function readEndRecord(handle: FileHandle, window: VirtualWindow): Promise<EndRecord | null> {
+  if (window.length < EOCD_FIXED_SIZE) return null;
+  const tailLength = Math.min(window.length, MAX_COMMENT_BYTES + EOCD_FIXED_SIZE);
+  const tail = await readAt(handle, window, window.length - tailLength, tailLength);
   for (let offset = tail.length - EOCD_FIXED_SIZE; offset >= 0; offset -= 1) {
     if (tail.readUInt32LE(offset) !== EOCD_SIGNATURE) continue;
     if (offset + EOCD_FIXED_SIZE + tail.readUInt16LE(offset + 20) !== tail.length) continue;
@@ -200,20 +243,25 @@ async function readEndRecord(handle: FileHandle, size: number): Promise<EndRecor
       end.totalEntries === UINT16_SENTINEL ||
       end.directorySize === UINT32_SENTINEL ||
       end.directoryOffset === UINT32_SENTINEL;
-    return zip64 ? readZip64EndRecord(handle, size - tailLength + offset) : end;
+    if (!zip64) return end;
+    return readZip64EndRecord(handle, window, window.length - tailLength + offset);
   }
   return null;
 }
 
-async function readZip64EndRecord(handle: FileHandle, endOffset: number): Promise<EndRecord> {
+async function readZip64EndRecord(
+  handle: FileHandle,
+  window: VirtualWindow,
+  endOffset: number,
+): Promise<EndRecord> {
   const locatorOffset = endOffset - ZIP64_LOCATOR_SIZE;
   if (locatorOffset < 0) reject('Archive claims ZIP64 without a locator');
-  const locator = await readAt(handle, locatorOffset, ZIP64_LOCATOR_SIZE);
+  const locator = await readAt(handle, window, locatorOffset, ZIP64_LOCATOR_SIZE);
   if (locator.readUInt32LE(0) !== ZIP64_LOCATOR_SIGNATURE) {
     reject('Archive claims ZIP64 without a locator');
   }
   const recordOffset = safeNumber(locator.readBigUInt64LE(8), 'ZIP64 end record offset');
-  const record = await readAt(handle, recordOffset, ZIP64_EOCD_FIXED_SIZE);
+  const record = await readAt(handle, window, recordOffset, ZIP64_EOCD_FIXED_SIZE);
   if (record.readUInt32LE(0) !== ZIP64_EOCD_SIGNATURE)
     reject('Archive ZIP64 end record is missing');
   return {
@@ -225,10 +273,10 @@ async function readZip64EndRecord(handle: FileHandle, endOffset: number): Promis
 
 async function readCentralDirectory(
   handle: FileHandle,
-  size: number,
+  window: VirtualWindow,
   quota: MaterializeQuota,
 ): Promise<CentralRecord[] | null> {
-  const end = await readEndRecord(handle, size);
+  const end = await readEndRecord(handle, window);
   if (!end) return null;
   if (end.totalEntries > quota.maxEntries) {
     reject('Archive declares more entries than the quota allows');
@@ -236,13 +284,12 @@ async function readCentralDirectory(
   if (end.directorySize > MAX_CENTRAL_DIRECTORY_BYTES) {
     reject('Archive central directory is too large to parse');
   }
-  if (end.directoryOffset + end.directorySize > size) {
-    reject('Archive central directory falls outside the file');
+  if (end.directoryOffset + end.directorySize > window.length) {
+    reject('Archive central directory falls outside the archive');
   }
-  const directory = await readAt(handle, end.directoryOffset, end.directorySize);
+  const directory = await readAt(handle, window, end.directoryOffset, end.directorySize);
   const records: CentralRecord[] = [];
   let cursor = 0;
-  let expanded = 0;
   for (let index = 0; index < end.totalEntries; index += 1) {
     if (cursor + CENTRAL_FIXED_SIZE > directory.length) reject('Archive central directory is torn');
     if (directory.readUInt32LE(cursor) !== CENTRAL_SIGNATURE) {
@@ -269,26 +316,117 @@ async function readCentralDirectory(
     cursor = next;
     if (isUnsafeName(record.name)) reject('Archive entry name escapes its own tree');
     if (record.name.endsWith('/')) continue;
-    if (quota.maxNesting <= 1 && NESTED_ARCHIVE.test(record.name)) {
-      reject('Archive contains a nested archive');
+    if (record.localHeaderOffset >= window.length) {
+      reject('Archive entry header falls outside the archive');
     }
-    if (record.localHeaderOffset >= size) reject('Archive entry header falls outside the file');
     if (record.compressedSize === 0 && record.uncompressedSize > 0) {
       reject('Archive entry declares expansion from no compressed bytes');
-    }
-    if (
-      record.uncompressedSize >= RATIO_FLOOR_BYTES &&
-      record.uncompressedSize / record.compressedSize > quota.maxCompressionRatio
-    ) {
-      reject('Archive entry exceeds the allowed compression ratio');
-    }
-    expanded += record.uncompressedSize;
-    if (expanded > quota.maxExpandedBytes) {
-      reject('Archive expands past the allowed total size');
     }
     records.push(record);
   }
   return records;
+}
+
+// A stored container expands at a ratio of exactly one, so nesting cannot
+// amplify a bomb and the per-entry ratio limit is already the cumulative limit.
+async function collectEntries(
+  handle: FileHandle,
+  window: VirtualWindow,
+  quota: MaterializeQuota,
+  budget: Budget,
+  idPrefix: string,
+  pathPrefix: string,
+  depth: number,
+): Promise<VirtualEntry[] | null> {
+  const records = await readCentralDirectory(handle, window, quota);
+  if (!records) return null;
+  const entries: VirtualEntry[] = [];
+  for (const record of records) {
+    const entryId = idPrefix === '' ? String(record.index) : `${idPrefix}.${record.index}`;
+    const path = `${pathPrefix}${record.name}`;
+    const children = await collectChildren(
+      handle,
+      window,
+      quota,
+      budget,
+      record,
+      entryId,
+      path,
+      depth,
+    );
+    if (children) {
+      entries.push(...children);
+      continue;
+    }
+    if (budget.entries <= 0) reject('Archive declares more entries than the quota allows');
+    budget.entries -= 1;
+    checkEntryLimits(record, quota);
+    budget.expanded -= record.uncompressedSize;
+    if (budget.expanded < 0) reject('Archive expands past the allowed total size');
+    entries.push(toEntry(record, entryId, path));
+  }
+  return entries;
+}
+
+async function collectChildren(
+  handle: FileHandle,
+  window: VirtualWindow,
+  quota: MaterializeQuota,
+  budget: Budget,
+  record: CentralRecord,
+  entryId: string,
+  path: string,
+  depth: number,
+): Promise<VirtualEntry[] | null> {
+  if (depth >= quota.maxNesting) return null;
+  if (record.method !== METHOD_STORE || isEncrypted(record)) return null;
+  if (record.compressedSize < EOCD_FIXED_SIZE) return null;
+  const start = await dataOffset(handle, window, record);
+  const child = { offset: window.offset + start, length: record.compressedSize };
+  if (!(await looksLikeArchive(handle, child))) return null;
+  return collectEntries(handle, child, quota, budget, entryId, `${path}/`, depth + 1);
+}
+
+// A four byte prefix check keeps the cost of probing every stored member
+// negligible; only a candidate pays for a central directory read.
+async function looksLikeArchive(handle: FileHandle, window: VirtualWindow): Promise<boolean> {
+  const prefix = await readAt(handle, window, 0, 4);
+  const signature = prefix.readUInt32LE(0);
+  return signature === LOCAL_SIGNATURE || signature === EOCD_SIGNATURE;
+}
+
+async function walk(
+  handle: FileHandle,
+  root: VirtualWindow,
+  entryId: string,
+  quota: MaterializeQuota,
+): Promise<Walk | null> {
+  const segments = entryId.split('.');
+  let window = root;
+  let path = '';
+  for (let index = 0; index < segments.length; index += 1) {
+    if (index + 1 > quota.maxNesting) reject('Archive nesting is deeper than the quota allows');
+    const records = await readCentralDirectory(handle, window, quota);
+    if (!records) return null;
+    const record = records.find((candidate) => candidate.index === Number(segments[index]));
+    if (!record) return null;
+    checkEntryLimits(record, quota);
+    if (index === segments.length - 1) {
+      return { kind: 'found', window, record, path: `${path}${record.name}` };
+    }
+    if (record.method !== METHOD_STORE || isEncrypted(record)) {
+      return {
+        kind: 'blocked',
+        entryId: segments.slice(0, index + 1).join('.'),
+        remainder: segments.slice(index + 1).join('.'),
+        path: `${path}${record.name}`,
+      };
+    }
+    const start = await dataOffset(handle, window, record);
+    window = { offset: window.offset + start, length: record.compressedSize };
+    path = `${path}${record.name}/`;
+  }
+  return null;
 }
 
 function applyZip64Extra(record: CentralRecord, extra: Buffer): void {
@@ -325,15 +463,15 @@ function isUnsafeName(name: string): boolean {
 
 async function dataOffset(
   handle: FileHandle,
-  archive: Archive,
+  window: VirtualWindow,
   record: CentralRecord,
 ): Promise<number> {
-  const header = await readAt(handle, record.localHeaderOffset, LOCAL_FIXED_SIZE);
+  const header = await readAt(handle, window, record.localHeaderOffset, LOCAL_FIXED_SIZE);
   if (header.readUInt32LE(0) !== LOCAL_SIGNATURE) reject('Archive local header is malformed');
   const offset =
     record.localHeaderOffset + LOCAL_FIXED_SIZE + header.readUInt16LE(26) + header.readUInt16LE(28);
-  if (offset + record.compressedSize > archive.size) {
-    reject('Archive entry bytes fall outside the file');
+  if (offset + record.compressedSize > window.length) {
+    reject('Archive entry bytes fall outside the archive');
   }
   return offset;
 }

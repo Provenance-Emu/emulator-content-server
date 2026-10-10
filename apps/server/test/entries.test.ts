@@ -91,9 +91,11 @@ test('archive entries are listed and served as byte ranges', async () => {
 
     const stored = randomBytes(4096);
     const deflated = Buffer.concat([randomBytes(1024), Buffer.alloc(1024, 3)]);
+    const nested = Buffer.concat([randomBytes(1024), Buffer.alloc(1024, 5)]);
     const archive = buildZip([
       { name: 'disc.bin', body: stored },
       { name: 'notes.txt', body: deflated, compress: true },
+      { name: 'Sonic.zip', body: buildZip([{ name: 'Sonic.md', body: nested, compress: true }]) },
     ]);
 
     const upload = async (kind: string, name: string): Promise<string> => {
@@ -143,18 +145,33 @@ test('archive entries are listed and served as byte ranges', async () => {
       supported: boolean;
       entries: string[];
       format: string | null;
-      items: Array<{ entryId: string; method: string; uncompressedSize: number }>;
+      items: Array<{
+        entryId: string;
+        method: string;
+        uncompressedSize: number;
+        crc: string | null;
+      }>;
     };
     assert.equal(body.supported, true);
     assert.equal(body.format, 'zip');
-    assert.deepEqual(body.entries, ['disc.bin', 'notes.txt']);
+    assert.deepEqual(body.entries, ['disc.bin', 'notes.txt', 'Sonic.zip/Sonic.md']);
     assert.deepEqual(
       body.items.map((entry) => [entry.entryId, entry.method, entry.uncompressedSize]),
       [
         ['0', 'store', stored.length],
         ['1', 'deflate', deflated.length],
+        ['2.0', 'deflate', nested.length],
       ],
     );
+    assert.equal(body.items[0]?.crc, crc32Hex(stored));
+
+    const insideNested = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/files/${romId}/entries/2.0/content`,
+      headers: { ...auth, range: 'bytes=1500-1599' },
+    });
+    assert.equal(insideNested.statusCode, 206);
+    assert.deepEqual(insideNested.rawPayload, nested.subarray(1500, 1600));
 
     const ranged = await server.app.inject({
       method: 'GET',

@@ -8,7 +8,8 @@
 - Resumable uploads with `baseRevision` completion and `Idempotency-Key` replay.
 - Library roles, per-item grants, guest grants, and device tokens, all through one pure `authorize` function.
 - Monotonic change cursor, mDNS advertisement, audit log without raw tokens, backup and restore.
-- ZIP archives list their entries and serve single byte ranges per entry. Stored entries read from the container at an offset, deflated entries expand once into `virtual-cache`, and hostile entry counts, ratios, nesting, forged sizes, and bad CRCs are refused.
+- ZIP archives list their entries and serve single byte ranges per entry. Stored entries read from the container at an offset, deflated entries expand once into `virtual-cache`, and hostile entry counts, ratios, depth, forged sizes, and bad CRCs are refused.
+- A ZIP inside a ZIP works, which is how ROM sets ship. Stored nested archives are read in place, so every inner entry is listed with its CRC-32 and size without inflating anything, and a nested entry is served as a byte range.
 - `pnpm verify` and `swift test --package-path clients/swift` both green.
 
 ## What is left

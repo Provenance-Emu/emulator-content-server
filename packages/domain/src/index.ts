@@ -86,6 +86,12 @@ export interface VirtualEntry {
   compressedSize: number;
   uncompressedSize: number;
   method: string;
+  crc?: string | null;
+}
+
+export interface VirtualWindow {
+  offset: number;
+  length: number;
 }
 
 export interface MaterializeQuota {
@@ -96,19 +102,22 @@ export interface MaterializeQuota {
   timeoutMs: number;
 }
 
-export interface VirtualEntryLocation {
-  entry: VirtualEntry;
-  sourceOffset: number | null;
-}
+export type VirtualResolution =
+  | { kind: 'range'; entry: VirtualEntry; offset: number }
+  | { kind: 'expand'; entryId: string; remainder: string | null; path: string };
 
 export interface VirtualContentProvider {
   readonly format: string;
-  inspect(filePath: string, quota: MaterializeQuota): Promise<{ entries: VirtualEntry[] } | null>;
-  locate?(
+  inspect(
+    filePath: string,
+    quota: MaterializeQuota,
+    window?: VirtualWindow,
+  ): Promise<{ entries: VirtualEntry[] } | null>;
+  resolve?(
     filePath: string,
     entryId: string,
     quota: MaterializeQuota,
-  ): Promise<VirtualEntryLocation | null>;
+  ): Promise<VirtualResolution | null>;
   materialize?(
     filePath: string,
     entryId: string,

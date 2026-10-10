@@ -539,6 +539,7 @@ components:
         compressedSize: { type: integer, format: int64 }
         uncompressedSize: { type: integer, format: int64 }
         method: { type: string }
+        crc: { type: [string, 'null'] }
     VirtualEntryList:
       type: object
       required: [supported, entries]

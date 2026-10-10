@@ -35,6 +35,7 @@ import {
   blobPath,
   createStagingFile,
   FileContentReader,
+  listVirtualEntries,
   openVirtualEntry,
   placeBlob,
   removeStaging,
@@ -468,7 +469,12 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.get('/api/v1/files/:assetId/entries', async (request) => {
     const { asset } = requireVisibleAsset(context, request, 'read');
-    const inspected = await context.virtual.inspect(blobPath(context.dataDir, asset.sha256));
+    const inspected = await listVirtualEntries(
+      context.dataDir,
+      asset.sha256,
+      context.virtual,
+      queryString(request, 'entry'),
+    );
     return {
       supported: inspected !== null,
       entries: inspected?.entries.map((entry) => entry.path) ?? [],

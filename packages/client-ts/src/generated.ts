@@ -244,6 +244,7 @@ export interface VirtualEntry {
   compressedSize: number;
   uncompressedSize: number;
   method: string;
+  crc?: string | null;
 }
 
 export interface VirtualEntryList {
