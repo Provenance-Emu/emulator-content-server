@@ -478,12 +478,32 @@ public struct AuditList: Codable, Equatable, Sendable {
     }
 }
 
+public struct VirtualEntry: Codable, Equatable, Sendable {
+    public var entryId: String
+    public var path: String
+    public var compressedSize: Int64
+    public var uncompressedSize: Int64
+    public var method: String
+
+    public init(entryId: String, path: String, compressedSize: Int64, uncompressedSize: Int64, method: String) {
+        self.entryId = entryId
+        self.path = path
+        self.compressedSize = compressedSize
+        self.uncompressedSize = uncompressedSize
+        self.method = method
+    }
+}
+
 public struct VirtualEntryList: Codable, Equatable, Sendable {
     public var supported: Bool
     public var entries: [String]
+    public var format: String?
+    public var items: [VirtualEntry]?
 
-    public init(supported: Bool, entries: [String]) {
+    public init(supported: Bool, entries: [String], format: String? = nil, items: [VirtualEntry]? = nil) {
         self.supported = supported
         self.entries = entries
+        self.format = format
+        self.items = items
     }
 }

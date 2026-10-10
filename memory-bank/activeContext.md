@@ -2,12 +2,13 @@
 
 ## Current focus
 
-The ZIP virtual format provider, the first entry in `docs/workstreams/virtual-formats.md`. Before this change `VirtualProviderRegistry` shipped with no providers, `features.virtualFormats` was `[]`, and `GET /api/v1/files/{assetId}/entries` always answered `supported: false`.
+The ZIP virtual format provider has landed, the first entry in `docs/workstreams/virtual-formats.md`. Before it, `VirtualProviderRegistry` shipped with no providers, `features.virtualFormats` was `[]`, and `GET /api/v1/files/{assetId}/entries` always answered `supported: false`. The registry now carries `ZipProvider`, capabilities report `["zip"]`, and archive entries are listed and served as byte ranges.
 
 ## Recent changes
 
 - The foundation landed as a single commit: contract, storage, access control, reference server, CLI, and generated clients.
 - This Memory Bank was seeded from `AGENTS.md`, `README.md`, `docs/architecture/`, and `docs/workstreams/`. Those documents remain authoritative; this directory is a reading aid, not a second source of truth.
+- ZIP support added `packages/storage/src/zip.ts` and `virtual-cache.ts`, two additive operations for entry content, and optional `format` and `items` fields on the entries response.
 
 ## Active decisions
 

@@ -96,9 +96,19 @@ export interface MaterializeQuota {
   timeoutMs: number;
 }
 
+export interface VirtualEntryLocation {
+  entry: VirtualEntry;
+  sourceOffset: number | null;
+}
+
 export interface VirtualContentProvider {
   readonly format: string;
-  inspect(filePath: string): Promise<{ entries: VirtualEntry[] } | null>;
+  inspect(filePath: string, quota: MaterializeQuota): Promise<{ entries: VirtualEntry[] } | null>;
+  locate?(
+    filePath: string,
+    entryId: string,
+    quota: MaterializeQuota,
+  ): Promise<VirtualEntryLocation | null>;
   materialize?(
     filePath: string,
     entryId: string,

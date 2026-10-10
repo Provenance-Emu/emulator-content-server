@@ -4,7 +4,7 @@ import { hashToken, RateLimiter } from '@ecs/auth';
 import { CatalogDatabase, type CatalogLimits } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { problem } from '@ecs/protocol';
-import { ensureLayout, VirtualProviderRegistry } from '@ecs/storage';
+import { ensureLayout, VirtualProviderRegistry, ZipProvider } from '@ecs/storage';
 import Fastify, { type FastifyInstance } from 'fastify';
 import './actor.js';
 import type { ServerContext } from './context.js';
@@ -30,7 +30,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     catalog,
     dataDir: options.dataDir,
     displayName: options.displayName ?? 'Emulator Content Server',
-    virtual: new VirtualProviderRegistry(),
+    virtual: new VirtualProviderRegistry([new ZipProvider()]),
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
   };
   const app = buildApp(context, options.logger ?? false);

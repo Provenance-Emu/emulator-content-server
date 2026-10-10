@@ -8,17 +8,14 @@
 - Resumable uploads with `baseRevision` completion and `Idempotency-Key` replay.
 - Library roles, per-item grants, guest grants, and device tokens, all through one pure `authorize` function.
 - Monotonic change cursor, mDNS advertisement, audit log without raw tokens, backup and restore.
+- ZIP archives list their entries and serve single byte ranges per entry. Stored entries read from the container at an offset, deflated entries expand once into `virtual-cache`, and hostile entry counts, ratios, nesting, forged sizes, and bad CRCs are refused.
 - `pnpm verify` and `swift test --package-path clients/swift` both green.
-
-## In progress
-
-ZIP virtual format provider: entry listing, direct offset reads for stored entries, one-time materialization for deflated entries, and quota enforcement before cache growth.
 
 ## What is left
 
 | Brief | State |
 | --- | --- |
-| Virtual formats | ZIP in progress; disc formats not started |
+| Virtual formats | ZIP done; disc containers not started |
 | Scanning and metadata | Not started; needs a new `packages/scanner` |
 | WebDAV compatibility | Not started; needs a new `packages/webdav` |
 | Adversarial validation | Partially covered by existing storage and auth tests |

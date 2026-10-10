@@ -13,6 +13,7 @@
     "GET /api/v1/files/:assetId",
     "GET /api/v1/files/:assetId/content",
     "GET /api/v1/files/:assetId/entries",
+    "GET /api/v1/files/:assetId/entries/:entryId/content",
     "GET /api/v1/items",
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
@@ -21,6 +22,7 @@
     "GET /health",
     "GET /openapi.yaml",
     "HEAD /api/v1/files/:assetId/content",
+    "HEAD /api/v1/files/:assetId/entries/:entryId/content",
     "PATCH /api/v1/items/:itemId",
     "POST /api/v1/auth/bootstrap",
     "POST /api/v1/auth/login",
@@ -502,9 +504,27 @@
         "events"
       ]
     },
+    "VirtualEntry": {
+      "properties": [
+        "compressedSize",
+        "entryId",
+        "method",
+        "path",
+        "uncompressedSize"
+      ],
+      "required": [
+        "compressedSize",
+        "entryId",
+        "method",
+        "path",
+        "uncompressedSize"
+      ]
+    },
     "VirtualEntryList": {
       "properties": [
         "entries",
+        "format",
+        "items",
         "supported"
       ],
       "required": [

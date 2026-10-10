@@ -238,7 +238,17 @@ export interface AuditList {
   events: AuditEvent[];
 }
 
+export interface VirtualEntry {
+  entryId: string;
+  path: string;
+  compressedSize: number;
+  uncompressedSize: number;
+  method: string;
+}
+
 export interface VirtualEntryList {
   supported: boolean;
   entries: string[];
+  format?: string | null;
+  items?: VirtualEntry[];
 }

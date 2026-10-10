@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { lstat, realpath } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
@@ -7,6 +8,14 @@ const UPLOAD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 export function blobPath(root: string, sha256: string): string {
   if (!SHA256.test(sha256)) throw new Error('Blob address must be a lowercase SHA-256');
   return join(root, 'blobs', 'sha256', sha256.slice(0, 2), sha256);
+}
+
+export function virtualCachePath(root: string, containerSha256: string, entryId: string): string {
+  if (!SHA256.test(containerSha256)) {
+    throw new Error('Container address must be a lowercase SHA-256');
+  }
+  const key = createHash('sha256').update(`${containerSha256}:${entryId}`).digest('hex');
+  return join(root, 'virtual-cache', key.slice(0, 2), key);
 }
 
 export function stagingFile(root: string, uploadId: string): string {

@@ -35,6 +35,7 @@ import {
   blobPath,
   createStagingFile,
   FileContentReader,
+  openVirtualEntry,
   placeBlob,
   removeStaging,
   truncateStaging,
@@ -471,7 +472,15 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return {
       supported: inspected !== null,
       entries: inspected?.entries.map((entry) => entry.path) ?? [],
+      format: inspected?.format ?? null,
+      items: inspected?.entries ?? [],
     };
+  });
+
+  app.route({
+    method: ['GET', 'HEAD'],
+    url: '/api/v1/files/:assetId/entries/:entryId/content',
+    handler: async (request, reply) => sendEntryContent(context, request, reply),
   });
 
   app.get('/api/v1/changes', async (request) => {
@@ -676,11 +685,48 @@ async function sendContent(
     return reply.status(304).send();
   }
   const size = await blobFileSize(context.dataDir, asset.sha256);
+  return sendRange(request, reply, {
+    path: blobPath(context.dataDir, asset.sha256),
+    offset: 0,
+    size,
+    etag,
+  });
+}
+
+async function sendEntryContent(
+  context: ServerContext,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<FastifyReply> {
+  const { asset } = requireVisibleAsset(context, request, 'read');
+  const { entryId } = request.params as { entryId: string };
+  const etag = strongEtag(`${asset.sha256}-${entryId}`);
+  reply.header('accept-ranges', 'bytes');
+  reply.header('etag', etag);
+  if (etagMatches(headerString(request, 'if-none-match'), etag)) {
+    return reply.status(304).send();
+  }
+  const entry = await openVirtualEntry(context.dataDir, asset.sha256, context.virtual, entryId);
+  if (!entry) throw new DomainError('not-found', 404, 'Archive entry not found');
+  return sendRange(request, reply, {
+    path: entry.path,
+    offset: entry.offset,
+    size: entry.size,
+    etag,
+  });
+}
+
+async function sendRange(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  source: { path: string; offset: number; size: number; etag: string },
+): Promise<FastifyReply> {
+  const { size } = source;
   const rangeHeader = headerString(request, 'range');
   let status = 200;
   let start = 0;
   let end = Math.max(size - 1, 0);
-  if (rangeHeader && ifRangeMatches(headerString(request, 'if-range'), etag)) {
+  if (rangeHeader && ifRangeMatches(headerString(request, 'if-range'), source.etag)) {
     const parsed = parseSingleRange(rangeHeader, size);
     if (parsed.type === 'invalid') {
       throw new DomainError('invalid-range', 400, 'Only one byte range is supported');
@@ -697,9 +743,8 @@ async function sendContent(
   reply.header('content-type', 'application/octet-stream');
   reply.header('content-length', String(length));
   if (request.method === 'HEAD' || length === 0) return reply.status(status).send();
-  const reader = new FileContentReader(blobPath(context.dataDir, asset.sha256), size);
-  const stream = status === 206 ? reader.openRange(start, end) : reader.openFull();
-  return reply.status(status).send(stream);
+  const reader = new FileContentReader(source.path, source.offset + size);
+  return reply.status(status).send(reader.openRange(source.offset + start, source.offset + end));
 }
 
 function headerString(request: FastifyRequest, name: string): string | undefined {

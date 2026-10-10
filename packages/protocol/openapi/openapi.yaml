@@ -182,6 +182,23 @@ paths:
       responses:
         '200':
           description: Virtual entries when a format provider exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualEntryList'
+  /api/v1/files/{assetId}/entries/{entryId}/content:
+    get:
+      operationId: getVirtualEntryContent
+      responses:
+        '200':
+          description: Full entry representation.
+        '206':
+          description: Single byte range of the entry.
+    head:
+      operationId: headVirtualEntryContent
+      responses:
+        '200':
+          description: Entry representation headers.
   /api/v1/changes:
     get:
       operationId: listChanges
@@ -513,6 +530,15 @@ components:
         events:
           type: array
           items: { $ref: '#/components/schemas/AuditEvent' }
+    VirtualEntry:
+      type: object
+      required: [entryId, path, compressedSize, uncompressedSize, method]
+      properties:
+        entryId: { type: string }
+        path: { type: string }
+        compressedSize: { type: integer, format: int64 }
+        uncompressedSize: { type: integer, format: int64 }
+        method: { type: string }
     VirtualEntryList:
       type: object
       required: [supported, entries]
@@ -521,3 +547,7 @@ components:
         entries:
           type: array
           items: { type: string }
+        format: { type: [string, 'null'] }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/VirtualEntry' }

@@ -207,7 +207,7 @@ test('content API streams ranges, enforces grants, and feeds changes', async () 
     const capabilities = await server.app.inject({ method: 'GET', url: '/api/v1/capabilities' });
     assert.equal(capabilities.statusCode, 200);
     assert.equal(capabilities.json().features.rangeRequests, true);
-    assert.deepEqual(capabilities.json().features.virtualFormats, []);
+    assert.deepEqual(capabilities.json().features.virtualFormats, ['zip']);
     assert.equal(capabilities.headers['x-request-id'] !== undefined, true);
 
     await server.app.inject({ method: 'POST', url: '/api/v1/auth/logout', headers: auth });
