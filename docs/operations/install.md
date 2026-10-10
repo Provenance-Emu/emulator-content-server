@@ -5,8 +5,8 @@
 ```sh
 pnpm install
 pnpm build
-pnpm --filter @provenance-content/server exec ecs init --data ./content-data --name "Living Room"
-pnpm --filter @provenance-content/server exec ecs serve --data ./content-data
+pnpm ecs init --data ./content-data --name "Living Room"
+pnpm ecs serve --data ./content-data
 ```
 
 `init` creates the SQLite database, blob directories, and `bootstrap.token` with mode `0600` where the platform supports it. `serve` repeats init when the data directory is new, then listens on `127.0.0.1:8473`.

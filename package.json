@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -b",
+    "ecs": "pnpm build && node apps/cli/dist/src/main.js",
     "typecheck": "tsc -b --pretty false",
     "test": "pnpm build && node --disable-warning=ExperimentalWarning scripts/run-tests.mjs",
     "lint": "biome check apps/*/src apps/*/test packages/*/src packages/*/test packages/protocol/scripts packages/protocol/openapi scripts package.json biome.json README.md CONTRIBUTING.md SECURITY.md AGENTS.md",

@@ -8,8 +8,8 @@ The server is a separate repository from the emulator apps. Apps stay adapters. 
 
 ```sh
 pnpm install
-pnpm --filter @provenance-content/server exec ecs init --data ./content-data
-pnpm --filter @provenance-content/server exec ecs serve --data ./content-data
+pnpm ecs init --data ./content-data
+pnpm ecs serve --data ./content-data
 ```
 
 The first run prints a one-time bootstrap token and listens on `127.0.0.1:8473`. Create the owner with `POST /api/v1/auth/bootstrap`, then use the returned bearer token.
