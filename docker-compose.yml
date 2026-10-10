@@ -1,0 +1,16 @@
+services:
+  content-server:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "127.0.0.1:8473:8473"
+    environment:
+      ECS_ALLOW_LAN: "1"
+    volumes:
+      - content-data:/data
+    command: ["serve", "--data", "/data", "--host", "0.0.0.0"]
+    restart: unless-stopped
+
+volumes:
+  content-data:

@@ -1,0 +1,516 @@
+{
+  "paths": [
+    "DELETE /api/v1/device-tokens/:tokenId",
+    "DELETE /api/v1/files/:assetId",
+    "DELETE /api/v1/guest-grants/:grantId",
+    "DELETE /api/v1/items/:itemId",
+    "DELETE /api/v1/items/:itemId/access/:userId",
+    "DELETE /api/v1/libraries/:libraryId/members/:userId",
+    "DELETE /api/v1/uploads/:uploadId",
+    "GET /api/v1/audit",
+    "GET /api/v1/capabilities",
+    "GET /api/v1/changes",
+    "GET /api/v1/files/:assetId",
+    "GET /api/v1/files/:assetId/content",
+    "GET /api/v1/files/:assetId/entries",
+    "GET /api/v1/items",
+    "GET /api/v1/items/:itemId",
+    "GET /api/v1/items/:itemId/manifest",
+    "GET /api/v1/libraries",
+    "GET /api/v1/systems",
+    "GET /health",
+    "GET /openapi.yaml",
+    "HEAD /api/v1/files/:assetId/content",
+    "PATCH /api/v1/items/:itemId",
+    "POST /api/v1/auth/bootstrap",
+    "POST /api/v1/auth/login",
+    "POST /api/v1/auth/logout",
+    "POST /api/v1/device-tokens",
+    "POST /api/v1/guest-grants",
+    "POST /api/v1/items",
+    "POST /api/v1/libraries",
+    "POST /api/v1/uploads",
+    "POST /api/v1/uploads/:uploadId/complete",
+    "POST /api/v1/users",
+    "PUT /api/v1/items/:itemId/access/:userId",
+    "PUT /api/v1/libraries/:libraryId/members/:userId",
+    "PUT /api/v1/uploads/:uploadId/content"
+  ],
+  "schemas": {
+    "Problem": {
+      "properties": [
+        "detail",
+        "instance",
+        "requestId",
+        "status",
+        "title",
+        "type"
+      ],
+      "required": [
+        "status",
+        "title",
+        "type"
+      ]
+    },
+    "Capabilities": {
+      "properties": [
+        "authentication",
+        "features",
+        "limits",
+        "minClientVersion",
+        "protocol"
+      ],
+      "required": [
+        "authentication",
+        "features",
+        "limits",
+        "minClientVersion",
+        "protocol"
+      ]
+    },
+    "ProtocolInfo": {
+      "properties": [
+        "major",
+        "minor",
+        "path"
+      ],
+      "required": [
+        "major",
+        "minor",
+        "path"
+      ]
+    },
+    "FeatureFlags": {
+      "properties": [
+        "changeFeed",
+        "guestGrants",
+        "multiRange",
+        "natTraversal",
+        "rangeRequests",
+        "resumableUploads",
+        "virtualFormats",
+        "webdav"
+      ],
+      "required": [
+        "changeFeed",
+        "guestGrants",
+        "multiRange",
+        "natTraversal",
+        "rangeRequests",
+        "resumableUploads",
+        "virtualFormats",
+        "webdav"
+      ]
+    },
+    "Limits": {
+      "properties": [
+        "maxPageSize",
+        "maxUploadBytes"
+      ],
+      "required": [
+        "maxPageSize",
+        "maxUploadBytes"
+      ]
+    },
+    "SystemSummary": {
+      "properties": [
+        "identifier",
+        "name"
+      ],
+      "required": [
+        "identifier",
+        "name"
+      ]
+    },
+    "SystemList": {
+      "properties": [
+        "closed",
+        "systems"
+      ],
+      "required": [
+        "closed",
+        "systems"
+      ]
+    },
+    "Library": {
+      "properties": [
+        "createdAt",
+        "id",
+        "name",
+        "ownerId",
+        "revision"
+      ],
+      "required": [
+        "createdAt",
+        "id",
+        "name",
+        "ownerId",
+        "revision"
+      ]
+    },
+    "LibraryList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "LibraryDraft": {
+      "properties": [
+        "name"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    "Item": {
+      "properties": [
+        "crc",
+        "createdAt",
+        "id",
+        "libraryId",
+        "md5",
+        "revision",
+        "systemIdentifier",
+        "title",
+        "updatedAt"
+      ],
+      "required": [
+        "crc",
+        "createdAt",
+        "id",
+        "libraryId",
+        "md5",
+        "revision",
+        "systemIdentifier",
+        "title",
+        "updatedAt"
+      ]
+    },
+    "ItemList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "ItemDraft": {
+      "properties": [
+        "crc",
+        "libraryId",
+        "md5",
+        "systemIdentifier",
+        "title"
+      ],
+      "required": [
+        "libraryId",
+        "systemIdentifier",
+        "title"
+      ]
+    },
+    "ItemPatch": {
+      "properties": [
+        "crc",
+        "md5",
+        "title"
+      ],
+      "required": []
+    },
+    "Asset": {
+      "properties": [
+        "crc",
+        "createdAt",
+        "displayName",
+        "id",
+        "itemId",
+        "kind",
+        "md5",
+        "relativePath",
+        "revision",
+        "sha256",
+        "shareable",
+        "size",
+        "updatedAt"
+      ],
+      "required": [
+        "crc",
+        "createdAt",
+        "displayName",
+        "id",
+        "itemId",
+        "kind",
+        "md5",
+        "relativePath",
+        "revision",
+        "sha256",
+        "shareable",
+        "size",
+        "updatedAt"
+      ]
+    },
+    "ManifestFile": {
+      "properties": [
+        "contentPath",
+        "crc",
+        "id",
+        "kind",
+        "md5",
+        "relativePath",
+        "required",
+        "sha256",
+        "size"
+      ],
+      "required": [
+        "contentPath",
+        "crc",
+        "id",
+        "kind",
+        "md5",
+        "relativePath",
+        "required",
+        "sha256",
+        "size"
+      ]
+    },
+    "Manifest": {
+      "properties": [
+        "files",
+        "itemId",
+        "revision",
+        "version"
+      ],
+      "required": [
+        "files",
+        "itemId",
+        "revision",
+        "version"
+      ]
+    },
+    "UploadSession": {
+      "properties": [
+        "id",
+        "received",
+        "state"
+      ],
+      "required": [
+        "id",
+        "received",
+        "state"
+      ]
+    },
+    "UploadComplete": {
+      "properties": [
+        "baseRevision",
+        "displayName",
+        "itemId",
+        "kind",
+        "relativePath"
+      ],
+      "required": [
+        "baseRevision",
+        "displayName",
+        "itemId",
+        "kind",
+        "relativePath"
+      ]
+    },
+    "ChangeEvent": {
+      "properties": [
+        "cursor",
+        "entityId",
+        "entityType",
+        "itemId",
+        "libraryId",
+        "op",
+        "recordedAt",
+        "sensitive"
+      ],
+      "required": [
+        "cursor",
+        "entityId",
+        "entityType",
+        "itemId",
+        "libraryId",
+        "op",
+        "recordedAt",
+        "sensitive"
+      ]
+    },
+    "ChangeList": {
+      "properties": [
+        "changes",
+        "nextCursor"
+      ],
+      "required": [
+        "changes",
+        "nextCursor"
+      ]
+    },
+    "BootstrapRequest": {
+      "properties": [
+        "password",
+        "token",
+        "username"
+      ],
+      "required": [
+        "password",
+        "token",
+        "username"
+      ]
+    },
+    "LoginRequest": {
+      "properties": [
+        "password",
+        "username"
+      ],
+      "required": [
+        "password",
+        "username"
+      ]
+    },
+    "SessionResponse": {
+      "properties": [
+        "expiresAt",
+        "token",
+        "tokenType",
+        "userId"
+      ],
+      "required": [
+        "expiresAt",
+        "token",
+        "tokenType",
+        "userId"
+      ]
+    },
+    "UserDraft": {
+      "properties": [
+        "password",
+        "username"
+      ],
+      "required": [
+        "password",
+        "username"
+      ]
+    },
+    "User": {
+      "properties": [
+        "createdAt",
+        "id",
+        "isOwner",
+        "username"
+      ],
+      "required": [
+        "createdAt",
+        "id",
+        "isOwner",
+        "username"
+      ]
+    },
+    "MemberDraft": {
+      "properties": [
+        "role"
+      ],
+      "required": [
+        "role"
+      ]
+    },
+    "ItemAccessDraft": {
+      "properties": [
+        "permission"
+      ],
+      "required": [
+        "permission"
+      ]
+    },
+    "GuestGrantDraft": {
+      "properties": [
+        "capabilities",
+        "expiresInSeconds",
+        "itemId",
+        "libraryId"
+      ],
+      "required": [
+        "capabilities",
+        "expiresInSeconds",
+        "libraryId"
+      ]
+    },
+    "GuestGrantCreated": {
+      "properties": [
+        "expiresAt",
+        "id",
+        "token"
+      ],
+      "required": [
+        "expiresAt",
+        "id",
+        "token"
+      ]
+    },
+    "DeviceTokenDraft": {
+      "properties": [
+        "expiresInSeconds",
+        "name",
+        "scopes"
+      ],
+      "required": [
+        "name",
+        "scopes"
+      ]
+    },
+    "DeviceTokenCreated": {
+      "properties": [
+        "id",
+        "scopes",
+        "token"
+      ],
+      "required": [
+        "id",
+        "scopes",
+        "token"
+      ]
+    },
+    "AuditEvent": {
+      "properties": [
+        "action",
+        "actorId",
+        "at",
+        "id",
+        "resourceId",
+        "resourceType"
+      ],
+      "required": [
+        "action",
+        "actorId",
+        "at",
+        "id",
+        "resourceId",
+        "resourceType"
+      ]
+    },
+    "AuditList": {
+      "properties": [
+        "events"
+      ],
+      "required": [
+        "events"
+      ]
+    },
+    "VirtualEntryList": {
+      "properties": [
+        "entries",
+        "supported"
+      ],
+      "required": [
+        "entries",
+        "supported"
+      ]
+    }
+  }
+}

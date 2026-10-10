@@ -1,0 +1,20 @@
+{
+  "name": "@ecs/server",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "dependencies": {
+    "@ecs/auth": "workspace:*",
+    "@ecs/database": "workspace:*",
+    "@ecs/discovery": "workspace:*",
+    "@ecs/domain": "workspace:*",
+    "@ecs/protocol": "workspace:*",
+    "@ecs/storage": "workspace:*",
+    "fastify": "5.12.5"
+  }
+}

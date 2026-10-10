@@ -1,0 +1,50 @@
+import { API_MAJOR, API_MINOR, API_PATH } from './version.js';
+
+export interface Capabilities {
+  protocol: {
+    major: number;
+    minor: number;
+    path: string;
+  };
+  minClientVersion: string;
+  features: {
+    rangeRequests: boolean;
+    multiRange: boolean;
+    resumableUploads: boolean;
+    changeFeed: boolean;
+    guestGrants: boolean;
+    virtualFormats: string[];
+    webdav: boolean;
+    natTraversal: boolean;
+  };
+  limits: {
+    maxUploadBytes: number;
+    maxPageSize: number;
+  };
+  authentication: Array<'bearer' | 'bootstrap'>;
+}
+
+export function buildCapabilities(input: {
+  maxUploadBytes: number;
+  virtualFormats?: string[];
+}): Capabilities {
+  return {
+    protocol: { major: API_MAJOR, minor: API_MINOR, path: API_PATH },
+    minClientVersion: '0.1.0',
+    features: {
+      rangeRequests: true,
+      multiRange: false,
+      resumableUploads: true,
+      changeFeed: true,
+      guestGrants: true,
+      virtualFormats: input.virtualFormats ?? [],
+      webdav: false,
+      natTraversal: false,
+    },
+    limits: {
+      maxUploadBytes: input.maxUploadBytes,
+      maxPageSize: 100,
+    },
+    authentication: ['bearer', 'bootstrap'],
+  };
+}

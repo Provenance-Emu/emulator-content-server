@@ -1,0 +1,523 @@
+openapi: 3.1.0
+info:
+  title: Emulator Content Server API
+  version: 1.0.0
+  summary: Versioned content protocol for emulator libraries.
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        '200':
+          description: Process is serving.
+  /openapi.yaml:
+    get:
+      operationId: getOpenApi
+      responses:
+        '200':
+          description: This document.
+  /api/v1/capabilities:
+    get:
+      operationId: getCapabilities
+      responses:
+        '200':
+          description: Protocol capabilities.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+  /api/v1/systems:
+    get:
+      operationId: listSystems
+      responses:
+        '200':
+          description: Known system vocabulary. The catalog is not closed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemList'
+  /api/v1/auth/bootstrap:
+    post:
+      operationId: bootstrap
+      responses:
+        '201':
+          description: Owner created.
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      responses:
+        '200':
+          description: Session created.
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      responses:
+        '204':
+          description: Session revoked.
+  /api/v1/users:
+    post:
+      operationId: createUser
+      responses:
+        '201':
+          description: User created.
+  /api/v1/libraries:
+    get:
+      operationId: listLibraries
+      responses:
+        '200':
+          description: Visible libraries.
+    post:
+      operationId: createLibrary
+      responses:
+        '201':
+          description: Library created.
+  /api/v1/libraries/{libraryId}/members/{userId}:
+    put:
+      operationId: putMember
+      responses:
+        '204':
+          description: Membership replaced.
+    delete:
+      operationId: deleteMember
+      responses:
+        '204':
+          description: Membership removed.
+  /api/v1/items:
+    get:
+      operationId: listItems
+      responses:
+        '200':
+          description: Item page.
+    post:
+      operationId: createItem
+      responses:
+        '201':
+          description: Item created.
+  /api/v1/items/{itemId}:
+    get:
+      operationId: getItem
+      responses:
+        '200':
+          description: Item.
+    patch:
+      operationId: patchItem
+      responses:
+        '200':
+          description: Item updated.
+    delete:
+      operationId: deleteItem
+      responses:
+        '204':
+          description: Item deleted.
+  /api/v1/items/{itemId}/manifest:
+    get:
+      operationId: getManifest
+      responses:
+        '200':
+          description: File manifest.
+  /api/v1/items/{itemId}/access/{userId}:
+    put:
+      operationId: putItemAccess
+      responses:
+        '204':
+          description: Item grant replaced.
+    delete:
+      operationId: deleteItemAccess
+      responses:
+        '204':
+          description: Item grant removed.
+  /api/v1/uploads:
+    post:
+      operationId: createUpload
+      responses:
+        '201':
+          description: Upload session created.
+  /api/v1/uploads/{uploadId}/content:
+    put:
+      operationId: uploadContent
+      responses:
+        '204':
+          description: Bytes accepted.
+  /api/v1/uploads/{uploadId}/complete:
+    post:
+      operationId: completeUpload
+      responses:
+        '201':
+          description: Asset committed.
+  /api/v1/uploads/{uploadId}:
+    delete:
+      operationId: abortUpload
+      responses:
+        '204':
+          description: Upload aborted.
+  /api/v1/files/{assetId}:
+    get:
+      operationId: getFileMetadata
+      responses:
+        '200':
+          description: Asset metadata.
+    delete:
+      operationId: deleteFile
+      responses:
+        '204':
+          description: Asset deleted.
+  /api/v1/files/{assetId}/content:
+    get:
+      operationId: getFileContent
+      responses:
+        '200':
+          description: Full representation.
+        '206':
+          description: Single byte range.
+    head:
+      operationId: headFileContent
+      responses:
+        '200':
+          description: Representation headers.
+  /api/v1/files/{assetId}/entries:
+    get:
+      operationId: listVirtualEntries
+      responses:
+        '200':
+          description: Virtual entries when a format provider exists.
+  /api/v1/changes:
+    get:
+      operationId: listChanges
+      responses:
+        '200':
+          description: Change feed.
+  /api/v1/guest-grants:
+    post:
+      operationId: createGuestGrant
+      responses:
+        '201':
+          description: Guest grant created.
+  /api/v1/guest-grants/{grantId}:
+    delete:
+      operationId: revokeGuestGrant
+      responses:
+        '204':
+          description: Guest grant revoked.
+  /api/v1/device-tokens:
+    post:
+      operationId: createDeviceToken
+      responses:
+        '201':
+          description: Device token created.
+  /api/v1/device-tokens/{tokenId}:
+    delete:
+      operationId: revokeDeviceToken
+      responses:
+        '204':
+          description: Device token revoked.
+  /api/v1/audit:
+    get:
+      operationId: listAudit
+      responses:
+        '200':
+          description: Audit events.
+components:
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: [string, 'null'] }
+        instance: { type: [string, 'null'] }
+        requestId: { type: [string, 'null'] }
+    Capabilities:
+      type: object
+      required: [protocol, minClientVersion, features, limits, authentication]
+      properties:
+        protocol: { $ref: '#/components/schemas/ProtocolInfo' }
+        minClientVersion: { type: string }
+        features: { $ref: '#/components/schemas/FeatureFlags' }
+        limits: { $ref: '#/components/schemas/Limits' }
+        authentication:
+          type: array
+          items: { type: string }
+    ProtocolInfo:
+      type: object
+      required: [major, minor, path]
+      properties:
+        major: { type: integer }
+        minor: { type: integer }
+        path: { type: string }
+    FeatureFlags:
+      type: object
+      required: [rangeRequests, multiRange, resumableUploads, changeFeed, guestGrants, virtualFormats, webdav, natTraversal]
+      properties:
+        rangeRequests: { type: boolean }
+        multiRange: { type: boolean }
+        resumableUploads: { type: boolean }
+        changeFeed: { type: boolean }
+        guestGrants: { type: boolean }
+        virtualFormats:
+          type: array
+          items: { type: string }
+        webdav: { type: boolean }
+        natTraversal: { type: boolean }
+    Limits:
+      type: object
+      required: [maxUploadBytes, maxPageSize]
+      properties:
+        maxUploadBytes: { type: integer, format: int64 }
+        maxPageSize: { type: integer }
+    SystemSummary:
+      type: object
+      required: [identifier, name]
+      properties:
+        identifier: { type: string }
+        name: { type: string }
+    SystemList:
+      type: object
+      required: [systems, closed]
+      properties:
+        systems:
+          type: array
+          items: { $ref: '#/components/schemas/SystemSummary' }
+        closed: { type: boolean }
+    Library:
+      type: object
+      required: [id, name, ownerId, revision, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        ownerId: { type: string }
+        revision: { type: integer }
+        createdAt: { type: string }
+    LibraryList:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Library' }
+        nextCursor: { type: [string, 'null'] }
+    LibraryDraft:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    Item:
+      type: object
+      required: [id, libraryId, systemIdentifier, title, md5, crc, revision, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        libraryId: { type: string }
+        systemIdentifier: { type: string }
+        title: { type: string }
+        md5: { type: [string, 'null'] }
+        crc: { type: [string, 'null'] }
+        revision: { type: integer }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    ItemList:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Item' }
+        nextCursor: { type: [string, 'null'] }
+    ItemDraft:
+      type: object
+      required: [libraryId, systemIdentifier, title]
+      properties:
+        libraryId: { type: string }
+        systemIdentifier: { type: string }
+        title: { type: string }
+        md5: { type: [string, 'null'] }
+        crc: { type: [string, 'null'] }
+    ItemPatch:
+      type: object
+      properties:
+        title: { type: string }
+        md5: { type: [string, 'null'] }
+        crc: { type: [string, 'null'] }
+    Asset:
+      type: object
+      required: [id, itemId, kind, displayName, relativePath, sha256, size, md5, crc, shareable, revision, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        itemId: { type: string }
+        kind: { type: string }
+        displayName: { type: string }
+        relativePath: { type: string }
+        sha256: { type: string }
+        size: { type: integer, format: int64 }
+        md5: { type: [string, 'null'] }
+        crc: { type: [string, 'null'] }
+        shareable: { type: boolean }
+        revision: { type: integer }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    ManifestFile:
+      type: object
+      required: [id, kind, relativePath, sha256, md5, crc, size, required, contentPath]
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        relativePath: { type: string }
+        sha256: { type: string }
+        md5: { type: [string, 'null'] }
+        crc: { type: [string, 'null'] }
+        size: { type: integer, format: int64 }
+        required: { type: boolean }
+        contentPath: { type: string }
+    Manifest:
+      type: object
+      required: [version, itemId, revision, files]
+      properties:
+        version: { type: integer }
+        itemId: { type: string }
+        revision: { type: integer }
+        files:
+          type: array
+          items: { $ref: '#/components/schemas/ManifestFile' }
+    UploadSession:
+      type: object
+      required: [id, received, state]
+      properties:
+        id: { type: string }
+        received: { type: integer, format: int64 }
+        state: { type: string }
+    UploadComplete:
+      type: object
+      required: [itemId, kind, displayName, relativePath, baseRevision]
+      properties:
+        itemId: { type: string }
+        kind: { type: string }
+        displayName: { type: string }
+        relativePath: { type: string }
+        baseRevision: { type: integer }
+    ChangeEvent:
+      type: object
+      required: [cursor, entityType, entityId, op, libraryId, itemId, sensitive, recordedAt]
+      properties:
+        cursor: { type: integer }
+        entityType: { type: string }
+        entityId: { type: string }
+        op: { type: string }
+        libraryId: { type: [string, 'null'] }
+        itemId: { type: [string, 'null'] }
+        sensitive: { type: boolean }
+        recordedAt: { type: string }
+    ChangeList:
+      type: object
+      required: [changes, nextCursor]
+      properties:
+        changes:
+          type: array
+          items: { $ref: '#/components/schemas/ChangeEvent' }
+        nextCursor: { type: string }
+    BootstrapRequest:
+      type: object
+      required: [token, username, password]
+      properties:
+        token: { type: string }
+        username: { type: string }
+        password: { type: string }
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    SessionResponse:
+      type: object
+      required: [token, tokenType, userId, expiresAt]
+      properties:
+        token: { type: string }
+        tokenType: { type: string }
+        userId: { type: string }
+        expiresAt: { type: string }
+    UserDraft:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    User:
+      type: object
+      required: [id, username, isOwner, createdAt]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        isOwner: { type: boolean }
+        createdAt: { type: string }
+    MemberDraft:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string }
+    ItemAccessDraft:
+      type: object
+      required: [permission]
+      properties:
+        permission: { type: string }
+    GuestGrantDraft:
+      type: object
+      required: [libraryId, capabilities, expiresInSeconds]
+      properties:
+        libraryId: { type: string }
+        itemId: { type: [string, 'null'] }
+        capabilities:
+          type: array
+          items: { type: string }
+        expiresInSeconds: { type: integer }
+    GuestGrantCreated:
+      type: object
+      required: [id, token, expiresAt]
+      properties:
+        id: { type: string }
+        token: { type: string }
+        expiresAt: { type: string }
+    DeviceTokenDraft:
+      type: object
+      required: [name, scopes]
+      properties:
+        name: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        expiresInSeconds: { type: [integer, 'null'] }
+    DeviceTokenCreated:
+      type: object
+      required: [id, token, scopes]
+      properties:
+        id: { type: string }
+        token: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+    AuditEvent:
+      type: object
+      required: [id, at, actorId, action, resourceType, resourceId]
+      properties:
+        id: { type: integer }
+        at: { type: string }
+        actorId: { type: [string, 'null'] }
+        action: { type: string }
+        resourceType: { type: [string, 'null'] }
+        resourceId: { type: [string, 'null'] }
+    AuditList:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/AuditEvent' }
+    VirtualEntryList:
+      type: object
+      required: [supported, entries]
+      properties:
+        supported: { type: boolean }
+        entries:
+          type: array
+          items: { type: string }

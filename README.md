@@ -1,0 +1,53 @@
+# Emulator Content Server
+
+Headless library server for sharing emulator ROMs, saves, screenshots, artwork, BIOS, and system files between Provenance, iCube, iFly, and future clients.
+
+The server is a separate repository from the emulator apps. Apps stay adapters. This repository owns the versioned HTTP contract, storage, access control, and reference clients.
+
+## Run locally
+
+```sh
+pnpm install
+pnpm --filter @provenance-content/server exec ecs init --data ./content-data
+pnpm --filter @provenance-content/server exec ecs serve --data ./content-data
+```
+
+The first run prints a one-time bootstrap token and listens on `127.0.0.1:8473`. Create the owner with `POST /api/v1/auth/bootstrap`, then use the returned bearer token.
+
+After the package is published, the same command is:
+
+```sh
+npx --yes @provenance-content/server serve --data ./content-data
+```
+
+## Run in Docker
+
+```sh
+docker compose up --build
+```
+
+Compose publishes the server on host loopback and sets `ECS_ALLOW_LAN=1` so the container can bind `0.0.0.0` before setup finishes. The bootstrap token is still required before any library data is exposed. Read [docs/operations/install.md](docs/operations/install.md) before changing the published port.
+
+## Verify
+
+```sh
+pnpm verify
+swift test --package-path clients/swift
+```
+
+`pnpm verify` typechecks, lints, runs unit and contract tests, checks generated-client drift, scans for secrets and copyrighted fixture types, and checks package boundaries.
+
+## Layout
+
+- `packages/protocol` is the OpenAPI contract and shared wire helpers.
+- `packages/domain` holds entities and storage ports.
+- `packages/database`, `packages/storage`, `packages/auth`, and `packages/discovery` are infrastructure.
+- `apps/server` composes Fastify routes.
+- `apps/cli` is the `ecs` command.
+- `packages/client-ts` and `clients/swift` are generated from the contract, with hand-written resume logic beside the generated models.
+
+Dependency direction is one-way: protocol and domain, then infrastructure, then server and CLI. App-specific Realm, Dolphin, CloudKit, and UIKit code does not belong here.
+
+## Scope of this foundation
+
+The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs, directory scanning, WebDAV, desktop UI, and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, and IPA distribution stay in a separate future project.

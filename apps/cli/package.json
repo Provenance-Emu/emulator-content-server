@@ -1,0 +1,17 @@
+{
+  "name": "@provenance-content/server",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "ecs": "./dist/src/main.js",
+    "provenance-content-server": "./dist/src/main.js"
+  },
+  "dependencies": {
+    "@ecs/auth": "workspace:*",
+    "@ecs/database": "workspace:*",
+    "@ecs/discovery": "workspace:*",
+    "@ecs/protocol": "workspace:*",
+    "@ecs/server": "workspace:*",
+    "@ecs/storage": "workspace:*"
+  }
+}

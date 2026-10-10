@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "references": [
+    { "path": "../../packages/auth" },
+    { "path": "../../packages/database" },
+    { "path": "../../packages/discovery" },
+    { "path": "../../packages/domain" },
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/storage" }
+  ]
+}

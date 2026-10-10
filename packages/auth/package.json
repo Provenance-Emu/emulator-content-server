@@ -1,0 +1,15 @@
+{
+  "name": "@ecs/auth",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "dependencies": {
+    "@ecs/domain": "workspace:*",
+    "@noble/hashes": "2.4.0"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "emulator-content-server",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.30.1",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "pnpm build && node --disable-warning=ExperimentalWarning scripts/run-tests.mjs",
+    "lint": "biome check apps/*/src apps/*/test packages/*/src packages/*/test packages/protocol/scripts packages/protocol/openapi scripts package.json biome.json README.md CONTRIBUTING.md SECURITY.md AGENTS.md",
+    "format": "biome check --write apps/*/src apps/*/test packages/*/src packages/*/test packages/protocol/scripts packages/protocol/openapi scripts package.json biome.json README.md CONTRIBUTING.md SECURITY.md AGENTS.md",
+    "generate": "node packages/protocol/scripts/generate-clients.mjs",
+    "check-drift": "node packages/protocol/scripts/generate-clients.mjs --check",
+    "update-surface": "tsc -b packages/protocol && node packages/protocol/scripts/write-surface.mjs",
+    "secret-scan": "node scripts/secret-scan.mjs",
+    "verify": "pnpm lint && pnpm test && pnpm check-drift && pnpm secret-scan && node scripts/check-boundaries.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "22.19.11",
+    "typescript": "5.9.3"
+  }
+}

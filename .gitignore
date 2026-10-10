@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+content-data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+bootstrap.token
+.DS_Store
+coverage/
+dist-release/
+clients/swift/.build/
+.swiftpm/

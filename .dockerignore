@@ -1,0 +1,12 @@
+.git
+node_modules
+**/dist
+content-data
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+bootstrap.token
+dist-release
+.DS_Store
+clients/swift/.build
+**/.swiftpm
