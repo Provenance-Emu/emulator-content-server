@@ -70,6 +70,59 @@ test('an existing catalog opens twice without reapplying a migration', async () 
   }
 });
 
+test('a database left at an earlier version is upgraded and keeps its rows', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-migrate-'));
+  const filename = join(dir, 'library.sqlite');
+  const first = MIGRATIONS[0];
+  assert.ok(first);
+  try {
+    const earlier = new DatabaseSync(filename);
+    earlier.exec(first.sql);
+    earlier
+      .prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)')
+      .run(first.version, new Date().toISOString());
+    earlier
+      .prepare(
+        'INSERT INTO users (id, username, password_hash, is_owner, created_at) VALUES (?, ?, ?, 1, ?)',
+      )
+      .run('owner-1', 'owner', 'not-a-password-hash', new Date().toISOString());
+    earlier.close();
+
+    const upgraded = new CatalogDatabase(filename);
+    try {
+      assert.equal(upgraded.integrity(), 'ok');
+      assert.deepEqual(upgraded.listContentRoots(), [], 'the newer table exists after the upgrade');
+      const saved = upgraded.createContentRoot({
+        path: '/not/read/by/this/test',
+        label: 'Shelf',
+        libraryId: null,
+        actorId: 'owner-1',
+      });
+      assert.equal(upgraded.getContentRoot(saved.id)?.label, 'Shelf');
+    } finally {
+      upgraded.close();
+    }
+
+    const inspect = new DatabaseSync(filename);
+    try {
+      const user = inspect.prepare('SELECT username FROM users WHERE id = ?').get('owner-1');
+      assert.equal((user as { username: string }).username, 'owner');
+      const versions = inspect
+        .prepare('SELECT version FROM schema_migrations ORDER BY version')
+        .all()
+        .map((row) => Number((row as { version: number }).version));
+      assert.deepEqual(
+        versions,
+        MIGRATIONS.map((entry) => entry.version),
+      );
+    } finally {
+      inspect.close();
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('a tampered ledger is a hard error rather than a partial upgrade', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ecs-migrate-'));
   const filename = join(dir, 'library.sqlite');
