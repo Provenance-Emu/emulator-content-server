@@ -62,6 +62,17 @@ import {
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
+const UI_CONTENT_POLICY = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
+
 export function registerRoutes(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
 
@@ -74,7 +85,22 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
      * history fallback to get wrong, and a request for a file that is not there
      * is a missing asset rather than a route.
      */
-    app.register(fastifyStatic, { root: context.uiDir, prefix: '/ui/', wildcard: false });
+    app.register(fastifyStatic, {
+      root: context.uiDir,
+      prefix: '/ui/',
+      wildcard: false,
+      setHeaders: (response) => {
+        /**
+         * The page keeps its bearer token in local storage, so the thing that
+         * has to be impossible is injected script reading it and sending it
+         * somewhere. Nothing loads from another origin, nothing inline runs,
+         * and the only place a request can go is back here.
+         */
+        response.header('content-security-policy', UI_CONTENT_POLICY);
+        response.header('x-content-type-options', 'nosniff');
+        response.header('referrer-policy', 'no-referrer');
+      },
+    });
     app.get('/ui', async (_request, reply) => reply.redirect('/ui/', 308));
   }
 

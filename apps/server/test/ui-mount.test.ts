@@ -32,6 +32,11 @@ test('the interface is served from the same origin as the API', async () => {
     assert.match(page.body, /<title>UI<\/title>/);
     assert.match(page.headers['content-type'] as string, /text\/html/);
 
+    const policy = page.headers['content-security-policy'] as string;
+    assert.match(policy, /default-src 'none'/, 'the page cannot reach another origin');
+    assert.match(policy, /script-src 'self'/, 'and cannot run injected inline script');
+    assert.equal(page.headers['x-content-type-options'], 'nosniff');
+
     const script = await server.app.inject({ method: 'GET', url: '/ui/assets/app.js' });
     assert.equal(script.statusCode, 200);
     assert.match(script.headers['content-type'] as string, /javascript/);

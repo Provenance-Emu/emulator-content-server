@@ -30,7 +30,7 @@ Compose publishes the server on host loopback and sets `ECS_ALLOW_LAN=1` so the 
 
 ## Interface
 
-`pnpm ui` builds the web client and `ecs serve` mounts it at `/ui/` on the same origin as the API, which keeps CORS out of the design. The page holds its bearer token in memory, so a reload asks for the password again. Pass `--ui none` to serve the API alone, or `--ui <dir>` to serve a build from elsewhere.
+`pnpm ui` builds the web client and `ecs serve` mounts it at `/ui/` on the same origin as the API, which keeps CORS out of the design. The page stores its bearer token so a reload stays signed in, and the assets carry a content policy that allows no other origin, no inline script, and no outbound connection, which is what keeps that token out of reach of injected script. Pass `--ui none` to serve the API alone, or `--ui <dir>` to serve a build from elsewhere.
 
 ## Verify
 

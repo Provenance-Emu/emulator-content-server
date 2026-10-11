@@ -1,8 +1,11 @@
 <script lang="ts">
-  import type { ContentClient } from '@ecs/client';
+  import type { ContentClient, SessionResponse } from '@ecs/client';
   import { explain } from './lib/problems';
 
-  let { client, onsignin }: { client: ContentClient; onsignin: () => void } = $props();
+  let {
+    client,
+    onsignin,
+  }: { client: ContentClient; onsignin: (session: SessionResponse) => void } = $props();
 
   let username = $state('');
   let password = $state('');
@@ -14,9 +17,9 @@
     working = true;
     failure = null;
     try {
-      await client.login(username, password);
+      const session = await client.login(username, password);
       password = '';
-      onsignin();
+      onsignin(session);
     } catch (error) {
       failure = explain(error);
     } finally {
@@ -38,7 +41,7 @@
     </label>
     <button type="submit" disabled={working}>{working ? 'Signing in' : 'Sign in'}</button>
   </form>
-  <p class="dim">This page keeps the token in memory, so a reload asks again.</p>
+  <p class="dim">This browser stays signed in until the session expires or you sign out.</p>
   {#if failure}
     <p class="problem">{failure}</p>
   {/if}

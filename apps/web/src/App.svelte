@@ -1,8 +1,14 @@
 <script lang="ts">
-  import { type Capabilities, ContentClient, type ContentRoot } from '@ecs/client';
+  import {
+    type Capabilities,
+    ContentClient,
+    type ContentRoot,
+    type SessionResponse,
+  } from '@ecs/client';
   import Libraries from './Libraries.svelte';
+  import { explain, isForbidden, isUnauthorized } from './lib/problems';
+  import { clearSession, loadSession, saveSession } from './lib/session';
   import Login from './Login.svelte';
-  import { explain, isForbidden } from './lib/problems';
   import Roots from './Roots.svelte';
   import Status from './Status.svelte';
 
@@ -13,7 +19,9 @@
   let capabilities = $state<Capabilities | null>(null);
   let reachable = $state(true);
   let signedIn = $state(false);
-  /** Null until the owner-only call has been tried, so nothing flickers. */
+  /** False until a stored token has been tried, so no login form flashes. */
+  let settled = $state(false);
+  /** Null when this account is not the owner, which hides the owner panels. */
   let roots = $state<ContentRoot[] | null>(null);
   let failure = $state<string | null>(null);
 
@@ -27,26 +35,59 @@
     }
   }
 
-  async function afterSignIn(): Promise<void> {
-    signedIn = true;
+  /**
+   * Decides what this token can do by asking the server. Owner-only panels are
+   * absent rather than disabled, and the server's own answer decides which, so
+   * the page cannot disagree with the API.
+   */
+  async function adopt(): Promise<void> {
     failure = null;
-    // Owner-only panels are absent rather than disabled, and the server's own
-    // answer decides which, so the page cannot disagree with the API.
     try {
       roots = (await client.roots()).items;
+      signedIn = true;
     } catch (error) {
-      if (!isForbidden(error)) failure = explain(error);
       roots = null;
+      if (isUnauthorized(error)) {
+        forget();
+        return;
+      }
+      // A 403 only means this account is not the owner, and anything else is
+      // worth saying out loud while still letting the rest of the page work.
+      signedIn = true;
+      if (!isForbidden(error)) failure = explain(error);
     }
   }
 
-  async function signOut(): Promise<void> {
-    await client.logout().catch(() => undefined);
+  function remember(session: SessionResponse): void {
+    saveSession({ token: session.token, expiresAt: session.expiresAt });
+    void adopt();
+  }
+
+  function forget(): void {
+    clearSession();
+    client.setToken(undefined);
     signedIn = false;
     roots = null;
   }
 
+  async function signOut(): Promise<void> {
+    await client.logout().catch(() => undefined);
+    forget();
+  }
+
+  async function restore(): Promise<void> {
+    const stored = loadSession();
+    // A stored token may have been revoked or the server may have been rebuilt,
+    // so it has to be tried before the page claims to be signed in.
+    if (stored) {
+      client.setToken(stored.token);
+      await adopt();
+    }
+    settled = true;
+  }
+
   void poll();
+  void restore();
   setInterval(() => void poll(), 15_000);
 </script>
 
@@ -68,8 +109,8 @@
     {#if roots}
       <Roots {client} {roots} />
     {/if}
-  {:else}
-    <Login {client} onsignin={afterSignIn} />
+  {:else if settled}
+    <Login {client} onsignin={remember} />
   {/if}
 
   {#if failure && !signedIn}

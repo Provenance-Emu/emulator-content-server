@@ -18,3 +18,8 @@ export function explain(error: unknown): string {
 export function isForbidden(error: unknown): boolean {
   return error instanceof ContentError && error.status === 403;
 }
+
+/** True when the token is missing, expired, or has been revoked. */
+export function isUnauthorized(error: unknown): boolean {
+  return error instanceof ContentError && error.status === 401;
+}

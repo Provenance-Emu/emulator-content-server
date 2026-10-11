@@ -12,6 +12,8 @@ Build a client of the existing API. Do not add a second storage path.
 ## Behavior
 
 - Login uses bearer tokens. If cookies are introduced, add CSRF protection in the same change.
+- The page stores the token rather than setting a cookie, so a reload stays signed in without adding a credential the browser attaches to every request on its own. A strict content policy on the assets is what pays for that: no other origin, no inline script, and no outbound connection.
+- A stored token is tried against the API before the page claims to be signed in, because it may have been revoked or the server may have been rebuilt. A 401 clears it.
 - Show libraries, items, upload progress, guest grants, and audit for the owner.
 - Menu-bar status reflects `ecs serve` health and discovery. It does not embed the server.
 - The web UI is static assets the server mounts under `/ui`. Sharing an origin with `/api/v1` keeps CORS out of the design.
