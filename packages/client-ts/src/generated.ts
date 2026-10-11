@@ -66,6 +66,25 @@ export interface LibraryDraft {
   name: string;
 }
 
+export interface ContentRoot {
+  id: string;
+  path: string;
+  label: string;
+  libraryId: string | null;
+  createdAt: string;
+}
+
+export interface ContentRootList {
+  items: ContentRoot[];
+  nextCursor: string | null;
+}
+
+export interface ContentRootDraft {
+  path: string;
+  label: string;
+  libraryId?: string | null;
+}
+
 export interface Item {
   id: string;
   libraryId: string;

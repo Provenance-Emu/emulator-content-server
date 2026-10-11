@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
-import { lstat, realpath } from 'node:fs/promises';
+import { lstat, realpath, stat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { DomainError } from '@ecs/domain';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const UPLOAD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,6 +22,55 @@ export function virtualCachePath(root: string, containerSha256: string, entryId:
 export function stagingFile(root: string, uploadId: string): string {
   if (!UPLOAD_ID.test(uploadId)) throw new Error('Upload id must be a UUID');
   return join(root, 'staging', uploadId);
+}
+
+/**
+ * Resolves an operator-supplied directory for use as a read-only content root.
+ * The real path is recorded so a later symlink swap cannot redirect reads, and a
+ * root may neither sit inside the data directory nor overlap one already saved,
+ * because overlapping roots would double-count the same file.
+ */
+export async function resolveContentRoot(
+  dataDir: string,
+  candidate: string,
+  existing: readonly string[],
+): Promise<string> {
+  if (!isAbsolute(candidate)) {
+    throw new DomainError('invalid-root', 400, 'A content root must be an absolute path');
+  }
+  let target: string;
+  try {
+    target = await realpath(candidate);
+  } catch {
+    throw new DomainError('invalid-root', 400, 'That folder does not exist');
+  }
+  if (!(await stat(target)).isDirectory()) {
+    throw new DomainError('invalid-root', 400, 'A content root must be a directory');
+  }
+  const data = await realpath(dataDir);
+  if (pathsOverlap(data, target)) {
+    throw new DomainError(
+      'invalid-root',
+      400,
+      'A content root must stay outside the data directory',
+    );
+  }
+  for (const saved of existing) {
+    if (pathsOverlap(saved, target)) {
+      throw new DomainError('conflict', 409, `That folder overlaps the saved root ${saved}`);
+    }
+  }
+  return target;
+}
+
+/** True when two directories are the same or one contains the other. */
+export function pathsOverlap(a: string, b: string): boolean {
+  return a === b || contains(a, b) || contains(b, a);
+}
+
+function contains(parent: string, child: string): boolean {
+  const prefix = parent.endsWith(sep) ? parent : `${parent}${sep}`;
+  return child.startsWith(prefix);
 }
 
 export async function resolveInside(root: string, target: string): Promise<string> {

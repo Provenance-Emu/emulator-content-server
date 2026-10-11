@@ -134,6 +134,44 @@ public struct LibraryDraft: Codable, Equatable, Sendable {
     }
 }
 
+public struct ContentRoot: Codable, Equatable, Sendable {
+    public var id: String
+    public var path: String
+    public var label: String
+    public var libraryId: String?
+    public var createdAt: String
+
+    public init(id: String, path: String, label: String, libraryId: String? = nil, createdAt: String) {
+        self.id = id
+        self.path = path
+        self.label = label
+        self.libraryId = libraryId
+        self.createdAt = createdAt
+    }
+}
+
+public struct ContentRootList: Codable, Equatable, Sendable {
+    public var items: [ContentRoot]
+    public var nextCursor: String?
+
+    public init(items: [ContentRoot], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct ContentRootDraft: Codable, Equatable, Sendable {
+    public var path: String
+    public var label: String
+    public var libraryId: String?
+
+    public init(path: String, label: String, libraryId: String? = nil) {
+        self.path = path
+        self.label = label
+        self.libraryId = libraryId
+    }
+}
+
 public struct Item: Codable, Equatable, Sendable {
     public var id: String
     public var libraryId: String

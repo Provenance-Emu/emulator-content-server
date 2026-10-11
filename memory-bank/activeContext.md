@@ -30,6 +30,9 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - Staging and the virtual cache stay in the primary data directory even once storage locations exist, so an unplugged drive cannot hold a half-finished upload.
 - The web UI is static assets mounted under `/ui` on the same origin as the API, which keeps CORS out of the design. The tray is one Tauri application and holds no storage path.
 - Auto-start installs a per-user agent, never a root service, because the data directory and `bootstrap.token` are user-owned at mode `0600`.
+- A content root is owner-only in both directions: the path describes the operator's filesystem, so a reader or editor cannot even list roots.
+- Roots are not written to `change_log`. They are server configuration rather than synced content, so they stay out of the client change feed and are recorded in the audit log instead.
+- `resolveContentRoot` holds every path rule in one place and takes the saved paths as plain strings, which keeps `packages/storage` free of the catalog while the server and the CLI share the same validation.
 - The maintainer works on branches or worktrees and does not use pull requests here. `CONTRIBUTING.md` still describes the fork-and-pull path for outside contributors.
 
 ## Next steps

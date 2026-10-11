@@ -199,6 +199,37 @@ paths:
       responses:
         '200':
           description: Entry representation headers.
+  /api/v1/roots:
+    get:
+      operationId: listContentRoots
+      responses:
+        '200':
+          description: Saved content roots.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentRootList'
+    post:
+      operationId: createContentRoot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentRootDraft'
+      responses:
+        '201':
+          description: Content root saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentRoot'
+  /api/v1/roots/{rootId}:
+    delete:
+      operationId: deleteContentRoot
+      responses:
+        '204':
+          description: Content root forgotten.
   /api/v1/changes:
     get:
       operationId: listChanges
@@ -321,6 +352,30 @@ components:
       required: [name]
       properties:
         name: { type: string }
+    ContentRoot:
+      type: object
+      required: [id, path, label, libraryId, createdAt]
+      properties:
+        id: { type: string }
+        path: { type: string }
+        label: { type: string }
+        libraryId: { type: [string, 'null'] }
+        createdAt: { type: string }
+    ContentRootList:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ContentRoot' }
+        nextCursor: { type: [string, 'null'] }
+    ContentRootDraft:
+      type: object
+      required: [path, label]
+      properties:
+        path: { type: string }
+        label: { type: string }
+        libraryId: { type: [string, 'null'] }
     Item:
       type: object
       required: [id, libraryId, systemIdentifier, title, md5, crc, revision, createdAt, updatedAt]

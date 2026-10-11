@@ -175,7 +175,20 @@ CREATE TABLE idempotency_keys (
 );
 `;
 
-export const MIGRATIONS: readonly Migration[] = [{ version: 1, sql: INITIAL_SQL }];
+const CONTENT_ROOTS_SQL = `
+CREATE TABLE content_roots (
+  id TEXT PRIMARY KEY,
+  path TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  library_id TEXT REFERENCES libraries(id),
+  created_at TEXT NOT NULL
+);
+`;
+
+export const MIGRATIONS: readonly Migration[] = [
+  { version: 1, sql: INITIAL_SQL },
+  { version: 2, sql: CONTENT_ROOTS_SQL },
+];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));
 

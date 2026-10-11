@@ -39,6 +39,7 @@ import {
   openVirtualEntry,
   placeBlob,
   removeStaging,
+  resolveContentRoot,
   truncateStaging,
   writeAtOffset,
 } from '@ecs/storage';
@@ -140,9 +141,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   });
 
   app.post('/api/v1/users', async (request, reply) => {
-    const actor = requireUser(request, 'admin');
-    if (!actor.isOwner)
-      throw new DomainError('forbidden', 403, 'Only the server owner can create users');
+    const actor = requireOwner(request, 'Only the server owner can create users');
     const body = jsonObject(request.body);
     const result = await withIdempotency(catalog, actor, request, body, async () => {
       const username = requiredString(body, 'username');
@@ -603,10 +602,38 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return reply.status(204).send();
   });
 
+  app.get('/api/v1/roots', async (request) => {
+    requireOwner(request, 'Only the server owner can read content roots');
+    return { items: catalog.listContentRoots(), nextCursor: null };
+  });
+
+  app.post('/api/v1/roots', async (request, reply) => {
+    const actor = requireOwner(request, 'Only the server owner can save a content root');
+    const body = jsonObject(request.body);
+    const label = requiredString(body, 'label');
+    const libraryId = optionalString(body, 'libraryId') ?? null;
+    if (libraryId !== null && !catalog.getLibrary(libraryId)) {
+      throw new DomainError('not-found', 404, 'Library not found');
+    }
+    const path = await resolveContentRoot(
+      context.dataDir,
+      requiredString(body, 'path'),
+      catalog.listContentRoots().map((root) => root.path),
+    );
+    const root = catalog.createContentRoot({ path, label, libraryId, actorId: actor.userId });
+    reply.code(201);
+    return root;
+  });
+
+  app.delete('/api/v1/roots/:rootId', async (request, reply) => {
+    const actor = requireOwner(request, 'Only the server owner can remove a content root');
+    const { rootId } = request.params as { rootId: string };
+    catalog.deleteContentRoot(rootId, actor.userId);
+    reply.code(204);
+  });
+
   app.get('/api/v1/audit', async (request) => {
-    const actor = requireUser(request, 'admin');
-    if (!actor.isOwner)
-      throw new DomainError('forbidden', 403, 'Only the server owner can read the audit log');
+    requireOwner(request, 'Only the server owner can read the audit log');
     return { events: catalog.listAudit(pageLimit(request)) };
   });
 }
@@ -622,6 +649,12 @@ function requireUser(request: FastifyRequest, scope: ItemPermission): Actor & { 
   if (actor.kind !== 'user' || !actor.scopes.includes(scope)) {
     throw new DomainError('forbidden', 403, 'This token cannot perform that action');
   }
+  return actor;
+}
+
+function requireOwner(request: FastifyRequest, message: string): Actor & { kind: 'user' } {
+  const actor = requireUser(request, 'admin');
+  if (!actor.isOwner) throw new DomainError('forbidden', 403, message);
   return actor;
 }
 

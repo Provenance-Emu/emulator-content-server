@@ -23,6 +23,14 @@ export interface LibraryRecord {
   createdAt: string;
 }
 
+export interface ContentRootRecord {
+  id: string;
+  path: string;
+  label: string;
+  libraryId: string | null;
+  createdAt: string;
+}
+
 export interface ItemRecord {
   id: string;
   libraryId: string;

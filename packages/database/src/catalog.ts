@@ -4,6 +4,7 @@ import {
   type Actor,
   type AssetKind,
   type AssetRecord,
+  type ContentRootRecord,
   DomainError,
   type GuestCapability,
   type ItemPermission,
@@ -358,6 +359,73 @@ export class CatalogDatabase {
       id,
     );
     return row ? mapLibrary(row) : null;
+  }
+
+  createContentRoot(input: {
+    path: string;
+    label: string;
+    libraryId: string | null;
+    actorId: string;
+  }): ContentRootRecord {
+    const createdAt = nowIso();
+    const id = randomUUID();
+    this.transaction(() => {
+      if (this.contentRootAt(input.path)) {
+        throw new DomainError('conflict', 409, 'That folder is already registered');
+      }
+      this.db
+        .prepare(
+          'INSERT INTO content_roots (id, path, label, library_id, created_at) VALUES (?, ?, ?, ?, ?)',
+        )
+        .run(id, input.path, input.label, input.libraryId, createdAt);
+      this.insertAudit(input.actorId, 'create-content-root', 'content-root', id, {
+        path: input.path,
+        label: input.label,
+      });
+    });
+    return {
+      id,
+      path: input.path,
+      label: input.label,
+      libraryId: input.libraryId,
+      createdAt,
+    };
+  }
+
+  listContentRoots(): ContentRootRecord[] {
+    const rows = this.db
+      .prepare(
+        'SELECT id, path, label, library_id, created_at FROM content_roots ORDER BY created_at',
+      )
+      .all() as ContentRootRow[];
+    return rows.map(mapContentRoot);
+  }
+
+  getContentRoot(id: string): ContentRootRecord | null {
+    const row = this.one<ContentRootRow>(
+      'SELECT id, path, label, library_id, created_at FROM content_roots WHERE id = ?',
+      id,
+    );
+    return row ? mapContentRoot(row) : null;
+  }
+
+  deleteContentRoot(id: string, actorId: string): void {
+    this.transaction(() => {
+      const existing = this.getContentRoot(id);
+      if (!existing) throw new DomainError('not-found', 404, 'Content root not found');
+      this.db.prepare('DELETE FROM content_roots WHERE id = ?').run(id);
+      this.insertAudit(actorId, 'delete-content-root', 'content-root', id, {
+        path: existing.path,
+      });
+    });
+  }
+
+  private contentRootAt(path: string): ContentRootRecord | null {
+    const row = this.one<ContentRootRow>(
+      'SELECT id, path, label, library_id, created_at FROM content_roots WHERE path = ?',
+      path,
+    );
+    return row ? mapContentRoot(row) : null;
   }
 
   setMember(libraryId: string, userId: string, role: LibraryRole, actorId: string): void {
@@ -1091,6 +1159,24 @@ interface AssetRow {
   revision: number;
   created_at: string;
   updated_at: string;
+}
+
+type ContentRootRow = {
+  id: string;
+  path: string;
+  label: string;
+  library_id: string | null;
+  created_at: string;
+};
+
+function mapContentRoot(row: ContentRootRow): ContentRootRecord {
+  return {
+    id: row.id,
+    path: row.path,
+    label: row.label,
+    libraryId: row.library_id,
+    createdAt: row.created_at,
+  };
 }
 
 function mapLibrary(row: {

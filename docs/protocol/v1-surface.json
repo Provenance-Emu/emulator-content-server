@@ -6,6 +6,7 @@
     "DELETE /api/v1/items/:itemId",
     "DELETE /api/v1/items/:itemId/access/:userId",
     "DELETE /api/v1/libraries/:libraryId/members/:userId",
+    "DELETE /api/v1/roots/:rootId",
     "DELETE /api/v1/uploads/:uploadId",
     "GET /api/v1/audit",
     "GET /api/v1/capabilities",
@@ -18,6 +19,7 @@
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
     "GET /api/v1/libraries",
+    "GET /api/v1/roots",
     "GET /api/v1/systems",
     "GET /health",
     "GET /openapi.yaml",
@@ -31,6 +33,7 @@
     "POST /api/v1/guest-grants",
     "POST /api/v1/items",
     "POST /api/v1/libraries",
+    "POST /api/v1/roots",
     "POST /api/v1/uploads",
     "POST /api/v1/uploads/:uploadId/complete",
     "POST /api/v1/users",
@@ -166,6 +169,43 @@
       ],
       "required": [
         "name"
+      ]
+    },
+    "ContentRoot": {
+      "properties": [
+        "createdAt",
+        "id",
+        "label",
+        "libraryId",
+        "path"
+      ],
+      "required": [
+        "createdAt",
+        "id",
+        "label",
+        "libraryId",
+        "path"
+      ]
+    },
+    "ContentRootList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "ContentRootDraft": {
+      "properties": [
+        "label",
+        "libraryId",
+        "path"
+      ],
+      "required": [
+        "label",
+        "path"
       ]
     },
     "Item": {
