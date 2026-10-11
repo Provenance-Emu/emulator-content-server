@@ -8,6 +8,13 @@ export {
   truncateStaging,
   writeAtOffset,
 } from './blobs.js';
+export {
+  type FolderEntry,
+  type FolderListing,
+  type FolderPlace,
+  listFolders,
+  startingPlaces,
+} from './browse.js';
 export { type ContentHash, crc32Hex, hashFile } from './hash.js';
 export { ensureLayout } from './layout.js';
 export {

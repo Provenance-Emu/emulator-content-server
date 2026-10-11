@@ -66,6 +66,23 @@ export interface LibraryDraft {
   name: string;
 }
 
+export interface FolderEntry {
+  name: string;
+  path: string;
+}
+
+export interface FolderPlace {
+  label: string;
+  path: string;
+}
+
+export interface FolderListing {
+  path: string;
+  parent: string | null;
+  entries: FolderEntry[];
+  places: FolderPlace[];
+}
+
 export interface ContentRoot {
   id: string;
   path: string;

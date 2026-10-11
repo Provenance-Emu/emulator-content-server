@@ -15,6 +15,7 @@
     "GET /api/v1/files/:assetId/content",
     "GET /api/v1/files/:assetId/entries",
     "GET /api/v1/files/:assetId/entries/:entryId/content",
+    "GET /api/v1/folders",
     "GET /api/v1/items",
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
@@ -170,6 +171,40 @@
       ],
       "required": [
         "name"
+      ]
+    },
+    "FolderEntry": {
+      "properties": [
+        "name",
+        "path"
+      ],
+      "required": [
+        "name",
+        "path"
+      ]
+    },
+    "FolderPlace": {
+      "properties": [
+        "label",
+        "path"
+      ],
+      "required": [
+        "label",
+        "path"
+      ]
+    },
+    "FolderListing": {
+      "properties": [
+        "entries",
+        "parent",
+        "path",
+        "places"
+      ],
+      "required": [
+        "entries",
+        "parent",
+        "path",
+        "places"
       ]
     },
     "ContentRoot": {

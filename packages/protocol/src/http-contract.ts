@@ -31,6 +31,7 @@ export const HTTP_OPERATIONS = [
   'GET /api/v1/files/:assetId/entries',
   'GET /api/v1/files/:assetId/entries/:entryId/content',
   'HEAD /api/v1/files/:assetId/entries/:entryId/content',
+  'GET /api/v1/folders',
   'GET /api/v1/roots',
   'POST /api/v1/roots',
   'DELETE /api/v1/roots/:rootId',

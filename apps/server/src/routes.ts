@@ -35,6 +35,7 @@ import {
   blobPath,
   createStagingFile,
   FileContentReader,
+  listFolders,
   listVirtualEntries,
   openVirtualEntry,
   placeBlob,
@@ -660,6 +661,11 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       throw new DomainError('not-found', 404, 'Device token not found');
     }
     return reply.status(204).send();
+  });
+
+  app.get('/api/v1/folders', async (request) => {
+    requireOwner(request, 'Only the owner can browse folders on this machine');
+    return listFolders(queryString(request, 'path') ?? null);
   });
 
   app.get('/api/v1/roots', async (request) => {

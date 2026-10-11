@@ -208,6 +208,16 @@ paths:
       responses:
         '200':
           description: Entry representation headers.
+  /api/v1/folders:
+    get:
+      operationId: browseFolders
+      responses:
+        '200':
+          description: Directories inside one folder on the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderListing'
   /api/v1/roots:
     get:
       operationId: listContentRoots
@@ -361,6 +371,38 @@ components:
       required: [name]
       properties:
         name: { type: string }
+    FolderEntry:
+      type: object
+      required: [name, path]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+    FolderPlace:
+      type: object
+      required: [label, path]
+      properties:
+        label:
+          type: string
+        path:
+          type: string
+    FolderListing:
+      type: object
+      required: [path, parent, entries, places]
+      properties:
+        path:
+          type: string
+        parent:
+          type: [string, 'null']
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/FolderEntry'
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/FolderPlace'
     ContentRoot:
       type: object
       required: [id, path, label, libraryId, createdAt]

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ContentClient, ContentRoot } from '@ecs/client';
+  import FolderPicker from './FolderPicker.svelte';
   import { explain } from './lib/problems';
 
   let { client, roots }: { client: ContentClient; roots: ContentRoot[] } = $props();
@@ -7,17 +8,24 @@
   let saved = $state(roots);
   let path = $state('');
   let label = $state('');
+  let picking = $state(false);
   let working = $state(false);
   let failure = $state<string | null>(null);
+
+  function choose(chosen: string): void {
+    path = chosen;
+    picking = false;
+    // The last segment is almost always the name a person would have typed.
+    if (!label.trim()) label = chosen.split('/').filter(Boolean).at(-1) ?? chosen;
+  }
 
   async function add(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     working = true;
     failure = null;
     try {
-      // The path is text the server resolves. This page never reads the disk,
-      // so a browser sandbox is not in the way and the server stays the only
-      // component that decides what a folder means.
+      // The path is text the server resolves. This page never reads a disk, so
+      // the server stays the only component that decides what a folder means.
       await client.addRoot({ path: path.trim(), label: label.trim() });
       path = '';
       label = '';
@@ -60,6 +68,9 @@
       </tbody>
     </table>
   {/if}
+  {#if picking}
+    <FolderPicker {client} onchoose={choose} oncancel={() => (picking = false)} />
+  {/if}
   <form onsubmit={add}>
     <label>
       Folder on the server
@@ -69,6 +80,9 @@
       Label
       <input bind:value={label} placeholder="NES shelf" required />
     </label>
+    <button type="button" onclick={() => (picking = !picking)}>
+      {picking ? 'Hide browser' : 'Browse'}
+    </button>
     <button type="submit" disabled={working}>Add folder</button>
   </form>
   {#if failure}

@@ -5,6 +5,7 @@ import type {
   ContentRoot,
   ContentRootDraft,
   ContentRootList,
+  FolderListing,
   ItemList,
   LibraryList,
   Manifest,
@@ -147,6 +148,15 @@ export class ContentClient {
    * Saved source folders. The caller submits a path and the server resolves it,
    * so a browser never reads the filesystem to manage one.
    */
+  /**
+   * Directories inside one folder on the machine running the server, which is
+   * not necessarily this one. Pass null to start where the server suggests.
+   */
+  folders(path: string | null): Promise<FolderListing> {
+    const search = path ? `?path=${encodeURIComponent(path)}` : '';
+    return this.getJson(`/api/v1/folders${search}`);
+  }
+
   roots(): Promise<ContentRootList> {
     return this.getJson('/api/v1/roots');
   }

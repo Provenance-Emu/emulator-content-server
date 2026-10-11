@@ -19,6 +19,7 @@ Build a client of the existing API. Do not add a second storage path.
 - The web UI is static assets the server mounts under `/ui`. Sharing an origin with `/api/v1` keeps CORS out of the design.
 - Svelte with Vite builds those assets. The tray renders the same components, so the two clients do not drift.
 - Manage content roots and storage locations from the UI. A folder is submitted through the API, so the browser never reads the filesystem and the server stays the only component that resolves a path.
+- Choosing a folder browses the server through `GET /api/v1/folders`, not a file input. A file input offers the browser's own disk, which is the wrong machine whenever the server is a NAS, and it returns names relative to a sandbox rather than the absolute path the server needs. The listing is owner-only and returns directory names only.
 - Owner-only controls are absent for a reader or editor rather than disabled, because the API refuses them anyway and a visible control invites a confusing error.
 - The tray is one Tauri application for macOS, Windows, and Linux. Its dropdown shows serve status and port, the library list, an item that opens the web UI, and start or stop of the registration from [Service lifecycle](service-lifecycle.md).
 - The tray is an API client with no storage path of its own.

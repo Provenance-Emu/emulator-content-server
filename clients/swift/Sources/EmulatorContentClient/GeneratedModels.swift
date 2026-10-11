@@ -134,6 +134,40 @@ public struct LibraryDraft: Codable, Equatable, Sendable {
     }
 }
 
+public struct FolderEntry: Codable, Equatable, Sendable {
+    public var name: String
+    public var path: String
+
+    public init(name: String, path: String) {
+        self.name = name
+        self.path = path
+    }
+}
+
+public struct FolderPlace: Codable, Equatable, Sendable {
+    public var label: String
+    public var path: String
+
+    public init(label: String, path: String) {
+        self.label = label
+        self.path = path
+    }
+}
+
+public struct FolderListing: Codable, Equatable, Sendable {
+    public var path: String
+    public var parent: String?
+    public var entries: [FolderEntry]
+    public var places: [FolderPlace]
+
+    public init(path: String, parent: String? = nil, entries: [FolderEntry], places: [FolderPlace]) {
+        self.path = path
+        self.parent = parent
+        self.entries = entries
+        self.places = places
+    }
+}
+
 public struct ContentRoot: Codable, Equatable, Sendable {
     public var id: String
     public var path: String

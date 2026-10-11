@@ -84,8 +84,25 @@ test('content roots are owner-only and reject folders the server must not follow
       authorization: `Bearer ${(login.json() as { token: string }).token}`,
     };
 
+    const browsed = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/folders?path=${encodeURIComponent(base)}`,
+      headers: auth,
+    });
+    assert.equal(browsed.statusCode, 200, browsed.body);
+    const listing = browsed.json() as {
+      path: string;
+      entries: Array<{ name: string; path: string }>;
+    };
+    assert.equal(listing.path, base);
+    assert.ok(
+      listing.entries.some((entry) => entry.path === collection),
+      'the folder being registered is reachable by browsing to it',
+    );
+
     for (const request of [
       { method: 'GET' as const, url: '/api/v1/roots' },
+      { method: 'GET' as const, url: '/api/v1/folders' },
       { method: 'DELETE' as const, url: `/api/v1/roots/${root.id}` },
     ]) {
       const response = await server.app.inject({ ...request, headers: readerAuth });

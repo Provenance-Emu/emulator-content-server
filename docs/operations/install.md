@@ -51,7 +51,7 @@ Put a reverse proxy with a certificate in front of the process. The flag records
 
 ## Content roots
 
-Record the folders that already hold a collection. Nothing is copied and nothing inside a root is ever written.
+Record the folders that already hold a collection. Nothing is copied and nothing inside a root is ever written. The web interface can browse the server's folders to find one, which is the only way to pick a path when the browser is on a different machine.
 
 ```sh
 ecs roots add --data ./content-data --path /Volumes/Games --label Games
