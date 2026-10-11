@@ -14,6 +14,7 @@ The foundation in this repository is the contract, storage, access control, and 
 | [Desktop UI](desktop-ui.md) | Web and menu-bar client over the same API |
 | [Remote access](remote-access.md) | VPN now, relay only after a new threat model |
 | [Sideload and JIT isolation](sideload-jit-isolation.md) | Separate process and credentials, same repository |
+| [Sideload installer](sideload-installer.md) | Install the apps on a device, keep them signed, enable JIT |
 | [Sync](sync.md) | Devices converge without losing a save |
 | [Adversarial validation](adversarial-validation.md) | Fuzz and security regression pack |
 
