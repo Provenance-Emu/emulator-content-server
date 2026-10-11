@@ -208,6 +208,14 @@ export class ContentClient {
     return this.getJson(`/api/v1/files/${assetId}`);
   }
 
+  /**
+   * Makes a conflict copy the live save at its path. The bytes that were live
+   * stay beside it, so choosing one never discards the other.
+   */
+  adopt(assetId: string): Promise<Asset> {
+    return this.post<Asset>(`/api/v1/files/${assetId}/adopt`, {});
+  }
+
   changes(query: ChangeQuery = {}): Promise<ChangeList> {
     const search = new URLSearchParams();
     if (query.cursor !== undefined) search.set('cursor', query.cursor);

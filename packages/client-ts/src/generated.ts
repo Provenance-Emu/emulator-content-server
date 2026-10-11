@@ -160,6 +160,7 @@ export interface ManifestFile {
   size: number;
   required: boolean;
   contentPath: string;
+  conflictOf?: string | null;
 }
 
 export interface Manifest {

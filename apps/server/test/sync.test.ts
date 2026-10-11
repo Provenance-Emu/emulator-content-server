@@ -254,6 +254,75 @@ test('two devices writing one save keep both, while a ROM still conflicts', asyn
       (entry) => entry.relativePath,
     );
     assert.deepEqual(paths, ['battery.sav', copy.relativePath]);
+    const pointed = (
+      manifest.json() as { files: Array<{ id: string; conflictOf: string | null }> }
+    ).files.find((entry) => entry.id === copy.id);
+    assert.equal(
+      pointed?.conflictOf,
+      live.id,
+      'the manifest names which save this one diverged from',
+    );
+
+    const current = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/items/${itemId}`,
+      headers: auth,
+    });
+    const revision = (current.json() as { revision: number }).revision;
+    const newer = Buffer.from('newer handheld save bytes!!', 'utf8');
+    const third = await upload({
+      kind: 'battery_save',
+      relativePath: 'battery.sav',
+      baseRevision: revision,
+      body: newer,
+    });
+    assert.equal(third.statusCode, 201, third.body);
+    const replaced = third.json() as {
+      id: string;
+      relativePath: string;
+      conflictOf: string | null;
+    };
+    assert.equal(replaced.relativePath, 'battery.sav', 'a current save becomes the live file');
+    assert.equal(replaced.conflictOf, null);
+    const demoted = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/files/${live.id}`,
+      headers: auth,
+    });
+    const aside = demoted.json() as { relativePath: string; conflictOf: string | null };
+    assert.equal(aside.conflictOf, replaced.id);
+    assert.match(aside.relativePath, /^battery\.sav\.conflict-/);
+
+    const adopted = await server.app.inject({
+      method: 'POST',
+      url: `/api/v1/files/${copy.id}/adopt`,
+      headers: auth,
+    });
+    assert.equal(adopted.statusCode, 200, adopted.body);
+    const chosen = adopted.json() as { relativePath: string; conflictOf: string | null };
+    assert.equal(chosen.relativePath, 'battery.sav');
+    assert.equal(chosen.conflictOf, null, 'choosing a copy makes it the live file');
+    const parked = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/files/${replaced.id}`,
+      headers: auth,
+    });
+    const parkedBody = parked.json() as { relativePath: string; conflictOf: string | null };
+    assert.equal(parkedBody.conflictOf, copy.id, 'the previous live save is kept');
+    assert.match(parkedBody.relativePath, /^battery\.sav\.conflict-/);
+
+    for (const [id, expected] of [
+      [live.id, handheldSave],
+      [copy.id, consoleSave],
+      [replaced.id, newer],
+    ] as const) {
+      const content = await server.app.inject({
+        method: 'GET',
+        url: `/api/v1/files/${id}/content`,
+        headers: auth,
+      });
+      assert.deepEqual(content.rawPayload, expected, 'choosing a save drops no bytes');
+    }
 
     const staleRom = await upload({
       kind: 'rom',

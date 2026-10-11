@@ -783,6 +783,16 @@ export class CatalogDatabase {
         timestamp,
         input.deviceId ?? null,
       );
+      if (placement.demoteId) {
+        this.demoteLive(
+          placement.demoteId,
+          assetId,
+          timestamp,
+          item.library_id,
+          input.itemId,
+          input.deviceId ?? null,
+        );
+      }
       this.insertAudit(input.actorId, 'complete-upload', 'asset', assetId, {
         sha256: input.sha256,
       });
@@ -812,7 +822,12 @@ export class CatalogDatabase {
     },
     assetId: string,
     timestamp: string,
-  ): { relativePath: string; displayName: string; conflictOf: string | null } {
+  ): {
+    relativePath: string;
+    displayName: string;
+    conflictOf: string | null;
+    demoteId: string | null;
+  } {
     const bumped = this.db
       .prepare(
         `UPDATE items SET revision = revision + 1, updated_at = ?
@@ -820,10 +835,20 @@ export class CatalogDatabase {
       )
       .run(timestamp, input.itemId, input.baseRevision);
     const unchanged = { relativePath: input.relativePath, displayName: input.displayName };
-    if (bumped.changes > 0) return { ...unchanged, conflictOf: null };
+    if (bumped.changes > 0) {
+      // A save written at the current revision is the one the writer just
+      // played. It becomes the live file, and the bytes it replaces stay
+      // beside it. The demotion runs after this asset is inserted, because
+      // the replaced row has to point at an id that already exists.
+      const live = isSaveAssetKind(input.kind)
+        ? this.liveAt(input.itemId, input.relativePath)
+        : null;
+      return { ...unchanged, conflictOf: null, demoteId: live?.id ?? null };
+    }
     if (!isSaveAssetKind(input.kind)) {
       throw new DomainError('conflict', 409, 'Item revision does not match');
     }
+    const kept = { ...unchanged, demoteId: null };
     const advanced = this.db
       .prepare(
         `UPDATE items SET revision = revision + 1, updated_at = ?
@@ -837,12 +862,127 @@ export class CatalogDatabase {
       input.itemId,
       input.relativePath,
     );
-    if (!live) return { ...unchanged, conflictOf: null };
+    if (!live) return { ...kept, conflictOf: null };
     return {
       relativePath: `${input.relativePath}.conflict-${assetId.slice(0, 8)}`,
       displayName: `${input.displayName} (conflict)`,
       conflictOf: live.id,
+      demoteId: null,
     };
+  }
+
+  /**
+   * Makes a conflict copy the live file at its path. The bytes that were live
+   * stay, renamed beside it, so choosing never discards a save.
+   */
+  adoptConflict(input: {
+    assetId: string;
+    actorId: string | null;
+    deviceId?: string | null;
+  }): AssetRecord {
+    return this.transaction(() => {
+      const chosen = this.getAsset(input.assetId);
+      if (!chosen) throw new DomainError('not-found', 404, 'File not found');
+      if (!isSaveAssetKind(chosen.kind)) {
+        throw new DomainError('conflict', 409, 'Only a save can be chosen');
+      }
+      if (!chosen.conflictOf) return chosen;
+      const canonical = chosen.relativePath.replace(/\.conflict-[0-9a-f]{8}$/, '');
+      const live = this.liveAt(chosen.itemId, canonical);
+      const item = this.itemRow(chosen.itemId);
+      if (!item) throw new DomainError('not-found', 404, 'Item not found');
+      const timestamp = nowIso();
+      this.db
+        .prepare(
+          `UPDATE items SET revision = revision + 1, updated_at = ?
+             WHERE id = ? AND deleted_at IS NULL`,
+        )
+        .run(timestamp, chosen.itemId);
+      if (live && live.id !== chosen.id) {
+        this.demoteLive(
+          live.id,
+          chosen.id,
+          timestamp,
+          item.library_id,
+          chosen.itemId,
+          input.deviceId ?? null,
+        );
+      }
+      const name = chosen.displayName.endsWith(' (conflict)')
+        ? chosen.displayName.slice(0, -' (conflict)'.length)
+        : chosen.displayName;
+      this.db
+        .prepare(
+          `UPDATE assets SET relative_path = ?, display_name = ?, conflict_of = NULL,
+             revision = revision + 1, updated_at = ? WHERE id = ?`,
+        )
+        .run(canonical, name, timestamp, chosen.id);
+      this.insertChange(
+        'asset',
+        chosen.id,
+        'upsert',
+        item.library_id,
+        chosen.itemId,
+        !chosen.shareable,
+        timestamp,
+        input.deviceId ?? null,
+      );
+      this.insertAudit(input.actorId, 'adopt-conflict', 'asset', chosen.id, {});
+      const adopted = this.getAsset(chosen.id);
+      if (!adopted) throw new DomainError('not-found', 404, 'File not found');
+      return adopted;
+    });
+  }
+
+  /** The save currently served at a path, which is the one a new write replaces. */
+  private liveAt(itemId: string, relativePath: string): AssetRow | undefined {
+    return this.one<AssetRow>(
+      `SELECT * FROM assets
+         WHERE item_id = ? AND relative_path = ? AND conflict_of IS NULL AND deleted_at IS NULL`,
+      itemId,
+      relativePath,
+    );
+  }
+
+  /** Moves a live save aside so a chosen write can take its path. Both digests remain. */
+  private demoteLive(
+    liveId: string,
+    successorId: string,
+    timestamp: string,
+    libraryId: string,
+    itemId: string,
+    deviceId: string | null,
+  ): void {
+    const live = this.one<AssetRow>(
+      'SELECT * FROM assets WHERE id = ? AND deleted_at IS NULL',
+      liveId,
+    );
+    if (!live) return;
+    const name = live.display_name.endsWith(' (conflict)')
+      ? live.display_name
+      : `${live.display_name} (conflict)`;
+    this.db
+      .prepare(
+        `UPDATE assets SET relative_path = ?, display_name = ?, conflict_of = ?,
+           revision = revision + 1, updated_at = ? WHERE id = ?`,
+      )
+      .run(
+        `${live.relative_path}.conflict-${liveId.slice(0, 8)}`,
+        name,
+        successorId,
+        timestamp,
+        liveId,
+      );
+    this.insertChange(
+      'asset',
+      liveId,
+      'upsert',
+      libraryId,
+      itemId,
+      live.shareable === 0,
+      timestamp,
+      deviceId,
+    );
   }
 
   abortUpload(id: string, actorId: string | null): boolean {

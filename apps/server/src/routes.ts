@@ -356,6 +356,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
           size: file.size,
           required: REQUIRED_FILE_KINDS.has(file.kind),
           contentPath: `/api/v1/files/${file.id}/content`,
+          conflictOf: file.conflictOf,
         })),
     };
   });
@@ -522,6 +523,16 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       deviceOf(actor),
     );
     return reply.status(204).send();
+  });
+
+  app.post('/api/v1/files/:assetId/adopt', async (request) => {
+    const actor = requireActor(request);
+    const { asset } = requireVisibleAsset(context, request, 'write');
+    return catalog.adoptConflict({
+      assetId: asset.id,
+      actorId: actor.kind === 'user' ? actor.userId : actor.grantId,
+      deviceId: deviceOf(actor),
+    });
   });
 
   app.route({

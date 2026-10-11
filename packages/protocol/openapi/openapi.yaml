@@ -172,6 +172,12 @@ paths:
       responses:
         '204':
           description: Asset deleted.
+  /api/v1/files/{assetId}/adopt:
+    post:
+      operationId: adoptFile
+      responses:
+        '200':
+          description: The chosen save is now the live file at its path. The bytes it replaced stay beside it.
   /api/v1/files/{assetId}/content:
     get:
       operationId: getFileContent
@@ -494,6 +500,7 @@ components:
         size: { type: integer, format: int64 }
         required: { type: boolean }
         contentPath: { type: string }
+        conflictOf: { type: [string, 'null'] }
     Manifest:
       type: object
       required: [version, itemId, revision, files]

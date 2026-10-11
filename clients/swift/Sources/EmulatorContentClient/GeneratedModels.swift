@@ -312,8 +312,9 @@ public struct ManifestFile: Codable, Equatable, Sendable {
     public var size: Int64
     public var required: Bool
     public var contentPath: String
+    public var conflictOf: String?
 
-    public init(id: String, kind: String, relativePath: String, sha256: String, md5: String? = nil, crc: String? = nil, size: Int64, required: Bool, contentPath: String) {
+    public init(id: String, kind: String, relativePath: String, sha256: String, md5: String? = nil, crc: String? = nil, size: Int64, required: Bool, contentPath: String, conflictOf: String? = nil) {
         self.id = id
         self.kind = kind
         self.relativePath = relativePath
@@ -323,6 +324,7 @@ public struct ManifestFile: Codable, Equatable, Sendable {
         self.size = size
         self.required = required
         self.contentPath = contentPath
+        self.conflictOf = conflictOf
     }
 }
 

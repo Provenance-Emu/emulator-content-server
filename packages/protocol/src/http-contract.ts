@@ -26,6 +26,7 @@ export const HTTP_OPERATIONS = [
   'DELETE /api/v1/uploads/:uploadId',
   'GET /api/v1/files/:assetId',
   'DELETE /api/v1/files/:assetId',
+  'POST /api/v1/files/:assetId/adopt',
   'GET /api/v1/files/:assetId/content',
   'HEAD /api/v1/files/:assetId/content',
   'GET /api/v1/files/:assetId/entries',
