@@ -29,7 +29,11 @@ Neither re-signing nor talking to an iOS device is work this repository should r
 - `zsign` re-signs the bundle. It runs on Linux, macOS, and Windows, so the server does not have to be a Mac.
 - `pymobiledevice3` pairs, lists devices, installs, mounts the developer disk image, opens the iOS 17 and later tunnel, and attaches `debugserver`.
 
-JIT is that last step: with a tunnel open and the disk image mounted, attaching the debug server to a running app marks the process debuggable, which is what lets its interpreter map executable pages. The app must already be installed and launched; this does not patch, inject, or modify a running app.
+JIT splits by OS. The app must already be installed and launched. This does not patch, inject, or modify a running app.
+
+On iOS 26 and later, where TXM is enforcing, a page mapped read-and-execute does not run until a debugger has written to it, and every 16 KB page has to be written. RetroArch's `lldb_jit_bless.py` answers the same protocol StikDebug does: the app traps on `brk #0xf00d` with the command in `x16` (`0` detach, `1` prepare a region), and the debugger dirties each page. One write can cover several pages. That is the method to use there.
+
+On older iOS and on tvOS, the SideStore and AltStore path still applies: attach `debugserver` so the process is marked debuggable. iOS 17 and later need the RemoteXPC tunnel and a mounted developer disk image before that attach works. tvOS follows the same split.
 
 A `doctor` command reports each tool, its version, whether a device is paired, and what the identity covers, because every failure in this area is a missing prerequisite rather than a bug.
 
