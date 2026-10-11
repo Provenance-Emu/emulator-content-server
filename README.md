@@ -28,6 +28,10 @@ docker compose up --build
 
 Compose publishes the server on host loopback and sets `ECS_ALLOW_LAN=1` so the container can bind `0.0.0.0` before setup finishes. The bootstrap token is still required before any library data is exposed. Read [docs/operations/install.md](docs/operations/install.md) before changing the published port.
 
+## Interface
+
+`pnpm ui` builds the web client and `ecs serve` mounts it at `/ui/` on the same origin as the API, which keeps CORS out of the design. The page holds its bearer token in memory, so a reload asks for the password again. Pass `--ui none` to serve the API alone, or `--ui <dir>` to serve a build from elsewhere.
+
 ## Verify
 
 ```sh

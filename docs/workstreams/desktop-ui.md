@@ -21,6 +21,10 @@ Build a client of the existing API. Do not add a second storage path.
 - The tray is one Tauri application for macOS, Windows, and Linux. Its dropdown shows serve status and port, the library list, an item that opens the web UI, and start or stop of the registration from [Service lifecycle](service-lifecycle.md).
 - The tray is an API client with no storage path of its own.
 
+## Status
+
+The web client exists. It signs in, shows server status from `/api/v1/capabilities`, lists libraries and items, and manages content folders. `pnpm ui` builds it and `ecs serve` mounts the result at `/ui/`, or serves nothing when the build is absent. Still to do: uploads and ranged downloads from the page, storage locations, guest grants, audit, and the tray.
+
 ## Acceptance
 
 - The UI can upload a generated file and download a byte range through `ContentClient`.

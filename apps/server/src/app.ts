@@ -14,6 +14,7 @@ import { registerRoutes } from './routes.js';
 export interface OpenServerOptions {
   dataDir: string;
   displayName?: string;
+  uiDir?: string | null;
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
   loginLimit?: number;
@@ -32,6 +33,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     displayName: options.displayName ?? 'Emulator Content Server',
     virtual: new VirtualProviderRegistry([new ZipProvider()]),
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
+    uiDir: options.uiDir ?? null,
   };
   const app = buildApp(context, options.logger ?? false);
   return {

@@ -8,4 +8,6 @@ export interface ServerContext {
   displayName: string;
   virtual: VirtualProviderRegistry;
   limiter: RateLimiter;
+  /** Built web assets to serve under `/ui`, or null to serve no interface. */
+  uiDir: string | null;
 }

@@ -33,6 +33,7 @@
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
 | Sideload and JIT | Allowed in this repository as a separate app; not started |
+| Desktop UI | Web client done for status, libraries, and folders; uploads and the tray next |
 | Sync | Device attribution, keep-both save conflicts, and the TypeScript engine done; tray and web UI next |
 
 ## Known issues and deferred work

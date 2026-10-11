@@ -43,6 +43,7 @@ import {
   truncateStaging,
   writeAtOffset,
 } from '@ecs/storage';
+import fastifyStatic from '@fastify/static';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import {
@@ -65,6 +66,17 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   const { catalog } = context;
 
   app.get('/health', async () => ({ ok: true }));
+
+  if (context.uiDir) {
+    /**
+     * The interface is static files on the same origin as `/api/v1`, which is
+     * what keeps CORS out of the design. It is a single page, so there is no
+     * history fallback to get wrong, and a request for a file that is not there
+     * is a missing asset rather than a route.
+     */
+    app.register(fastifyStatic, { root: context.uiDir, prefix: '/ui/', wildcard: false });
+    app.get('/ui', async (_request, reply) => reply.redirect('/ui/', 308));
+  }
 
   app.get('/openapi.yaml', async (_request, reply) => {
     return reply.type('application/yaml').send(readFileSync(openApiFile(), 'utf8'));

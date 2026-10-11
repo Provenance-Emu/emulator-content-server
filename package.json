@@ -10,6 +10,8 @@
     "build": "tsc -b",
     "ecs": "pnpm build && node apps/cli/dist/src/main.js",
     "typecheck": "tsc -b --pretty false",
+    "ui": "pnpm --filter @ecs/web build",
+    "ui-check": "pnpm --filter @ecs/web check",
     "test": "pnpm build && node --disable-warning=ExperimentalWarning scripts/run-tests.mjs",
     "lint": "biome check apps/*/src apps/*/test packages/*/src packages/*/test packages/protocol/scripts packages/protocol/openapi scripts package.json biome.json README.md CONTRIBUTING.md SECURITY.md AGENTS.md",
     "format": "biome check --write apps/*/src apps/*/test packages/*/src packages/*/test packages/protocol/scripts packages/protocol/openapi scripts package.json biome.json README.md CONTRIBUTING.md SECURITY.md AGENTS.md",
@@ -17,7 +19,12 @@
     "check-drift": "node packages/protocol/scripts/generate-clients.mjs --check",
     "update-surface": "tsc -b packages/protocol && node packages/protocol/scripts/write-surface.mjs",
     "secret-scan": "node scripts/secret-scan.mjs",
-    "verify": "pnpm lint && pnpm test && pnpm check-drift && pnpm secret-scan && node scripts/check-boundaries.mjs"
+    "verify": "pnpm lint && pnpm test && pnpm ui-check && pnpm check-drift && pnpm secret-scan && node scripts/check-boundaries.mjs"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

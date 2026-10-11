@@ -2,8 +2,14 @@ import type {
   Asset,
   Capabilities,
   ChangeList,
+  ContentRoot,
+  ContentRootDraft,
+  ContentRootList,
+  ItemList,
+  LibraryList,
   Manifest,
   Problem,
+  SessionResponse,
   UploadSession,
 } from './generated.js';
 
@@ -100,6 +106,57 @@ export class ContentClient {
 
   capabilities(): Promise<Capabilities> {
     return this.getJson('/api/v1/capabilities');
+  }
+
+  /** Unauthenticated liveness, which is what a menu-bar indicator polls. */
+  health(): Promise<{ ok: boolean }> {
+    return this.getJson('/health');
+  }
+
+  /** Signs in and keeps the returned token for later calls. */
+  async login(username: string, password: string): Promise<SessionResponse> {
+    const session = await this.post<SessionResponse>('/api/v1/auth/login', {
+      username,
+      password,
+    });
+    this.setToken(session.token);
+    return session;
+  }
+
+  /** Revokes the token on the server before forgetting it here. */
+  async logout(): Promise<void> {
+    await this.post<unknown>('/api/v1/auth/logout', {});
+    this.setToken(undefined);
+  }
+
+  libraries(cursor?: string): Promise<LibraryList> {
+    return this.getJson(
+      `/api/v1/libraries${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+    );
+  }
+
+  items(query: { libraryId?: string; cursor?: string; limit?: number } = {}): Promise<ItemList> {
+    const search = new URLSearchParams();
+    if (query.libraryId) search.set('libraryId', query.libraryId);
+    if (query.cursor) search.set('cursor', query.cursor);
+    if (query.limit !== undefined) search.set('limit', String(query.limit));
+    return this.getJson(`/api/v1/items?${search.toString()}`);
+  }
+
+  /**
+   * Saved source folders. The caller submits a path and the server resolves it,
+   * so a browser never reads the filesystem to manage one.
+   */
+  roots(): Promise<ContentRootList> {
+    return this.getJson('/api/v1/roots');
+  }
+
+  addRoot(draft: ContentRootDraft): Promise<ContentRoot> {
+    return this.post<ContentRoot>('/api/v1/roots', draft);
+  }
+
+  removeRoot(rootId: string): Promise<void> {
+    return this.remove(`/api/v1/roots/${rootId}`);
   }
 
   manifest(itemId: string): Promise<Manifest> {
@@ -233,6 +290,11 @@ export class ContentClient {
     });
     if (!response.ok) throw await failure(response);
     return (await response.json()) as T;
+  }
+
+  private async remove(path: string): Promise<void> {
+    const response = await fetch(this.url(path), { method: 'DELETE', headers: this.headers() });
+    if (!response.ok) throw await failure(response);
   }
 
   private async getJson<T>(path: string): Promise<T> {

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { stat } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { assertListenPolicy } from '@ecs/auth';
 import { advertise } from '@ecs/discovery';
 import { openServer } from '@ecs/server';
@@ -81,11 +84,13 @@ async function serve(dataDir: string): Promise<void> {
   const host = value('--host') ?? '127.0.0.1';
   const port = Number(value('--port') ?? process.env.ECS_PORT ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Port is invalid');
+  const uiDir = await webAssets(value('--ui'));
   const server = await openServer({
     dataDir,
     displayName,
     limits: limitsFromEnv(process.env),
     logger: true,
+    uiDir,
   });
   assertListenPolicy({
     host,
@@ -106,6 +111,7 @@ async function serve(dataDir: string): Promise<void> {
     });
   }
   console.log(`listening on http://${host}:${port}`);
+  if (uiDir) console.log(`interface at http://${host}:${port}/ui/`);
   const shutdown = async () => {
     announcement?.stop();
     await server.close();
@@ -113,6 +119,22 @@ async function serve(dataDir: string): Promise<void> {
   };
   process.on('SIGINT', () => void shutdown());
   process.on('SIGTERM', () => void shutdown());
+}
+
+/**
+ * Where the built interface lives. The assets ship beside this command, so the
+ * usual case needs no flag, and a checkout that has not run the web build
+ * simply serves no interface rather than failing to start.
+ */
+async function webAssets(override: string | undefined): Promise<string | null> {
+  if (override === 'none') return null;
+  const candidate = override
+    ? resolve(override)
+    : fileURLToPath(new URL('../../../web/dist', import.meta.url));
+  const found = await stat(join(candidate, 'index.html')).catch(() => null);
+  if (found?.isFile()) return candidate;
+  if (override) throw new Error(`No built interface at ${candidate}`);
+  return null;
 }
 
 async function printInit(dataDir: string, displayName: string) {
@@ -138,7 +160,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--ui <dir>|none]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data

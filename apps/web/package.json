@@ -1,0 +1,20 @@
+{
+  "name": "@ecs/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@ecs/client": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "6.2.1",
+    "svelte": "5.42.2",
+    "svelte-check": "4.3.4",
+    "vite": "7.1.12"
+  }
+}
