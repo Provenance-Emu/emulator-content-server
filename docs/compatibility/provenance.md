@@ -4,7 +4,7 @@
 
 Store `systemIdentifier` values from `GET /api/v1/systems` when the game comes from Provenance. The list matches Provenance's dotted identifiers, including mixed-case values such as `com.provenance.32X` and `com.provenance.appleII`. Other dotted identifiers are valid and are not a protocol error.
 
-Item `md5` and `crc` match the portable game fields Provenance already exchanges. The server also returns SHA-256 on every asset. Save-state and battery-save assets are separate kinds so a client can sync them without treating them as ROMs.
+Poll the change feed with a device token and `?excludeOwnDevice=1`. A session token has no device, so the filter does nothing and the app sees the whole feed. Item `md5` and `crc` match the portable game fields Provenance already exchanges. The server also returns SHA-256 on every asset. Save-state and battery-save assets are separate kinds so a client can sync them without treating them as ROMs.
 
 The manifest is the pull document. A client that already understands a file list with relative paths, sizes, and checksums can map `rom` to its game file and leave BIOS management local unless the user opts in.
 

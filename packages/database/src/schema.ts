@@ -185,9 +185,14 @@ CREATE TABLE content_roots (
 );
 `;
 
+const CHANGE_DEVICE_SQL = `
+ALTER TABLE change_log ADD COLUMN device_id TEXT;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SQL },
   { version: 2, sql: CONTENT_ROOTS_SQL },
+  { version: 3, sql: CHANGE_DEVICE_SQL },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

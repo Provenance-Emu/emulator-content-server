@@ -65,6 +65,7 @@ export interface UserActor {
   username: string;
   isOwner: boolean;
   tokenKind: 'session' | 'device';
+  deviceId: string | null;
   scopes: ItemPermission[];
 }
 

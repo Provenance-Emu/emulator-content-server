@@ -176,7 +176,7 @@ export class CatalogDatabase {
       this.db.prepare('UPDATE server_state SET bootstrapped_at = ? WHERE id = 1').run(createdAt);
       const expiresAt = this.insertSession(userId, input.sessionHash, createdAt);
       this.insertAudit(userId, 'bootstrap', 'user', userId, {});
-      this.insertChange('library', libraryId, 'upsert', libraryId, null, false, createdAt);
+      this.insertChange('library', libraryId, 'upsert', libraryId, null, false, createdAt, null);
       return { userId, libraryId, expiresAt };
     });
   }
@@ -245,6 +245,7 @@ export class CatalogDatabase {
         username: session.username,
         isOwner: session.is_owner === 1,
         tokenKind: 'session',
+        deviceId: null,
         scopes: ['read', 'write', 'admin'],
       };
     }
@@ -270,6 +271,7 @@ export class CatalogDatabase {
         username: device.username,
         isOwner: device.is_owner === 1,
         tokenKind: 'device',
+        deviceId: device.id,
         scopes: parsePermissions(device.scopes_json),
       };
     }
@@ -311,7 +313,7 @@ export class CatalogDatabase {
     return { id, username: input.username, isOwner: false, createdAt };
   }
 
-  createLibrary(ownerId: string, name: string): LibraryRecord {
+  createLibrary(ownerId: string, name: string, deviceId: string | null = null): LibraryRecord {
     const createdAt = nowIso();
     const id = randomUUID();
     this.transaction(() => {
@@ -325,7 +327,7 @@ export class CatalogDatabase {
           'INSERT INTO memberships (library_id, user_id, role, created_at) VALUES (?, ?, ?, ?)',
         )
         .run(id, ownerId, 'owner', createdAt);
-      this.insertChange('library', id, 'upsert', id, null, false, createdAt);
+      this.insertChange('library', id, 'upsert', id, null, false, createdAt, deviceId);
       this.insertAudit(ownerId, 'create-library', 'library', id, { name });
     });
     return { id, name, ownerId, revision: 1, createdAt };
@@ -497,6 +499,7 @@ export class CatalogDatabase {
     md5: string | null;
     crc: string | null;
     actorId: string;
+    deviceId?: string | null;
   }): ItemRecord {
     const timestamp = nowIso();
     const id = randomUUID();
@@ -517,7 +520,16 @@ export class CatalogDatabase {
           timestamp,
           timestamp,
         );
-      this.insertChange('item', id, 'upsert', input.libraryId, id, false, timestamp);
+      this.insertChange(
+        'item',
+        id,
+        'upsert',
+        input.libraryId,
+        id,
+        false,
+        timestamp,
+        input.deviceId ?? null,
+      );
       this.insertAudit(input.actorId, 'create-item', 'item', id, { title: input.title });
     });
     return {
@@ -541,6 +553,7 @@ export class CatalogDatabase {
   updateItem(input: {
     id: string;
     baseRevision: number;
+    deviceId?: string | null;
     title?: string;
     md5?: string | null;
     crc?: string | null;
@@ -562,7 +575,16 @@ export class CatalogDatabase {
       if (result.changes === 0) {
         throw new DomainError('conflict', 409, 'Item revision does not match');
       }
-      this.insertChange('item', input.id, 'upsert', current.library_id, input.id, false, timestamp);
+      this.insertChange(
+        'item',
+        input.id,
+        'upsert',
+        current.library_id,
+        input.id,
+        false,
+        timestamp,
+        input.deviceId ?? null,
+      );
       this.insertAudit(input.actorId, 'update-item', 'item', input.id, {});
       const updated = this.itemRow(input.id);
       if (!updated) throw new DomainError('not-found', 404, 'Item not found');
@@ -570,7 +592,7 @@ export class CatalogDatabase {
     });
   }
 
-  deleteItem(id: string, actorId: string): boolean {
+  deleteItem(id: string, actorId: string, deviceId: string | null = null): boolean {
     return this.transaction(() => {
       const current = this.itemRow(id);
       if (!current || current.deleted_at) return false;
@@ -585,7 +607,7 @@ export class CatalogDatabase {
           'UPDATE assets SET deleted_at = ?, updated_at = ? WHERE item_id = ? AND deleted_at IS NULL',
         )
         .run(timestamp, timestamp, id);
-      this.insertChange('item', id, 'delete', current.library_id, id, false, timestamp);
+      this.insertChange('item', id, 'delete', current.library_id, id, false, timestamp, deviceId);
       this.insertAudit(actorId, 'delete-item', 'item', id, {});
       return true;
     });
@@ -695,6 +717,7 @@ export class CatalogDatabase {
     crc: string;
     shareable: boolean;
     actorId: string | null;
+    deviceId?: string | null;
   }): AssetRecord {
     return this.transaction(() => {
       const upload = this.getUpload(input.uploadId);
@@ -763,6 +786,7 @@ export class CatalogDatabase {
         input.itemId,
         !input.shareable,
         timestamp,
+        input.deviceId ?? null,
       );
       this.insertAudit(input.actorId, 'complete-upload', 'asset', assetId, {
         sha256: input.sha256,
@@ -789,7 +813,7 @@ export class CatalogDatabase {
     return row ? mapAsset(row) : null;
   }
 
-  deleteAsset(id: string, actorId: string): boolean {
+  deleteAsset(id: string, actorId: string, deviceId: string | null = null): boolean {
     return this.transaction(() => {
       const row = this.one<AssetRow & { library_id: string }>(
         `SELECT a.*, i.library_id FROM assets a JOIN items i ON i.id = a.item_id
@@ -809,6 +833,7 @@ export class CatalogDatabase {
         row.item_id,
         row.shareable === 0,
         timestamp,
+        deviceId,
       );
       this.insertAudit(actorId, 'delete-asset', 'asset', id, {});
       return true;
@@ -832,6 +857,7 @@ export class CatalogDatabase {
     libraryIds: string[];
     includeSensitive: boolean;
     itemId: string | null;
+    excludeDeviceId?: string | null;
   }): { changes: ChangeRecord[]; nextCursor: number } {
     if (input.libraryIds.length === 0) return { changes: [], nextCursor: input.after };
     const placeholders = input.libraryIds.map(() => '?').join(', ');
@@ -841,6 +867,10 @@ export class CatalogDatabase {
     if (input.itemId) {
       sql += ' AND item_id = ?';
       params.push(input.itemId);
+    }
+    if (input.excludeDeviceId) {
+      sql += ' AND (device_id IS NULL OR device_id != ?)';
+      params.push(input.excludeDeviceId);
     }
     sql += ' ORDER BY cursor LIMIT ?';
     params.push(input.limit);
@@ -1087,14 +1117,15 @@ export class CatalogDatabase {
     itemId: string | null,
     sensitive: boolean,
     recordedAt: string,
+    deviceId: string | null,
   ): void {
     this.db
       .prepare(
         `INSERT INTO change_log (
-          entity_type, entity_id, op, library_id, item_id, sensitive, recorded_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          entity_type, entity_id, op, library_id, item_id, sensitive, recorded_at, device_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(entityType, entityId, op, libraryId, itemId, sensitive ? 1 : 0, recordedAt);
+      .run(entityType, entityId, op, libraryId, itemId, sensitive ? 1 : 0, recordedAt, deviceId);
   }
 
   private insertAudit(

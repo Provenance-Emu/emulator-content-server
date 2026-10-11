@@ -10,6 +10,7 @@
 - Monotonic change cursor, mDNS advertisement, audit log without raw tokens, backup and restore.
 - ZIP archives list their entries and serve single byte ranges per entry. Stored entries read from the container at an offset, deflated entries expand once into `virtual-cache`, and hostile entry counts, ratios, depth, forged sizes, and bad CRCs are refused.
 - A ZIP inside a ZIP works, which is how ROM sets ship. Stored nested archives are read in place, so every inner entry is listed with its CRC-32 and size without inflating anything, and a nested entry is served as a byte range.
+- Changes are attributed to the device that caused them, and a device can ask the feed to omit its own writes.
 - Ordered numbered schema migrations. An existing catalog gains new tables without losing rows, and a database from a newer build is refused rather than opened.
 - `pnpm ecs <command>` runs the CLI from a clean clone, including `ecs roots list|add|remove`.
 - Saved content roots. The owner registers absolute source folders through `/api/v1/roots`; the real path is recorded, a folder inside the data directory or overlapping a saved root is refused, and nothing is copied or written.
@@ -30,7 +31,7 @@
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
 | Sideload and JIT | Allowed in this repository as a separate app; not started |
-| Sync | Briefed; device attribution next |
+| Sync | Device attribution done; keep-both save conflicts and the client engine next |
 
 ## Known issues and deferred work
 

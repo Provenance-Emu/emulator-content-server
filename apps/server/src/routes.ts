@@ -180,7 +180,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const body = jsonObject(request.body);
     const name = requiredString(body, 'name').trim();
     if (name.length > 80) throw new DomainError('invalid-body', 400, 'Library name is too long');
-    const library = catalog.createLibrary(actor.userId, name);
+    const library = catalog.createLibrary(actor.userId, name, deviceOf(actor));
     return reply.status(201).send(library);
   });
 
@@ -244,6 +244,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         md5: optionalHex(body.md5, 32),
         crc: optionalHex(body.crc, 8),
         actorId: actor.kind === 'user' ? actor.userId : actor.grantId,
+        deviceId: deviceOf(actor),
       });
       return { status: 201, body: item };
     });
@@ -273,6 +274,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       md5: body.md5 === undefined ? undefined : optionalHex(body.md5, 32),
       crc: body.crc === undefined ? undefined : optionalHex(body.crc, 8),
       actorId: actor.kind === 'user' ? actor.userId : actor.grantId,
+      deviceId: deviceOf(actor),
     });
     return reply.header('etag', `"rev-${updated.revision}"`).send(updated);
   });
@@ -281,7 +283,11 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireActor(request);
     const item = requireItem(catalog, (request.params as { itemId: string }).itemId);
     itemDecision(catalog, actor, item, 'write');
-    catalog.deleteItem(item.id, actor.kind === 'user' ? actor.userId : actor.grantId);
+    catalog.deleteItem(
+      item.id,
+      actor.kind === 'user' ? actor.userId : actor.grantId,
+      deviceOf(actor),
+    );
     return reply.status(204).send();
   });
 
@@ -427,6 +433,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         crc: placed.crc,
         shareable: !isRestrictedAssetKind(kind),
         actorId: actor.kind === 'user' ? actor.userId : null,
+        deviceId: deviceOf(actor),
       });
       await removeStaging(context.dataDir, upload.id);
       return { status: 201, body: asset };
@@ -456,7 +463,11 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.delete('/api/v1/files/:assetId', async (request, reply) => {
     const actor = requireActor(request);
     const { asset } = requireVisibleAsset(context, request, 'write');
-    catalog.deleteAsset(asset.id, actor.kind === 'user' ? actor.userId : actor.grantId);
+    catalog.deleteAsset(
+      asset.id,
+      actor.kind === 'user' ? actor.userId : actor.grantId,
+      deviceOf(actor),
+    );
     return reply.status(204).send();
   });
 
@@ -503,6 +514,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       libraryIds: catalog.visibleLibraryIds(actor),
       includeSensitive,
       itemId: actor.kind === 'guest' ? actor.itemId : null,
+      excludeDeviceId: queryString(request, 'excludeOwnDevice') === '1' ? deviceOf(actor) : null,
     });
     return { changes: page.changes, nextCursor: String(page.nextCursor) };
   });
@@ -650,6 +662,15 @@ function requireUser(request: FastifyRequest, scope: ItemPermission): Actor & { 
     throw new DomainError('forbidden', 403, 'This token cannot perform that action');
   }
   return actor;
+}
+
+/**
+ * The device behind a request, when it authenticated with a device token. The
+ * feed filter derives this from the actor rather than taking an id from the
+ * query, so one device cannot ask the server to hide another device's changes.
+ */
+function deviceOf(actor: Actor): string | null {
+  return actor.kind === 'user' ? actor.deviceId : null;
 }
 
 function requireOwner(request: FastifyRequest, message: string): Actor & { kind: 'user' } {

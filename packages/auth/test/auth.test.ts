@@ -14,6 +14,7 @@ const owner: UserActor = {
   username: 'owner',
   isOwner: false,
   tokenKind: 'session',
+  deviceId: null,
   scopes: ['read', 'write', 'admin'],
 };
 
