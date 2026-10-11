@@ -11,7 +11,7 @@
 - ZIP archives list their entries and serve single byte ranges per entry. Stored entries read from the container at an offset, deflated entries expand once into `virtual-cache`, and hostile entry counts, ratios, depth, forged sizes, and bad CRCs are refused.
 - A ZIP inside a ZIP works, which is how ROM sets ship. Stored nested archives are read in place, so every inner entry is listed with its CRC-32 and size without inflating anything, and a nested entry is served as a byte range.
 - Ordered numbered schema migrations. An existing catalog gains new tables without losing rows, and a database from a newer build is refused rather than opened.
-- `pnpm ecs <command>` runs the CLI from a clean clone.
+- `pnpm ecs <command>` runs the CLI from a clean clone, including `ecs roots list|add|remove`.
 - Saved content roots. The owner registers absolute source folders through `/api/v1/roots`; the real path is recorded, a folder inside the data directory or overlapping a saved root is refused, and nothing is copied or written.
 - `pnpm verify` and `swift test --package-path clients/swift` both green.
 
@@ -23,7 +23,7 @@
 | Scanning and metadata | Not started; needs a new `packages/scanner` |
 | WebDAV compatibility | Not started; needs a new `packages/webdav` |
 | Adversarial validation | Partially covered by existing storage and auth tests |
-| Content roots | API and storage rules done; `ecs roots` CLI next |
+| Content roots | Done: API, storage rules, and `ecs roots` |
 | Storage locations | Briefed; not started |
 | Service lifecycle | Briefed; not started |
 | Desktop and menu-bar UI | Briefed with a `/ui` mount and a Tauri tray; not started |

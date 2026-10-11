@@ -2,7 +2,15 @@
 import { assertListenPolicy } from '@ecs/auth';
 import { advertise } from '@ecs/discovery';
 import { openServer } from '@ecs/server';
-import { backupData, doctor, initData, limitsFromEnv } from './lifecycle.js';
+import {
+  addRoot,
+  backupData,
+  doctor,
+  initData,
+  limitsFromEnv,
+  listRoots,
+  removeRoot,
+} from './lifecycle.js';
 
 const DEFAULT_PORT = 8473;
 
@@ -30,11 +38,41 @@ async function main(): Promise<void> {
     console.log(`backup written to ${destination}`);
     return;
   }
+  if (command === 'roots') {
+    await roots(dataDir);
+    return;
+  }
   if (command === 'serve') {
     await serve(dataDir);
     return;
   }
   throw new Error(`Unknown command ${command}`);
+}
+
+async function roots(dataDir: string): Promise<void> {
+  const action = process.argv[3];
+  if (action === 'list') {
+    for (const root of listRoots(dataDir)) {
+      console.log(`${root.id}  ${root.label}  ${root.path}`);
+    }
+    return;
+  }
+  if (action === 'add') {
+    const path = value('--path');
+    const label = value('--label');
+    if (!path || !label) throw new Error('roots add requires --path and --label');
+    const root = await addRoot(dataDir, { path, label, libraryId: value('--library') ?? null });
+    console.log(`saved ${root.id} ${root.path}`);
+    return;
+  }
+  if (action === 'remove') {
+    const id = value('--id');
+    if (!id) throw new Error('roots remove requires --id');
+    removeRoot(dataDir, id);
+    console.log(`removed ${id}`);
+    return;
+  }
+  throw new Error('roots takes list, add, or remove');
 }
 
 async function serve(dataDir: string): Promise<void> {
@@ -102,7 +140,10 @@ function printHelp(): void {
   console.log(`ecs init --data ./content-data
 ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise]
 ecs doctor --data ./content-data
-ecs backup --data ./content-data --to ./backup`);
+ecs backup --data ./content-data --to ./backup
+ecs roots list --data ./content-data
+ecs roots add --data ./content-data --path /Volumes/Games --label Games [--library <id>]
+ecs roots remove --data ./content-data --id <rootId>`);
 }
 
 main().catch((error: unknown) => {

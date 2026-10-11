@@ -33,6 +33,8 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - A content root is owner-only in both directions: the path describes the operator's filesystem, so a reader or editor cannot even list roots.
 - Roots are not written to `change_log`. They are server configuration rather than synced content, so they stay out of the client change feed and are recorded in the audit log instead.
 - `resolveContentRoot` holds every path rule in one place and takes the saved paths as plain strings, which keeps `packages/storage` free of the catalog while the server and the CLI share the same validation.
+- The CLI attributes local changes to a `cli` actor rather than to the owner account, because whoever can read the data directory ran them, and it also works before bootstrap when no owner exists.
+- `apps/cli` deliberately does not depend on `@ecs/domain`. `scripts/check-boundaries.mjs` matches the dependency list exactly, and widening the boundary for a type annotation was not worth it, so the CLI infers record types and throws plain errors.
 - The maintainer works on branches or worktrees and does not use pull requests here. `CONTRIBUTING.md` still describes the fork-and-pull path for outside contributors.
 
 ## Next steps

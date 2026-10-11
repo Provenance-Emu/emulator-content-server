@@ -49,6 +49,18 @@ Put a reverse proxy with a certificate in front of the process. The flag records
 
 `--advertise` publishes `_pvcontent._tcp`. The TXT record contains `id`, `v`, `tls`, `pair`, and `name`.
 
+## Content roots
+
+Record the folders that already hold a collection. Nothing is copied and nothing inside a root is ever written.
+
+```sh
+ecs roots add --data ./content-data --path /Volumes/Games --label Games
+ecs roots list --data ./content-data
+ecs roots remove --data ./content-data --id <rootId>
+```
+
+A root must be an absolute path to an existing directory, must sit outside the data directory, and may not overlap a root already saved. The real path is recorded, so the listed path can differ from what you typed when the folder is reached through a symlink. Local changes appear in the audit log as the `cli` actor; the same operations over HTTP are owner-only at `/api/v1/roots`.
+
 ## Upgrades
 
 The catalog records every applied schema version in `schema_migrations`. Opening the database runs the migrations this build knows and has not applied yet, each in its own transaction, so an upgrade needs no separate command. Rows already in the catalog are preserved.

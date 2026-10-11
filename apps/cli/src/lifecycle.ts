@@ -2,7 +2,7 @@ import { cp, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { issueToken } from '@ecs/auth';
 import { CatalogDatabase, type CatalogLimits } from '@ecs/database';
-import { blobPath, ensureLayout } from '@ecs/storage';
+import { blobPath, ensureLayout, resolveContentRoot } from '@ecs/storage';
 
 export interface InitResult {
   dataDir: string;
@@ -88,6 +88,53 @@ export async function backupData(dataDir: string, destination: string): Promise<
     catalog.close();
   }
   await cp(join(dataDir, 'blobs'), join(destination, 'blobs'), { recursive: true });
+}
+
+/**
+ * Local changes are attributed to `cli` rather than to the owner account,
+ * because whoever can read the data directory ran them and the audit log should
+ * say so. It also works before bootstrap, when no owner exists yet.
+ */
+const CLI_ACTOR = 'cli';
+
+export function listRoots(dataDir: string) {
+  return withCatalog(dataDir, (catalog) => catalog.listContentRoots());
+}
+
+export async function addRoot(
+  dataDir: string,
+  input: { path: string; label: string; libraryId: string | null },
+) {
+  const saved = withCatalog(dataDir, (catalog) => catalog.listContentRoots());
+  const path = await resolveContentRoot(
+    dataDir,
+    input.path,
+    saved.map((root) => root.path),
+  );
+  return withCatalog(dataDir, (catalog) => {
+    if (input.libraryId !== null && !catalog.getLibrary(input.libraryId)) {
+      throw new Error('Library not found');
+    }
+    return catalog.createContentRoot({
+      path,
+      label: input.label,
+      libraryId: input.libraryId,
+      actorId: CLI_ACTOR,
+    });
+  });
+}
+
+export function removeRoot(dataDir: string, id: string): void {
+  withCatalog(dataDir, (catalog) => catalog.deleteContentRoot(id, CLI_ACTOR));
+}
+
+function withCatalog<T>(dataDir: string, use: (catalog: CatalogDatabase) => T): T {
+  const catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'));
+  try {
+    return use(catalog);
+  } finally {
+    catalog.close();
+  }
 }
 
 export function limitsFromEnv(env: NodeJS.ProcessEnv): Partial<CatalogLimits> {
