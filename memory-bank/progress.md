@@ -29,7 +29,8 @@
 | Desktop and menu-bar UI | Briefed with a `/ui` mount and a Tauri tray; not started |
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
-| Sideload and JIT | Deliberately excluded from this repository |
+| Sideload and JIT | Allowed in this repository as a separate app; not started |
+| Sync | Briefed; device attribution next |
 
 ## Known issues and deferred work
 

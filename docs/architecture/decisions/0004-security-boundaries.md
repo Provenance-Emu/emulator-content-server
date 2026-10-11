@@ -13,3 +13,4 @@ Signing, JIT, and IPA installation are out of process and out of repository. NAT
 - Cookie sessions are not implemented, so browser CSRF controls are not required yet.
 - A web UI that adds cookies must add CSRF protection in the same change.
 - Relay, STUN, and TURN need a new threat model before implementation.
+- The repository half of the signing boundary above is superseded by [ADR 0006](0006-sideload-colocation.md). The process, database, and credential separation stands.

@@ -27,4 +27,4 @@ LAN HTTP has no confidentiality. Use it on a network you trust, or put it behind
 
 ## Out of scope
 
-Automatic port forwarding, STUN, TURN, relays, Apple signing, JIT activation, and IPA distribution. Remote access in this foundation is an operator-managed VPN.
+Automatic port forwarding, STUN, TURN, relays, Apple signing, JIT activation, and IPA distribution. Signing may be built in this repository, but never inside the content server process or its database. Remote access in this foundation is an operator-managed VPN.

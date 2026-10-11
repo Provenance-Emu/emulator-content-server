@@ -35,6 +35,8 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - `resolveContentRoot` holds every path rule in one place and takes the saved paths as plain strings, which keeps `packages/storage` free of the catalog while the server and the CLI share the same validation.
 - The CLI attributes local changes to a `cli` actor rather than to the owner account, because whoever can read the data directory ran them, and it also works before bootstrap when no owner exists.
 - `apps/cli` deliberately does not depend on `@ecs/domain`. `scripts/check-boundaries.mjs` matches the dependency list exactly, and widening the boundary for a type annotation was not worth it, so the CLI infers record types and throws plain errors.
+- Signing and JIT may live in this repository after all, because another repository costs more to maintain than the repository boundary was buying. What protects the operator is the process, database, and credential split, which the boundary check can enforce. ADR 0006 records the reversal and `SECURITY.md` now promises the narrower, true thing.
+- Save sync keeps both writes. A later write wins the asset and the earlier one is retained as a conflict copy, because discarding a save is the one failure a sync must not have. ROM and BIOS assets keep strict optimistic concurrency.
 - The maintainer works on branches or worktrees and does not use pull requests here. `CONTRIBUTING.md` still describes the fork-and-pull path for outside contributors.
 
 ## Next steps

@@ -13,7 +13,8 @@ The foundation in this repository is the contract, storage, access control, and 
 | [Service lifecycle](service-lifecycle.md) | Start at login on macOS, Linux, Windows |
 | [Desktop UI](desktop-ui.md) | Web and menu-bar client over the same API |
 | [Remote access](remote-access.md) | VPN now, relay only after a new threat model |
-| [Sideload and JIT isolation](sideload-jit-isolation.md) | Separate project, separate credentials |
+| [Sideload and JIT isolation](sideload-jit-isolation.md) | Separate process and credentials, same repository |
+| [Sync](sync.md) | Devices converge without losing a save |
 | [Adversarial validation](adversarial-validation.md) | Fuzz and security regression pack |
 
-Do not implement signing, JIT activation, or IPA distribution inside this repository.
+Signing, JIT activation, and IPA distribution stay out of the content server process, database, and capability document. They may live in this repository as a separate app. See [ADR 0006](../architecture/decisions/0006-sideload-colocation.md).

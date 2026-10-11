@@ -50,4 +50,4 @@ Dependency direction is one-way: protocol and domain, then infrastructure, then 
 
 ## Scope of this foundation
 
-The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs, directory scanning, WebDAV, desktop UI, and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, and IPA distribution stay in a separate future project.
+The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs, directory scanning, WebDAV, desktop UI, and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, and IPA distribution stay out of the content server process and database.

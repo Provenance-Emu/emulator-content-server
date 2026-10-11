@@ -8,4 +8,4 @@ LAN HTTP is for a trusted network. Bind loopback until setup is complete unless 
 
 Guest grants do not read BIOS or system files unless the grant includes `share_restricted`. Authorization runs before a blob path is opened.
 
-This repository does not accept Apple ID passwords, signing certificates, or device registration secrets. Those belong to a separate project with a separate database.
+The content server does not accept Apple ID passwords, signing certificates, or device registration secrets. Its process and database hold none of that material. Signing belongs to a separate app with its own data directory, database, and credential store.

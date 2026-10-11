@@ -17,7 +17,7 @@ This repository owns the versioned HTTP contract, storage, access control, and r
 
 ## Out of scope
 
-- Signing, JIT activation, and IPA distribution. These are a separate future product with a separate repository, process, database, and credential store. See `docs/workstreams/sideload-jit-isolation.md`.
+- Signing, JIT activation, and IPA distribution. These are a separate product with their own process, data directory, database, and credential store. They may live in this repository rather than a second one. See `docs/workstreams/sideload-jit-isolation.md` and ADR 0006.
 - App-specific Realm, Dolphin, CloudKit, and UIKit code. Those belong in the app repositories.
 - A relay for remote access. VPN is the supported path until a new ADR exists.
 
