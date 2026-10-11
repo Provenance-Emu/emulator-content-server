@@ -16,12 +16,13 @@ This repository is the emulator content server. Keep changes inside the package 
 | `apps/cli` | `init`, `serve`, `doctor`, `backup` |
 | `packages/client-ts`, `clients/swift` | Generated models, app-neutral resume behavior, sync engine |
 | `apps/web` | Svelte interface the server mounts at `/ui` |
+| `packages/signing` | IPA inspection, profile reading, what a signed build may be called |
 | `apps/tray` | Tauri menu-bar status, one application for macOS, Windows, and Linux |
 | `docs/workstreams` | Follow-on briefs. Do not implement those briefs in an unrelated PR |
 
 ## Dependency direction
 
-`protocol` has no internal dependencies. `domain` may depend on `protocol`. Infrastructure packages may depend on `domain`. `apps/server` and `apps/cli` may depend on infrastructure. Do not import Fastify, SQLite, or filesystem code from `protocol` or `domain`. `apps/web` and `apps/tray` are API clients and may depend only on `@ecs/client`, plus `apps/tray` on `apps/web` for shared components. Neither may open a database or read a data directory. `scripts/check-boundaries.mjs` enforces the internal edges.
+`protocol` has no internal dependencies. `domain` may depend on `protocol`. Infrastructure packages may depend on `domain`. `apps/server` and `apps/cli` may depend on infrastructure. Do not import Fastify, SQLite, or filesystem code from `protocol` or `domain`. `apps/web` and `apps/tray` are API clients and may depend only on `@ecs/client`, plus `apps/tray` on `apps/web` for shared components. Neither may open a database or read a data directory. `packages/signing` has no internal dependencies and may not reach the catalog, the blob store, or the domain: it reasons about a bundle and a profile and nothing else. The boundary check reads imports in `src`, not just the manifest, because a dev dependency satisfies the resolver. `scripts/check-boundaries.mjs` enforces the internal edges.
 
 ## Migrations
 

@@ -1,0 +1,11 @@
+{
+  "name": "@ecs/signing",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  }
+}

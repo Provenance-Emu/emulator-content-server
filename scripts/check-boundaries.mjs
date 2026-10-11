@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +11,7 @@ const allowed = {
   '@ecs/database': ['@ecs/domain'],
   '@ecs/discovery': [],
   '@ecs/client': ['@ecs/protocol'],
+  '@ecs/signing': [],
   '@ecs/web': ['@ecs/client'],
   '@ecs/tray': ['@ecs/client', '@ecs/web'],
   '@ecs/server': [
@@ -38,6 +39,7 @@ const locations = {
   '@ecs/database': 'packages/database',
   '@ecs/discovery': 'packages/discovery',
   '@ecs/client': 'packages/client-ts',
+  '@ecs/signing': 'packages/signing',
   '@ecs/web': 'apps/web',
   '@ecs/tray': 'apps/tray',
   '@ecs/server': 'apps/server',
@@ -59,6 +61,36 @@ for (const [name, dependencies] of Object.entries(allowed)) {
       `${name} depends on ${actual.join(', ') || '(none)'} but the boundary allows ${expected.join(', ') || '(none)'}`,
     );
   }
+  for (const [file, imported] of internalImports(join(root, locations[name], 'src'))) {
+    if (!expected.includes(imported)) {
+      failures.push(`${file} imports ${imported}, which ${name} may not depend on`);
+    }
+  }
+}
+
+/**
+ * Shipped code that reaches for another package, which the manifest alone does
+ * not rule out: a dev dependency satisfies the resolver, and a test is entitled
+ * to one, so only `src` is read here.
+ */
+function internalImports(directory) {
+  const found = [];
+  const walk = (at) => {
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+      const full = join(at, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!/\.(ts|svelte|mjs)$/.test(entry.name)) continue;
+      const text = readFileSync(full, 'utf8');
+      for (const match of text.matchAll(/from\s+'(@ecs\/[^'/]+|@provenance-content\/[^'/]+)/g)) {
+        found.push([full.slice(root.length), match[1]]);
+      }
+    }
+  };
+  if (statSync(directory, { throwIfNoEntry: false })?.isDirectory()) walk(directory);
+  return found;
 }
 if (failures.length > 0) {
   console.error(failures.join('\n'));

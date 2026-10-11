@@ -162,6 +162,8 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
 
+  packages/signing: {}
+
   packages/storage:
     dependencies:
       '@ecs/domain':

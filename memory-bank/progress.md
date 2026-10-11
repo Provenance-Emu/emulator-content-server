@@ -34,6 +34,7 @@
 | App adapters | Belongs to the app repositories |
 | Sideload and JIT | Allowed in this repository as a separate app; not started |
 | Desktop UI | Web client with transfers and menu-bar tray done; guest grants and audit next |
+| Sideload installer | `packages/signing` reads an IPA and plans a signature; the app and Apple sign-in are next |
 | Sync | Device attribution, keep-both save conflicts, and the TypeScript engine done; tray and web UI next |
 
 ## Known issues and deferred work

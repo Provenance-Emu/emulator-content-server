@@ -8,6 +8,7 @@
     { "path": "packages/database" },
     { "path": "packages/discovery" },
     { "path": "packages/client-ts" },
+    { "path": "packages/signing" },
     { "path": "apps/server" },
     { "path": "apps/cli" }
   ]
