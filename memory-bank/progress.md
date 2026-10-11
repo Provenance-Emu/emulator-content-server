@@ -10,6 +10,8 @@
 - Monotonic change cursor, mDNS advertisement, audit log without raw tokens, backup and restore.
 - ZIP archives list their entries and serve single byte ranges per entry. Stored entries read from the container at an offset, deflated entries expand once into `virtual-cache`, and hostile entry counts, ratios, depth, forged sizes, and bad CRCs are refused.
 - A ZIP inside a ZIP works, which is how ROM sets ship. Stored nested archives are read in place, so every inner entry is listed with its CRC-32 and size without inflating anything, and a nested entry is served as a byte range.
+- Ordered numbered schema migrations. An existing catalog gains new tables without losing rows, and a database from a newer build is refused rather than opened.
+- `pnpm ecs <command>` runs the CLI from a clean clone.
 - `pnpm verify` and `swift test --package-path clients/swift` both green.
 
 ## What is left
@@ -20,7 +22,10 @@
 | Scanning and metadata | Not started; needs a new `packages/scanner` |
 | WebDAV compatibility | Not started; needs a new `packages/webdav` |
 | Adversarial validation | Partially covered by existing storage and auth tests |
-| Desktop and menu-bar UI | Not started |
+| Content roots | Briefed; migration runner done, table and routes next |
+| Storage locations | Briefed; not started |
+| Service lifecycle | Briefed; not started |
+| Desktop and menu-bar UI | Briefed with a `/ui` mount and a Tauri tray; not started |
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
 | Sideload and JIT | Deliberately excluded from this repository |
@@ -30,3 +35,5 @@
 - Unreferenced blob garbage collection is a later storage job. Deletion only removes catalog references.
 - Multi-range responses are unimplemented by choice; `features.multiRange` reports `false`.
 - No relay or NAT traversal. `features.natTraversal` reports `false` and no UPnP is shipped.
+- Blobs live in one directory. Until storage locations land, the data directory is the only place content can go.
+- No source folder is recorded anywhere, so nothing can be scanned or imported from an existing collection yet.

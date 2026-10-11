@@ -48,3 +48,9 @@ Put a reverse proxy with a certificate in front of the process. The flag records
 ## mDNS
 
 `--advertise` publishes `_pvcontent._tcp`. The TXT record contains `id`, `v`, `tls`, `pair`, and `name`.
+
+## Upgrades
+
+The catalog records every applied schema version in `schema_migrations`. Opening the database runs the migrations this build knows and has not applied yet, each in its own transaction, so an upgrade needs no separate command. Rows already in the catalog are preserved.
+
+A database written by a newer build is refused with a schema error rather than opened, because this build cannot know which statements it is missing. Downgrade by restoring a backup, not by pointing an older build at a newer data directory.

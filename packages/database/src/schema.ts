@@ -1,6 +1,11 @@
-export const SCHEMA_VERSION = 1;
+import { DomainError } from '@ecs/domain';
 
-export const MIGRATION_SQL = `
+export interface Migration {
+  version: number;
+  sql: string;
+}
+
+const INITIAL_SQL = `
 CREATE TABLE schema_migrations (
   version INTEGER PRIMARY KEY,
   applied_at TEXT NOT NULL
@@ -169,3 +174,29 @@ CREATE TABLE idempotency_keys (
   PRIMARY KEY (actor_key, idempotency_key)
 );
 `;
+
+export const MIGRATIONS: readonly Migration[] = [{ version: 1, sql: INITIAL_SQL }];
+
+export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));
+
+/**
+ * Selects the migrations still to run. Pass null when the ledger table does not
+ * exist yet, which is the only state that counts as a new database.
+ *
+ * An existing ledger may only hold a contiguous prefix of the versions this build
+ * knows. A gap, an empty ledger, or an unrecognized version means another build
+ * wrote the file, and guessing which statements are missing would put the
+ * operator's rows at risk.
+ */
+export function pendingMigrations(applied: ReadonlySet<number> | null): readonly Migration[] {
+  if (applied === null) return MIGRATIONS;
+  const prefix = MIGRATIONS.slice(0, applied.size);
+  if (
+    applied.size === 0 ||
+    applied.size > MIGRATIONS.length ||
+    prefix.some((entry) => !applied.has(entry.version))
+  ) {
+    throw new DomainError('migration', 500, 'Database schema version is not supported');
+  }
+  return MIGRATIONS.slice(applied.size);
+}

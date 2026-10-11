@@ -11,7 +11,7 @@ import {
   type LibraryRecord,
   type LibraryRole,
 } from '@ecs/domain';
-import { MIGRATION_SQL, SCHEMA_VERSION } from './schema.js';
+import { pendingMigrations } from './schema.js';
 
 export interface CatalogLimits {
   maxUploadBytes: number;
@@ -961,29 +961,30 @@ export class CatalogDatabase {
   }
 
   private migrate(): void {
-    const existing = this.db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'")
-      .get() as { name: string } | undefined;
-    if (!existing) {
+    for (const migration of pendingMigrations(this.appliedVersions())) {
       this.db.exec('BEGIN');
       try {
-        this.db.exec(MIGRATION_SQL);
+        this.db.exec(migration.sql);
         this.db
           .prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)')
-          .run(SCHEMA_VERSION, nowIso());
+          .run(migration.version, nowIso());
         this.db.exec('COMMIT');
       } catch (error) {
         this.db.exec('ROLLBACK');
         throw error;
       }
-      return;
     }
-    const version = this.one<{ version: number }>(
-      'SELECT MAX(version) AS version FROM schema_migrations',
-    );
-    if (!version || Number(version.version) !== SCHEMA_VERSION) {
-      throw new DomainError('migration', 500, 'Database schema version is not supported');
-    }
+  }
+
+  private appliedVersions(): ReadonlySet<number> | null {
+    const ledger = this.db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'")
+      .get() as { name: string } | undefined;
+    if (!ledger) return null;
+    const rows = this.db.prepare('SELECT version FROM schema_migrations').all() as {
+      version: number;
+    }[];
+    return new Set(rows.map((row) => Number(row.version)));
   }
 
   private serverRow(): { serverId: string; displayName: string; bootstrapped: boolean } {
