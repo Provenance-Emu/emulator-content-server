@@ -15,7 +15,9 @@ Several devices converge on the same library without losing a save. The server s
 - Every change records the device that caused it, and a client can ask the feed to omit its own. A device that re-downloads what it just uploaded never settles, so the echo filter is what makes polling usable.
 - Device identity comes from the device token already issued. A plain session is attributed to no device and sees the whole feed, which keeps the web UI and the tray unaffected.
 - ROM, BIOS, and disc assets keep strict optimistic concurrency. A stale `baseRevision` is still a conflict and the client refetches.
-- A save state or battery save never loses a write. When two devices write the same save, the later write wins the asset and the earlier one is kept as a conflict copy recorded against the same item, so a person can choose. Discarding a save is the one failure a sync must not have.
+- A save state or battery save never loses a write. When one arrives against a stale revision, the asset already at that path stays live and untouched, and the arriving write lands beside it as a conflict copy carrying a `conflictOf` pointer. Neither digest is lost and a person chooses.
+- The live asset is not demoted in favour of the newer arrival. Arrival order is not play order, so promoting either one would be a guess, and rewriting a live asset would change the manifest under a device that is already downloading it.
+- A stale write to a path where nothing is live is accepted exactly where it was asked for, because a stale revision alone is not a conflict. The collision at a path is.
 - A conflict copy is an ordinary asset with its own id, digest, and revision, so range reads, resume, ACL evaluation, and quotas are unchanged.
 - Deletes stay tombstones so a device that was offline learns about them rather than resurrecting content.
 - The client engine pages the feed by cursor, resumes a partial download with `planResume`, and retries an upload with the existing `Idempotency-Key` replay. It holds no emulator knowledge and parses no save format.

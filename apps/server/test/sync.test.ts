@@ -136,3 +136,134 @@ test('a device does not receive the changes it caused', async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('two devices writing one save keep both, while a ROM still conflicts', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-conflict-'));
+  const server = await openServer({
+    dataDir: dir,
+    limits: { maxUploadBytes: 1024 * 1024, maxLibraryBytes: 8 * 1024 * 1024 },
+  });
+  try {
+    const bootstrap = issueToken();
+    server.catalog.saveBootstrapHash(bootstrap.hash);
+    const owner = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/bootstrap',
+      payload: { token: bootstrap.token, username: 'owner', password: 'correct-horse' },
+    });
+    const auth = { authorization: `Bearer ${(owner.json() as { token: string }).token}` };
+    const libraries = await server.app.inject({
+      method: 'GET',
+      url: '/api/v1/libraries',
+      headers: auth,
+    });
+    const libraryId = (libraries.json() as { items: Array<{ id: string }> }).items[0]?.id;
+    assert.ok(libraryId);
+    const created = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/items',
+      headers: auth,
+      payload: { libraryId, systemIdentifier: 'com.provenance.nes', title: 'Shared' },
+    });
+    const itemId = (created.json() as { id: string }).id;
+
+    const upload = async (input: {
+      kind: string;
+      relativePath: string;
+      baseRevision: number;
+      body: Buffer;
+    }) => {
+      const opened = await server.app.inject({
+        method: 'POST',
+        url: '/api/v1/uploads',
+        headers: auth,
+        payload: { itemId, libraryId, size: input.body.length },
+      });
+      assert.equal(opened.statusCode, 201, opened.body);
+      const uploadId = (opened.json() as { id: string }).id;
+      const sent = await server.app.inject({
+        method: 'PUT',
+        url: `/api/v1/uploads/${uploadId}/content`,
+        headers: {
+          ...auth,
+          'content-type': 'application/octet-stream',
+          'content-range': `bytes 0-${input.body.length - 1}/${input.body.length}`,
+        },
+        payload: input.body,
+      });
+      assert.equal(sent.statusCode, 204, sent.body);
+      return server.app.inject({
+        method: 'POST',
+        url: `/api/v1/uploads/${uploadId}/complete`,
+        headers: auth,
+        payload: {
+          itemId,
+          kind: input.kind,
+          displayName: input.relativePath,
+          relativePath: input.relativePath,
+          baseRevision: input.baseRevision,
+        },
+      });
+    };
+
+    const handheldSave = Buffer.from('handheld save bytes padded out', 'utf8');
+    const consoleSave = Buffer.from('console save bytes padded out!', 'utf8');
+
+    const first = await upload({
+      kind: 'battery_save',
+      relativePath: 'battery.sav',
+      baseRevision: 1,
+      body: handheldSave,
+    });
+    assert.equal(first.statusCode, 201, first.body);
+    const live = first.json() as { id: string; relativePath: string; conflictOf: string | null };
+    assert.equal(live.relativePath, 'battery.sav');
+    assert.equal(live.conflictOf, null);
+
+    const second = await upload({
+      kind: 'battery_save',
+      relativePath: 'battery.sav',
+      baseRevision: 1,
+      body: consoleSave,
+    });
+    assert.equal(second.statusCode, 201, 'a stale save write is kept, not refused');
+    const copy = second.json() as { id: string; relativePath: string; conflictOf: string | null };
+    assert.equal(copy.conflictOf, live.id);
+    assert.match(copy.relativePath, /^battery\.sav\.conflict-[0-9a-f]{8}$/);
+    assert.notEqual(copy.id, live.id);
+
+    for (const [asset, expected] of [
+      [live, handheldSave],
+      [copy, consoleSave],
+    ] as const) {
+      const content = await server.app.inject({
+        method: 'GET',
+        url: `/api/v1/files/${asset.id}/content`,
+        headers: auth,
+      });
+      assert.equal(content.statusCode, 200);
+      assert.deepEqual(content.rawPayload, expected, 'neither save is lost');
+    }
+
+    const manifest = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/items/${itemId}/manifest`,
+      headers: auth,
+    });
+    const paths = (manifest.json() as { files: Array<{ relativePath: string }> }).files.map(
+      (entry) => entry.relativePath,
+    );
+    assert.deepEqual(paths, ['battery.sav', copy.relativePath]);
+
+    const staleRom = await upload({
+      kind: 'rom',
+      relativePath: 'game.nes',
+      baseRevision: 1,
+      body: Buffer.from('rom bytes that are long enough', 'utf8'),
+    });
+    assert.equal(staleRom.statusCode, 409, 'a ROM keeps strict optimistic concurrency');
+  } finally {
+    await server.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -37,7 +37,8 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - `apps/cli` deliberately does not depend on `@ecs/domain`. `scripts/check-boundaries.mjs` matches the dependency list exactly, and widening the boundary for a type annotation was not worth it, so the CLI infers record types and throws plain errors.
 - Signing and JIT may live in this repository after all, because another repository costs more to maintain than the repository boundary was buying. What protects the operator is the process, database, and credential split, which the boundary check can enforce. ADR 0006 records the reversal and `SECURITY.md` now promises the narrower, true thing.
 - The echo filter derives the device from the authenticated token, never from a query parameter, so one device cannot ask the server to hide another device's changes. The device id is not returned in the feed either, because peers do not need to know which device wrote what.
-- Save sync keeps both writes. A later write wins the asset and the earlier one is retained as a conflict copy, because discarding a save is the one failure a sync must not have. ROM and BIOS assets keep strict optimistic concurrency.
+- Save sync keeps both writes, because discarding a save is the one failure a sync must not have. The live asset is left alone and the arriving write becomes the conflict copy. That is the opposite of promoting the newer arrival: arrival order is not play order, and rewriting a live asset would change the manifest under a device that is mid-download. ROM, BIOS, and disc assets keep strict optimistic concurrency.
+- A conflict is a collision at a relative path, not merely a stale revision. A stale write to a path where nothing is live is accepted where it was asked for.
 - The maintainer works on branches or worktrees and does not use pull requests here. `CONTRIBUTING.md` still describes the fork-and-pull path for outside contributors.
 
 ## Next steps

@@ -130,6 +130,7 @@ export interface Asset {
   revision: number;
   createdAt: string;
   updatedAt: string;
+  conflictOf?: string | null;
 }
 
 export interface ManifestFile {

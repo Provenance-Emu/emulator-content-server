@@ -248,8 +248,9 @@ public struct Asset: Codable, Equatable, Sendable {
     public var revision: Int
     public var createdAt: String
     public var updatedAt: String
+    public var conflictOf: String?
 
-    public init(id: String, itemId: String, kind: String, displayName: String, relativePath: String, sha256: String, size: Int64, md5: String? = nil, crc: String? = nil, shareable: Bool, revision: Int, createdAt: String, updatedAt: String) {
+    public init(id: String, itemId: String, kind: String, displayName: String, relativePath: String, sha256: String, size: Int64, md5: String? = nil, crc: String? = nil, shareable: Bool, revision: Int, createdAt: String, updatedAt: String, conflictOf: String? = nil) {
         self.id = id
         self.itemId = itemId
         self.kind = kind
@@ -263,6 +264,7 @@ public struct Asset: Codable, Equatable, Sendable {
         self.revision = revision
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.conflictOf = conflictOf
     }
 }
 

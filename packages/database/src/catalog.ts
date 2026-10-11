@@ -9,6 +9,7 @@ import {
   type GuestCapability,
   type ItemPermission,
   type ItemRecord,
+  isSaveAssetKind,
   type LibraryRecord,
   type LibraryRole,
 } from '@ecs/domain';
@@ -744,19 +745,20 @@ export class CatalogDatabase {
         )
         .run(input.sha256, input.size, input.md5, input.crc, timestamp);
       const assetId = randomUUID();
+      const placement = this.placeUpload(input, assetId, timestamp);
       this.db
         .prepare(
           `INSERT INTO assets (
             id, item_id, kind, display_name, relative_path, sha256, size, md5, crc, shareable,
-            revision, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+            revision, created_at, updated_at, conflict_of
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
         )
         .run(
           assetId,
           input.itemId,
           input.kind,
-          input.displayName,
-          input.relativePath,
+          placement.displayName,
+          placement.relativePath,
           input.sha256,
           input.size,
           input.md5,
@@ -764,15 +766,8 @@ export class CatalogDatabase {
           input.shareable ? 1 : 0,
           timestamp,
           timestamp,
+          placement.conflictOf,
         );
-      const updated = this.db
-        .prepare(
-          `UPDATE items SET revision = revision + 1, updated_at = ?
-           WHERE id = ? AND revision = ? AND deleted_at IS NULL`,
-        )
-        .run(timestamp, input.itemId, input.baseRevision);
-      if (updated.changes === 0)
-        throw new DomainError('conflict', 409, 'Item revision does not match');
       this.db
         .prepare(
           `UPDATE uploads SET state = 'completed', asset_id = ?, updated_at = ? WHERE id = ?`,
@@ -795,6 +790,59 @@ export class CatalogDatabase {
       if (!asset) throw new DomainError('not-found', 404, 'Asset not found');
       return asset;
     });
+  }
+
+  /**
+   * Advances the item revision and decides where this upload lands.
+   *
+   * A stale `baseRevision` means another device already wrote. For a ROM or a
+   * BIOS that is a conflict the client must resolve by refetching. For a save it
+   * is not, because refusing the write discards bytes that exist nowhere else.
+   * The asset already at that path stays live and untouched, so a device
+   * mid-download is unaffected, and this write lands beside it as a conflict
+   * copy for a person to choose between. Neither digest is lost.
+   */
+  private placeUpload(
+    input: {
+      itemId: string;
+      kind: AssetKind;
+      displayName: string;
+      relativePath: string;
+      baseRevision: number;
+    },
+    assetId: string,
+    timestamp: string,
+  ): { relativePath: string; displayName: string; conflictOf: string | null } {
+    const bumped = this.db
+      .prepare(
+        `UPDATE items SET revision = revision + 1, updated_at = ?
+           WHERE id = ? AND revision = ? AND deleted_at IS NULL`,
+      )
+      .run(timestamp, input.itemId, input.baseRevision);
+    const unchanged = { relativePath: input.relativePath, displayName: input.displayName };
+    if (bumped.changes > 0) return { ...unchanged, conflictOf: null };
+    if (!isSaveAssetKind(input.kind)) {
+      throw new DomainError('conflict', 409, 'Item revision does not match');
+    }
+    const advanced = this.db
+      .prepare(
+        `UPDATE items SET revision = revision + 1, updated_at = ?
+           WHERE id = ? AND deleted_at IS NULL`,
+      )
+      .run(timestamp, input.itemId);
+    if (advanced.changes === 0) throw new DomainError('not-found', 404, 'Item not found');
+    const live = this.one<AssetRow>(
+      `SELECT * FROM assets WHERE item_id = ? AND relative_path = ? AND deleted_at IS NULL
+         ORDER BY created_at DESC`,
+      input.itemId,
+      input.relativePath,
+    );
+    if (!live) return { ...unchanged, conflictOf: null };
+    return {
+      relativePath: `${input.relativePath}.conflict-${assetId.slice(0, 8)}`,
+      displayName: `${input.displayName} (conflict)`,
+      conflictOf: live.id,
+    };
   }
 
   abortUpload(id: string, actorId: string | null): boolean {
@@ -1190,6 +1238,7 @@ interface AssetRow {
   revision: number;
   created_at: string;
   updated_at: string;
+  conflict_of: string | null;
 }
 
 type ContentRootRow = {
@@ -1255,6 +1304,7 @@ function mapAsset(row: AssetRow): AssetRecord {
     revision: Number(row.revision),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    conflictOf: row.conflict_of ?? null,
   };
 }
 

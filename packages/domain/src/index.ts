@@ -57,6 +57,16 @@ export interface AssetRecord {
   revision: number;
   createdAt: string;
   updatedAt: string;
+  conflictOf: string | null;
+}
+
+/**
+ * A save is the one asset a concurrent write must never discard, because the
+ * bytes exist nowhere else once a device has moved on. These kinds are kept
+ * side by side instead of refused.
+ */
+export function isSaveAssetKind(kind: AssetKind): boolean {
+  return kind === 'save_state' || kind === 'battery_save';
 }
 
 export interface UserActor {

@@ -429,6 +429,7 @@ components:
         revision: { type: integer }
         createdAt: { type: string }
         updatedAt: { type: string }
+        conflictOf: { type: [string, 'null'] }
     ManifestFile:
       type: object
       required: [id, kind, relativePath, sha256, md5, crc, size, required, contentPath]
