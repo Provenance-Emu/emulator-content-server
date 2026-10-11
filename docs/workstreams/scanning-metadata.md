@@ -11,7 +11,7 @@ Add an opt-in, read-only scanner that proposes catalog items. It does not move o
 
 ## Behavior
 
-- `ecs scan --root <path>` reads only configured roots.
+- `ecs scan --root <path>` reads only configured roots. Registering and persisting those roots belongs to [Content roots](content-roots.md).
 - Hash with the existing storage hasher. Use SHA-256 for identity and MD5/CRC for compatibility.
 - System inference may use extension and path hints. Unknown systems remain valid dotted identifiers.
 - Results are proposals until the operator accepts an import into the content-addressed store.
