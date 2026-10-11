@@ -14,12 +14,14 @@ This repository is the emulator content server. Keep changes inside the package 
 | `packages/discovery` | `_pvcontent._tcp` TXT records and advertisement |
 | `apps/server` | Fastify composition and HTTP behavior |
 | `apps/cli` | `init`, `serve`, `doctor`, `backup` |
-| `packages/client-ts`, `clients/swift` | Generated models and app-neutral resume behavior |
+| `packages/client-ts`, `clients/swift` | Generated models, app-neutral resume behavior, sync engine |
+| `apps/web` | Svelte interface the server mounts at `/ui` |
+| `apps/tray` | Tauri menu-bar status, one application for macOS, Windows, and Linux |
 | `docs/workstreams` | Follow-on briefs. Do not implement those briefs in an unrelated PR |
 
 ## Dependency direction
 
-`protocol` has no internal dependencies. `domain` may depend on `protocol`. Infrastructure packages may depend on `domain`. `apps/server` and `apps/cli` may depend on infrastructure. Do not import Fastify, SQLite, or filesystem code from `protocol` or `domain`. `scripts/check-boundaries.mjs` enforces the internal edges.
+`protocol` has no internal dependencies. `domain` may depend on `protocol`. Infrastructure packages may depend on `domain`. `apps/server` and `apps/cli` may depend on infrastructure. Do not import Fastify, SQLite, or filesystem code from `protocol` or `domain`. `apps/web` and `apps/tray` are API clients and may depend only on `@ecs/client`, plus `apps/tray` on `apps/web` for shared components. Neither may open a database or read a data directory. `scripts/check-boundaries.mjs` enforces the internal edges.
 
 ## Migrations
 
@@ -35,6 +37,8 @@ Add a new numbered SQL migration. Do not edit a migration that has shipped. The 
 pnpm verify
 swift test --package-path clients/swift
 ```
+
+`pnpm verify` covers the server, the client, and both interfaces, including `svelte-check`. It does not compile the tray's Rust shell, which needs a Rust toolchain and minutes rather than seconds. Build that with `pnpm tray` when you change `apps/tray/src-tauri`.
 
 Prefer these commands over an emulator build. A storage or protocol change does not require Provenance, iCube, or iFly to compile.
 

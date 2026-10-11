@@ -26,7 +26,11 @@ Build a client of the existing API. Do not add a second storage path.
 
 ## Status
 
-The web client exists. It signs in, shows server status from `/api/v1/capabilities`, lists libraries and items, and manages content folders. `pnpm ui` builds it and `ecs serve` mounts the result at `/ui/`, or serves nothing when the build is absent. Still to do: uploads and ranged downloads from the page, storage locations, guest grants, audit, and the tray.
+The web client exists. It signs in, shows server status from `/api/v1/capabilities`, lists libraries and items, and manages content folders by browsing the server. `pnpm ui` builds it and `ecs serve` mounts the result at `/ui/`, or serves nothing when the build is absent.
+
+The tray exists as one Tauri application. Its dropdown reports whether the server answers and where, opens the interface in the real browser, opens a status window, and quits. The window renders the same `Status` component as the web client, imported from `apps/web`, so the two cannot drift. The address it watches is editable and remembered.
+
+Still to do: uploads and ranged downloads from the page, storage locations, guest grants, audit, the library list in the dropdown, which needs the tray to hold a token, and the service start and stop controls, which need [Service lifecycle](service-lifecycle.md) first.
 
 ## Acceptance
 

@@ -12,6 +12,7 @@ const allowed = {
   '@ecs/discovery': [],
   '@ecs/client': ['@ecs/protocol'],
   '@ecs/web': ['@ecs/client'],
+  '@ecs/tray': ['@ecs/client', '@ecs/web'],
   '@ecs/server': [
     '@ecs/auth',
     '@ecs/database',
@@ -38,6 +39,7 @@ const locations = {
   '@ecs/discovery': 'packages/discovery',
   '@ecs/client': 'packages/client-ts',
   '@ecs/web': 'apps/web',
+  '@ecs/tray': 'apps/tray',
   '@ecs/server': 'apps/server',
   '@provenance-content/server': 'apps/cli',
 };

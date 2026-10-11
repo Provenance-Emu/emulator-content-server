@@ -8,6 +8,8 @@ content-data/
 bootstrap.token
 .DS_Store
 scripts/.tmp-*
+apps/tray/src-tauri/target/
+apps/tray/src-tauri/gen/
 coverage/
 dist-release/
 clients/swift/.build/
