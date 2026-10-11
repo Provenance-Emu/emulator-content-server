@@ -1,5 +1,7 @@
 export {
   type ChangeQuery,
+  type CollectedAsset,
+  type CollectOptions,
   ContentClient,
   ContentError,
   type DownloadInstruction,
@@ -23,11 +25,15 @@ export type {
   FolderListing,
   FolderPlace,
   Item,
+  ItemDraft,
   ItemList,
   Library,
   LibraryList,
   Manifest,
+  ManifestFile,
   Problem,
   SessionResponse,
+  SystemList,
+  SystemSummary,
   UploadSession,
 } from './generated.js';

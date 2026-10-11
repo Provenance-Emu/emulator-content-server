@@ -42,6 +42,10 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - The web page stores its bearer token rather than using a cookie, because a cookie would be attached to every request automatically and that is what makes CSRF possible. A content policy that forbids other origins, inline script, and outbound connections is what makes storing it acceptable.
 - Save sync keeps both writes, because discarding a save is the one failure a sync must not have. The live asset is left alone and the arriving write becomes the conflict copy. That is the opposite of promoting the newer arrival: arrival order is not play order, and rewriting a live asset would change the manifest under a device that is mid-download. ROM, BIOS, and disc assets keep strict optimistic concurrency.
 - A conflict is a collision at a relative path, not merely a stale revision. A stale write to a path where nothing is live is accepted where it was asked for.
+- Transfers from the page go through the engine in `@ecs/client`, not through code written for the browser. `upload` gained piece-sized sends so progress exists and a break costs one piece, and `collect` assembles a download in memory and resumes from the bytes that arrived. Both are tested against the real routes in `apps/server/test/engine.test.ts` with a fetch that cuts a body short.
+- A file input is right for an upload and wrong for a content folder: the first is bytes to send, the second a path the server has to resolve on a machine that may not be the one holding the browser.
+- The static mount uses a wildcard route. With one route per file discovered at startup, a rebuilt bundle 404s with its new hashed name until the server restarts.
+- The secret scan walks what git would commit rather than the whole tree, because the Rust target directory is full of `.bin` incremental output that the fixture rule rejects.
 - The maintainer works on branches or worktrees and does not use pull requests here. `CONTRIBUTING.md` still describes the fork-and-pull path for outside contributors.
 
 ## Next steps

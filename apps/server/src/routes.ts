@@ -89,7 +89,11 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     app.register(fastifyStatic, {
       root: context.uiDir,
       prefix: '/ui/',
-      wildcard: false,
+      // A wildcard route rather than one route per file discovered at startup,
+      // so a rebuilt bundle is served without restarting. The prefix keeps it
+      // clear of /api/v1, and the plugin refuses a path that leaves the
+      // asset directory.
+      wildcard: true,
       setHeaders: (response) => {
         /**
          * The page keeps its bearer token in local storage, so the thing that

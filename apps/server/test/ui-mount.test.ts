@@ -41,6 +41,10 @@ test('the interface is served from the same origin as the API', async () => {
     assert.equal(script.statusCode, 200);
     assert.match(script.headers['content-type'] as string, /javascript/);
 
+    await writeFile(join(assets, 'assets', 'rebuilt.js'), 'export const fresh = true;\n', 'utf8');
+    const rebuilt = await server.app.inject({ method: 'GET', url: '/ui/assets/rebuilt.js' });
+    assert.equal(rebuilt.statusCode, 200, 'a rebuilt bundle is served without a restart');
+
     const bare = await server.app.inject({ method: 'GET', url: '/ui' });
     assert.equal(bare.statusCode, 308, 'the directory form is where relative assets resolve');
     assert.equal(bare.headers.location, '/ui/');

@@ -28,9 +28,13 @@ Build a client of the existing API. Do not add a second storage path.
 
 The web client exists. It signs in, shows server status from `/api/v1/capabilities`, lists libraries and items, and manages content folders by browsing the server. `pnpm ui` builds it and `ecs serve` mounts the result at `/ui/`, or serves nothing when the build is absent.
 
+Opening an item lists the files in its manifest and uploads a chosen file into it, or creates an item when none is open. A file picked here is bytes to send, not a path to resolve, which is why a file input is right for an upload and wrong for a content folder. Both directions go through the engine in `@ecs/client`: `upload` sends pieces of at most 4 MB so progress has something to report and a break costs one piece, and `collect` assembles a download in memory, asking for only the bytes a broken stream left behind. Those bytes are handed to the browser's own download, so the page still never names a path on disk.
+
 The tray exists as one Tauri application. Its dropdown reports whether the server answers and where, opens the interface in the real browser, opens a status window, and quits. The window renders the same `Status` component as the web client, imported from `apps/web`, so the two cannot drift. The address it watches is editable and remembered.
 
-Still to do: uploads and ranged downloads from the page, storage locations, guest grants, audit, the library list in the dropdown, which needs the tray to hold a token, and the service start and stop controls, which need [Service lifecycle](service-lifecycle.md) first.
+Still to do: storage locations, guest grants, audit, the library list in the dropdown, which needs the tray to hold a token, and the service start and stop controls, which need [Service lifecycle](service-lifecycle.md) first.
+
+A download is held whole in memory before it is saved, which suits a save file and not a disc image. Writing as it arrives needs the File System Access API, which is Chromium only, so a large transfer belongs in a native client for now.
 
 ## Acceptance
 

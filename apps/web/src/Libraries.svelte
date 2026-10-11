@@ -1,12 +1,16 @@
 <script lang="ts">
   import type { ContentClient, Item, Library } from '@ecs/client';
+  import Files from './Files.svelte';
   import { explain } from './lib/problems';
+  import Upload from './Upload.svelte';
 
   let { client }: { client: ContentClient } = $props();
 
   let libraries = $state<Library[]>([]);
   let selected = $state<string | null>(null);
   let items = $state<Item[]>([]);
+  /** The opened item, whose files and uploads are shown below the list. */
+  let active = $state<Item | null>(null);
   let failure = $state<string | null>(null);
 
   async function load(): Promise<void> {
@@ -31,6 +35,22 @@
     }
   }
 
+  function choose(library: string): void {
+    selected = library;
+    active = null;
+    void loadItems();
+  }
+
+  /**
+   * An upload advances the item revision, and the next one needs that revision
+   * to be accepted, so the opened item is replaced with what the server now has.
+   */
+  async function refresh(): Promise<void> {
+    const opened = active?.id;
+    await loadItems();
+    active = items.find((item) => item.id === opened) ?? null;
+  }
+
   void load();
 </script>
 
@@ -38,7 +58,10 @@
   <div class="row">
     <h2>Libraries</h2>
     {#if libraries.length > 1}
-      <select bind:value={selected} onchange={loadItems}>
+      <select
+        value={selected}
+        onchange={(event) => choose((event.currentTarget as HTMLSelectElement).value)}
+      >
         {#each libraries as library (library.id)}
           <option value={library.id}>{library.name}</option>
         {/each}
@@ -46,11 +69,11 @@
     {/if}
   </div>
   {#if items.length === 0}
-    <p class="dim">No items yet. Add a folder below, or upload from a device.</p>
+    <p class="dim">No items yet. Upload one below, or add a folder to scan.</p>
   {:else}
     <table>
       <thead>
-        <tr><th>Title</th><th>System</th><th>Revision</th></tr>
+        <tr><th>Title</th><th>System</th><th>Revision</th><th></th></tr>
       </thead>
       <tbody>
         {#each items as item (item.id)}
@@ -58,6 +81,14 @@
             <td>{item.title}</td>
             <td class="dim"><code>{item.systemIdentifier}</code></td>
             <td class="dim">{item.revision}</td>
+            <td>
+              <button
+                type="button"
+                onclick={() => (active = active?.id === item.id ? null : item)}
+              >
+                {active?.id === item.id ? 'Close' : 'Open'}
+              </button>
+            </td>
           </tr>
         {/each}
       </tbody>
@@ -67,3 +98,13 @@
     <p class="problem">{failure}</p>
   {/if}
 </section>
+
+{#if active}
+  {#key `${active.id}:${active.revision}`}
+    <Files {client} item={active} />
+  {/key}
+{/if}
+
+{#if selected}
+  <Upload {client} libraryId={selected} item={active} oncomplete={refresh} />
+{/if}

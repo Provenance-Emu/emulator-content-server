@@ -6,11 +6,14 @@ import type {
   ContentRootDraft,
   ContentRootList,
   FolderListing,
+  Item,
+  ItemDraft,
   ItemList,
   LibraryList,
   Manifest,
   Problem,
   SessionResponse,
+  SystemList,
   UploadSession,
 } from './generated.js';
 
@@ -72,6 +75,18 @@ export interface DownloadQuery {
   etag?: string;
 }
 
+export interface CollectOptions {
+  attempts?: number;
+  /** Called as bytes arrive, with the whole size when the server states one. */
+  onProgress?: (received: number, total: number | null) => void;
+}
+
+export interface CollectedAsset {
+  /** A buffer allocated here, so a caller may hand it straight to a `Blob`. */
+  bytes: Uint8Array<ArrayBuffer>;
+  etag: string | null;
+}
+
 export interface DownloadResponse {
   instruction: DownloadInstruction;
   /** Where the body belongs in the local file, which is 0 unless appending. */
@@ -93,6 +108,13 @@ export interface UploadRequest {
   uploadId?: string;
   /** Replayed on retry, so a lost response cannot commit the same asset twice. */
   idempotencyKey?: string;
+  /**
+   * Sends the body in pieces of at most this many bytes instead of one request.
+   * A break then costs the current piece rather than the whole transfer, and
+   * `onProgress` has something to report. One request by default.
+   */
+  chunkBytes?: number;
+  onProgress?: (sent: number, total: number) => void;
 }
 
 export class ContentClient {
@@ -134,6 +156,15 @@ export class ContentClient {
     return this.getJson(
       `/api/v1/libraries${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
     );
+  }
+
+  /** The system identifiers this server accepts, which a create form offers. */
+  systems(): Promise<SystemList> {
+    return this.getJson('/api/v1/systems');
+  }
+
+  createItem(draft: ItemDraft): Promise<Item> {
+    return this.post<Item>('/api/v1/items', draft);
   }
 
   items(query: { libraryId?: string; cursor?: string; limit?: number } = {}): Promise<ItemList> {
@@ -227,6 +258,44 @@ export class ContentClient {
   }
 
   /**
+   * Reads an asset whole, asking only for the bytes still missing when a stream
+   * breaks part way. Content that changed under the transfer comes back as a
+   * restart, and what had been collected is discarded rather than spliced into
+   * bytes from a different revision.
+   *
+   * Holding the result in memory is the caller's budget. A client with a
+   * filesystem should drive `download` and write each body to disk instead.
+   */
+  async collect(assetId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
+    const attempts = options.attempts ?? 3;
+    let held: Uint8Array[] = [];
+    let received = 0;
+    let etag: string | undefined;
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        const response = await this.download(assetId, { localBytes: received, etag });
+        if (response.instruction !== 'append') {
+          held = [];
+          received = 0;
+        }
+        etag = response.etag ?? undefined;
+        options.onProgress?.(received, response.totalBytes);
+        for await (const chunk of chunks(response.body)) {
+          held.push(chunk);
+          received += chunk.byteLength;
+          options.onProgress?.(received, response.totalBytes);
+        }
+        if (response.totalBytes !== null && received !== response.totalBytes) {
+          throw new Error('The asset body ended before the size the server stated');
+        }
+        return { bytes: concat(held, received), etag: etag ?? null };
+      } catch (error) {
+        if (attempt >= attempts || !isRetryable(error)) throw error;
+      }
+    }
+  }
+
+  /**
    * Sends the bytes and commits the asset, resuming from the offset the server
    * admits to holding. A retry re-reads that offset instead of assuming the
    * failed attempt wrote nothing, and the completion key is replayed so a lost
@@ -239,9 +308,16 @@ export class ContentClient {
       : await this.openUpload(request.libraryId, `${key}.open`);
     const total = sizeOf(request.body);
     let received = session.received;
+    const piece = request.chunkBytes ?? total;
     for (let attempt = 1; ; attempt += 1) {
       try {
-        if (received < total) await this.sendBytes(session.id, request.body, received, total);
+        request.onProgress?.(received, total);
+        while (received < total) {
+          const end = Math.min(received + piece, total);
+          await this.sendBytes(session.id, request.body, received, end, total);
+          received = end;
+          request.onProgress?.(received, total);
+        }
         return await this.commit(session.id, request, `${key}.done`);
       } catch (error) {
         if (attempt >= attempts || !isRetryable(error)) throw error;
@@ -254,15 +330,16 @@ export class ContentClient {
     uploadId: string,
     body: UploadBody,
     offset: number,
+    end: number,
     total: number,
   ): Promise<void> {
     const headers = this.headers();
     headers['content-type'] = 'application/octet-stream';
-    headers['content-range'] = `bytes ${offset}-${total - 1}/${total}`;
+    headers['content-range'] = `bytes ${offset}-${end - 1}/${total}`;
     const response = await fetch(this.url(`/api/v1/uploads/${uploadId}/content`), {
       method: 'PUT',
       headers,
-      body: slice(body, offset),
+      body: slice(body, offset, end),
     });
     if (!response.ok) throw await failure(response);
   }
@@ -355,6 +432,30 @@ function sizeOf(body: UploadBody): number {
   return body instanceof Uint8Array ? body.byteLength : body.size;
 }
 
-function slice(body: UploadBody, offset: number): UploadBody {
-  return body instanceof Uint8Array ? body.subarray(offset) : body.slice(offset);
+async function* chunks(body: ReadableStream<Uint8Array> | null): AsyncGenerator<Uint8Array> {
+  if (!body) return;
+  const reader = body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      if (value) yield value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function concat(parts: Uint8Array[], size: number): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) {
+    bytes.set(part, offset);
+    offset += part.byteLength;
+  }
+  return bytes;
+}
+
+function slice(body: UploadBody, offset: number, end: number): UploadBody {
+  return body instanceof Uint8Array ? body.subarray(offset, end) : body.slice(offset, end);
 }

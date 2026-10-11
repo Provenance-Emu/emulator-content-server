@@ -208,6 +208,105 @@ test('an interrupted upload continues from the offset the server holds', async (
   }
 });
 
+test('a chunked upload reports progress and re-sends only the piece that failed', async () => {
+  const ecs = await fixture('ecs-chunked-');
+  const rom = pattern(1000);
+  const real = globalThis.fetch;
+  const ranges: string[] = [];
+  let refusals = 1;
+  globalThis.fetch = async (input: Parameters<typeof real>[0], init?: RequestInit) => {
+    if (init?.method !== 'PUT') return real(input, init);
+    const headers = init.headers as Record<string, string>;
+    ranges.push(headers['content-range'] ?? '');
+    if (refusals > 0 && headers['content-range'] === 'bytes 400-799/1000') {
+      refusals -= 1;
+      throw new TypeError('fetch failed');
+    }
+    return real(input, init);
+  };
+  try {
+    const seen: number[] = [];
+    const asset = await ecs.client.upload({
+      libraryId: ecs.libraryId,
+      itemId: ecs.itemId,
+      kind: 'rom',
+      displayName: 'Chunked.nes',
+      relativePath: 'Chunked.nes',
+      baseRevision: await ecs.revision(),
+      body: rom,
+      chunkBytes: 400,
+      onProgress: (sent) => seen.push(sent),
+    });
+    assert.equal(asset.sha256, createHash('sha256').update(rom).digest('hex'));
+    assert.deepEqual(
+      ranges,
+      ['bytes 0-399/1000', 'bytes 400-799/1000', 'bytes 400-799/1000', 'bytes 800-999/1000'],
+      'the failed piece is sent again and the ones before it are not',
+    );
+    assert.deepEqual(seen, [0, 400, 400, 800, 1000], 'progress reports each piece that landed');
+  } finally {
+    globalThis.fetch = real;
+    await ecs.close();
+  }
+});
+
+test('collecting an asset asks only for the bytes a broken stream left behind', async () => {
+  const ecs = await fixture('ecs-collect-');
+  const rom = pattern(900);
+  const real = globalThis.fetch;
+  /** Ranges the client asked for, which is what shows whether it resumed. */
+  const asked: Array<string | null> = [];
+  let cuts = 1;
+  globalThis.fetch = async (input: Parameters<typeof real>[0], init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    const reading = url.endsWith('/content') && init?.method === undefined;
+    if (reading) asked.push((init?.headers as Record<string, string>)?.range ?? null);
+    const response = await real(input, init);
+    if (!reading || cuts === 0) return response;
+    cuts -= 1;
+    // Headers intact and the body stopping early, which is what a connection
+    // dropped part way through looks like to a reader.
+    const head = new Uint8Array(await response.arrayBuffer()).subarray(0, 400);
+    let delivered = false;
+    return new Response(
+      // Erroring a stream clears whatever is queued, so the head has to be
+      // handed over on one pull and the break raised on the next.
+      new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (delivered) throw new TypeError('network connection was lost');
+          delivered = true;
+          controller.enqueue(head);
+        },
+      }),
+      { status: response.status, headers: response.headers },
+    );
+  };
+  try {
+    const asset = await ecs.client.upload({
+      libraryId: ecs.libraryId,
+      itemId: ecs.itemId,
+      kind: 'rom',
+      displayName: 'Collect.nes',
+      relativePath: 'Collect.nes',
+      baseRevision: await ecs.revision(),
+      body: rom,
+    });
+    const seen: number[] = [];
+    const collected = await ecs.client.collect(asset.id, {
+      onProgress: (received) => seen.push(received),
+    });
+    assert.equal(cuts, 0, 'the first body was the one that was cut short');
+    assert.deepEqual(Buffer.from(collected.bytes), rom);
+    assert.equal(collected.etag, `"${createHash('sha256').update(rom).digest('hex')}"`);
+    assert.deepEqual(asked, [null, 'bytes=400-'], 'the retry resumed instead of restarting');
+    assert.ok(seen.includes(400), 'progress reported what survived the break');
+    assert.equal(seen.at(-1), rom.length);
+  } finally {
+    globalThis.fetch = real;
+    await ecs.close();
+  }
+});
+
 test('a resumed session sends only the bytes the server is missing', async () => {
   const ecs = await fixture('ecs-offset-');
   try {
