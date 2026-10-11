@@ -10,7 +10,7 @@ The manifest is the pull document. A client that already understands a file list
 
 ## iCube and iFly
 
-Use the same item, manifest, upload, and range routes. iCube's Dolphin random-access reader should call `GET /api/v1/files/{id}/content` with `Range`, not a WebDAV GET. The content route returns 206, `Accept-Ranges`, `Content-Range`, and a strong ETag. WebDAV compatibility is a later gateway and is not the canonical API.
+An upload that was cut off resumes from `GET /api/v1/uploads/{uploadId}`, which reports the byte offset the server committed. Continue from that offset rather than restarting the file. Use the same item, manifest, upload, and range routes. iCube's Dolphin random-access reader should call `GET /api/v1/files/{id}/content` with `Range`, not a WebDAV GET. The content route returns 206, `Accept-Ranges`, `Content-Range`, and a strong ETag. WebDAV compatibility is a later gateway and is not the canonical API.
 
 ## RetroAchievements
 

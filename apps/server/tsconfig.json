@@ -8,6 +8,7 @@
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "references": [
     { "path": "../../packages/auth" },
+    { "path": "../../packages/client-ts" },
     { "path": "../../packages/database" },
     { "path": "../../packages/discovery" },
     { "path": "../../packages/domain" },

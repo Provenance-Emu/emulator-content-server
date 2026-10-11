@@ -21,6 +21,7 @@
     "GET /api/v1/libraries",
     "GET /api/v1/roots",
     "GET /api/v1/systems",
+    "GET /api/v1/uploads/:uploadId",
     "GET /health",
     "GET /openapi.yaml",
     "HEAD /api/v1/files/:assetId/content",

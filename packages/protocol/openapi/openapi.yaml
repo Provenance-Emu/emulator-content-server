@@ -147,6 +147,15 @@ paths:
         '201':
           description: Asset committed.
   /api/v1/uploads/{uploadId}:
+    get:
+      operationId: getUpload
+      responses:
+        '200':
+          description: Received byte offset, so an interrupted upload can resume.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadSession'
     delete:
       operationId: abortUpload
       responses:

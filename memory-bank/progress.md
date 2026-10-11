@@ -5,7 +5,8 @@
 - Versioned `/api/v1` contract with generated TypeScript and Swift models and a drift check.
 - Content-addressed blob storage with idempotent placement, staging writes that truncate back to the committed offset on failure, and path containment that survives symlink escape.
 - Single-range reads with strong ETags, `If-None-Match`, `If-Range`, 206, and 416. Multiple ranges are rejected.
-- Resumable uploads with `baseRevision` completion and `Idempotency-Key` replay.
+- Resumable uploads with `baseRevision` completion and `Idempotency-Key` replay. An interrupted upload reads its committed offset back from the server instead of restarting.
+- A TypeScript sync engine that pages the change cursor, resumes a download with one ranged request, and resumes an upload from the offset the server holds. It is exercised against the real routes, not a stub.
 - Library roles, per-item grants, guest grants, and device tokens, all through one pure `authorize` function.
 - Monotonic change cursor, mDNS advertisement, audit log without raw tokens, backup and restore.
 - ZIP archives list their entries and serve single byte ranges per entry. Stored entries read from the container at an offset, deflated entries expand once into `virtual-cache`, and hostile entry counts, ratios, depth, forged sizes, and bad CRCs are refused.
@@ -32,7 +33,7 @@
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
 | Sideload and JIT | Allowed in this repository as a separate app; not started |
-| Sync | Device attribution and keep-both save conflicts done; client engine next |
+| Sync | Device attribution, keep-both save conflicts, and the TypeScript engine done; tray and web UI next |
 
 ## Known issues and deferred work
 

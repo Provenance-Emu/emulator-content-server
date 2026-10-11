@@ -20,6 +20,7 @@ export const HTTP_OPERATIONS = [
   'PUT /api/v1/items/:itemId/access/:userId',
   'DELETE /api/v1/items/:itemId/access/:userId',
   'POST /api/v1/uploads',
+  'GET /api/v1/uploads/:uploadId',
   'PUT /api/v1/uploads/:uploadId/content',
   'POST /api/v1/uploads/:uploadId/complete',
   'DELETE /api/v1/uploads/:uploadId',

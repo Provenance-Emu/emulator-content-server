@@ -16,5 +16,8 @@
     "@ecs/protocol": "workspace:*",
     "@ecs/storage": "workspace:*",
     "fastify": "5.12.5"
+  },
+  "devDependencies": {
+    "@ecs/client": "workspace:*"
   }
 }

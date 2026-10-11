@@ -441,6 +441,16 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return reply.status(result.status).send(result.body);
   });
 
+  app.get('/api/v1/uploads/:uploadId', async (request) => {
+    const actor = requireActor(request);
+    const upload = requireOwnedUpload(
+      catalog,
+      actor,
+      (request.params as { uploadId: string }).uploadId,
+    );
+    return { id: upload.id, received: upload.received, state: upload.state };
+  });
+
   app.delete('/api/v1/uploads/:uploadId', async (request, reply) => {
     const actor = requireActor(request);
     const upload = requireOwnedUpload(

@@ -21,6 +21,9 @@ Several devices converge on the same library without losing a save. The server s
 - A conflict copy is an ordinary asset with its own id, digest, and revision, so range reads, resume, ACL evaluation, and quotas are unchanged.
 - Deletes stay tombstones so a device that was offline learns about them rather than resurrecting content.
 - The client engine pages the feed by cursor, resumes a partial download with `planResume`, and retries an upload with the existing `Idempotency-Key` replay. It holds no emulator knowledge and parses no save format.
+- A resumed download sends `If-Range` with the ETag the local bytes came from, so content that changed underneath restarts instead of appending bytes from a different asset onto a half-finished file.
+- An interrupted upload reads its committed offset from `GET /api/v1/uploads/{uploadId}` rather than assuming the failed attempt wrote nothing. A client that guesses either re-sends bytes the server already has, which the gap check refuses, or skips bytes it never sent.
+- The engine stores nothing itself. It hands back the response body and takes bytes in, so the same code serves a phone, a desktop, and the web UI.
 
 ## Acceptance
 

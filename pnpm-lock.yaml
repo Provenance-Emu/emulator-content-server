@@ -62,6 +62,10 @@ importers:
       fastify:
         specifier: 5.12.5
         version: 5.12.5
+    devDependencies:
+      '@ecs/client':
+        specifier: workspace:*
+        version: link:../../packages/client-ts
 
   packages/auth:
     dependencies:
