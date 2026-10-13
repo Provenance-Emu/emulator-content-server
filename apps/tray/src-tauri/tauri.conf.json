@@ -15,7 +15,7 @@
         "label": "status",
         "title": "Content Server Status",
         "width": 420,
-        "height": 560,
+        "height": 720,
         "resizable": true,
         "visible": false,
         "skipTaskbar": true,
@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset:; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:* https:"
+      "csp": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset:; connect-src 'self' ipc: http://ipc.localhost http: https:"
     },
     "trayIcon": {
       "id": "status",

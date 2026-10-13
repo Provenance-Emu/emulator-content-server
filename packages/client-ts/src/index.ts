@@ -14,6 +14,7 @@ export {
   type UploadRequest,
 } from './client.js';
 export type {
+  AccessPolicy,
   Asset,
   Capabilities,
   ChangeEvent,
@@ -21,9 +22,16 @@ export type {
   ContentRoot,
   ContentRootDraft,
   ContentRootList,
+  ContentRootScan,
+  SourceFile,
+  SourceFileList,
   FolderEntry,
   FolderListing,
   FolderPlace,
+  GuestGrant,
+  GuestGrantCreated,
+  GuestGrantDraft,
+  GuestGrantList,
   Item,
   ItemDraft,
   ItemList,
@@ -36,4 +44,6 @@ export type {
   SystemList,
   SystemSummary,
   UploadSession,
+  User,
+  UserDraft,
 } from './generated.js';

@@ -1,11 +1,16 @@
 import type {
+  AccessPolicy,
   Asset,
   Capabilities,
   ChangeList,
   ContentRoot,
   ContentRootDraft,
   ContentRootList,
+  ContentRootScan,
   FolderListing,
+  GuestGrantCreated,
+  GuestGrantDraft,
+  GuestGrantList,
   Item,
   ItemDraft,
   ItemList,
@@ -13,8 +18,11 @@ import type {
   Manifest,
   Problem,
   SessionResponse,
+  SourceFileList,
   SystemList,
   UploadSession,
+  User,
+  UserDraft,
 } from './generated.js';
 
 export interface ResumePlan {
@@ -136,6 +144,17 @@ export class ContentClient {
     return this.getJson('/health');
   }
 
+  /** Creates the owner account. The bootstrap token is printed when the server first starts. */
+  async bootstrap(token: string, username: string, password: string): Promise<SessionResponse> {
+    const session = await this.post<SessionResponse>('/api/v1/auth/bootstrap', {
+      token,
+      username,
+      password,
+    });
+    this.setToken(session.token);
+    return session;
+  }
+
   /** Signs in and keeps the returned token for later calls. */
   async login(username: string, password: string): Promise<SessionResponse> {
     const session = await this.post<SessionResponse>('/api/v1/auth/login', {
@@ -144,6 +163,52 @@ export class ContentClient {
     });
     this.setToken(session.token);
     return session;
+  }
+
+  /** Who may use the server without a token, including whether this connection may. */
+  access(): Promise<AccessPolicy> {
+    return this.getJson('/api/v1/access');
+  }
+
+  setAccess(policy: { mode: string; subnets: string[] }): Promise<AccessPolicy> {
+    return this.putJson('/api/v1/access', policy);
+  }
+
+  users(): Promise<{ items: User[] }> {
+    return this.getJson('/api/v1/users');
+  }
+
+  createUser(draft: UserDraft): Promise<User> {
+    return this.post('/api/v1/users', draft);
+  }
+
+  /** Replaces a password. The value is not returned and is not written to the audit log. */
+  async setPassword(userId: string, password: string): Promise<void> {
+    const response = await fetch(this.url(`/api/v1/users/${encodeURIComponent(userId)}`), {
+      method: 'PATCH',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) throw await failure(response);
+  }
+
+  guestGrants(): Promise<GuestGrantList> {
+    return this.getJson('/api/v1/guest-grants');
+  }
+
+  createGuestGrant(draft: GuestGrantDraft): Promise<GuestGrantCreated> {
+    return this.post('/api/v1/guest-grants', draft);
+  }
+
+  revokeGuestGrant(grantId: string): Promise<void> {
+    return this.remove(`/api/v1/guest-grants/${encodeURIComponent(grantId)}`);
+  }
+
+  assignMember(libraryId: string, userId: string, role: string): Promise<void> {
+    return this.putEmpty(
+      `/api/v1/libraries/${encodeURIComponent(libraryId)}/members/${encodeURIComponent(userId)}`,
+      { role },
+    );
   }
 
   /** Revokes the token on the server before forgetting it here. */
@@ -198,6 +263,16 @@ export class ContentClient {
 
   removeRoot(rootId: string): Promise<void> {
     return this.remove(`/api/v1/roots/${rootId}`);
+  }
+
+  /** Reads a registered folder in place and records each file without copying it. */
+  scanRoot(rootId: string): Promise<ContentRootScan> {
+    return this.post<ContentRootScan>(`/api/v1/roots/${rootId}/scan`, {});
+  }
+
+  /** Files found by a scan. The response names them and does not include a filesystem path. */
+  sources(): Promise<SourceFileList> {
+    return this.getJson('/api/v1/sources');
   }
 
   manifest(itemId: string): Promise<Manifest> {
@@ -372,6 +447,25 @@ export class ContentClient {
 
   private uploadSession(uploadId: string): Promise<UploadSession> {
     return this.getJson(`/api/v1/uploads/${uploadId}`);
+  }
+
+  private async putJson<T>(path: string, body: unknown): Promise<T> {
+    const response = await fetch(this.url(path), {
+      method: 'PUT',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw await failure(response);
+    return (await response.json()) as T;
+  }
+
+  private async putEmpty(path: string, body: unknown): Promise<void> {
+    const response = await fetch(this.url(path), {
+      method: 'PUT',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw await failure(response);
   }
 
   private async post<T>(path: string, body: unknown, idempotencyKey?: string): Promise<T> {

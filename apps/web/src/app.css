@@ -91,6 +91,7 @@ code,
 
 input,
 select,
+textarea,
 button {
   font: inherit;
   color: inherit;
@@ -114,11 +115,22 @@ button:disabled {
   cursor: default;
 }
 
+textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
 form {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+}
+
+form.stack {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 label {

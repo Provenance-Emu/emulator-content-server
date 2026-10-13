@@ -56,12 +56,34 @@ paths:
       responses:
         '204':
           description: Session revoked.
+  /api/v1/access:
+    get:
+      operationId: getAccess
+      responses:
+        '200':
+          description: Who may use this server without a token, and whether this connection may.
+    put:
+      operationId: putAccess
+      responses:
+        '200':
+          description: Access rule replaced.
   /api/v1/users:
+    get:
+      operationId: listUsers
+      responses:
+        '200':
+          description: Accounts on this server.
     post:
       operationId: createUser
       responses:
         '201':
           description: User created.
+  /api/v1/users/{userId}:
+    patch:
+      operationId: setPassword
+      responses:
+        '204':
+          description: Password replaced.
   /api/v1/libraries:
     get:
       operationId: listLibraries
@@ -255,6 +277,37 @@ paths:
       responses:
         '204':
           description: Content root forgotten.
+  /api/v1/roots/{rootId}/scan:
+    post:
+      operationId: scanContentRoot
+      responses:
+        '200':
+          description: Folder read in place. Bytes stay where they are.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentRootScan'
+  /api/v1/sources:
+    get:
+      operationId: listSourceFiles
+      responses:
+        '200':
+          description: Files found in content roots. Filesystem paths are not included.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceFileList'
+  /api/v1/sources/{sourceId}/content:
+    get:
+      operationId: readSourceContent
+      responses:
+        '200':
+          description: Bytes of a local source file. Nothing is copied into the blob store.
+    head:
+      operationId: statSourceContent
+      responses:
+        '200':
+          description: Size of a local source file.
   /api/v1/changes:
     get:
       operationId: listChanges
@@ -262,11 +315,16 @@ paths:
         '200':
           description: Change feed.
   /api/v1/guest-grants:
+    get:
+      operationId: listGuestGrants
+      responses:
+        '200':
+          description: Guest grants that are still active. Tokens are not included.
     post:
       operationId: createGuestGrant
       responses:
         '201':
-          description: Guest grant created.
+          description: Guest grant created. The token is returned once.
   /api/v1/guest-grants/{grantId}:
     delete:
       operationId: revokeGuestGrant
@@ -314,6 +372,7 @@ components:
         authentication:
           type: array
           items: { type: string }
+        bootstrapped: { type: boolean }
     ProtocolInfo:
       type: object
       required: [major, minor, path]
@@ -433,6 +492,36 @@ components:
         path: { type: string }
         label: { type: string }
         libraryId: { type: [string, 'null'] }
+    ContentRootScan:
+      type: object
+      required: [rootId, medium, online, count]
+      properties:
+        rootId: { type: string }
+        medium: { type: string }
+        online: { type: boolean }
+        count: { type: integer }
+    SourceFile:
+      type: object
+      required:
+        [id, rootId, libraryId, name, kind, size, systemId, availability, medium, contentPath]
+      properties:
+        id: { type: string }
+        rootId: { type: string }
+        libraryId: { type: [string, 'null'] }
+        name: { type: string }
+        kind: { type: string }
+        size: { type: integer, format: int64 }
+        systemId: { type: [string, 'null'] }
+        availability: { type: string }
+        medium: { type: string }
+        contentPath: { type: string }
+    SourceFileList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SourceFile' }
     Item:
       type: object
       required: [id, libraryId, systemIdentifier, title, md5, crc, revision, createdAt, updatedAt]
@@ -666,3 +755,33 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/VirtualEntry' }
+    AccessPolicy:
+      type: object
+      required: [mode, subnets, applies, trusted, manages]
+      properties:
+        mode: { type: string }
+        subnets:
+          type: array
+          items: { type: string }
+        applies: { type: boolean }
+        trusted: { type: boolean }
+        manages: { type: boolean }
+    GuestGrant:
+      type: object
+      required: [id, libraryId, capabilities, expiresAt, createdAt]
+      properties:
+        id: { type: string }
+        libraryId: { type: string }
+        itemId: { type: [string, 'null'] }
+        capabilities:
+          type: array
+          items: { type: string }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    GuestGrantList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/GuestGrant' }

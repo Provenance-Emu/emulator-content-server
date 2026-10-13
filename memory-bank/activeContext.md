@@ -8,6 +8,9 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 
 ## Recent changes
 
+- The menu bar edits accounts, guest links, and who may connect. Local networks are trusted by default. This Mac can change accounts without a password. Other devices on the LAN can sync, and they cannot change accounts. `token` mode requires a login everywhere. A server started with `--public` never trusts the socket address.
+
+
 - The foundation landed as a single commit: contract, storage, access control, reference server, CLI, and generated clients.
 - This Memory Bank was seeded from `AGENTS.md`, `README.md`, `docs/architecture/`, and `docs/workstreams/`. Those documents remain authoritative; this directory is a reading aid, not a second source of truth.
 - ZIP support added `packages/storage/src/zip.ts` and `virtual-cache.ts`, two additive operations for entry content, and optional `format` and `items` fields on the entries response.
@@ -53,6 +56,4 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 
 ## Next steps
 
-In order: guest grants and audit in the web page, storage locations, then service lifecycle so the tray can start and stop the server. Sideload stays parked until those are in; its JIT method is recorded in `docs/workstreams/sideload-installer.md`.
-
-Still unstarted elsewhere in `docs/workstreams/`: scanning and metadata, WebDAV compatibility, adversarial validation, and the remote-access documentation pass. App adapters belong to the Provenance, iCube, and iFly repositories.
+A registered folder can be scanned in place (`POST /api/v1/roots/{id}/scan`, `GET /api/v1/sources`). The page lists those files by system and kind. In-browser play is `docs/workstreams/web-playback.md` and stays parked until a local file is worth playing. Docker for a VM or cloud host is `docs/workstreams/container-install.md` and `compose.yaml`. Sideload stays parked.

@@ -26,13 +26,15 @@ public struct Capabilities: Codable, Equatable, Sendable {
     public var features: FeatureFlags
     public var limits: Limits
     public var authentication: [String]
+    public var bootstrapped: Bool?
 
-    public init(`protocol`: ProtocolInfo, minClientVersion: String, features: FeatureFlags, limits: Limits, authentication: [String]) {
+    public init(`protocol`: ProtocolInfo, minClientVersion: String, features: FeatureFlags, limits: Limits, authentication: [String], bootstrapped: Bool? = nil) {
         self.`protocol` = `protocol`
         self.minClientVersion = minClientVersion
         self.features = features
         self.limits = limits
         self.authentication = authentication
+        self.bootstrapped = bootstrapped
     }
 }
 
@@ -203,6 +205,54 @@ public struct ContentRootDraft: Codable, Equatable, Sendable {
         self.path = path
         self.label = label
         self.libraryId = libraryId
+    }
+}
+
+public struct ContentRootScan: Codable, Equatable, Sendable {
+    public var rootId: String
+    public var medium: String
+    public var online: Bool
+    public var count: Int
+
+    public init(rootId: String, medium: String, online: Bool, count: Int) {
+        self.rootId = rootId
+        self.medium = medium
+        self.online = online
+        self.count = count
+    }
+}
+
+public struct SourceFile: Codable, Equatable, Sendable {
+    public var id: String
+    public var rootId: String
+    public var libraryId: String?
+    public var name: String
+    public var kind: String
+    public var size: Int64
+    public var systemId: String?
+    public var availability: String
+    public var medium: String
+    public var contentPath: String
+
+    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, contentPath: String) {
+        self.id = id
+        self.rootId = rootId
+        self.libraryId = libraryId
+        self.name = name
+        self.kind = kind
+        self.size = size
+        self.systemId = systemId
+        self.availability = availability
+        self.medium = medium
+        self.contentPath = contentPath
+    }
+}
+
+public struct SourceFileList: Codable, Equatable, Sendable {
+    public var items: [SourceFile]
+
+    public init(items: [SourceFile]) {
+        self.items = items
     }
 }
 
@@ -582,6 +632,48 @@ public struct VirtualEntryList: Codable, Equatable, Sendable {
         self.supported = supported
         self.entries = entries
         self.format = format
+        self.items = items
+    }
+}
+
+public struct AccessPolicy: Codable, Equatable, Sendable {
+    public var mode: String
+    public var subnets: [String]
+    public var applies: Bool
+    public var trusted: Bool
+    public var manages: Bool
+
+    public init(mode: String, subnets: [String], applies: Bool, trusted: Bool, manages: Bool) {
+        self.mode = mode
+        self.subnets = subnets
+        self.applies = applies
+        self.trusted = trusted
+        self.manages = manages
+    }
+}
+
+public struct GuestGrant: Codable, Equatable, Sendable {
+    public var id: String
+    public var libraryId: String
+    public var itemId: String?
+    public var capabilities: [String]
+    public var expiresAt: String
+    public var createdAt: String
+
+    public init(id: String, libraryId: String, itemId: String? = nil, capabilities: [String], expiresAt: String, createdAt: String) {
+        self.id = id
+        self.libraryId = libraryId
+        self.itemId = itemId
+        self.capabilities = capabilities
+        self.expiresAt = expiresAt
+        self.createdAt = createdAt
+    }
+}
+
+public struct GuestGrantList: Codable, Equatable, Sendable {
+    public var items: [GuestGrant]
+
+    public init(items: [GuestGrant]) {
         self.items = items
     }
 }

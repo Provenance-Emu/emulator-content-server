@@ -13,6 +13,7 @@ import {
   limitsFromEnv,
   listRoots,
   removeRoot,
+  scanRoots,
 } from './lifecycle.js';
 
 const DEFAULT_PORT = 8473;
@@ -43,6 +44,14 @@ async function main(): Promise<void> {
   }
   if (command === 'roots') {
     await roots(dataDir);
+    return;
+  }
+  if (command === 'scan') {
+    const results = await scanRoots(dataDir, value('--id') ?? null);
+    for (const result of results) {
+      const state = result.online ? result.medium : 'offline';
+      console.log(`${result.label}  ${state}  ${result.count}`);
+    }
     return;
   }
   if (command === 'serve') {
@@ -91,6 +100,9 @@ async function serve(dataDir: string): Promise<void> {
     limits: limitsFromEnv(process.env),
     logger: true,
     uiDir,
+    // A public bind sits behind a proxy on loopback, so the socket address
+    // cannot decide who is local.
+    localTrust: !has('--public'),
   });
   assertListenPolicy({
     host,
@@ -165,7 +177,8 @@ ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
 ecs roots add --data ./content-data --path /Volumes/Games --label Games [--library <id>]
-ecs roots remove --data ./content-data --id <rootId>`);
+ecs roots remove --data ./content-data --id <rootId>
+ecs scan --data ./content-data [--id <rootId>]`);
 }
 
 main().catch((error: unknown) => {

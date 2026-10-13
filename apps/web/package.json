@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./lib/problems": "./src/lib/problems.ts",
     "./*": "./src/*"
   },
   "scripts": {

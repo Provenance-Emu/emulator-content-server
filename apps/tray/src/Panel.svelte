@@ -1,5 +1,6 @@
 <script lang="ts">
   import Status from '@ecs/web/Status.svelte';
+  import Access from './Access.svelte';
   import { DEFAULT_ORIGIN, type ServerWatch } from './lib/watch.svelte';
 
   let {
@@ -13,6 +14,7 @@
   } = $props();
 
   let typed = $state(watch.origin);
+  const desk = watch.desk;
 </script>
 
 <main>
@@ -47,8 +49,7 @@
       </label>
       <button type="submit">Watch</button>
     </form>
-    <p class="dim">
-      This window holds no password and reads no folder. It asks the server how it is doing.
-    </p>
   </section>
+
+  <Access {desk} origin={watch.origin} />
 </main>
