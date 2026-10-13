@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -b",
+    "dev": "node scripts/dev.mjs",
     "ecs": "pnpm build && node apps/cli/dist/src/main.js",
     "typecheck": "tsc -b --pretty false",
     "ui": "pnpm --filter @ecs/web build",

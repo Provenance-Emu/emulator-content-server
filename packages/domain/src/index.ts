@@ -31,6 +31,21 @@ export interface ContentRootRecord {
   createdAt: string;
 }
 
+export type SourceAvailability = 'local' | 'evicted' | 'offline';
+
+export interface SourceFileRecord {
+  id: string;
+  rootId: string;
+  libraryId: string | null;
+  relativePath: string;
+  displayName: string;
+  size: number;
+  blocks: number;
+  kind: AssetKind;
+  systemId: string | null;
+  availability: SourceAvailability;
+}
+
 export interface ItemRecord {
   id: string;
   libraryId: string;
@@ -77,6 +92,12 @@ export interface UserActor {
   tokenKind: 'session' | 'device';
   deviceId: string | null;
   scopes: ItemPermission[];
+  /**
+   * Admitted by the local-network rule rather than a token. Read and write then
+   * follow `scopes` alone, so the owner's library role cannot turn the whole
+   * LAN into an administrator.
+   */
+  localTrust?: boolean;
 }
 
 export interface GuestActor {

@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { UserActor } from '@ecs/domain';
 import { authorize } from '../src/acl.js';
 import { assertListenPolicy } from '../src/listen-policy.js';
+import { canonicalCidr, trustedLevel } from '../src/network.js';
 import { hashPassword, verifyPassword } from '../src/passwords.js';
 import { RateLimiter } from '../src/rate-limit.js';
 import { redactSecrets } from '../src/redact.js';
@@ -132,4 +133,46 @@ test('rate limits and log redaction', () => {
   assert.equal(limiter.allow('login', 10), true);
   assert.equal(limiter.allow('login', 20), false);
   assert.match(redactSecrets('Authorization Bearer abc.def token'), /Bearer \[redacted\]/);
+});
+
+test('local trust covers private ranges and refuses the whole internet', () => {
+  assert.equal(trustedLevel('lan', [], '127.0.0.1'), 'owner');
+  assert.equal(trustedLevel('lan', [], '::1'), 'owner');
+  assert.equal(trustedLevel('lan', [], '::ffff:127.0.0.1'), 'owner');
+  assert.equal(trustedLevel('lan', [], '192.168.1.20'), 'member');
+  assert.equal(trustedLevel('lan', [], '10.1.2.3'), 'member');
+  assert.equal(trustedLevel('lan', [], '172.16.5.5'), 'member');
+  assert.equal(trustedLevel('lan', [], '172.32.5.5'), null);
+  assert.equal(trustedLevel('lan', [], '169.254.1.1'), 'member');
+  assert.equal(trustedLevel('lan', [], '8.8.8.8'), null);
+  assert.equal(trustedLevel('lan', [], '100.64.0.1'), null);
+  assert.equal(trustedLevel('lan', [], 'fe80::1'), 'member');
+  assert.equal(trustedLevel('lan', [], 'fd00::1'), 'member');
+  assert.equal(trustedLevel('lan', [], '2001:db8::1'), null);
+  assert.equal(trustedLevel('token', [], '127.0.0.1'), null);
+  assert.equal(trustedLevel('subnets', ['203.0.113.0/24'], '203.0.113.9'), 'member');
+  assert.equal(trustedLevel('subnets', ['203.0.113.0/24'], '192.168.1.20'), null);
+  assert.equal(trustedLevel('subnets', ['203.0.113.0/24'], '127.0.0.1'), 'owner');
+  assert.equal(canonicalCidr('192.168.1.50/24'), '192.168.1.0/24');
+  assert.equal(canonicalCidr('0.0.0.0/0'), null);
+  assert.equal(canonicalCidr('::/0'), null);
+  assert.equal(canonicalCidr('not-a-network'), null);
+  assert.equal(
+    authorize({
+      actor: { ...owner, scopes: ['read', 'write'], localTrust: true },
+      action: 'admin',
+      libraryId: 'lib',
+      membership: 'owner',
+    }),
+    false,
+  );
+  assert.equal(
+    authorize({
+      actor: { ...owner, scopes: ['read', 'write'], localTrust: true },
+      action: 'write',
+      libraryId: 'lib',
+      membership: 'owner',
+    }),
+    true,
+  );
 });

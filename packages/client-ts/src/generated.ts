@@ -15,6 +15,7 @@ export interface Capabilities {
   features: FeatureFlags;
   limits: Limits;
   authentication: string[];
+  bootstrapped?: boolean;
 }
 
 export interface ProtocolInfo {
@@ -102,6 +103,30 @@ export interface ContentRootDraft {
   libraryId?: string | null;
 }
 
+export interface ContentRootScan {
+  rootId: string;
+  medium: string;
+  online: boolean;
+  count: number;
+}
+
+export interface SourceFile {
+  id: string;
+  rootId: string;
+  libraryId: string | null;
+  name: string;
+  kind: string;
+  size: number;
+  systemId: string | null;
+  availability: string;
+  medium: string;
+  contentPath: string;
+}
+
+export interface SourceFileList {
+  items: SourceFile[];
+}
+
 export interface Item {
   id: string;
   libraryId: string;
@@ -160,6 +185,7 @@ export interface ManifestFile {
   size: number;
   required: boolean;
   contentPath: string;
+  conflictOf?: string | null;
 }
 
 export interface Manifest {
@@ -289,4 +315,25 @@ export interface VirtualEntryList {
   entries: string[];
   format?: string | null;
   items?: VirtualEntry[];
+}
+
+export interface AccessPolicy {
+  mode: string;
+  subnets: string[];
+  applies: boolean;
+  trusted: boolean;
+  manages: boolean;
+}
+
+export interface GuestGrant {
+  id: string;
+  libraryId: string;
+  itemId?: string | null;
+  capabilities: string[];
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface GuestGrantList {
+  items: GuestGrant[];
 }

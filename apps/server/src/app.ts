@@ -9,6 +9,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import './actor.js';
 import type { ServerContext } from './context.js';
 import { sendProblem } from './http.js';
+import { admitLocal, trayOrigin } from './local-access.js';
 import { registerRoutes } from './routes.js';
 
 export interface OpenServerOptions {
@@ -18,6 +19,8 @@ export interface OpenServerOptions {
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
   loginLimit?: number;
+  /** Defaults to true. Pass false when the process is bound for the public internet. */
+  localTrust?: boolean;
 }
 
 export async function openServer(options: OpenServerOptions): Promise<{
@@ -34,6 +37,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     virtual: new VirtualProviderRegistry([new ZipProvider()]),
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
     uiDir: options.uiDir ?? null,
+    localTrust: options.localTrust !== false,
   };
   const app = buildApp(context, options.logger ?? false);
   return {
@@ -75,14 +79,28 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
   );
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
+    const origin = request.headers.origin;
+    if (trayOrigin(typeof origin === 'string' ? origin : undefined)) {
+      reply.header('access-control-allow-origin', origin);
+      reply.header('vary', 'origin');
+      reply.header(
+        'access-control-allow-headers',
+        'authorization, content-type, accept, idempotency-key, if-none-match, if-range, range',
+      );
+      reply.header('access-control-allow-methods', 'GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS');
+      if (request.method === 'OPTIONS') return reply.status(204).send();
+    }
     request.actor = null;
     const header = request.headers.authorization;
-    if (!header) return;
-    const match = /^Bearer\s+(\S+)$/.exec(header);
-    if (!match?.[1]) throw new DomainError('unauthorized', 401, 'Bearer token is required');
-    const actor = context.catalog.authenticate(hashToken(match[1]));
-    if (!actor) throw new DomainError('unauthorized', 401, 'Token is invalid or expired');
-    request.actor = actor;
+    if (header) {
+      const match = /^Bearer\s+(\S+)$/.exec(header);
+      if (!match?.[1]) throw new DomainError('unauthorized', 401, 'Bearer token is required');
+      const actor = context.catalog.authenticate(hashToken(match[1]));
+      if (!actor) throw new DomainError('unauthorized', 401, 'Token is invalid or expired');
+      request.actor = actor;
+      return;
+    }
+    request.actor = admitLocal(context, request);
   });
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof DomainError) return sendProblem(reply, error, request);

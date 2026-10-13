@@ -10,4 +10,9 @@ export interface ServerContext {
   limiter: RateLimiter;
   /** Built web assets to serve under `/ui`, or null to serve no interface. */
   uiDir: string | null;
+  /**
+   * When false, every request needs a token. Set for a server that was started
+   * facing the public internet, where the socket address is the proxy.
+   */
+  localTrust: boolean;
 }

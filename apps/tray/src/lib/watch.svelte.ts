@@ -1,4 +1,5 @@
 import { type Capabilities, ContentClient } from '@ecs/client';
+import { AccessDesk } from './access.svelte';
 
 const ORIGIN_KEY = 'ecs.tray.origin';
 export const DEFAULT_ORIGIN = 'http://127.0.0.1:7878';
@@ -7,11 +8,12 @@ export const DEFAULT_ORIGIN = 'http://127.0.0.1:7878';
  * Watches one server and nothing else.
  *
  * The tray is an API client with no storage path of its own. It does not start
- * the server, read its data directory, or hold a credential, so everything here
- * comes from the two routes that need no token.
+ * the server or read its data directory. A signed-in session, when there is
+ * one, stays in this window.
  */
 export class ServerWatch {
   origin = $state(readOrigin());
+  readonly desk = new AccessDesk(() => this.origin);
   /** Null until the first check answers, which keeps the menu from lying. */
   reachable = $state<boolean | null>(null);
   capabilities = $state<Capabilities | null>(null);
@@ -23,6 +25,7 @@ export class ServerWatch {
       await client.health();
       this.capabilities = await client.capabilities();
       this.reachable = true;
+      await this.desk.refresh();
     } catch {
       this.reachable = false;
       this.capabilities = null;
@@ -34,6 +37,7 @@ export class ServerWatch {
     this.origin = origin.replace(/\/+$/, '');
     localStorage.setItem(ORIGIN_KEY, this.origin);
     this.reachable = null;
+    this.desk.clear();
     await this.check();
   }
 
@@ -41,7 +45,12 @@ export class ServerWatch {
   get summary(): string {
     const where = hostOf(this.origin);
     if (this.reachable === null) return `Checking ${where}`;
-    return this.reachable ? `Serving on ${where}` : `No answer from ${where}`;
+    if (!this.reachable) return `No answer from ${where}`;
+    if (!this.desk.policy?.applies || this.desk.policy.mode === 'token') {
+      return `Sign-in required · ${where}`;
+    }
+    if (this.desk.policy.mode === 'subnets') return `Open to listed networks · ${where}`;
+    return `Open on the local network · ${where}`;
   }
 
   get interfaceUrl(): string {

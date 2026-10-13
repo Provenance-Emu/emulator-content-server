@@ -8,6 +8,9 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 
 ## Recent changes
 
+- The menu bar edits accounts, guest links, and who may connect. Local networks are trusted by default. This Mac can change accounts without a password. Other devices on the LAN can sync, and they cannot change accounts. `token` mode requires a login everywhere. A server started with `--public` never trusts the socket address.
+
+
 - The foundation landed as a single commit: contract, storage, access control, reference server, CLI, and generated clients.
 - This Memory Bank was seeded from `AGENTS.md`, `README.md`, `docs/architecture/`, and `docs/workstreams/`. Those documents remain authoritative; this directory is a reading aid, not a second source of truth.
 - ZIP support added `packages/storage/src/zip.ts` and `virtual-cache.ts`, two additive operations for entry content, and optional `format` and `items` fields on the entries response.
@@ -46,10 +49,11 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - A file input is right for an upload and wrong for a content folder: the first is bytes to send, the second a path the server has to resolve on a machine that may not be the one holding the browser.
 - The static mount uses a wildcard route. With one route per file discovered at startup, a rebuilt bundle 404s with its new hashed name until the server restarts.
 - The secret scan walks what git would commit rather than the whole tree, because the Rust target directory is full of `.bin` incremental output that the fixture rule rejects.
+- Choosing a save is a metadata swap. A current-revision save upload becomes the live file and the previous bytes are renamed beside it. `POST /api/v1/files/{id}/adopt` does the same for a conflict copy already on the server, so the page does not re-upload the bytes. The manifest carries `conflictOf` so a client can pair them.
+- The web page groups an item's files by kind and polls the change feed, so a save that arrived from a phone shows up. The Swift package now has the same feed, resume, and adopt calls the TypeScript engine has. App screens that render them stay in the app repositories.
+- JIT, when sideload resumes, splits by OS. iOS 26 and later blesses each 16 KB page with a debugger write, the protocol RetroArch's `lldb_jit_bless.py` and StikDebug share. Older iOS and tvOS attach `debugserver` the way SideStore and AltStore do.
 - The maintainer works on branches or worktrees and does not use pull requests here. `CONTRIBUTING.md` still describes the fork-and-pull path for outside contributors.
 
 ## Next steps
 
-In order, each its own commit: content roots, storage locations, the `roots` and `locations` CLI commands, the web UI under `/ui`, the service registrations, then the Tauri tray.
-
-Still unstarted elsewhere in `docs/workstreams/`: scanning and metadata, WebDAV compatibility, adversarial validation, and the remote-access documentation pass. App adapters belong to the Provenance, iCube, and iFly repositories.
+A registered folder can be scanned in place (`POST /api/v1/roots/{id}/scan`, `GET /api/v1/sources`). The page lists those files by system and kind. In-browser play is `docs/workstreams/web-playback.md` and stays parked until a local file is worth playing. Docker for a VM or cloud host is `docs/workstreams/container-install.md` and `compose.yaml`. Sideload stays parked.
