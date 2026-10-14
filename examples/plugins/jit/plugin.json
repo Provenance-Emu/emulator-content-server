@@ -1,0 +1,15 @@
+{
+  "id": "org.provenance-emu.jit",
+  "name": "Provenance JIT",
+  "kind": "jit",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "apps": [
+    "org.provenance-emu.provenance",
+    "org.provenance-emu.icube",
+    "org.provenance-emu.ifly"
+  ],
+  "jit": {
+    "tool": "pymobiledevice3"
+  }
+}

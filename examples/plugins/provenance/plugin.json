@@ -1,0 +1,32 @@
+{
+  "id": "org.provenance-emu.provenance.feed",
+  "name": "Provenance",
+  "kind": "feed",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "apps": ["org.provenance-emu.provenance"],
+  "feed": {
+    "identifier": "org.provenance-emu.provenance.feed",
+    "sourceURL": "https://example.invalid/provenance.json",
+    "apps": [
+      {
+        "name": "Provenance",
+        "bundleIdentifier": "org.provenance-emu.provenance",
+        "developerName": "Provenance",
+        "localizedDescription": "Replace this source with the build you ship. The download URL is a placeholder.",
+        "iconURL": "https://example.invalid/provenance.png",
+        "tintColor": "1c1c1e",
+        "versions": [
+          {
+            "version": "0.0.0",
+            "date": "2026-01-01T00:00:00Z",
+            "localizedDescription": "Placeholder. Point downloadURL at your own IPA before publishing.",
+            "downloadURL": "https://example.invalid/Provenance.ipa",
+            "size": 1,
+            "minOSVersion": "15.0"
+          }
+        ]
+      }
+    ]
+  }
+}

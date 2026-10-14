@@ -32,10 +32,11 @@
 | Desktop and menu-bar UI | Briefed with a `/ui` mount and a Tauri tray; not started |
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
-| Sideload and JIT | Allowed in this repository as a separate app; not started |
-| Desktop UI | Web client with transfers and menu-bar tray done; guest grants and audit next |
-| Sideload installer | `packages/signing` reads an IPA and plans a signature; the app and Apple sign-in are next |
-| Sync | Device attribution, keep-both save conflicts, and the TypeScript engine done; tray and web UI next |
+| Sideload and JIT | Plugin host plans feeds, zsign, and pymobiledevice3. It does not run them or mount them on `/api/v1` |
+| Desktop UI | Web client with transfers and menu-bar tray done; guest grants and audit next. The wasm player is a plugin, not a page |
+| Sideload installer | `packages/signing` reads an IPA and plans a signature. `ecs-plugins` plans zsign for a claimed bundle and does not execute it |
+| Sync | Device attribution, keep-both save conflicts, and the TypeScript engine done. Connector plugins upload through that API |
+| Plugins | Manifests, mount and HTTP connectors, AltStore feeds, player descriptors, signer and JIT plans |
 
 ## Known issues and deferred work
 

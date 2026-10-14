@@ -50,6 +50,8 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 
 ## Next steps
 
-In order, each its own commit: content roots, storage locations, the `roots` and `locations` CLI commands, the web UI under `/ui`, the service registrations, then the Tauri tray.
+Connectors, AltStore feeds, the wasm player, and JIT or signing plans are plugins in `ecs-plugins`. The content server stays the sync and REST API and does not load them. See ADR 0007 and `docs/operations/plugins.md`.
+
+Still unstarted from the earlier list: storage locations, service registration, and the tray controls that need it.
 
 Still unstarted elsewhere in `docs/workstreams/`: scanning and metadata, WebDAV compatibility, adversarial validation, and the remote-access documentation pass. App adapters belong to the Provenance, iCube, and iFly repositories.

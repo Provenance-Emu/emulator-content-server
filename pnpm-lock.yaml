@@ -39,6 +39,21 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
 
+  apps/plugins:
+    dependencies:
+      '@ecs/client':
+        specifier: workspace:*
+        version: link:../../packages/client-ts
+      '@ecs/plugins':
+        specifier: workspace:*
+        version: link:../../packages/plugins
+      '@ecs/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@ecs/signing':
+        specifier: workspace:*
+        version: link:../../packages/signing
+
   apps/server:
     dependencies:
       '@ecs/auth':
@@ -155,6 +170,8 @@ importers:
       '@ecs/protocol':
         specifier: workspace:*
         version: link:../protocol
+
+  packages/plugins: {}
 
   packages/protocol:
     dependencies:
