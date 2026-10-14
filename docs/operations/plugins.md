@@ -43,7 +43,9 @@ Mounts sync in both directions. HTTP connectors push into the library. They do n
 
 A feed plugin renders one AltStore source. Legacy `version`, `versionDate`, `downloadURL`, and `size` mirror the newest entry in `versions`, so an older client and a current one both see a build. Each plugin is its own source. Another developer publishes their apps by adding a plugin, not by editing yours.
 
-`ecs-plugins feed --out ./feeds` writes one JSON file per feed. Host that file at the `sourceURL` in the plugin. The examples use `https://example.invalid` and bundle ids `org.provenance-emu.provenance`, `org.provenance-emu.icube`, and `org.provenance-emu.ifly`. Replace the ids, the icon, and the IPA URL before you publish. Download URLs are https and do not carry credentials.
+`ecs-plugins feed --out ./feeds` writes one JSON file per feed. The examples use `https://example.invalid` and bundle ids `org.provenance-emu.provenance`, `org.provenance-emu.icube`, and `org.provenance-emu.ifly`. Replace the ids, the icon, and the IPA URL before you publish. Download URLs are https and do not carry credentials.
+
+`ecs-plugins serve` publishes those feeds on `127.0.0.1` and rewrites each `sourceURL` to the URL that was requested, which is what a client refreshes. The index is `/`. A request can only name a plugin id, so the process will not hand out `secrets.json`, a certificate, or a wasm module. `--allow-lan` binds every interface. The content server is not involved.
 
 A feed cannot list a bundle id that `apps` did not claim.
 
@@ -54,5 +56,7 @@ A player plugin names dotted system identifiers and a `.wasm` file inside the pl
 ## Signer and JIT
 
 A signer plans `zsign` for a bundle it claims. A JIT plugin plans `pymobiledevice3` for a bundle it claims. Neither plan is executed. The signer does not take a certificate password, because `zsign -p` would put it in the process list. Put `identity.p12` and the `.mobileprovision` in the plugin directory at mode `0600`. The content server never reads them.
+
+`ecs-plugins sign-plan --id <plugin> --ipa <file> --profile <file> --device <udid>` reads the IPA and the profile and prints the `zsign` arguments, then `not run`. `--password` and `-p` are refused. The certificate named by the plugin is not opened.
 
 `ecs-plugins jit-plan --id <plugin> --bundle <bundle id>` prints the commands and then `not run`.

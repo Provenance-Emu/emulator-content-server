@@ -394,3 +394,54 @@ test('doctor names a missing credential and not its value', () => {
     false,
   );
 });
+
+test('a custom connector entry is loaded from inside its directory', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-plugin-entry-'));
+  await writeFile(
+    join(dir, 'driver.mjs'),
+    `export function createConnector() {
+      return {
+        id: 'home.library.custom',
+        scheme: 'custom',
+        writable: false,
+        async list() {
+          return [{ relativePath: 'a.nes', locator: 'a.nes', size: 1, sha256: null, kind: 'rom' }];
+        },
+        async read() { return new Uint8Array([7]); },
+      };
+    }`,
+  );
+  await writeFile(
+    join(dir, 'plugin.json'),
+    JSON.stringify({
+      id: 'home.library.custom',
+      name: 'Custom',
+      kind: 'connector',
+      version: '1.0.0',
+      engine: 'ecs.plugin/1',
+      entry: 'driver.mjs',
+      connector: { scheme: 'custom' },
+    }),
+  );
+  const plugin = await loadPlugin(dir);
+  const connector = await openConnector(plugin);
+  const listed = await connector.list();
+  const file = listed[0];
+  if (!file) throw new Error('custom connector listed nothing');
+  assert.equal(file.relativePath, 'a.nes');
+  assert.equal((await connector.read(file, 0, 0))[0], 7);
+  assert.throws(
+    () =>
+      parseManifest({
+        id: 'home.library.custom',
+        name: 'Custom',
+        kind: 'connector',
+        version: '1.0.0',
+        engine: 'ecs.plugin/1',
+        entry: '../driver.mjs',
+        connector: { scheme: 'custom' },
+      }),
+    (error: PluginError) => error.code === 'invalid-manifest',
+  );
+  await rm(dir, { recursive: true, force: true });
+});

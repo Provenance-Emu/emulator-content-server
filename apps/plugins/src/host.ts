@@ -16,6 +16,8 @@ import {
   readSecrets,
   renderAltStoreSource,
 } from '@ecs/plugins';
+import { publishedFeeds, serveFeeds } from './publish.js';
+import { reviewSignerFiles } from './sign.js';
 import { syncItem } from './sync.js';
 
 export interface HostIo {
@@ -64,6 +66,8 @@ export async function run(
     if (command === 'doctor') return await doctor(directory, env, io);
     if (command === 'feed') return await feed(directory, flag(argv, '--out'), io);
     if (command === 'sync') return await sync(argv, env, directory, io);
+    if (command === 'serve') return await serve(argv, directory, io);
+    if (command === 'sign-plan') return await signPlan(argv, directory, io);
     if (command === 'jit-plan') return await jitPlan(argv, directory, io);
     throw new PluginError('unknown-command', `Unknown command ${command}`);
   } catch (error) {
@@ -161,6 +165,69 @@ async function sync(
   return report.refused.length > 0 ? 1 : 0;
 }
 
+async function serve(argv: readonly string[], directory: string, io: HostIo): Promise<number> {
+  const loaded = await loadPluginDirectory(directory);
+  for (const problem of loaded.problems) io.error(`${problem.directory}: ${problem.message}`);
+  const feeds = publishedFeeds(loaded.plugins);
+  if (feeds.length === 0) throw new PluginError('invalid-manifest', 'No feed plugins were found');
+  const port = tcpPort(flag(argv, '--port'));
+  const host = flag(argv, '--host');
+  const server = await serveFeeds(feeds, {
+    ...(port !== undefined ? { port } : {}),
+    ...(host !== undefined ? { host } : {}),
+    allowLan: argv.includes('--allow-lan'),
+  });
+  io.log(server.url);
+  for (const feed of feeds) io.log(`${feed.id}  ${server.url}/${feed.id}.json`);
+  return new Promise<number>(() => undefined);
+}
+
+function tcpPort(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  if (!/^[0-9]+$/.test(value)) throw new PluginError('listen', '--port must be a TCP port');
+  const port = Number(value);
+  if (port > 65535) throw new PluginError('listen', '--port must be a TCP port');
+  return port;
+}
+
+async function signPlan(argv: readonly string[], directory: string, io: HostIo): Promise<number> {
+  if (argv.includes('--password') || argv.includes('-p')) {
+    throw new PluginError(
+      'secret-on-command-line',
+      'A certificate password is not accepted on the command line',
+    );
+  }
+  const id = flag(argv, '--id');
+  const ipa = flag(argv, '--ipa');
+  const profile = flag(argv, '--profile');
+  const device = flag(argv, '--device');
+  if (!id || !ipa || !profile || !device) {
+    throw new PluginError(
+      'invalid-manifest',
+      'sign-plan requires --id, --ipa, --profile, and --device',
+    );
+  }
+  const plugin = await findPlugin(directory, id);
+  const signer = plugin.manifest.signer;
+  if (!signer) throw new PluginError('invalid-manifest', `${id} is not a signer`);
+  const output = flag(argv, '--out') ?? `${ipa.replace(/\.ipa$/i, '')}.signed.ipa`;
+  const reviewed = await reviewSignerFiles({
+    apps: plugin.manifest.apps,
+    ipaPath: ipa,
+    profilePath: profile,
+    deviceUdid: device,
+    output,
+    certificate: pluginFile(plugin.directory, signer.certificate),
+  });
+  if (!reviewed.ok) {
+    io.error(`${reviewed.refusal}: ${reviewed.detail}`);
+    return 1;
+  }
+  for (const step of reviewed.plan.steps) io.log(step.join(' '));
+  io.log('not run');
+  return 0;
+}
+
 async function jitPlan(argv: readonly string[], directory: string, io: HostIo): Promise<number> {
   const id = flag(argv, '--id');
   const bundle = flag(argv, '--bundle');
@@ -241,7 +308,9 @@ const HELP = [
   'ecs-plugins list --plugins <dir>',
   'ecs-plugins doctor --plugins <dir>',
   'ecs-plugins feed --plugins <dir> --out <dir>',
+  'ecs-plugins serve --plugins <dir> [--port 8480] [--allow-lan]',
   'ecs-plugins sync --plugins <dir> --id <plugin> --library <id> --item <id>',
+  'ecs-plugins sign-plan --plugins <dir> --id <plugin> --ipa <file> --profile <file> --device <udid>',
   'ecs-plugins jit-plan --plugins <dir> --id <plugin> --bundle <bundle id>',
   'The bearer token is read from ECS_TOKEN. The content server stays on ECS_SERVER.',
 ];

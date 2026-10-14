@@ -1,6 +1,7 @@
+import { readFile } from 'node:fs/promises';
 import { claims, planZsign, type ToolPlan } from '@ecs/plugins';
 import type { AppBundle, Profile } from '@ecs/signing';
-import { planSigning } from '@ecs/signing';
+import { inspectIpa, parseProfile, planSigning } from '@ecs/signing';
 
 export type SignerReview =
   | { ok: true; plan: ToolPlan }
@@ -54,4 +55,29 @@ export function reviewSigner(input: {
       profile: input.profilePath,
     }),
   };
+}
+
+/** Reads the IPA and the profile, then plans. The certificate file is not opened. */
+export async function reviewSignerFiles(input: {
+  apps: readonly string[];
+  ipaPath: string;
+  profilePath: string;
+  deviceUdid: string;
+  output: string;
+  certificate: string;
+  now?: Date;
+}): Promise<SignerReview> {
+  const bundle = await inspectIpa(input.ipaPath);
+  const profile = parseProfile(new Uint8Array(await readFile(input.profilePath)));
+  return reviewSigner({
+    apps: input.apps,
+    bundle,
+    profile,
+    deviceUdid: input.deviceUdid,
+    ipa: input.ipaPath,
+    output: input.output,
+    certificate: input.certificate,
+    profilePath: input.profilePath,
+    ...(input.now ? { now: input.now } : {}),
+  });
 }

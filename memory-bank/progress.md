@@ -36,7 +36,7 @@
 | Desktop UI | Web client with transfers and menu-bar tray done; guest grants and audit next. The wasm player is a plugin, not a page |
 | Sideload installer | `packages/signing` reads an IPA and plans a signature. `ecs-plugins` plans zsign for a claimed bundle and does not execute it |
 | Sync | Device attribution, keep-both save conflicts, and the TypeScript engine done. Connector plugins upload through that API |
-| Plugins | Manifests, mount and HTTP connectors, AltStore feeds, player descriptors, signer and JIT plans |
+| Plugins | Manifests, mount and HTTP connectors, AltStore feeds served on their own port, player descriptors, signer and JIT plans |
 
 ## Known issues and deferred work
 
