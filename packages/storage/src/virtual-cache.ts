@@ -22,6 +22,7 @@ export async function openVirtualEntry(
   containerSha256: string,
   registry: VirtualProviderRegistry,
   entryId: string,
+  cacheRoot = root,
 ): Promise<VirtualEntryBytes | null> {
   let file = blobPath(root, containerSha256);
   let id = entryId;
@@ -42,7 +43,7 @@ export async function openVirtualEntry(
     }
     const absolute = prefix === '' ? resolution.entryId : `${prefix}.${resolution.entryId}`;
     const expanded = await expand(
-      root,
+      cacheRoot,
       containerSha256,
       registry,
       format,
@@ -72,10 +73,11 @@ export async function listVirtualEntries(
   containerSha256: string,
   registry: VirtualProviderRegistry,
   within?: string,
+  cacheRoot = root,
 ): Promise<{ format: string; entries: VirtualEntry[] } | null> {
   const container = blobPath(root, containerSha256);
   if (within === undefined) return registry.inspect(container);
-  const bytes = await openVirtualEntry(root, containerSha256, registry, within);
+  const bytes = await openVirtualEntry(root, containerSha256, registry, within, cacheRoot);
   if (!bytes) return null;
   const inspected = await registry.inspect(bytes.path, {
     offset: bytes.offset,

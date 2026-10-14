@@ -32,6 +32,13 @@ export interface ChangeRecord {
   recordedAt: string;
 }
 
+export interface StorageLocationRecord {
+  id: string;
+  label: string;
+  path: string;
+  createdAt: string;
+}
+
 export interface UploadRecord {
   id: string;
   userId: string | null;
@@ -57,6 +64,16 @@ const DEFAULT_LIMITS: CatalogLimits = {
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function assertLocationLabel(label: string): void {
+  if (label.trim() !== label || label.length < 1 || label.length > 80 || /[\\/]/.test(label)) {
+    throw new DomainError('invalid-location', 400, 'A location label must be 1-80 characters');
+  }
+}
+
+function mapStorageLocation(row: StorageLocationRow): StorageLocationRecord {
+  return { id: row.id, label: row.label, path: row.path, createdAt: row.created_at };
 }
 
 function futureIso(ms: number): string {
@@ -92,8 +109,24 @@ export class CatalogDatabase {
   }
 
   blobHashes(): string[] {
-    const rows = this.db.prepare('SELECT sha256 FROM blobs').all() as Array<{ sha256: string }>;
-    return rows.map((row) => row.sha256);
+    return this.blobPlacements().map((blob) => blob.sha256);
+  }
+
+  blobPlacements(): { sha256: string; locationId: string | null }[] {
+    const rows = this.db.prepare('SELECT sha256, location_id FROM blobs').all() as Array<{
+      sha256: string;
+      location_id: string | null;
+    }>;
+    return rows.map((row) => ({ sha256: row.sha256, locationId: row.location_id }));
+  }
+
+  blobRecord(sha256: string): { sha256: string; locationId: string | null } | null {
+    const row = this.one<{ sha256: string; location_id: string | null }>(
+      'SELECT sha256, location_id FROM blobs WHERE sha256 = ?',
+      sha256,
+    );
+    if (!row) return null;
+    return { sha256: row.sha256, locationId: row.location_id };
   }
 
   ensureServer(displayName: string): {
@@ -423,6 +456,103 @@ export class CatalogDatabase {
     });
   }
 
+  createStorageLocation(input: {
+    path: string;
+    label: string;
+    actorId: string;
+  }): StorageLocationRecord {
+    assertLocationLabel(input.label);
+    const createdAt = nowIso();
+    const id = randomUUID();
+    this.transaction(() => {
+      if (this.storageLocationAt(input.path)) {
+        throw new DomainError('conflict', 409, 'That folder is already registered');
+      }
+      if (this.one('SELECT id FROM storage_locations WHERE label = ?', input.label)) {
+        throw new DomainError('conflict', 409, 'That label is already used');
+      }
+      this.db
+        .prepare('INSERT INTO storage_locations (id, label, path, created_at) VALUES (?, ?, ?, ?)')
+        .run(id, input.label, input.path, createdAt);
+      this.insertAudit(input.actorId, 'create-storage-location', 'storage-location', id, {
+        path: input.path,
+        label: input.label,
+      });
+    });
+    return { id, path: input.path, label: input.label, createdAt };
+  }
+
+  listStorageLocations(): StorageLocationRecord[] {
+    const rows = this.db
+      .prepare('SELECT id, label, path, created_at FROM storage_locations ORDER BY created_at')
+      .all() as StorageLocationRow[];
+    return rows.map(mapStorageLocation);
+  }
+
+  getStorageLocation(id: string): StorageLocationRecord | null {
+    const row = this.one<StorageLocationRow>(
+      'SELECT id, label, path, created_at FROM storage_locations WHERE id = ?',
+      id,
+    );
+    return row ? mapStorageLocation(row) : null;
+  }
+
+  /**
+   * Where new bytes are written. Null means the data directory, which is always
+   * present and is not itself a location row.
+   */
+  writeLocation(): StorageLocationRecord | null {
+    const row = this.one<{ write_location_id: string | null }>(
+      'SELECT write_location_id FROM server_state WHERE id = 1',
+    );
+    if (!row?.write_location_id) return null;
+    return this.getStorageLocation(row.write_location_id);
+  }
+
+  setWriteLocation(locationId: string | null, actorId: string): void {
+    this.transaction(() => {
+      if (locationId !== null && !this.getStorageLocation(locationId)) {
+        throw new DomainError('not-found', 404, 'Storage location not found');
+      }
+      const result = this.db
+        .prepare('UPDATE server_state SET write_location_id = ? WHERE id = 1')
+        .run(locationId);
+      if (result.changes === 0) {
+        throw new DomainError('uninitialized', 500, 'Server state is missing');
+      }
+      this.insertAudit(actorId, 'set-write-location', 'storage-location', locationId, {});
+    });
+  }
+
+  deleteStorageLocation(id: string, actorId: string): void {
+    this.transaction(() => {
+      const existing = this.getStorageLocation(id);
+      if (!existing) throw new DomainError('not-found', 404, 'Storage location not found');
+      if (this.writeLocation()?.id === id) {
+        throw new DomainError('conflict', 409, 'That location is where new bytes are written');
+      }
+      const referenced = this.one<{ n: number }>(
+        'SELECT COUNT(*) AS n FROM blobs WHERE location_id = ?',
+        id,
+      );
+      if (Number(referenced?.n ?? 0) > 0) {
+        throw new DomainError('conflict', 409, 'That location still holds blobs');
+      }
+      this.db.prepare('DELETE FROM storage_locations WHERE id = ?').run(id);
+      this.insertAudit(actorId, 'delete-storage-location', 'storage-location', id, {
+        path: existing.path,
+      });
+    });
+  }
+
+  private storageLocationAt(path: string): StorageLocationRecord | null {
+    const row = this.one<StorageLocationRow>(
+      'SELECT id, label, path, created_at FROM storage_locations WHERE path = ?',
+      path,
+    );
+    return row ? mapStorageLocation(row) : null;
+  }
+
   private contentRootAt(path: string): ContentRootRecord | null {
     const row = this.one<ContentRootRow>(
       'SELECT id, path, label, library_id, created_at FROM content_roots WHERE path = ?',
@@ -719,6 +849,7 @@ export class CatalogDatabase {
     shareable: boolean;
     actorId: string | null;
     deviceId?: string | null;
+    locationId: string | null;
   }): AssetRecord {
     return this.transaction(() => {
       const upload = this.getUpload(input.uploadId);
@@ -741,9 +872,10 @@ export class CatalogDatabase {
       const timestamp = nowIso();
       this.db
         .prepare(
-          'INSERT INTO blobs (sha256, size, md5, crc, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(sha256) DO NOTHING',
+          `INSERT INTO blobs (sha256, size, md5, crc, created_at, location_id)
+           VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(sha256) DO NOTHING`,
         )
-        .run(input.sha256, input.size, input.md5, input.crc, timestamp);
+        .run(input.sha256, input.size, input.md5, input.crc, timestamp, input.locationId);
       const assetId = randomUUID();
       const placement = this.placeUpload(input, assetId, timestamp);
       this.db
@@ -1210,6 +1342,13 @@ export class CatalogDatabase {
     return this.db.prepare(sql).get(...params) as T | undefined;
   }
 }
+
+type StorageLocationRow = {
+  id: string;
+  label: string;
+  path: string;
+  created_at: string;
+};
 
 interface ItemRow {
   id: string;

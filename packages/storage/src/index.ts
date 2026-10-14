@@ -16,12 +16,13 @@ export {
   startingPlaces,
 } from './browse.js';
 export { type ContentHash, crc32Hex, hashFile } from './hash.js';
-export { ensureLayout } from './layout.js';
+export { ensureBlobStore, ensureLayout, locationOnline } from './layout.js';
 export {
   blobPath,
   pathsOverlap,
   resolveContentRoot,
   resolveInside,
+  resolveStorageLocation,
   stagingFile,
   virtualCachePath,
 } from './paths.js';

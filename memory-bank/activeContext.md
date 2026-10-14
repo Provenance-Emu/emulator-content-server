@@ -52,6 +52,8 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 
 Connectors, AltStore feeds, the wasm player, and JIT or signing plans are plugins in `ecs-plugins`. The content server stays the sync and REST API and does not load them. See ADR 0007 and `docs/operations/plugins.md`.
 
-Still unstarted from the earlier list: storage locations, service registration, and the tray controls that need it.
+Storage locations are registered directories. The data directory stays the primary store, new bytes go to the location chosen with `ecs locations use`, and an absent location is offline rather than a missing blob.
+
+Still unstarted from the earlier list: service registration, and the tray controls that need it. The web UI does not manage storage locations yet.
 
 Still unstarted elsewhere in `docs/workstreams/`: scanning and metadata, WebDAV compatibility, adversarial validation, and the remote-access documentation pass. App adapters belong to the Provenance, iCube, and iFly repositories.

@@ -92,6 +92,8 @@ test('a database left at an earlier version is upgraded and keeps its rows', asy
     try {
       assert.equal(upgraded.integrity(), 'ok');
       assert.deepEqual(upgraded.listContentRoots(), [], 'the newer table exists after the upgrade');
+      assert.deepEqual(upgraded.listStorageLocations(), []);
+      assert.equal(upgraded.writeLocation(), null);
       const saved = upgraded.createContentRoot({
         path: '/not/read/by/this/test',
         label: 'Shelf',

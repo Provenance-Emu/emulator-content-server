@@ -70,8 +70,13 @@ export async function truncateStaging(filePath: string, size: number): Promise<v
   await truncate(filePath, size);
 }
 
-export async function placeBlob(root: string, sourcePath: string): Promise<PlacedBlob> {
-  const hashes = await hashFile(sourcePath);
+export async function placeBlob(
+  root: string,
+  sourcePath: string,
+  known?: ContentHash,
+): Promise<PlacedBlob> {
+  // A caller that just hashed this file passes the digest so the bytes are not read twice.
+  const hashes = known ?? (await hashFile(sourcePath));
   const destination = blobPath(root, hashes.sha256);
   await mkdir(dirname(destination), { recursive: true });
   try {
