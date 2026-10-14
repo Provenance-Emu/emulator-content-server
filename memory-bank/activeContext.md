@@ -62,4 +62,6 @@ Storage locations are registered directories. The data directory stays the prima
 
 A registered folder can be scanned in place (`POST /api/v1/roots/{id}/scan`, `GET /api/v1/sources`). The page lists those files by system and kind. In-browser play is `docs/workstreams/web-playback.md` and stays parked until a local file is worth playing. Docker for a VM or cloud host is `docs/workstreams/container-install.md` and `compose.yaml`.
 
-Still unstarted: service registration, the tray controls that need it, and storage locations in the web UI. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.
+`ecs service install` registers a per-user login agent. The registration stores the data directory and the listen flags, and a daemon writes a rotating log under that directory. The tray still has no start or stop control.
+
+Still unstarted: the tray controls for that service, and storage locations in the web UI. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.
