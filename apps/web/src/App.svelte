@@ -5,6 +5,8 @@
     type ContentRoot,
     type SessionResponse,
   } from '@ecs/client';
+  import Audit from './Audit.svelte';
+  import Grants from './Grants.svelte';
   import Libraries from './Libraries.svelte';
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
   import { clearSession, loadSession, saveSession } from './lib/session';
@@ -24,6 +26,8 @@
   /** Null when this account is not the owner, which hides the owner panels. */
   let roots = $state<ContentRoot[] | null>(null);
   let failure = $state<string | null>(null);
+  /** Bumped when a grant changes, so the audit panel reloads. */
+  let noted = $state(0);
 
   async function poll(): Promise<void> {
     try {
@@ -99,7 +103,7 @@
   <div class="row">
     <div>
       <h1>Emulator Content Server</h1>
-      <p class="dim">Libraries, folders, and status for this machine.</p>
+      <p class="dim">Libraries, folders, grants, and status for this machine.</p>
     </div>
     {#if signedIn && loadSession()}
       <button type="button" onclick={signOut}>Sign out</button>
@@ -115,6 +119,8 @@
     <Libraries {client} />
     {#if roots}
       <Roots {client} {roots} />
+      <Grants {client} onchange={() => (noted += 1)} />
+      <Audit {client} {noted} />
     {/if}
   {:else if settled}
     <Login {client} onsignin={remember} setup={capabilities?.bootstrapped === false} />

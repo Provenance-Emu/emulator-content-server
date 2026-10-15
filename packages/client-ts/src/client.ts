@@ -1,6 +1,7 @@
 import type {
   AccessPolicy,
   Asset,
+  AuditList,
   Capabilities,
   ChangeList,
   ContentRoot,
@@ -192,8 +193,10 @@ export class ContentClient {
     if (!response.ok) throw await failure(response);
   }
 
-  guestGrants(): Promise<GuestGrantList> {
-    return this.getJson('/api/v1/guest-grants');
+  /** Grants without their tokens. The secret is only present on the create response. */
+  guestGrants(limit?: number): Promise<GuestGrantList> {
+    const search = limit !== undefined ? `?limit=${limit}` : '';
+    return this.getJson(`/api/v1/guest-grants${search}`);
   }
 
   createGuestGrant(draft: GuestGrantDraft): Promise<GuestGrantCreated> {
@@ -273,6 +276,12 @@ export class ContentClient {
   /** Files found by a scan. The response names them and does not include a filesystem path. */
   sources(): Promise<SourceFileList> {
     return this.getJson('/api/v1/sources');
+  }
+
+  /** Owner audit. Detail JSON, which is where a secret could hide, is not returned. */
+  audit(limit?: number): Promise<AuditList> {
+    const search = limit !== undefined ? `?limit=${limit}` : '';
+    return this.getJson(`/api/v1/audit${search}`);
   }
 
   manifest(itemId: string): Promise<Manifest> {
