@@ -27,10 +27,19 @@ export {
   virtualCachePath,
 } from './paths.js';
 export { FileContentReader } from './reader.js';
+export { inferSource, inspectRoot, type ScannedFile } from './scan.js';
 export { DEFAULT_MATERIALIZE_QUOTA, VirtualProviderRegistry } from './virtual.js';
 export {
   listVirtualEntries,
   openVirtualEntry,
   type VirtualEntryBytes,
 } from './virtual-cache.js';
+export {
+  type Availability,
+  classifyMedium,
+  fileAvailability,
+  type Medium,
+  probeFile,
+  probeRoot,
+} from './volume.js';
 export { ZipProvider } from './zip.js';

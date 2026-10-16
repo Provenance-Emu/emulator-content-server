@@ -18,6 +18,9 @@ function walk(directory) {
 }
 
 walk(root);
+for (const entry of readdirSync(join(root, 'scripts'))) {
+  if (entry.endsWith('.test.mjs')) files.push(join(root, 'scripts', entry));
+}
 if (files.length === 0) {
   console.error('No compiled tests were found');
   process.exit(1);

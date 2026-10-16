@@ -21,12 +21,17 @@ export interface Capabilities {
     maxUploadBytes: number;
     maxPageSize: number;
   };
-  authentication: Array<'bearer' | 'bootstrap'>;
+  authentication: Array<'bearer' | 'bootstrap' | 'lan'>;
+  /** Present once the server can say whether an owner account exists. */
+  bootstrapped?: boolean;
 }
 
 export function buildCapabilities(input: {
   maxUploadBytes: number;
   virtualFormats?: string[];
+  bootstrapped?: boolean;
+  /** True when this process will admit the local network without a token. */
+  lanOpen?: boolean;
 }): Capabilities {
   return {
     protocol: { major: API_MAJOR, minor: API_MINOR, path: API_PATH },
@@ -45,6 +50,7 @@ export function buildCapabilities(input: {
       maxUploadBytes: input.maxUploadBytes,
       maxPageSize: 100,
     },
-    authentication: ['bearer', 'bootstrap'],
+    authentication: input.lanOpen ? ['bearer', 'bootstrap', 'lan'] : ['bearer', 'bootstrap'],
+    ...(input.bootstrapped === undefined ? {} : { bootstrapped: input.bootstrapped }),
   };
 }

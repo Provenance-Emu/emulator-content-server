@@ -5,8 +5,15 @@
   let {
     client,
     onsignin,
-  }: { client: ContentClient; onsignin: (session: SessionResponse) => void } = $props();
+    setup = false,
+  }: {
+    client: ContentClient;
+    onsignin: (session: SessionResponse) => void;
+    /** True when the server has no owner yet and is asking for its bootstrap token. */
+    setup?: boolean;
+  } = $props();
 
+  let token = $state('');
   let username = $state('');
   let password = $state('');
   let working = $state(false);
@@ -17,8 +24,11 @@
     working = true;
     failure = null;
     try {
-      const session = await client.login(username, password);
+      const session = setup
+        ? await client.bootstrap(token, username, password)
+        : await client.login(username, password);
       password = '';
+      token = '';
       onsignin(session);
     } catch (error) {
       failure = explain(error);
@@ -29,19 +39,40 @@
 </script>
 
 <section>
-  <h2>Sign in</h2>
+  <h2>{setup ? 'Create the owner' : 'Sign in'}</h2>
+  {#if setup}
+    <p class="dim">
+      The token was printed when the server started and saved as bootstrap.token in the data
+      directory.
+    </p>
+  {/if}
   <form onsubmit={submit}>
+    {#if setup}
+      <label>
+        Bootstrap token
+        <input bind:value={token} autocomplete="off" required />
+      </label>
+    {/if}
     <label>
       Username
       <input bind:value={username} autocomplete="username" required />
     </label>
     <label>
       Password
-      <input type="password" bind:value={password} autocomplete="current-password" required />
+      <input
+        type="password"
+        bind:value={password}
+        autocomplete={setup ? 'new-password' : 'current-password'}
+        required
+      />
     </label>
-    <button type="submit" disabled={working}>{working ? 'Signing in' : 'Sign in'}</button>
+    <button type="submit" disabled={working}>
+      {working ? 'Working' : setup ? 'Create owner' : 'Sign in'}
+    </button>
   </form>
-  <p class="dim">This browser stays signed in until the session expires or you sign out.</p>
+  {#if !setup}
+    <p class="dim">This browser stays signed in until the session expires or you sign out.</p>
+  {/if}
   {#if failure}
     <p class="problem">{failure}</p>
   {/if}

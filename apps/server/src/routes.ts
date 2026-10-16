@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { hashPassword, hashToken, issueToken, verifyPassword } from '@ecs/auth';
+import { canonicalCidr, hashPassword, hashToken, issueToken, verifyPassword } from '@ecs/auth';
 import type { CatalogDatabase, UploadRecord } from '@ecs/database';
-import { type Actor, DomainError } from '@ecs/domain';
+import { type Actor, DomainError, type SourceAvailability } from '@ecs/domain';
 import {
   assertSafeRelativePath,
   buildCapabilities,
@@ -36,13 +36,17 @@ import {
   createStagingFile,
   FileContentReader,
   hashFile,
+  inspectRoot,
   listFolders,
   listVirtualEntries,
   locationOnline,
   openVirtualEntry,
   placeBlob,
+  probeFile,
+  probeRoot,
   removeStaging,
   resolveContentRoot,
+  resolveInside,
   truncateStaging,
   writeAtOffset,
 } from '@ecs/storage';
@@ -62,6 +66,7 @@ import {
   stringList,
   withIdempotency,
 } from './http.js';
+import { accessView } from './local-access.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
@@ -115,12 +120,29 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return reply.type('application/yaml').send(readFileSync(openApiFile(), 'utf8'));
   });
 
-  app.get('/api/v1/capabilities', async () =>
-    buildCapabilities({
+  app.get('/api/v1/capabilities', async () => {
+    const policy = catalog.accessPolicy();
+    return buildCapabilities({
       maxUploadBytes: catalog.limits.maxUploadBytes,
       virtualFormats: context.virtual.formats(),
-    }),
-  );
+      bootstrapped: catalog.server().bootstrapped,
+      lanOpen: context.localTrust && policy.mode !== 'token',
+    });
+  });
+
+  app.get('/api/v1/access', async (request) => accessView(context, request));
+
+  app.put('/api/v1/access', async (request) => {
+    const actor = requireOwner(request, 'Only the server owner can change who may connect');
+    const body = jsonObject(request.body);
+    const mode = requiredString(body, 'mode');
+    if (mode !== 'lan' && mode !== 'token' && mode !== 'subnets') {
+      throw new DomainError('invalid-body', 400, 'Access mode must be lan, token, or subnets');
+    }
+    const subnets = normalizeSubnets(body.subnets ?? []);
+    catalog.setAccessPolicy({ mode, subnets, actorId: actor.userId });
+    return accessView(context, request);
+  });
 
   app.get('/api/v1/systems', async () => ({ systems: PROVENANCE_SYSTEMS, closed: false }));
 
@@ -185,6 +207,11 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return reply.status(204).send();
   });
 
+  app.get('/api/v1/users', async (request) => {
+    requireOwner(request, 'Only the server owner can list users');
+    return { items: catalog.listUsers() };
+  });
+
   app.post('/api/v1/users', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can create users');
     const body = jsonObject(request.body);
@@ -200,14 +227,36 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
           usernameError ?? passwordError ?? 'Invalid account',
         );
       }
-      const user = catalog.createUser({
-        username,
-        passwordHash: hashPassword(password),
-        actorId: actor.userId,
-      });
+      let user: ReturnType<CatalogDatabase['createUser']>;
+      try {
+        user = catalog.createUser({
+          username,
+          passwordHash: hashPassword(password),
+          actorId: actor.userId,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('UNIQUE')) {
+          throw new DomainError('conflict', 409, 'That username is already in use');
+        }
+        throw error;
+      }
       return { status: 201, body: user };
     });
     return reply.status(result.status).send(result.body);
+  });
+
+  app.patch('/api/v1/users/:userId', async (request, reply) => {
+    const actor = requireOwner(request, 'Only the server owner can change a password');
+    const { userId } = request.params as { userId: string };
+    const password = requiredString(jsonObject(request.body), 'password');
+    const passwordError = validatePassword(password);
+    if (passwordError) throw new DomainError('invalid-body', 400, passwordError);
+    const header = request.headers.authorization;
+    const keep = header ? hashToken(bearer(request)) : null;
+    if (!catalog.setPassword(userId, hashPassword(password), actor.userId, keep)) {
+      throw new DomainError('not-found', 404, 'User not found');
+    }
+    return reply.status(204).send();
   });
 
   app.get('/api/v1/libraries', async (request) => {
@@ -217,7 +266,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       const library = catalog.getLibrary(actor.libraryId);
       return { items: library ? [library] : [], nextCursor: null };
     }
-    return { items: catalog.listLibraries(actor.userId, actor.isOwner), nextCursor: null };
+    const seeAll = actor.isOwner || actor.localTrust === true;
+    return { items: catalog.listLibraries(actor.userId, seeAll), nextCursor: null };
   });
 
   app.post('/api/v1/libraries', async (request, reply) => {
@@ -358,6 +408,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
           size: file.size,
           required: REQUIRED_FILE_KINDS.has(file.kind),
           contentPath: `/api/v1/files/${file.id}/content`,
+          conflictOf: file.conflictOf,
         })),
     };
   });
@@ -527,6 +578,16 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return reply.status(204).send();
   });
 
+  app.post('/api/v1/files/:assetId/adopt', async (request) => {
+    const actor = requireActor(request);
+    const { asset } = requireVisibleAsset(context, request, 'write');
+    return catalog.adoptConflict({
+      assetId: asset.id,
+      actorId: actor.kind === 'user' ? actor.userId : actor.grantId,
+      deviceId: deviceOf(actor),
+    });
+  });
+
   app.route({
     method: ['GET', 'HEAD'],
     url: '/api/v1/files/:assetId/content',
@@ -575,6 +636,11 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       excludeDeviceId: queryString(request, 'excludeOwnDevice') === '1' ? deviceOf(actor) : null,
     });
     return { changes: page.changes, nextCursor: String(page.nextCursor) };
+  });
+
+  app.get('/api/v1/guest-grants', async (request) => {
+    requireOwner(request, 'Only the server owner can list guest links');
+    return { items: catalog.listGuestGrants() };
   });
 
   app.post('/api/v1/guest-grants', async (request, reply) => {
@@ -707,6 +773,56 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     reply.code(204);
   });
 
+  app.post('/api/v1/roots/:rootId/scan', async (request) => {
+    const actor = requireUser(request, 'read');
+    const { rootId } = request.params as { rootId: string };
+    const root = requireVisibleRoot(catalog, actor, rootId);
+    return scanRoot(catalog, root, actor.userId);
+  });
+
+  app.get('/api/v1/sources', async (request) => {
+    const actor = requireActor(request);
+    if (actor.kind === 'user' && !actor.scopes.includes('read')) {
+      throw new DomainError('forbidden', 403, 'This token cannot read');
+    }
+    const items = [];
+    for (const root of catalog.listContentRoots()) {
+      if (!canSeeRoot(actor, root.libraryId, catalog)) continue;
+      const probe = await probeRoot(root.path);
+      if (!probe.online) catalog.markRootOffline(root.id);
+      for (const source of catalog.listSources(root.id)) {
+        if (!canSeeSource(actor, source.libraryId, source.kind)) continue;
+        let availability: SourceAvailability = probe.online ? source.availability : 'offline';
+        let size = source.size;
+        if (probe.online) {
+          const live = await probeFile(join(root.path, source.relativePath), probe.medium, true);
+          availability = live.availability;
+          size = live.size;
+          catalog.updateSourcePresence(source.id, live);
+        }
+        items.push({
+          id: source.id,
+          rootId: source.rootId,
+          libraryId: source.libraryId,
+          name: source.displayName,
+          kind: source.kind,
+          size,
+          systemId: source.systemId,
+          availability,
+          medium: probe.medium,
+          contentPath: `/api/v1/sources/${source.id}/content`,
+        });
+      }
+    }
+    return { items };
+  });
+
+  app.route({
+    method: ['GET', 'HEAD'],
+    url: '/api/v1/sources/:sourceId/content',
+    handler: async (request, reply) => sendSourceContent(context, request, reply),
+  });
+
   app.get('/api/v1/audit', async (request) => {
     requireOwner(request, 'Only the server owner can read the audit log');
     return { events: catalog.listAudit(pageLimit(request)) };
@@ -734,6 +850,25 @@ function requireUser(request: FastifyRequest, scope: ItemPermission): Actor & { 
  */
 function deviceOf(actor: Actor): string | null {
   return actor.kind === 'user' ? actor.deviceId : null;
+}
+
+function normalizeSubnets(value: unknown): string[] {
+  const listed = stringList(value);
+  if (listed.length > 32) {
+    throw new DomainError('invalid-body', 400, 'At most 32 subnets can be named');
+  }
+  const canonical = listed.map((item) => {
+    const cidr = canonicalCidr(item.trim());
+    if (!cidr) {
+      throw new DomainError(
+        'invalid-body',
+        400,
+        'A subnet must be a network such as 192.168.1.0/24, and it cannot be the whole internet',
+      );
+    }
+    return cidr;
+  });
+  return [...new Set(canonical)];
 }
 
 function requireOwner(request: FastifyRequest, message: string): Actor & { kind: 'user' } {
@@ -853,6 +988,98 @@ function asStream(body: unknown): Readable {
   if (body instanceof Readable) return body;
   if (Buffer.isBuffer(body)) return Readable.from(body);
   throw new DomainError('invalid-body', 400, 'Expected an octet stream');
+}
+
+function requireVisibleRoot(
+  catalog: CatalogDatabase,
+  actor: Actor & { kind: 'user' },
+  rootId: string,
+) {
+  const root = catalog.getContentRoot(rootId);
+  if (!root || !canSeeRoot(actor, root.libraryId, catalog)) {
+    throw new DomainError('not-found', 404, 'Content root not found');
+  }
+  return root;
+}
+
+async function scanRoot(
+  catalog: CatalogDatabase,
+  root: { id: string; path: string },
+  actorId: string,
+) {
+  const inspected = await inspectRoot(root.path);
+  const count = catalog.applyInspection({
+    rootId: root.id,
+    actorId,
+    online: inspected.online,
+    files: inspected.files,
+  });
+  return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
+}
+
+function canSeeRoot(actor: Actor, libraryId: string | null, catalog: CatalogDatabase): boolean {
+  if (actor.kind === 'guest') return libraryId === actor.libraryId;
+  if (actor.isOwner || actor.localTrust === true) return true;
+  if (libraryId === null) return false;
+  return catalog.visibleLibraryIds(actor).includes(libraryId);
+}
+
+function canSeeSource(actor: Actor, libraryId: string | null, kind: string): boolean {
+  if (actor.kind !== 'guest') return true;
+  if (libraryId !== actor.libraryId) return false;
+  const parsed = validateAssetKind(kind);
+  return !(
+    parsed &&
+    isRestrictedAssetKind(parsed) &&
+    !actor.capabilities.includes('share_restricted')
+  );
+}
+
+async function sendSourceContent(
+  context: ServerContext,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<FastifyReply> {
+  const actor = requireActor(request);
+  if (actor.kind === 'user' && !actor.scopes.includes('read')) {
+    throw new DomainError('forbidden', 403, 'This token cannot read');
+  }
+  const { sourceId } = request.params as { sourceId: string };
+  const source = context.catalog.getSource(sourceId);
+  if (!source || !canSeeSource(actor, source.libraryId, source.kind)) {
+    throw new DomainError('not-found', 404, 'Source file not found');
+  }
+  if (!canSeeRoot(actor, source.libraryId, context.catalog)) {
+    throw new DomainError('not-found', 404, 'Source file not found');
+  }
+  const root = context.catalog.getContentRoot(source.rootId);
+  if (!root) throw new DomainError('not-found', 404, 'Source file not found');
+  const probe = await probeRoot(root.path);
+  if (!probe.online) {
+    context.catalog.markRootOffline(root.id);
+    throw new DomainError('source-offline', 503, 'That disk is not connected');
+  }
+  let full: string;
+  try {
+    full = await resolveInside(root.path, source.relativePath);
+  } catch {
+    throw new DomainError('not-found', 404, 'Source file not found');
+  }
+  const live = await probeFile(full, probe.medium, true);
+  context.catalog.updateSourcePresence(source.id, live);
+  if (live.availability === 'evicted') {
+    throw new DomainError('source-evicted', 409, 'That file is only a placeholder on this machine');
+  }
+  if (live.availability === 'offline') {
+    throw new DomainError('source-offline', 503, 'That disk is not connected');
+  }
+  const etag = strongEtag(`source-${source.id}-${live.size}`);
+  reply.header('accept-ranges', 'bytes');
+  reply.header('etag', etag);
+  if (etagMatches(headerString(request, 'if-none-match'), etag)) {
+    return reply.status(304).send();
+  }
+  return sendRange(request, reply, { path: full, offset: 0, size: live.size, etag });
 }
 
 async function sendContent(

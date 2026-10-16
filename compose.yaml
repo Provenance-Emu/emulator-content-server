@@ -1,0 +1,18 @@
+# Publishes on the host's loopback. A port published on every interface is reachable
+# as the Docker bridge address, which the default LAN rule would trust. For a cloud
+# VM, switch access to token and start with --public --tls-terminated behind TLS.
+services:
+  server:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "127.0.0.1:8473:8473"
+    environment:
+      ECS_ALLOW_LAN: "1"
+    volumes:
+      - ecs-data:/data
+    restart: unless-stopped
+
+volumes:
+  ecs-data:

@@ -16,6 +16,7 @@ import {
   listRoots,
   removeLocation,
   removeRoot,
+  scanRoots,
   useLocation,
 } from './lifecycle.js';
 
@@ -51,6 +52,14 @@ async function main(): Promise<void> {
   }
   if (command === 'locations') {
     await locations(dataDir);
+    return;
+  }
+  if (command === 'scan') {
+    const results = await scanRoots(dataDir, value('--id') ?? null);
+    for (const result of results) {
+      const state = result.online ? result.medium : 'offline';
+      console.log(`${result.label}  ${state}  ${result.count}`);
+    }
     return;
   }
   if (command === 'serve') {
@@ -137,6 +146,9 @@ async function serve(dataDir: string): Promise<void> {
     limits: limitsFromEnv(process.env),
     logger: true,
     uiDir,
+    // A public bind sits behind a proxy on loopback, so the socket address
+    // cannot decide who is local.
+    localTrust: !has('--public'),
   });
   assertListenPolicy({
     host,
@@ -216,7 +228,8 @@ ecs locations list --data ./content-data
 ecs locations add --data ./content-data --path /mnt/library --label Library
 ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
-ecs locations remove --data ./content-data --id <locationId>`);
+ecs locations remove --data ./content-data --id <locationId>
+ecs scan --data ./content-data [--id <rootId>]`);
 }
 
 main().catch((error: unknown) => {

@@ -6,6 +6,7 @@ import {
   blobPath,
   ensureBlobStore,
   ensureLayout,
+  inspectRoot,
   locationOnline,
   resolveContentRoot,
   resolveStorageLocation,
@@ -236,6 +237,38 @@ export function useLocation(dataDir: string, id: string | null): void {
 
 export function removeLocation(dataDir: string, id: string): void {
   withCatalog(dataDir, (catalog) => catalog.deleteStorageLocation(id, CLI_ACTOR));
+}
+
+export async function scanRoots(
+  dataDir: string,
+  rootId: string | null,
+): Promise<Array<{ label: string; medium: string; online: boolean; count: number }>> {
+  const catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'));
+  try {
+    const roots = catalog
+      .listContentRoots()
+      .filter((root) => rootId === null || root.id === rootId);
+    if (rootId !== null && roots.length === 0) throw new Error('Content root not found');
+    const results = [];
+    for (const root of roots) {
+      const inspected = await inspectRoot(root.path);
+      const count = catalog.applyInspection({
+        rootId: root.id,
+        actorId: CLI_ACTOR,
+        online: inspected.online,
+        files: inspected.files,
+      });
+      results.push({
+        label: root.label,
+        medium: inspected.medium,
+        online: inspected.online,
+        count,
+      });
+    }
+    return results;
+  } finally {
+    catalog.close();
+  }
 }
 
 function withCatalog<T>(dataDir: string, use: (catalog: CatalogDatabase) => T): T {

@@ -77,10 +77,14 @@
 
   async function restore(): Promise<void> {
     const stored = loadSession();
-    // A stored token may have been revoked or the server may have been rebuilt,
-    // so it has to be tried before the page claims to be signed in.
+    // A stored token may have been revoked. If it was, try again with none: this
+    // network may be allowed in without one.
     if (stored) {
       client.setToken(stored.token);
+      await adopt();
+    }
+    if (!signedIn) {
+      client.setToken(undefined);
       await adopt();
     }
     settled = true;
@@ -97,7 +101,7 @@
       <h1>Emulator Content Server</h1>
       <p class="dim">Libraries, folders, and status for this machine.</p>
     </div>
-    {#if signedIn}
+    {#if signedIn && loadSession()}
       <button type="button" onclick={signOut}>Sign out</button>
     {/if}
   </div>
@@ -105,12 +109,15 @@
   <Status {capabilities} {reachable} />
 
   {#if signedIn}
+    {#if !loadSession()}
+      <p class="dim">This network can use the server without a password.</p>
+    {/if}
     <Libraries {client} />
     {#if roots}
       <Roots {client} {roots} />
     {/if}
   {:else if settled}
-    <Login {client} onsignin={remember} />
+    <Login {client} onsignin={remember} setup={capabilities?.bootstrapped === false} />
   {/if}
 
   {#if failure && !signedIn}

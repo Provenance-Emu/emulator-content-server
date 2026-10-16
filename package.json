@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -b",
+    "dev": "node scripts/dev.mjs",
     "ecs": "pnpm build && node apps/cli/dist/src/main.js",
     "typecheck": "tsc -b --pretty false",
     "ui": "pnpm --filter @ecs/web build",
@@ -15,8 +16,8 @@
     "tray": "pnpm --filter @ecs/tray tauri build",
     "tray-dev": "pnpm --filter @ecs/tray tauri dev",
     "test": "pnpm build && node --disable-warning=ExperimentalWarning scripts/run-tests.mjs",
-    "lint": "biome check apps/*/src apps/*/test packages/*/src packages/*/test packages/protocol/scripts packages/protocol/openapi scripts package.json biome.json README.md CONTRIBUTING.md SECURITY.md AGENTS.md",
-    "format": "biome check --write apps/*/src apps/*/test packages/*/src packages/*/test packages/protocol/scripts packages/protocol/openapi scripts package.json biome.json README.md CONTRIBUTING.md SECURITY.md AGENTS.md",
+    "lint": "biome check",
+    "format": "biome check --write",
     "generate": "node packages/protocol/scripts/generate-clients.mjs",
     "check-drift": "node packages/protocol/scripts/generate-clients.mjs --check",
     "update-surface": "tsc -b packages/protocol && node packages/protocol/scripts/write-surface.mjs",
