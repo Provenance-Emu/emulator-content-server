@@ -5,6 +5,9 @@
 *.gif binary
 *.webp binary
 *.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
 *.wasm binary
 *.zip binary
 *.7z binary
