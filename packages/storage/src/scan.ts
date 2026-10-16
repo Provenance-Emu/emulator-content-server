@@ -1,7 +1,7 @@
 import { readdir, realpath, stat } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import type { AssetKind } from '@ecs/domain';
-import { type Availability, type Medium, fileAvailability, probeRoot } from './volume.js';
+import { type Availability, fileAvailability, type Medium, probeRoot } from './volume.js';
 
 export interface ScannedFile {
   relativePath: string;

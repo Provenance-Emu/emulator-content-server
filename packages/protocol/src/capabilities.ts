@@ -50,9 +50,7 @@ export function buildCapabilities(input: {
       maxUploadBytes: input.maxUploadBytes,
       maxPageSize: 100,
     },
-    authentication: input.lanOpen
-      ? ['bearer', 'bootstrap', 'lan']
-      : ['bearer', 'bootstrap'],
+    authentication: input.lanOpen ? ['bearer', 'bootstrap', 'lan'] : ['bearer', 'bootstrap'],
     ...(input.bootstrapped === undefined ? {} : { bootstrapped: input.bootstrapped }),
   };
 }

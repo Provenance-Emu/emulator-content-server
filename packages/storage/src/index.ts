@@ -25,20 +25,20 @@ export {
   stagingFile,
   virtualCachePath,
 } from './paths.js';
-export { type ScannedFile, inferSource, inspectRoot } from './scan.js';
 export { FileContentReader } from './reader.js';
-export {
-  type Availability,
-  type Medium,
-  classifyMedium,
-  fileAvailability,
-  probeFile,
-  probeRoot,
-} from './volume.js';
+export { inferSource, inspectRoot, type ScannedFile } from './scan.js';
 export { DEFAULT_MATERIALIZE_QUOTA, VirtualProviderRegistry } from './virtual.js';
 export {
   listVirtualEntries,
   openVirtualEntry,
   type VirtualEntryBytes,
 } from './virtual-cache.js';
+export {
+  type Availability,
+  classifyMedium,
+  fileAvailability,
+  type Medium,
+  probeFile,
+  probeRoot,
+} from './volume.js';
 export { ZipProvider } from './zip.js';

@@ -35,14 +35,14 @@ import {
   blobPath,
   createStagingFile,
   FileContentReader,
+  inspectRoot,
   listFolders,
   listVirtualEntries,
   openVirtualEntry,
   placeBlob,
-  removeStaging,
-  inspectRoot,
   probeFile,
   probeRoot,
+  removeStaging,
   resolveContentRoot,
   resolveInside,
   truncateStaging,
@@ -51,7 +51,6 @@ import {
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
-import { accessView } from './local-access.js';
 import {
   assetDecision,
   itemDecision,
@@ -65,6 +64,7 @@ import {
   stringList,
   withIdempotency,
 } from './http.js';
+import { accessView } from './local-access.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
