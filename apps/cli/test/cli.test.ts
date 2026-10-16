@@ -52,7 +52,7 @@ test('roots are saved, listed, and removed through the CLI', async () => {
 
     const listed = run(['roots', 'list', '--data', dataDir]);
     assert.equal(listed.status, 0, listed.stderr);
-    assert.match(listed.stdout, new RegExp(`Shelf {2}${collection}`));
+    assert.match(listed.stdout, new RegExp(`Shelf {2}${escapeRegExp(collection)}`));
     const id = listed.stdout.trim().split(/\s+/)[0];
     assert.ok(id);
 
@@ -94,6 +94,10 @@ test('roots are saved, listed, and removed through the CLI', async () => {
     await rm(base, { recursive: true, force: true });
   }
 });
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function run(args: string[]): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
