@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { appendRotatingLog } from '../src/log.js';
 import {
@@ -79,11 +79,18 @@ test('each platform registration starts at login and carries no credential', asy
         assert.doesNotMatch(text, /HighestAvailable/);
       }
     }
+    const raw = join(home, 'a&b');
     const escaped = renderRegistration({
-      ...spec(home, '/tmp/a&b', 'darwin'),
-      dataDir: '/tmp/a&b',
+      ...spec(home, raw, 'darwin'),
+      dataDir: raw,
     });
-    assert.match(escaped, /\/tmp\/a&amp;b/);
+    const written = resolve(raw)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
+    assert.ok(escaped.includes(`<string>${written}</string>`));
+    assert.equal(escaped.includes('a&b'), false);
   } finally {
     if (previousToken === undefined) delete process.env.ECS_TOKEN;
     else process.env.ECS_TOKEN = previousToken;
