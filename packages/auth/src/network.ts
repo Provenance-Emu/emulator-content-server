@@ -43,7 +43,7 @@ export function canonicalCidr(input: string): string | null {
 
 function isLoopback(address: Address): boolean {
   const v4 = v4of(address);
-  if (v4 !== null) return (v4 >>> 24) === 127;
+  if (v4 !== null) return v4 >>> 24 === 127;
   return address.version === 6 && address.value === 1n;
 }
 
@@ -164,11 +164,7 @@ function ipv6(input: string): bigint | null {
   if (!left || !right) return null;
   if (halves.length === 1 && left.length !== 8) return null;
   if (halves.length === 2 && left.length + right.length > 7) return null;
-  const groups = [
-    ...left,
-    ...Array(8 - left.length - right.length).fill(0),
-    ...right,
-  ] as number[];
+  const groups = [...left, ...Array(8 - left.length - right.length).fill(0), ...right] as number[];
   if (groups.length !== 8) return null;
   let value = 0n;
   for (const group of groups) value = (value << 16n) | BigInt(group);

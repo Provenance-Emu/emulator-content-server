@@ -39,7 +39,10 @@ export function admitLocal(context: ServerContext, request: FastifyRequest): Act
   return context.catalog.localActor(level);
 }
 
-export function accessView(context: ServerContext, request: FastifyRequest): {
+export function accessView(
+  context: ServerContext,
+  request: FastifyRequest,
+): {
   mode: 'lan' | 'token' | 'subnets';
   subnets: string[];
   applies: boolean;
