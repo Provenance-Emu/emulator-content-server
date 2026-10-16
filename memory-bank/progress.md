@@ -34,7 +34,7 @@
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
 | Sideload and JIT | Plugin host plans feeds, zsign, and pymobiledevice3. It does not run them or mount them on `/api/v1` |
-| Desktop UI | Menu bar can edit accounts and access. The page lists scanned files by system and kind. Guest grants and audit are not on the page yet. The wasm player is a plugin |
+| Desktop UI | Menu bar can edit accounts and access. The page lists scanned files by system and kind, and the owner can review guest grants and the audit log. The wasm player is a plugin |
 | Sideload installer | `packages/signing` reads an IPA and plans a signature. `ecs-plugins` plans zsign for a claimed bundle and does not execute it |
 | Sync | Choosing a save keeps both copies. Connector plugins upload through the API. The Swift engine can page, resume, and adopt |
 | Plugins | Manifests, mount and HTTP connectors, AltStore feeds served on their own port, player descriptors, signer and JIT plans |

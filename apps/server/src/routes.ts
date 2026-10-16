@@ -639,8 +639,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   });
 
   app.get('/api/v1/guest-grants', async (request) => {
-    requireOwner(request, 'Only the server owner can list guest links');
-    return { items: catalog.listGuestGrants() };
+    requireOwner(request, 'Only the server owner can list guest grants');
+    return { items: catalog.listGuestGrants(pageLimit(request)) };
   });
 
   app.post('/api/v1/guest-grants', async (request, reply) => {
@@ -649,7 +649,11 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const result = await withIdempotency(catalog, actor, request, body, async () => {
       const libraryId = requiredString(body, 'libraryId');
       libraryDecision(catalog, actor, libraryId, 'admin');
-      const itemId = optionalString(body, 'itemId') ?? null;
+      const itemValue = body.itemId;
+      const itemId =
+        itemValue === undefined || itemValue === null || itemValue === ''
+          ? null
+          : requiredString(body, 'itemId');
       if (itemId) itemDecision(catalog, actor, requireItem(catalog, itemId), 'admin');
       const capabilities = stringList(body.capabilities).filter((item): item is GuestCapability =>
         GUEST_CAPABILITIES.includes(item as GuestCapability),

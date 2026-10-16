@@ -32,7 +32,9 @@ Opening an item lists the files in its manifest and uploads a chosen file into i
 
 The tray exists as one Tauri application. Its dropdown reports whether the server answers and where, opens the interface in the real browser, opens a status window, and quits. The window renders the same `Status` component as the web client, imported from `apps/web`, so the two cannot drift. The address it watches is editable and remembered.
 
-Still to do: storage locations, guest grants, audit, the library list in the dropdown, which needs the tray to hold a token, and the service start and stop controls, which need [Service lifecycle](service-lifecycle.md) first.
+The owner page lists guest grants and the audit log. Creating a grant shows the token in that visit only; a reload asks the list endpoint, which returns the grant without the token or its hash. A reader or editor never sees those panels, because `GET /api/v1/roots` is what decides the account is the owner.
+
+Still to do: storage locations in the page, which needs an HTTP API the locations command does not have yet, the library list in the dropdown, which needs the tray to hold a token, and the service start and stop controls.
 
 A download is held whole in memory before it is saved, which suits a save file and not a disc image. Writing as it arrives needs the File System Access API, which is Chromium only, so a large transfer belongs in a native client for now.
 

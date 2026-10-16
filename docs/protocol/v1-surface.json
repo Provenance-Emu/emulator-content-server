@@ -690,10 +690,12 @@
       "properties": [
         "capabilities",
         "createdAt",
+        "createdBy",
         "expiresAt",
         "id",
         "itemId",
-        "libraryId"
+        "libraryId",
+        "revokedAt"
       ],
       "required": [
         "capabilities",

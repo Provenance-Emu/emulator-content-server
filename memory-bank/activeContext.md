@@ -65,3 +65,6 @@ A registered folder can be scanned in place (`POST /api/v1/roots/{id}/scan`, `GE
 `ecs service install` registers a per-user login agent. The registration stores the data directory and the listen flags, and a daemon writes a rotating log under that directory. The tray still has no start or stop control.
 
 Still unstarted: the tray controls for that service, and storage locations in the web UI. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.
+The owner page lists guest grants and the audit log. `GET /api/v1/guest-grants` is owner-only and selects every grant column except `token_hash`. The token exists only in the create response and in the page state of the visit that created it. A non-owner session has the admin scope and still cannot list grants or the audit log.
+
+Still unstarted: service registration, the tray controls that need it, and storage locations in the web UI. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.

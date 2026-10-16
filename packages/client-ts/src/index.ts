@@ -16,6 +16,8 @@ export {
 export type {
   AccessPolicy,
   Asset,
+  AuditEvent,
+  AuditList,
   Capabilities,
   ChangeEvent,
   ChangeList,

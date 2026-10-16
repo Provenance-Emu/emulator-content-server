@@ -319,7 +319,7 @@ paths:
       operationId: listGuestGrants
       responses:
         '200':
-          description: Guest grants that are still active. Tokens are not included.
+          description: Guest grants, including revoked ones. The token and its hash are omitted.
     post:
       operationId: createGuestGrant
       responses:
@@ -778,6 +778,8 @@ components:
           items: { type: string }
         expiresAt: { type: string, format: date-time }
         createdAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'] }
+        createdBy: { type: string }
     GuestGrantList:
       type: object
       required: [items]
