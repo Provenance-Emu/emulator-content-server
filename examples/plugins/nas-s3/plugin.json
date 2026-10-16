@@ -1,0 +1,13 @@
+{
+  "id": "home.library.s3",
+  "name": "S3",
+  "kind": "connector",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "connector": {
+    "scheme": "s3",
+    "bucket": "library",
+    "region": "us-east-1",
+    "prefix": "roms/"
+  }
+}

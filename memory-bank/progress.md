@@ -33,14 +33,14 @@
 | Desktop and menu-bar UI | Briefed with a `/ui` mount and a Tauri tray; not started |
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
-| Sideload and JIT | Allowed in this repository as a separate app; not started |
-| Desktop UI | Menu bar can edit accounts and access. The page lists files found in a registered folder, grouped by system and kind. Audit page not started |
-| Sideload installer | `packages/signing` reads an IPA and plans a signature; the app and Apple sign-in are next |
-| Sync | Choosing a save keeps both copies; the web page groups files by kind and the Swift engine can page, resume, and adopt |
+| Sideload and JIT | Plugin host plans feeds, zsign, and pymobiledevice3. It does not run them or mount them on `/api/v1` |
+| Desktop UI | Menu bar can edit accounts and access. The page lists scanned files by system and kind. Guest grants and audit are not on the page yet. The wasm player is a plugin |
+| Sideload installer | `packages/signing` reads an IPA and plans a signature. `ecs-plugins` plans zsign for a claimed bundle and does not execute it |
+| Sync | Choosing a save keeps both copies. Connector plugins upload through the API. The Swift engine can page, resume, and adopt |
+| Plugins | Manifests, mount and HTTP connectors, AltStore feeds served on their own port, player descriptors, signer and JIT plans |
 
 ## Known issues and deferred work
 
-- A registered content root is a saved path. The library stays empty until the scan brief is built.
 - Unreferenced blob garbage collection is a later storage job. Deletion only removes catalog references.
 - Multi-range responses are unimplemented by choice; `features.multiRange` reports `false`.
 - No relay or NAT traversal. `features.natTraversal` reports `false` and no UPnP is shipped.

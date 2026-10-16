@@ -1,0 +1,12 @@
+{
+  "id": "home.library.smb",
+  "name": "NAS",
+  "kind": "connector",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "connector": {
+    "scheme": "smb",
+    "root": "/mnt/nas/library",
+    "kinds": [{ "suffix": ".sav", "kind": "battery_save" }]
+  }
+}

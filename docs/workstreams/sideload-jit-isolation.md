@@ -2,6 +2,8 @@
 
 AltStore and SideStore style signing, device registration, JIT activation, and IPA distribution are a different product that may live in this repository. It shares no process, database, or credential with the content server. See [ADR 0006](../architecture/decisions/0006-sideload-colocation.md).
 
+The plugin host in `apps/plugins` is that separate process. A feed, a signer, and a JIT activator are plugins claimed by bundle id, so Provenance, iCube, iFly, and any other developer each ship their own. The content server still mounts none of it. See [Plugins](../operations/plugins.md) and [ADR 0007](../architecture/decisions/0007-plugin-host.md).
+
 ## Owned paths
 
 - `apps/sideload` (new) with its own entry point and data directory

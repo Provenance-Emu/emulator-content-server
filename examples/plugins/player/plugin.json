@@ -1,0 +1,12 @@
+{
+  "id": "org.provenance-emu.player",
+  "name": "WASM player",
+  "kind": "player",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "apps": ["org.provenance-emu.provenance"],
+  "player": {
+    "systems": ["com.provenance.nes"],
+    "module": "player.wasm"
+  }
+}
