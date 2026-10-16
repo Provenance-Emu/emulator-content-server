@@ -332,6 +332,8 @@ export interface GuestGrant {
   capabilities: string[];
   expiresAt: string;
   createdAt: string;
+  revokedAt?: string | null;
+  createdBy?: string;
 }
 
 export interface GuestGrantList {

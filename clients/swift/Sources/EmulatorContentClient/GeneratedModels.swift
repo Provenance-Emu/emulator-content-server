@@ -659,14 +659,18 @@ public struct GuestGrant: Codable, Equatable, Sendable {
     public var capabilities: [String]
     public var expiresAt: String
     public var createdAt: String
+    public var revokedAt: String?
+    public var createdBy: String?
 
-    public init(id: String, libraryId: String, itemId: String? = nil, capabilities: [String], expiresAt: String, createdAt: String) {
+    public init(id: String, libraryId: String, itemId: String? = nil, capabilities: [String], expiresAt: String, createdAt: String, revokedAt: String? = nil, createdBy: String? = nil) {
         self.id = id
         self.libraryId = libraryId
         self.itemId = itemId
         self.capabilities = capabilities
         self.expiresAt = expiresAt
         self.createdAt = createdAt
+        self.revokedAt = revokedAt
+        self.createdBy = createdBy
     }
 }
 

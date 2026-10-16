@@ -149,7 +149,7 @@ export class AccessDesk {
 
   private async loadManaged(client: ContentClient): Promise<void> {
     this.accounts = (await client.users()).items;
-    this.grants = (await client.guestGrants()).items;
+    this.grants = (await client.guestGrants()).items.filter((grant) => !grant.revokedAt);
     this.libraries = (await client.libraries()).items;
   }
 

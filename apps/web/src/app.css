@@ -157,6 +157,34 @@ label {
   margin: 0.75rem 0 0;
 }
 
+label.check {
+  flex-direction: row;
+  align-items: center;
+}
+
+.once {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: #121416;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.once p {
+  margin: 0.35rem 0;
+}
+
+.token {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.token code {
+  word-break: break-all;
+}
+
 .dot {
   display: inline-block;
   width: 0.55rem;

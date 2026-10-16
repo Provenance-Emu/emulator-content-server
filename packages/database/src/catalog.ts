@@ -272,37 +272,6 @@ export class CatalogDatabase {
     });
   }
 
-  listGuestGrants(): Array<{
-    id: string;
-    libraryId: string;
-    itemId: string | null;
-    capabilities: GuestCapability[];
-    expiresAt: string;
-    createdAt: string;
-  }> {
-    const rows = this.db
-      .prepare(
-        `SELECT id, library_id, item_id, capabilities_json, expires_at, created_at
-         FROM guest_grants WHERE revoked_at IS NULL ORDER BY created_at DESC`,
-      )
-      .all() as Array<{
-      id: string;
-      library_id: string;
-      item_id: string | null;
-      capabilities_json: string;
-      expires_at: string;
-      created_at: string;
-    }>;
-    return rows.map((row) => ({
-      id: row.id,
-      libraryId: row.library_id,
-      itemId: row.item_id,
-      capabilities: parseCapabilities(row.capabilities_json),
-      expiresAt: row.expires_at,
-      createdAt: row.created_at,
-    }));
-  }
-
   saveBootstrapHash(hash: string): void {
     this.db.exec('DELETE FROM bootstrap_tokens');
     this.db
@@ -1621,6 +1590,39 @@ export class CatalogDatabase {
     return true;
   }
 
+  /**
+   * Grants the owner can review. The select names every column except
+   * `token_hash`, so a list response cannot carry the secret or its digest.
+   */
+  listGuestGrants(limit: number): Array<{
+    id: string;
+    libraryId: string;
+    itemId: string | null;
+    capabilities: GuestCapability[];
+    expiresAt: string;
+    createdAt: string;
+    revokedAt: string | null;
+    createdBy: string;
+  }> {
+    const rows = this.db
+      .prepare(
+        `SELECT id, library_id, item_id, capabilities_json, expires_at, created_at,
+           revoked_at, created_by
+         FROM guest_grants ORDER BY created_at DESC, id DESC LIMIT ?`,
+      )
+      .all(limit) as GuestGrantRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      libraryId: row.library_id,
+      itemId: row.item_id,
+      capabilities: parseCapabilities(row.capabilities_json),
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+      revokedAt: row.revoked_at,
+      createdBy: row.created_by,
+    }));
+  }
+
   createDeviceToken(input: {
     userId: string;
     name: string;
@@ -1937,6 +1939,17 @@ function assertSourceKind(kind: string): void {
 function sensitiveKind(kind: string): boolean {
   return kind === 'bios' || kind === 'system_file';
 }
+
+type GuestGrantRow = {
+  id: string;
+  library_id: string;
+  item_id: string | null;
+  capabilities_json: string;
+  expires_at: string;
+  created_at: string;
+  revoked_at: string | null;
+  created_by: string;
+};
 
 function mapContentRoot(row: ContentRootRow): ContentRootRecord {
   return {
