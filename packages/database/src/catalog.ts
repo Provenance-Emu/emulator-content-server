@@ -6,6 +6,8 @@ import {
   type AssetRecord,
   type ContentRootRecord,
   DomainError,
+  type SourceAvailability,
+  type SourceFileRecord,
   type GuestCapability,
   type ItemPermission,
   type ItemRecord,
@@ -124,6 +126,143 @@ export class CatalogDatabase {
 
   server(): { serverId: string; displayName: string; bootstrapped: boolean } {
     return this.serverRow();
+  }
+
+  accessPolicy(): { mode: 'lan' | 'token' | 'subnets'; subnets: string[] } {
+    const row = this.one<{ access_mode: string; access_subnets: string }>(
+      'SELECT access_mode, access_subnets FROM server_state WHERE id = 1',
+    );
+    if (!row) throw new DomainError('uninitialized', 500, 'Server state is missing');
+    const mode =
+      row.access_mode === 'token' || row.access_mode === 'subnets' ? row.access_mode : 'lan';
+    let subnets: string[] = [];
+    try {
+      const parsed = JSON.parse(row.access_subnets) as unknown;
+      if (Array.isArray(parsed)) {
+        subnets = parsed.filter((item): item is string => typeof item === 'string');
+      }
+    } catch {
+      subnets = [];
+    }
+    return { mode, subnets };
+  }
+
+  setAccessPolicy(input: {
+    mode: 'lan' | 'token' | 'subnets';
+    subnets: string[];
+    actorId: string;
+  }): void {
+    if (input.mode !== 'lan' && input.mode !== 'token' && input.mode !== 'subnets') {
+      throw new DomainError('invalid-body', 400, 'Access mode must be lan, token, or subnets');
+    }
+    this.db
+      .prepare('UPDATE server_state SET access_mode = ?, access_subnets = ? WHERE id = 1')
+      .run(input.mode, JSON.stringify(input.subnets));
+    this.insertAudit(input.actorId, 'set-access', 'server', null, {
+      mode: input.mode,
+      subnets: input.subnets.join(' '),
+    });
+  }
+
+  /**
+   * The account a trusted socket acts as. `owner` is this machine. `member` can
+   * read and write the library and cannot change accounts or the access rule.
+   */
+  localActor(level: 'owner' | 'member'): Actor | null {
+    const owner = this.one<{ id: string; username: string }>(
+      'SELECT id, username FROM users WHERE is_owner = 1 LIMIT 1',
+    );
+    if (!owner) return null;
+    if (level === 'owner') {
+      return {
+        kind: 'user',
+        userId: owner.id,
+        username: owner.username,
+        isOwner: true,
+        tokenKind: 'session',
+        deviceId: null,
+        scopes: ['read', 'write', 'admin'],
+      };
+    }
+    return {
+      kind: 'user',
+      userId: owner.id,
+      username: owner.username,
+      isOwner: false,
+      tokenKind: 'session',
+      deviceId: null,
+      scopes: ['read', 'write'],
+      localTrust: true,
+    };
+  }
+
+  listUsers(): Array<{ id: string; username: string; isOwner: boolean; createdAt: string }> {
+    const rows = this.db
+      .prepare('SELECT id, username, is_owner, created_at FROM users ORDER BY created_at')
+      .all() as Array<{ id: string; username: string; is_owner: number; created_at: string }>;
+    return rows.map((row) => ({
+      id: row.id,
+      username: row.username,
+      isOwner: row.is_owner === 1,
+      createdAt: row.created_at,
+    }));
+  }
+
+  /**
+   * Replaces a password and ends that account's other sessions. The hash is the
+   * only form stored, and the audit row records that a password changed.
+   */
+  setPassword(
+    userId: string,
+    passwordHash: string,
+    actorId: string,
+    keepTokenHash: string | null,
+  ): boolean {
+    return this.transaction(() => {
+      const result = this.db
+        .prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+        .run(passwordHash, userId);
+      if (result.changes === 0) return false;
+      this.db
+        .prepare(
+          `UPDATE sessions SET revoked_at = ?
+           WHERE user_id = ? AND revoked_at IS NULL AND token_hash != COALESCE(?, '')`,
+        )
+        .run(nowIso(), userId, keepTokenHash);
+      this.insertAudit(actorId, 'set-password', 'user', userId, {});
+      return true;
+    });
+  }
+
+  listGuestGrants(): Array<{
+    id: string;
+    libraryId: string;
+    itemId: string | null;
+    capabilities: GuestCapability[];
+    expiresAt: string;
+    createdAt: string;
+  }> {
+    const rows = this.db
+      .prepare(
+        `SELECT id, library_id, item_id, capabilities_json, expires_at, created_at
+         FROM guest_grants WHERE revoked_at IS NULL ORDER BY created_at DESC`,
+      )
+      .all() as Array<{
+      id: string;
+      library_id: string;
+      item_id: string | null;
+      capabilities_json: string;
+      expires_at: string;
+      created_at: string;
+    }>;
+    return rows.map((row) => ({
+      id: row.id,
+      libraryId: row.library_id,
+      itemId: row.item_id,
+      capabilities: parseCapabilities(row.capabilities_json),
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+    }));
   }
 
   saveBootstrapHash(hash: string): void {
@@ -421,6 +560,219 @@ export class CatalogDatabase {
         path: existing.path,
       });
     });
+  }
+
+  /**
+   * Replaces the names found in one folder. An offline volume keeps the rows
+   * and marks them offline. Paths stay in this table; callers do not return them.
+   */
+  applyInspection(input: {
+    rootId: string;
+    actorId: string;
+    online: boolean;
+    files: Array<{
+      relativePath: string;
+      displayName: string;
+      size: number;
+      blocks: number;
+      kind: string;
+      systemId: string | null;
+      availability: SourceAvailability;
+    }>;
+  }): number {
+    const root = this.getContentRoot(input.rootId);
+    if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+    if (!input.online) {
+      this.markRootOffline(input.rootId);
+      return this.listSources(input.rootId).length;
+    }
+    const scannedAt = nowIso();
+    this.transaction(() => {
+      const existing = this.sourceRows(input.rootId);
+      const byPath = new Map(existing.map((row) => [row.relative_path, row]));
+      const seen = new Set<string>();
+      for (const file of input.files) {
+        assertSourcePath(file.relativePath);
+        assertSourceKind(file.kind);
+        seen.add(file.relativePath);
+        const prior = byPath.get(file.relativePath);
+        if (!prior) {
+          const id = randomUUID();
+          this.db
+            .prepare(
+              `INSERT INTO source_files (
+                id, root_id, relative_path, display_name, size, blocks, kind, system_id,
+                availability, scanned_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            )
+            .run(
+              id,
+              input.rootId,
+              file.relativePath,
+              file.displayName,
+              file.size,
+              file.blocks,
+              file.kind,
+              file.systemId,
+              file.availability,
+              scannedAt,
+            );
+          this.insertChange(
+            'source',
+            id,
+            'upsert',
+            root.libraryId,
+            null,
+            sensitiveKind(file.kind),
+            scannedAt,
+            null,
+          );
+          continue;
+        }
+        const changed =
+          prior.display_name !== file.displayName ||
+          prior.size !== file.size ||
+          prior.blocks !== file.blocks ||
+          prior.kind !== file.kind ||
+          prior.system_id !== file.systemId ||
+          prior.availability !== file.availability;
+        if (!changed) continue;
+        this.db
+          .prepare(
+            `UPDATE source_files
+             SET display_name = ?, size = ?, blocks = ?, kind = ?, system_id = ?,
+                 availability = ?, scanned_at = ?
+             WHERE id = ?`,
+          )
+          .run(
+            file.displayName,
+            file.size,
+            file.blocks,
+            file.kind,
+            file.systemId,
+            file.availability,
+            scannedAt,
+            prior.id,
+          );
+        this.insertChange(
+          'source',
+          prior.id,
+          'upsert',
+          root.libraryId,
+          null,
+          sensitiveKind(file.kind),
+          scannedAt,
+          null,
+        );
+      }
+      for (const prior of existing) {
+        if (seen.has(prior.relative_path)) continue;
+        this.db.prepare('DELETE FROM source_files WHERE id = ?').run(prior.id);
+        this.insertChange(
+          'source',
+          prior.id,
+          'delete',
+          root.libraryId,
+          null,
+          sensitiveKind(prior.kind),
+          scannedAt,
+          null,
+        );
+      }
+      this.insertAudit(input.actorId, 'scan-content-root', 'content-root', input.rootId, {
+        count: String(input.files.length),
+      });
+    });
+    return input.files.length;
+  }
+
+  listSources(rootId: string): SourceFileRecord[] {
+    return this.sourceRows(rootId).map((row) => mapSource(row));
+  }
+
+  getSource(id: string): SourceFileRecord | null {
+    const row = this.one<SourceRow>(
+      `SELECT s.*, r.library_id
+       FROM source_files s JOIN content_roots r ON r.id = s.root_id
+       WHERE s.id = ?`,
+      id,
+    );
+    return row ? mapSource(row) : null;
+  }
+
+  markRootOffline(rootId: string): void {
+    const root = this.getContentRoot(rootId);
+    if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+    const rows = this.sourceRows(rootId).filter((row) => row.availability !== 'offline');
+    if (rows.length === 0) return;
+    const scannedAt = nowIso();
+    this.transaction(() => {
+      this.db
+        .prepare(
+          `UPDATE source_files SET availability = 'offline', scanned_at = ?
+           WHERE root_id = ? AND availability != 'offline'`,
+        )
+        .run(scannedAt, rootId);
+      for (const row of rows) {
+        this.insertChange(
+          'source',
+          row.id,
+          'upsert',
+          root.libraryId,
+          null,
+          sensitiveKind(row.kind),
+          scannedAt,
+          null,
+        );
+      }
+    });
+  }
+
+  updateSourcePresence(
+    id: string,
+    presence: { availability: SourceAvailability; size: number; blocks: number },
+  ): void {
+    const current = this.getSource(id);
+    if (!current) throw new DomainError('not-found', 404, 'Source file not found');
+    if (
+      current.availability === presence.availability &&
+      current.size === presence.size &&
+      current.blocks === presence.blocks
+    ) {
+      return;
+    }
+    const scannedAt = nowIso();
+    this.transaction(() => {
+      this.db
+        .prepare(
+          `UPDATE source_files
+           SET availability = ?, size = ?, blocks = ?, scanned_at = ?
+           WHERE id = ?`,
+        )
+        .run(presence.availability, presence.size, presence.blocks, scannedAt, id);
+      const root = this.getContentRoot(current.rootId);
+      this.insertChange(
+        'source',
+        id,
+        'upsert',
+        root?.libraryId ?? current.libraryId,
+        null,
+        sensitiveKind(current.kind),
+        scannedAt,
+        null,
+      );
+    });
+  }
+
+  private sourceRows(rootId: string): SourceRow[] {
+    return this.db
+      .prepare(
+        `SELECT s.*, r.library_id
+         FROM source_files s JOIN content_roots r ON r.id = s.root_id
+         WHERE s.root_id = ?
+         ORDER BY s.relative_path`,
+      )
+      .all(rootId) as SourceRow[];
   }
 
   private contentRootAt(path: string): ContentRootRecord | null {
@@ -783,6 +1135,16 @@ export class CatalogDatabase {
         timestamp,
         input.deviceId ?? null,
       );
+      if (placement.demoteId) {
+        this.demoteLive(
+          placement.demoteId,
+          assetId,
+          timestamp,
+          item.library_id,
+          input.itemId,
+          input.deviceId ?? null,
+        );
+      }
       this.insertAudit(input.actorId, 'complete-upload', 'asset', assetId, {
         sha256: input.sha256,
       });
@@ -812,7 +1174,12 @@ export class CatalogDatabase {
     },
     assetId: string,
     timestamp: string,
-  ): { relativePath: string; displayName: string; conflictOf: string | null } {
+  ): {
+    relativePath: string;
+    displayName: string;
+    conflictOf: string | null;
+    demoteId: string | null;
+  } {
     const bumped = this.db
       .prepare(
         `UPDATE items SET revision = revision + 1, updated_at = ?
@@ -820,10 +1187,20 @@ export class CatalogDatabase {
       )
       .run(timestamp, input.itemId, input.baseRevision);
     const unchanged = { relativePath: input.relativePath, displayName: input.displayName };
-    if (bumped.changes > 0) return { ...unchanged, conflictOf: null };
+    if (bumped.changes > 0) {
+      // A save written at the current revision is the one the writer just
+      // played. It becomes the live file, and the bytes it replaces stay
+      // beside it. The demotion runs after this asset is inserted, because
+      // the replaced row has to point at an id that already exists.
+      const live = isSaveAssetKind(input.kind)
+        ? this.liveAt(input.itemId, input.relativePath)
+        : null;
+      return { ...unchanged, conflictOf: null, demoteId: live?.id ?? null };
+    }
     if (!isSaveAssetKind(input.kind)) {
       throw new DomainError('conflict', 409, 'Item revision does not match');
     }
+    const kept = { ...unchanged, demoteId: null };
     const advanced = this.db
       .prepare(
         `UPDATE items SET revision = revision + 1, updated_at = ?
@@ -837,12 +1214,127 @@ export class CatalogDatabase {
       input.itemId,
       input.relativePath,
     );
-    if (!live) return { ...unchanged, conflictOf: null };
+    if (!live) return { ...kept, conflictOf: null };
     return {
       relativePath: `${input.relativePath}.conflict-${assetId.slice(0, 8)}`,
       displayName: `${input.displayName} (conflict)`,
       conflictOf: live.id,
+      demoteId: null,
     };
+  }
+
+  /**
+   * Makes a conflict copy the live file at its path. The bytes that were live
+   * stay, renamed beside it, so choosing never discards a save.
+   */
+  adoptConflict(input: {
+    assetId: string;
+    actorId: string | null;
+    deviceId?: string | null;
+  }): AssetRecord {
+    return this.transaction(() => {
+      const chosen = this.getAsset(input.assetId);
+      if (!chosen) throw new DomainError('not-found', 404, 'File not found');
+      if (!isSaveAssetKind(chosen.kind)) {
+        throw new DomainError('conflict', 409, 'Only a save can be chosen');
+      }
+      if (!chosen.conflictOf) return chosen;
+      const canonical = chosen.relativePath.replace(/\.conflict-[0-9a-f]{8}$/, '');
+      const live = this.liveAt(chosen.itemId, canonical);
+      const item = this.itemRow(chosen.itemId);
+      if (!item) throw new DomainError('not-found', 404, 'Item not found');
+      const timestamp = nowIso();
+      this.db
+        .prepare(
+          `UPDATE items SET revision = revision + 1, updated_at = ?
+             WHERE id = ? AND deleted_at IS NULL`,
+        )
+        .run(timestamp, chosen.itemId);
+      if (live && live.id !== chosen.id) {
+        this.demoteLive(
+          live.id,
+          chosen.id,
+          timestamp,
+          item.library_id,
+          chosen.itemId,
+          input.deviceId ?? null,
+        );
+      }
+      const name = chosen.displayName.endsWith(' (conflict)')
+        ? chosen.displayName.slice(0, -' (conflict)'.length)
+        : chosen.displayName;
+      this.db
+        .prepare(
+          `UPDATE assets SET relative_path = ?, display_name = ?, conflict_of = NULL,
+             revision = revision + 1, updated_at = ? WHERE id = ?`,
+        )
+        .run(canonical, name, timestamp, chosen.id);
+      this.insertChange(
+        'asset',
+        chosen.id,
+        'upsert',
+        item.library_id,
+        chosen.itemId,
+        !chosen.shareable,
+        timestamp,
+        input.deviceId ?? null,
+      );
+      this.insertAudit(input.actorId, 'adopt-conflict', 'asset', chosen.id, {});
+      const adopted = this.getAsset(chosen.id);
+      if (!adopted) throw new DomainError('not-found', 404, 'File not found');
+      return adopted;
+    });
+  }
+
+  /** The save currently served at a path, which is the one a new write replaces. */
+  private liveAt(itemId: string, relativePath: string): AssetRow | undefined {
+    return this.one<AssetRow>(
+      `SELECT * FROM assets
+         WHERE item_id = ? AND relative_path = ? AND conflict_of IS NULL AND deleted_at IS NULL`,
+      itemId,
+      relativePath,
+    );
+  }
+
+  /** Moves a live save aside so a chosen write can take its path. Both digests remain. */
+  private demoteLive(
+    liveId: string,
+    successorId: string,
+    timestamp: string,
+    libraryId: string,
+    itemId: string,
+    deviceId: string | null,
+  ): void {
+    const live = this.one<AssetRow>(
+      'SELECT * FROM assets WHERE id = ? AND deleted_at IS NULL',
+      liveId,
+    );
+    if (!live) return;
+    const name = live.display_name.endsWith(' (conflict)')
+      ? live.display_name
+      : `${live.display_name} (conflict)`;
+    this.db
+      .prepare(
+        `UPDATE assets SET relative_path = ?, display_name = ?, conflict_of = ?,
+           revision = revision + 1, updated_at = ? WHERE id = ?`,
+      )
+      .run(
+        `${live.relative_path}.conflict-${liveId.slice(0, 8)}`,
+        name,
+        successorId,
+        timestamp,
+        liveId,
+      );
+    this.insertChange(
+      'asset',
+      liveId,
+      'upsert',
+      libraryId,
+      itemId,
+      live.shareable === 0,
+      timestamp,
+      deviceId,
+    );
   }
 
   abortUpload(id: string, actorId: string | null): boolean {
@@ -948,7 +1440,8 @@ export class CatalogDatabase {
 
   visibleLibraryIds(actor: Actor): string[] {
     if (actor.kind === 'guest') return [actor.libraryId];
-    return this.listLibraries(actor.userId, actor.isOwner).map((library) => library.id);
+    const seeAll = actor.isOwner || actor.localTrust === true;
+    return this.listLibraries(actor.userId, seeAll).map((library) => library.id);
   }
 
   createGuestGrant(input: {
@@ -1248,6 +1741,58 @@ type ContentRootRow = {
   library_id: string | null;
   created_at: string;
 };
+
+type SourceRow = {
+  id: string;
+  root_id: string;
+  library_id: string | null;
+  relative_path: string;
+  display_name: string;
+  size: number;
+  blocks: number;
+  kind: string;
+  system_id: string | null;
+  availability: string;
+};
+
+function mapSource(row: SourceRow): SourceFileRecord {
+  return {
+    id: row.id,
+    rootId: row.root_id,
+    libraryId: row.library_id,
+    relativePath: row.relative_path,
+    displayName: row.display_name,
+    size: row.size,
+    blocks: row.blocks,
+    kind: row.kind as SourceFileRecord['kind'],
+    systemId: row.system_id,
+    availability: row.availability as SourceAvailability,
+  };
+}
+
+function assertSourcePath(path: string): void {
+  if (!path || path.startsWith('/') || path.split('/').includes('..')) {
+    throw new DomainError('invalid-body', 400, 'A scanned path must stay inside the folder');
+  }
+}
+
+function assertSourceKind(kind: string): void {
+  if (
+    kind !== 'rom' &&
+    kind !== 'battery_save' &&
+    kind !== 'save_state' &&
+    kind !== 'screenshot' &&
+    kind !== 'artwork' &&
+    kind !== 'bios' &&
+    kind !== 'system_file'
+  ) {
+    throw new DomainError('invalid-body', 400, 'Source kind is not supported');
+  }
+}
+
+function sensitiveKind(kind: string): boolean {
+  return kind === 'bios' || kind === 'system_file';
+}
 
 function mapContentRoot(row: ContentRootRow): ContentRootRecord {
   return {

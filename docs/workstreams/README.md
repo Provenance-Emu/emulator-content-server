@@ -9,6 +9,9 @@ The foundation in this repository is the contract, storage, access control, and 
 | [WebDAV compatibility](webdav-compatibility.md) | Authenticated legacy file access |
 | [Virtual formats](virtual-formats.md) | ZIP first, then disc-specific providers |
 | [Content roots](content-roots.md) | Saved read-only collection folders |
+| [Media availability](media-availability.md) | External, network, and iCloud files stay put until requested, and clients see offline |
+| [Web playback](web-playback.md) | In-browser play of the same files and accounts, after a folder can be streamed |
+| [Container install](container-install.md) | Docker for a VM or cloud host, without trusting the bridge address |
 | [Storage locations](storage-locations.md) | Blobs across more than one directory |
 | [Service lifecycle](service-lifecycle.md) | Start at login on macOS, Linux, Windows |
 | [Desktop UI](desktop-ui.md) | Web and menu-bar client over the same API |

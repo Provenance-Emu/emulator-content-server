@@ -31,7 +31,9 @@ Before bootstrap, a non-loopback bind also needs `--allow-lan` or `ECS_ALLOW_LAN
 docker compose up --build
 ```
 
-The published sample binds host port 8473 to loopback. Read the bootstrap token from `docker compose logs`. Set a persistent volume before loading a library.
+The published sample binds host port 8473 to loopback. Read the bootstrap token from `docker compose logs`. Set a persistent volume before loading a library. Mount a collection beside `/data` and register that path; the image does not copy it.
+
+Docker presents a published connection as a private bridge address. The sample therefore publishes loopback only. A cloud VM that publishes the port on every interface must set access mode `token` and start with `--public --tls-terminated` behind a TLS proxy. See [Container install](../workstreams/container-install.md).
 
 ## Quotas
 

@@ -27,6 +27,8 @@ export function authorize(request: AccessRequest): boolean {
     return true;
   }
 
+  // A LAN admission must not inherit the owner's membership, which includes admin.
+  if (request.actor.localTrust) return request.actor.scopes.includes(request.action);
   if (!request.actor.scopes.includes(request.action)) return false;
   if (request.actor.isOwner) return true;
 

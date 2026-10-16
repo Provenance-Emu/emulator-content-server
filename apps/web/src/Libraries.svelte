@@ -51,7 +51,33 @@
     active = items.find((item) => item.id === opened) ?? null;
   }
 
+  /**
+   * Walks the change feed to the present, then reloads whenever a later page
+   * carries something new, so a save that arrived from a phone shows up here.
+   */
+  async function watch(): Promise<void> {
+    let cursor = '0';
+    let primed = false;
+    for (;;) {
+      try {
+        const page = await client.changes({ cursor, limit: 100 });
+        const caughtUp = page.changes.length === 0 || page.nextCursor === cursor;
+        cursor = page.nextCursor;
+        if (!primed) {
+          if (!caughtUp) continue;
+          primed = true;
+        } else if (!caughtUp) {
+          await refresh();
+        }
+      } catch (error) {
+        failure = explain(error);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+    }
+  }
+
   void load();
+  void watch();
 </script>
 
 <section>

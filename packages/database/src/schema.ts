@@ -193,11 +193,34 @@ const ASSET_CONFLICT_SQL = `
 ALTER TABLE assets ADD COLUMN conflict_of TEXT REFERENCES assets(id);
 `;
 
+const ACCESS_POLICY_SQL = `
+ALTER TABLE server_state ADD COLUMN access_mode TEXT NOT NULL DEFAULT 'lan';
+ALTER TABLE server_state ADD COLUMN access_subnets TEXT NOT NULL DEFAULT '[]';
+`;
+
+const SOURCE_FILES_SQL = `
+CREATE TABLE source_files (
+  id TEXT PRIMARY KEY,
+  root_id TEXT NOT NULL REFERENCES content_roots(id) ON DELETE CASCADE,
+  relative_path TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  blocks INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  system_id TEXT,
+  availability TEXT NOT NULL,
+  scanned_at TEXT NOT NULL,
+  UNIQUE (root_id, relative_path)
+);
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SQL },
   { version: 2, sql: CONTENT_ROOTS_SQL },
   { version: 3, sql: CHANGE_DEVICE_SQL },
   { version: 4, sql: ASSET_CONFLICT_SQL },
+  { version: 5, sql: ACCESS_POLICY_SQL },
+  { version: 6, sql: SOURCE_FILES_SQL },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));
