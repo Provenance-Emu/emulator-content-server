@@ -9,7 +9,7 @@ pnpm ecs init --data ./content-data --name "Living Room"
 pnpm ecs serve --data ./content-data
 ```
 
-`init` creates the SQLite database, blob directories, and `bootstrap.token` with mode `0600` where the platform supports it. `serve` repeats init when the data directory is new, then listens on `127.0.0.1:8473`.
+`init` creates the SQLite database, blob directories, and `bootstrap.token` with mode `0600` where the platform supports it. `serve` repeats init when the data directory is new, then listens on `127.0.0.1:8473`. Additional blob directories are registered with `ecs locations`. See [Storage locations](storage-locations.md).
 
 ```sh
 curl -s -X POST http://127.0.0.1:8473/api/v1/auth/bootstrap \

@@ -1,8 +1,16 @@
 import { cp, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { issueToken } from '@ecs/auth';
-import { CatalogDatabase, type CatalogLimits } from '@ecs/database';
-import { blobPath, ensureLayout, inspectRoot, resolveContentRoot } from '@ecs/storage';
+import { CatalogDatabase, type CatalogLimits, type StorageLocationRecord } from '@ecs/database';
+import {
+  blobPath,
+  ensureBlobStore,
+  ensureLayout,
+  inspectRoot,
+  locationOnline,
+  resolveContentRoot,
+  resolveStorageLocation,
+} from '@ecs/storage';
 
 export interface InitResult {
   dataDir: string;
@@ -65,11 +73,31 @@ export async function doctor(dataDir: string): Promise<{ ok: boolean; lines: str
         ok = false;
       }
     }
-    for (const hash of catalog.blobHashes()) {
+    const locations = catalog.listStorageLocations();
+    const offline = new Set<string>();
+    for (const location of locations) {
+      if (await locationOnline(location.path)) {
+        lines.push(`location ${location.label} online`);
+      } else {
+        lines.push(`offline location ${location.label}`);
+        offline.add(location.id);
+        ok = false;
+      }
+    }
+    for (const blob of catalog.blobPlacements()) {
+      if (blob.locationId && offline.has(blob.locationId)) continue;
+      const location = blob.locationId
+        ? locations.find((item) => item.id === blob.locationId)
+        : undefined;
+      if (blob.locationId && !location) {
+        lines.push('offline location unknown');
+        ok = false;
+        continue;
+      }
       try {
-        await stat(blobPath(dataDir, hash));
+        await stat(blobPath(location?.path ?? dataDir, blob.sha256));
       } catch {
-        lines.push(`missing blob ${hash}`);
+        lines.push(`missing blob ${blob.sha256}`);
         ok = false;
       }
     }
@@ -80,14 +108,56 @@ export async function doctor(dataDir: string): Promise<{ ok: boolean; lines: str
 }
 
 export async function backupData(dataDir: string, destination: string): Promise<void> {
-  await ensureLayout(destination);
   const catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'));
   try {
-    catalog.backupTo(join(destination, 'library.sqlite'));
+    const locations = catalog.listStorageLocations();
+    const offline: StorageLocationRecord[] = [];
+    for (const location of locations) {
+      if (!(await locationOnline(location.path))) offline.push(location);
+    }
+    if (offline.length > 0) {
+      const named = offline.map((location) => `${location.label} (${location.path})`).join(', ');
+      throw new Error(`backup refused: ${named} offline`);
+    }
+    const existed = await stat(destination).then(
+      () => true,
+      () => false,
+    );
+    try {
+      await ensureLayout(destination);
+      catalog.backupTo(join(destination, 'library.sqlite'));
+      await cp(join(dataDir, 'blobs'), join(destination, 'blobs'), { recursive: true });
+      if (locations.length > 0) await copyLocations(destination, locations);
+    } catch (error) {
+      if (!existed) await rm(destination, { recursive: true, force: true });
+      throw error;
+    }
   } finally {
     catalog.close();
   }
-  await cp(join(dataDir, 'blobs'), join(destination, 'blobs'), { recursive: true });
+}
+
+async function copyLocations(
+  destination: string,
+  locations: readonly StorageLocationRecord[],
+): Promise<void> {
+  await writeFile(
+    join(destination, 'locations.json'),
+    `${JSON.stringify(
+      locations.map((location) => ({
+        id: location.id,
+        label: location.label,
+        path: location.path,
+      })),
+      null,
+      2,
+    )}\n`,
+  );
+  for (const location of locations) {
+    await cp(join(location.path, 'blobs'), join(destination, 'locations', location.id, 'blobs'), {
+      recursive: true,
+    });
+  }
 }
 
 /**
@@ -126,6 +196,47 @@ export async function addRoot(
 
 export function removeRoot(dataDir: string, id: string): void {
   withCatalog(dataDir, (catalog) => catalog.deleteContentRoot(id, CLI_ACTOR));
+}
+
+export function listLocations(dataDir: string): {
+  locations: StorageLocationRecord[];
+  writeLocationId: string | null;
+} {
+  return withCatalog(dataDir, (catalog) => ({
+    locations: catalog.listStorageLocations(),
+    writeLocationId: catalog.writeLocation()?.id ?? null,
+  }));
+}
+
+export async function addLocation(
+  dataDir: string,
+  input: { path: string; label: string },
+): Promise<StorageLocationRecord> {
+  const saved = withCatalog(dataDir, (catalog) => ({
+    locations: catalog.listStorageLocations(),
+    roots: catalog.listContentRoots(),
+  }));
+  const path = await resolveStorageLocation(
+    dataDir,
+    input.path,
+    saved.locations.map((location) => location.path),
+    saved.roots.map((root) => root.path),
+  );
+  await ensureBlobStore(path);
+  return withCatalog(dataDir, (catalog) =>
+    catalog.createStorageLocation({ path, label: input.label, actorId: CLI_ACTOR }),
+  );
+}
+
+export function useLocation(dataDir: string, id: string | null): void {
+  withCatalog(dataDir, (catalog) => {
+    catalog.ensureServer('Emulator Content Server');
+    catalog.setWriteLocation(id, CLI_ACTOR);
+  });
+}
+
+export function removeLocation(dataDir: string, id: string): void {
+  withCatalog(dataDir, (catalog) => catalog.deleteStorageLocation(id, CLI_ACTOR));
 }
 
 export async function scanRoots(

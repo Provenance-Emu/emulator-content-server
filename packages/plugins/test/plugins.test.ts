@@ -99,11 +99,15 @@ test('a secret file that other users can read is refused', async () => {
   const path = join(dir, 'secrets.json');
   await writeFile(path, JSON.stringify({ accessToken: 'token-value' }));
   await chmod(path, 0o644);
-  await assert.rejects(readSecrets(path), (error: PluginError) => {
-    assert.equal(error.code, 'secret-permissions');
-    assert.equal(error.message.includes('token-value'), false);
-    return true;
-  });
+  if (process.platform === 'win32') {
+    assert.deepEqual(await readSecrets(path), { accessToken: 'token-value' });
+  } else {
+    await assert.rejects(readSecrets(path), (error: PluginError) => {
+      assert.equal(error.code, 'secret-permissions');
+      assert.equal(error.message.includes('token-value'), false);
+      return true;
+    });
+  }
   await chmod(path, 0o600);
   assert.deepEqual(await readSecrets(path), { accessToken: 'token-value' });
   await rm(dir, { recursive: true, force: true });

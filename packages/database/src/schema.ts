@@ -214,6 +214,18 @@ CREATE TABLE source_files (
 );
 `;
 
+const STORAGE_LOCATIONS_SQL = `
+CREATE TABLE storage_locations (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL UNIQUE,
+  path TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL
+);
+
+ALTER TABLE blobs ADD COLUMN location_id TEXT REFERENCES storage_locations(id);
+ALTER TABLE server_state ADD COLUMN write_location_id TEXT REFERENCES storage_locations(id);
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SQL },
   { version: 2, sql: CONTENT_ROOTS_SQL },
@@ -221,6 +233,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 4, sql: ASSET_CONFLICT_SQL },
   { version: 5, sql: ACCESS_POLICY_SQL },
   { version: 6, sql: SOURCE_FILES_SQL },
+  { version: 7, sql: STORAGE_LOCATIONS_SQL },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

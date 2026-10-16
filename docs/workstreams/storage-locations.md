@@ -29,6 +29,10 @@ Let the content-addressed store span more than one directory so blobs can live o
 - `backup` covers every location or fails loudly, and never writes a partial archive silently.
 - An existing single-directory database keeps working with no location rows added.
 
+## Status
+
+Registered directories, an explicit write target, offline reads, and backup refusal are implemented. `ecs locations` is the operator interface. The content routes are unchanged, and the web UI does not manage locations yet.
+
 ## Non-goals
 
 Replication, tiering by access frequency, automatic rebalancing between locations, RAID, and cloud object storage.

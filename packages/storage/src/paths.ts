@@ -63,14 +63,65 @@ export async function resolveContentRoot(
   return target;
 }
 
+/**
+ * Resolves a directory that will hold blobs. The real path is recorded, the
+ * directory stays outside the data directory, and it may not overlap a location
+ * or a content root, because those trees are read for different reasons.
+ */
+export async function resolveStorageLocation(
+  dataDir: string,
+  candidate: string,
+  existing: readonly string[],
+  contentRoots: readonly string[] = [],
+): Promise<string> {
+  if (!isAbsolute(candidate)) {
+    throw new DomainError('invalid-location', 400, 'A storage location must be an absolute path');
+  }
+  let target: string;
+  try {
+    target = await realpath(candidate);
+  } catch {
+    throw new DomainError('invalid-location', 400, 'That folder does not exist');
+  }
+  if (!(await stat(target)).isDirectory()) {
+    throw new DomainError('invalid-location', 400, 'A storage location must be a directory');
+  }
+  const data = await realpath(dataDir);
+  if (pathsOverlap(data, target)) {
+    throw new DomainError(
+      'invalid-location',
+      400,
+      'A storage location must stay outside the data directory',
+    );
+  }
+  for (const saved of existing) {
+    if (pathsOverlap(saved, target)) {
+      throw new DomainError('conflict', 409, `That folder overlaps the saved location ${saved}`);
+    }
+  }
+  for (const root of contentRoots) {
+    if (pathsOverlap(root, target)) {
+      throw new DomainError('conflict', 409, `That folder overlaps the content root ${root}`);
+    }
+  }
+  return target;
+}
+
 /** True when two directories are the same or one contains the other. */
 export function pathsOverlap(a: string, b: string): boolean {
   return a === b || contains(a, b) || contains(b, a);
 }
 
+function pathSegments(path: string): string[] {
+  return path.split(/[/\\]/).filter((part) => part.length > 0);
+}
+
 function contains(parent: string, child: string): boolean {
-  const prefix = parent.endsWith(sep) ? parent : `${parent}${sep}`;
-  return child.startsWith(prefix);
+  const left = pathSegments(parent);
+  const right = pathSegments(child);
+  if (left.length === 0) return parent.length > 0 && child.length > 0;
+  if (left.length > right.length) return false;
+  return left.every((part, index) => part === right[index]);
 }
 
 export async function resolveInside(root: string, target: string): Promise<string> {

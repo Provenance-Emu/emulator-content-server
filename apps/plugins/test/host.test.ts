@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
 import { ASSET_KINDS as PLUGIN_KINDS, type PluginError } from '@ecs/plugins';
 import { ASSET_KINDS } from '@ecs/protocol';
@@ -306,7 +307,7 @@ test('a claimed app produces a zsign plan with no password argument', () => {
 });
 
 function fileUrl(url: URL): string {
-  return url.pathname;
+  return fileURLToPath(url);
 }
 
 function bundle(bundleId: string) {

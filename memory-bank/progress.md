@@ -27,8 +27,8 @@
 | Scanning and metadata | A registered folder can be scanned in place. Files stay put and are local, evicted, or offline |
 | WebDAV compatibility | Not started; needs a new `packages/webdav` |
 | Adversarial validation | Partially covered by existing storage and auth tests |
-| Content roots | Registration done. A scan records names and streams local bytes. Nothing is copied |
-| Storage locations | Briefed; not started |
+| Content roots | Registration and in-place scan. Names stay on the server and bytes are not copied |
+| Storage locations | Done: registered directories, write target, offline reads, backup refusal |
 | Service lifecycle | Briefed; not started |
 | Desktop and menu-bar UI | Briefed with a `/ui` mount and a Tauri tray; not started |
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
@@ -44,5 +44,5 @@
 - Unreferenced blob garbage collection is a later storage job. Deletion only removes catalog references.
 - Multi-range responses are unimplemented by choice; `features.multiRange` reports `false`.
 - No relay or NAT traversal. `features.natTraversal` reports `false` and no UPnP is shipped.
-- Blobs live in one directory. Until storage locations land, the data directory is the only place content can go.
+- A blob lives in one directory: the data directory, or a storage location the operator registered. Nothing moves a blob between them.
 - A registered folder is scanned in place. Readers see availability, not the path. An unplugged folder stays registered and is offline.

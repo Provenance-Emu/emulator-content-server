@@ -6,14 +6,18 @@ import { assertListenPolicy } from '@ecs/auth';
 import { advertise } from '@ecs/discovery';
 import { openServer } from '@ecs/server';
 import {
+  addLocation,
   addRoot,
   backupData,
   doctor,
   initData,
   limitsFromEnv,
+  listLocations,
   listRoots,
+  removeLocation,
   removeRoot,
   scanRoots,
+  useLocation,
 } from './lifecycle.js';
 
 const DEFAULT_PORT = 8473;
@@ -44,6 +48,10 @@ async function main(): Promise<void> {
   }
   if (command === 'roots') {
     await roots(dataDir);
+    return;
+  }
+  if (command === 'locations') {
+    await locations(dataDir);
     return;
   }
   if (command === 'scan') {
@@ -85,6 +93,44 @@ async function roots(dataDir: string): Promise<void> {
     return;
   }
   throw new Error('roots takes list, add, or remove');
+}
+
+async function locations(dataDir: string): Promise<void> {
+  const action = process.argv[3];
+  if (action === 'list') {
+    const listed = listLocations(dataDir);
+    if (!listed.writeLocationId) console.log('write primary');
+    for (const location of listed.locations) {
+      const mark = location.id === listed.writeLocationId ? '  write' : '';
+      console.log(`${location.id}  ${location.label}  ${location.path}${mark}`);
+    }
+    return;
+  }
+  if (action === 'add') {
+    const path = value('--path');
+    const label = value('--label');
+    if (!path || !label) throw new Error('locations add requires --path and --label');
+    const location = await addLocation(dataDir, { path, label });
+    console.log(`saved ${location.id} ${location.path}`);
+    return;
+  }
+  if (action === 'use') {
+    const id = value('--id');
+    if (has('--primary') === Boolean(id)) {
+      throw new Error('locations use requires --id or --primary');
+    }
+    useLocation(dataDir, has('--primary') ? null : (id ?? null));
+    console.log(has('--primary') ? 'write primary' : `write ${id}`);
+    return;
+  }
+  if (action === 'remove') {
+    const id = value('--id');
+    if (!id) throw new Error('locations remove requires --id');
+    removeLocation(dataDir, id);
+    console.log(`removed ${id}`);
+    return;
+  }
+  throw new Error('locations takes list, add, use, or remove');
 }
 
 async function serve(dataDir: string): Promise<void> {
@@ -178,6 +224,11 @@ ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
 ecs roots add --data ./content-data --path /Volumes/Games --label Games [--library <id>]
 ecs roots remove --data ./content-data --id <rootId>
+ecs locations list --data ./content-data
+ecs locations add --data ./content-data --path /mnt/library --label Library
+ecs locations use --data ./content-data --id <locationId>
+ecs locations use --data ./content-data --primary
+ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]`);
 }
 

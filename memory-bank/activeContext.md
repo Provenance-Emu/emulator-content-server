@@ -58,6 +58,8 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 
 Connectors, AltStore feeds, the wasm player, and JIT or signing plans are plugins in `ecs-plugins`. The content server stays the sync and REST API and does not load them. See ADR 0007 and `docs/operations/plugins.md`.
 
+Storage locations are registered directories. The data directory stays the primary store, new bytes go to the location chosen with `ecs locations use`, and an absent location is offline rather than a missing blob. Migration 7 adds them, after the access-policy and source-file migrations that already shipped.
+
 A registered folder can be scanned in place (`POST /api/v1/roots/{id}/scan`, `GET /api/v1/sources`). The page lists those files by system and kind. In-browser play is `docs/workstreams/web-playback.md` and stays parked until a local file is worth playing. Docker for a VM or cloud host is `docs/workstreams/container-install.md` and `compose.yaml`.
 
-Still unstarted from the earlier list: storage locations, service registration, and the tray controls that need it. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.
+Still unstarted: service registration, the tray controls that need it, and storage locations in the web UI. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.

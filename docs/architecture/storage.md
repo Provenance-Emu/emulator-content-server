@@ -1,6 +1,6 @@
 # Storage
 
-Blobs live at `data/blobs/sha256/<2-hex>/<64-hex>`. Uploads land in `data/staging/<upload-id>` and are truncated to the committed received offset before hashing. Placement copies to a temporary sibling, fsyncs, renames, and fsyncs the directory on platforms that allow it.
+Blobs live at `blobs/sha256/<2-hex>/<64-hex>` under the data directory, or under another directory the operator has registered. A digest lives in exactly one of those directories. Uploads still land in `data/staging/<upload-id>` and are truncated to the committed received offset before hashing. Placement copies to a temporary sibling, fsyncs, renames, and fsyncs the directory on platforms that allow it. The virtual cache stays in the data directory, so an entry that has already been expanded can be read after the drive that holds the container is unplugged.
 
 The database row is inserted after the blob file exists. Repeating placement for the same bytes is idempotent, so a crash between rename and the SQL commit can be retried. A `*.partial` file is not a blob address.
 

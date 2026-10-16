@@ -35,9 +35,11 @@ import {
   blobPath,
   createStagingFile,
   FileContentReader,
+  hashFile,
   inspectRoot,
   listFolders,
   listVirtualEntries,
+  locationOnline,
   openVirtualEntry,
   placeBlob,
   probeFile,
@@ -513,7 +515,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       }
       await truncateStaging(stagingPath(context, upload.id), upload.received);
       if (upload.received === 0) throw new DomainError('invalid-body', 400, 'Upload is empty');
-      const placed = await placeBlob(context.dataDir, stagingPath(context, upload.id));
+      const placed = await placeUploadBytes(context, stagingPath(context, upload.id));
       const asset = catalog.completeUpload({
         uploadId: upload.id,
         itemId: item.id,
@@ -528,6 +530,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         shareable: !isRestrictedAssetKind(kind),
         actorId: actor.kind === 'user' ? actor.userId : null,
         deviceId: deviceOf(actor),
+        locationId: placed.locationId,
       });
       await removeStaging(context.dataDir, upload.id);
       return { status: 201, body: asset };
@@ -593,11 +596,13 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.get('/api/v1/files/:assetId/entries', async (request) => {
     const { asset } = requireVisibleAsset(context, request, 'read');
+    const root = await blobRoot(context, asset.sha256);
     const inspected = await listVirtualEntries(
-      context.dataDir,
+      root,
       asset.sha256,
       context.virtual,
       queryString(request, 'entry'),
+      context.dataDir,
     );
     return {
       supported: inspected !== null,
@@ -919,6 +924,66 @@ function stagingPath(context: ServerContext, uploadId: string): string {
   return join(context.dataDir, 'staging', uploadId);
 }
 
+/**
+ * New bytes go to the configured location. Bytes the catalog already has stay
+ * in the one location that first stored them, so a later write target cannot
+ * create a second copy of the same digest.
+ */
+async function placeUploadBytes(
+  context: ServerContext,
+  sourcePath: string,
+): Promise<{
+  sha256: string;
+  size: number;
+  md5: string;
+  crc: string;
+  locationId: string | null;
+}> {
+  const hashes = await hashFile(sourcePath);
+  const existing = context.catalog.blobRecord(hashes.sha256);
+  if (existing) {
+    const root = await blobRoot(context, hashes.sha256);
+    await placeBlob(root, sourcePath, hashes);
+    return { ...hashes, locationId: existing.locationId };
+  }
+  const write = context.catalog.writeLocation();
+  if (write && !(await locationOnline(write.path))) {
+    throw new DomainError('location-offline', 503, `Storage location ${write.label} is offline`);
+  }
+  await placeBlob(write?.path ?? context.dataDir, sourcePath, hashes);
+  return { ...hashes, locationId: write?.id ?? null };
+}
+
+/** The directory that holds this digest. The data directory is the primary, and it has no row. */
+async function blobRoot(context: ServerContext, sha256: string): Promise<string> {
+  const record = context.catalog.blobRecord(sha256);
+  if (!record?.locationId) return context.dataDir;
+  const location = context.catalog.getStorageLocation(record.locationId);
+  if (!location || !(await locationOnline(location.path))) {
+    throw new DomainError(
+      'location-offline',
+      503,
+      `Storage location ${location?.label ?? 'unknown'} is offline`,
+    );
+  }
+  return location.path;
+}
+
+async function storedBlob(
+  context: ServerContext,
+  sha256: string,
+): Promise<{ path: string; size: number }> {
+  const root = await blobRoot(context, sha256);
+  try {
+    return { path: blobPath(root, sha256), size: await blobFileSize(root, sha256) };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new DomainError('not-found', 404, 'Stored bytes are missing');
+    }
+    throw error;
+  }
+}
+
 function asStream(body: unknown): Readable {
   if (body instanceof Readable) return body;
   if (Buffer.isBuffer(body)) return Readable.from(body);
@@ -1023,17 +1088,17 @@ async function sendContent(
   reply: FastifyReply,
 ): Promise<FastifyReply> {
   const { asset } = requireVisibleAsset(context, request, 'read');
+  const stored = await storedBlob(context, asset.sha256);
   const etag = strongEtag(asset.sha256);
   reply.header('accept-ranges', 'bytes');
   reply.header('etag', etag);
   if (etagMatches(headerString(request, 'if-none-match'), etag)) {
     return reply.status(304).send();
   }
-  const size = await blobFileSize(context.dataDir, asset.sha256);
   return sendRange(request, reply, {
-    path: blobPath(context.dataDir, asset.sha256),
+    path: stored.path,
     offset: 0,
-    size,
+    size: stored.size,
     etag,
   });
 }
@@ -1044,6 +1109,7 @@ async function sendEntryContent(
   reply: FastifyReply,
 ): Promise<FastifyReply> {
   const { asset } = requireVisibleAsset(context, request, 'read');
+  const root = await blobRoot(context, asset.sha256);
   const { entryId } = request.params as { entryId: string };
   const etag = strongEtag(`${asset.sha256}-${entryId}`);
   reply.header('accept-ranges', 'bytes');
@@ -1051,7 +1117,13 @@ async function sendEntryContent(
   if (etagMatches(headerString(request, 'if-none-match'), etag)) {
     return reply.status(304).send();
   }
-  const entry = await openVirtualEntry(context.dataDir, asset.sha256, context.virtual, entryId);
+  const entry = await openVirtualEntry(
+    root,
+    asset.sha256,
+    context.virtual,
+    entryId,
+    context.dataDir,
+  );
   if (!entry) throw new DomainError('not-found', 404, 'Archive entry not found');
   return sendRange(request, reply, {
     path: entry.path,
