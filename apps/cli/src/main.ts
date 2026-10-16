@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertListenPolicy } from '@ecs/auth';
@@ -19,6 +20,16 @@ import {
   scanRoots,
   useLocation,
 } from './lifecycle.js';
+import { captureDaemonLogs } from './log.js';
+import {
+  installService,
+  readBootstrapped,
+  removeServicePid,
+  type ServiceSpec,
+  serviceStatus,
+  uninstallService,
+  writeServicePid,
+} from './service.js';
 
 const DEFAULT_PORT = 8473;
 
@@ -60,6 +71,10 @@ async function main(): Promise<void> {
       const state = result.online ? result.medium : 'offline';
       console.log(`${result.label}  ${state}  ${result.count}`);
     }
+    return;
+  }
+  if (command === 'service') {
+    await service(dataDir);
     return;
   }
   if (command === 'serve') {
@@ -134,45 +149,63 @@ async function locations(dataDir: string): Promise<void> {
 }
 
 async function serve(dataDir: string): Promise<void> {
+  await serveOnTerminal(dataDir, !process.stdout.isTTY);
+}
+
+async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> {
   const displayName = value('--name') ?? 'Emulator Content Server';
-  const prepared = await printInit(dataDir, displayName);
-  const host = value('--host') ?? '127.0.0.1';
-  const port = Number(value('--port') ?? process.env.ECS_PORT ?? DEFAULT_PORT);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Port is invalid');
+  const prepared = await printInit(dataDir, displayName, !daemon);
+  const logging = daemon ? await captureDaemonLogs(dataDir) : null;
+  const listen = listenConfig();
   const uiDir = await webAssets(value('--ui'));
-  const server = await openServer({
-    dataDir,
-    displayName,
-    limits: limitsFromEnv(process.env),
-    logger: true,
-    uiDir,
-    // A public bind sits behind a proxy on loopback, so the socket address
-    // cannot decide who is local.
-    localTrust: !has('--public'),
-  });
-  assertListenPolicy({
-    host,
-    bootstrapped: server.catalog.server().bootstrapped,
-    allowUnconfiguredLan: has('--allow-lan') || process.env.ECS_ALLOW_LAN === '1',
-    publicInternet: has('--public'),
-    tlsTerminated: has('--tls-terminated') || process.env.ECS_TLS_TERMINATED === '1',
-  });
-  await server.app.listen({ host, port });
+  let server: Awaited<ReturnType<typeof openServer>>;
+  try {
+    server = await openServer({
+      dataDir,
+      displayName,
+      limits: limitsFromEnv(process.env),
+      logger: true,
+      uiDir,
+      // A public bind sits behind a proxy on loopback, so the socket address
+      // cannot decide who is local.
+      localTrust: !listen.publicInternet,
+    });
+  } catch (error) {
+    await logging?.close();
+    throw error;
+  }
+  try {
+    assertListenPolicy({
+      host: listen.host,
+      bootstrapped: server.catalog.server().bootstrapped,
+      allowUnconfiguredLan: listen.allowLan,
+      publicInternet: listen.publicInternet,
+      tlsTerminated: listen.tlsTerminated,
+    });
+    await server.app.listen({ host: listen.host, port: listen.port });
+  } catch (error) {
+    await server.close();
+    await logging?.close();
+    throw error;
+  }
+  if (daemon) await writeServicePid(dataDir);
   let announcement: { stop(): void } | undefined;
   if (has('--advertise')) {
     announcement = advertise({
       displayName: server.catalog.server().displayName,
-      port,
+      port: listen.port,
       serverId: server.catalog.server().serverId,
       tls: has('--tls-terminated') || process.env.ECS_TLS_TERMINATED === '1',
       pairing: !prepared.bootstrapped || server.catalog.hasBootstrapToken(),
     });
   }
-  console.log(`listening on http://${host}:${port}`);
-  if (uiDir) console.log(`interface at http://${host}:${port}/ui/`);
+  console.log(`listening on http://${listen.host}:${listen.port}`);
+  if (uiDir) console.log(`interface at http://${listen.host}:${listen.port}/ui/`);
   const shutdown = async () => {
     announcement?.stop();
     await server.close();
+    if (daemon) await removeServicePid(dataDir);
+    await logging?.close();
     process.exit(0);
   };
   process.on('SIGINT', () => void shutdown());
@@ -195,15 +228,77 @@ async function webAssets(override: string | undefined): Promise<string | null> {
   return null;
 }
 
-async function printInit(dataDir: string, displayName: string) {
+async function printInit(dataDir: string, displayName: string, showToken = true) {
   const prepared = await initData(dataDir, displayName);
   if (prepared.token) {
-    console.log(`Bootstrap token: ${prepared.token}`);
+    if (showToken) console.log(`Bootstrap token: ${prepared.token}`);
     console.log(`Saved to: ${prepared.tokenFile}`);
   } else if (!prepared.bootstrapped) {
     console.log(`Bootstrap is still pending. The token file remains at ${prepared.tokenFile}`);
   }
   return prepared;
+}
+
+async function service(dataDir: string): Promise<void> {
+  const action = process.argv[3];
+  const spec = serviceSpec(dataDir);
+  if (action === 'install') {
+    await installService(spec);
+    console.log(`service installed for ${spec.dataDir}`);
+    return;
+  }
+  if (action === 'uninstall') {
+    await uninstallService(spec);
+    console.log('service removed');
+    return;
+  }
+  if (action === 'status') {
+    const report = await serviceStatus(spec);
+    for (const line of report.lines) console.log(line);
+    return;
+  }
+  throw new Error('service takes install, uninstall, or status');
+}
+
+function serviceSpec(dataDir: string): ServiceSpec {
+  const listen = listenConfig();
+  const absolute = resolve(dataDir);
+  return {
+    platform: process.platform,
+    home: homedir(),
+    dataDir: absolute,
+    executable: process.execPath,
+    script: process.argv[1] ?? fileURLToPath(import.meta.url),
+    host: listen.host,
+    port: listen.port,
+    advertise: listen.advertise,
+    allowLan: listen.allowLan,
+    publicInternet: listen.publicInternet,
+    tlsTerminated: listen.tlsTerminated,
+    bootstrapped: readBootstrapped(absolute),
+    uid: process.getuid?.() ?? 0,
+  };
+}
+
+function listenConfig(): {
+  host: string;
+  port: number;
+  advertise: boolean;
+  allowLan: boolean;
+  publicInternet: boolean;
+  tlsTerminated: boolean;
+} {
+  const host = value('--host') ?? '127.0.0.1';
+  const port = Number(value('--port') ?? process.env.ECS_PORT ?? DEFAULT_PORT);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Port is invalid');
+  return {
+    host,
+    port,
+    advertise: has('--advertise'),
+    allowLan: has('--allow-lan') || process.env.ECS_ALLOW_LAN === '1',
+    publicInternet: has('--public'),
+    tlsTerminated: has('--tls-terminated') || process.env.ECS_TLS_TERMINATED === '1',
+  };
 }
 
 function value(name: string): string | undefined {
@@ -229,7 +324,10 @@ ecs locations add --data ./content-data --path /mnt/library --label Library
 ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
-ecs scan --data ./content-data [--id <rootId>]`);
+ecs scan --data ./content-data [--id <rootId>]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}]
+ecs service uninstall --data ./content-data
+ecs service status --data ./content-data`);
 }
 
 main().catch((error: unknown) => {

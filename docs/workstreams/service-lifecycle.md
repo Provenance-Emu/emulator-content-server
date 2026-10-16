@@ -26,6 +26,10 @@ Run `ecs serve` as a background service that starts at login on macOS, Linux, an
 - Installing with a public exposure and no TLS flag is refused.
 - Log rotation keeps a bounded number of files and never deletes the live one.
 
+## Status
+
+`ecs service install|uninstall|status` writes a per-user LaunchAgent, systemd user unit, or logon task. `serve` logs to the data directory when it has no terminal. The tray does not start or stop the registration yet.
+
 ## Non-goals
 
 Root daemons in `/Library/LaunchDaemons`, Windows service binaries, auto-update, crash reporting, and a process supervisor beyond what the platform provides.

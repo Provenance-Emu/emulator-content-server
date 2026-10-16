@@ -29,7 +29,7 @@
 | Adversarial validation | Partially covered by existing storage and auth tests |
 | Content roots | Registration and in-place scan. Names stay on the server and bytes are not copied |
 | Storage locations | Done: registered directories, write target, offline reads, backup refusal |
-| Service lifecycle | Briefed; not started |
+| Service lifecycle | Done: per-user install, status, uninstall, and rotating daemon logs |
 | Desktop and menu-bar UI | Briefed with a `/ui` mount and a Tauri tray; not started |
 | Remote access | Documentation pass not started; relay needs ADR 0005 first |
 | App adapters | Belongs to the app repositories |
