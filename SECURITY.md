@@ -9,3 +9,5 @@ LAN HTTP is for a trusted network. Bind loopback until setup is complete unless 
 Guest grants do not read BIOS or system files unless the grant includes `share_restricted`. Authorization runs before a blob path is opened.
 
 The content server does not accept Apple ID passwords, signing certificates, or device registration secrets. Its process and database hold none of that material. Signing belongs to a separate app with its own data directory, database, and credential store.
+
+Cloud and NAS credentials belong to a plugin directory, mode `0600`, and not to the content database. The content server does not load connector, player, feed, signer, or JIT plugins, and `/api/v1/capabilities` does not advertise them. A plugin runs in `ecs-plugins` and reaches the library only through the HTTP API.

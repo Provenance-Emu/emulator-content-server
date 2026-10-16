@@ -17,3 +17,5 @@ A request authenticates a bearer token, decides access with the pure ACL functio
 Virtual disc formats plug into `VirtualContentProvider`. ZIP is the only registered provider; disc containers follow one provider at a time. A ZIP stored inside another ZIP is a window into the same blob, so a ROM set shipped as an archive of per-game archives is listed and served without extraction. Original-file range reads are the supported streaming path.
 
 Provenance system identifiers are a vocabulary, not a closed enum. iCube and iFly can send their own dotted identifiers. MD5 and CRC remain compatibility fields. SHA-256 is the blob identity.
+
+Connectors, a wasm player, AltStore sources, and JIT or signing plans are plugins in a second process. That process calls this API. It does not open the database or the blob directory, and `/api/v1/capabilities` does not mention it. See [ADR 0007](decisions/0007-plugin-host.md).

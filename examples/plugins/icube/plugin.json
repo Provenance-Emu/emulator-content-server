@@ -1,0 +1,32 @@
+{
+  "id": "org.provenance-emu.icube.feed",
+  "name": "iCube",
+  "kind": "feed",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "apps": ["org.provenance-emu.icube"],
+  "feed": {
+    "identifier": "org.provenance-emu.icube.feed",
+    "sourceURL": "https://example.invalid/icube.json",
+    "apps": [
+      {
+        "name": "iCube",
+        "bundleIdentifier": "org.provenance-emu.icube",
+        "developerName": "Provenance",
+        "localizedDescription": "Replace this source with the build you ship. The download URL is a placeholder.",
+        "iconURL": "https://example.invalid/icube.png",
+        "tintColor": "1c1c1e",
+        "versions": [
+          {
+            "version": "0.0.0",
+            "date": "2026-01-01T00:00:00Z",
+            "localizedDescription": "Placeholder. Point downloadURL at your own IPA before publishing.",
+            "downloadURL": "https://example.invalid/iCube.ipa",
+            "size": 1,
+            "minOSVersion": "15.0"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -37,3 +37,5 @@ Several devices converge on the same library without losing a save. The server s
 ## Non-goals
 
 Real-time push, a custom sync wire protocol, merging the contents of two saves, parsing emulator save formats, and resolving conflicts without telling the operator.
+
+A NAS or cloud folder is not a second wire protocol. A connector plugin lists and reads bytes, then the plugin host uploads them through this API. A differing save is sent with a stale revision so the server keeps both. A differing ROM is not sent.

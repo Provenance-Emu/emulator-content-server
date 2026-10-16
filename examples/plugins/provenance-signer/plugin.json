@@ -1,0 +1,13 @@
+{
+  "id": "org.provenance-emu.provenance.signer",
+  "name": "Provenance signer",
+  "kind": "signer",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "apps": ["org.provenance-emu.provenance"],
+  "signer": {
+    "tool": "zsign",
+    "certificate": "identity.p12",
+    "profile": "app.mobileprovision"
+  }
+}

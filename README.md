@@ -54,10 +54,11 @@ swift test --package-path clients/swift
 - `packages/database`, `packages/storage`, `packages/auth`, and `packages/discovery` are infrastructure.
 - `apps/server` composes Fastify routes.
 - `apps/cli` is the `ecs` command.
+- `packages/plugins` and `apps/plugins` are the plugin host (`ecs-plugins`). Connectors, AltStore feeds, the wasm player, and JIT or signing plans live there and talk to this server only through `/api/v1`. See [docs/operations/plugins.md](docs/operations/plugins.md).
 - `packages/client-ts` and `clients/swift` are generated from the contract, with hand-written resume logic beside the generated models.
 
 Dependency direction is one-way: protocol and domain, then infrastructure, then server and CLI. App-specific Realm, Dolphin, CloudKit, and UIKit code does not belong here.
 
 ## Scope of this foundation
 
-The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs, directory scanning, WebDAV, desktop UI, and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, and IPA distribution stay out of the content server process and database.
+The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs, directory scanning, WebDAV, desktop UI, and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, IPA feeds, and NAS or cloud connectors stay out of the content server process and database. They are plugins.

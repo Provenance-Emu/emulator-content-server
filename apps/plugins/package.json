@@ -1,0 +1,14 @@
+{
+  "name": "@ecs/plugin-host",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "ecs-plugins": "./dist/src/main.js"
+  },
+  "dependencies": {
+    "@ecs/client": "workspace:*",
+    "@ecs/plugins": "workspace:*",
+    "@ecs/protocol": "workspace:*",
+    "@ecs/signing": "workspace:*"
+  }
+}

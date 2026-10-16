@@ -12,6 +12,7 @@ const allowed = {
   '@ecs/discovery': [],
   '@ecs/client': ['@ecs/protocol'],
   '@ecs/signing': [],
+  '@ecs/plugins': [],
   '@ecs/web': ['@ecs/client'],
   '@ecs/tray': ['@ecs/client', '@ecs/web'],
   '@ecs/server': [
@@ -22,6 +23,7 @@ const allowed = {
     '@ecs/protocol',
     '@ecs/storage',
   ],
+  '@ecs/plugin-host': ['@ecs/client', '@ecs/plugins', '@ecs/protocol', '@ecs/signing'],
   '@provenance-content/server': [
     '@ecs/auth',
     '@ecs/database',
@@ -40,9 +42,11 @@ const locations = {
   '@ecs/discovery': 'packages/discovery',
   '@ecs/client': 'packages/client-ts',
   '@ecs/signing': 'packages/signing',
+  '@ecs/plugins': 'packages/plugins',
   '@ecs/web': 'apps/web',
   '@ecs/tray': 'apps/tray',
   '@ecs/server': 'apps/server',
+  '@ecs/plugin-host': 'apps/plugins',
   '@provenance-content/server': 'apps/cli',
 };
 

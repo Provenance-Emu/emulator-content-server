@@ -45,4 +45,4 @@ A download is held whole in memory before it is saved, which suits a save file a
 
 ## Non-goals
 
-Emulation, JIT, and a custom sync protocol.
+Emulation, JIT, and a custom sync protocol. A wasm player is a plugin the content server does not compile or mount. See [Plugins](../operations/plugins.md).
