@@ -112,9 +112,16 @@ export function pathsOverlap(a: string, b: string): boolean {
   return a === b || contains(a, b) || contains(b, a);
 }
 
+function pathSegments(path: string): string[] {
+  return path.split(/[/\\]/).filter((part) => part.length > 0);
+}
+
 function contains(parent: string, child: string): boolean {
-  const prefix = parent.endsWith(sep) ? parent : `${parent}${sep}`;
-  return child.startsWith(prefix);
+  const left = pathSegments(parent);
+  const right = pathSegments(child);
+  if (left.length === 0) return parent.length > 0 && child.length > 0;
+  if (left.length > right.length) return false;
+  return left.every((part, index) => part === right[index]);
 }
 
 export async function resolveInside(root: string, target: string): Promise<string> {

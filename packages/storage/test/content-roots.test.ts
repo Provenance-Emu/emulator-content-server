@@ -81,6 +81,10 @@ test('overlap compares whole path segments rather than string prefixes', () => {
   assert.equal(pathsOverlap('/games/nes', '/games'), true);
   assert.equal(pathsOverlap('/games', '/games-backup'), false);
   assert.equal(pathsOverlap('/games', '/saves'), false);
+  assert.equal(pathsOverlap('C:\\games', 'C:\\games\\nes'), true);
+  assert.equal(pathsOverlap('C:\\games', 'C:\\games-backup'), false);
+  assert.equal(pathsOverlap('C:/games', 'C:\\games\\nes'), true);
+  assert.equal(pathsOverlap('C:\\games', 'D:\\games'), false);
 });
 
 test('reading inside a root refuses a symlink that escapes it', async () => {
