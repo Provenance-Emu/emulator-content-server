@@ -72,11 +72,16 @@ export class CatalogDatabase {
   constructor(filename: string, limits: Partial<CatalogLimits> = {}) {
     this.limits = { ...DEFAULT_LIMITS, ...limits };
     this.db = new DatabaseSync(filename);
-    this.db.exec('PRAGMA foreign_keys = ON');
-    this.db.exec('PRAGMA journal_mode = WAL');
-    this.db.exec('PRAGMA synchronous = FULL');
-    this.db.exec('PRAGMA busy_timeout = 5000');
-    this.migrate();
+    try {
+      this.db.exec('PRAGMA foreign_keys = ON');
+      this.db.exec('PRAGMA journal_mode = WAL');
+      this.db.exec('PRAGMA synchronous = FULL');
+      this.db.exec('PRAGMA busy_timeout = 5000');
+      this.migrate();
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
   }
 
   close(): void {
