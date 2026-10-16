@@ -21,7 +21,7 @@ test('locations are registered, chosen as the write target, and backed up only w
     assert.equal(added.status, 0, added.stderr);
     const listed = run(['locations', 'list', '--data', dataDir]);
     assert.match(listed.stdout, /write primary/);
-    assert.match(listed.stdout, new RegExp(`Extra {2}${extra}`));
+    assert.match(listed.stdout, new RegExp(`Extra {2}${escapeRegExp(extra)}`));
     const id = listed.stdout
       .trim()
       .split('\n')
@@ -78,6 +78,10 @@ test('locations are registered, chosen as the write target, and backed up only w
     await rm(base, { recursive: true, force: true });
   }
 });
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function run(args: string[]): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
