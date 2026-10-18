@@ -3,6 +3,8 @@ import { TrayIcon } from '@tauri-apps/api/tray';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { exit } from '@tauri-apps/plugin-process';
+import { get } from 'svelte/store';
+import { canStart, canStop, type ServiceControl, serviceSummary } from './service';
 import type { ServerWatch } from './watch.svelte';
 
 const TRAY_ID = 'status';
@@ -23,7 +25,10 @@ export function insideTauri(): boolean {
  * The returned function is called after each poll: a menu item is a native
  * object that has to be told its new text, and does not re-render on its own.
  */
-export async function installTray(watch: ServerWatch): Promise<() => Promise<void>> {
+export async function installTray(
+  watch: ServerWatch,
+  service: ServiceControl,
+): Promise<() => Promise<void>> {
   const window = getCurrentWindow();
   const status = await MenuItem.new({ text: watch.summary, enabled: false });
   const openInterface = await MenuItem.new({
@@ -34,6 +39,26 @@ export async function installTray(watch: ServerWatch): Promise<() => Promise<voi
     text: 'Status and settings',
     action: () => void window.show().then(() => window.setFocus()),
   });
+  const localStatus = await MenuItem.new({ text: serviceSummary(get(service)), enabled: false });
+  const operate = async (action: 'start' | 'stop') => {
+    await service[action]();
+    if (get(service).failure) await window.show().then(() => window.setFocus());
+  };
+  const startService = await MenuItem.new({
+    text: 'Start local service',
+    enabled: canStart(get(service)),
+    action: () => void operate('start'),
+  });
+  const stopService = await MenuItem.new({
+    text: 'Stop local service',
+    enabled: canStop(get(service)),
+    action: () => void operate('stop'),
+  });
+  const serviceDetails = await MenuItem.new({
+    text:
+      get(service).state === 'absent' ? 'Install service: instructions…' : 'Local service details…',
+    action: () => void window.show().then(() => window.setFocus()),
+  });
   const quit = await MenuItem.new({ text: 'Quit', action: () => void exit(0) });
   const menu = await Menu.new({
     items: [
@@ -41,6 +66,11 @@ export async function installTray(watch: ServerWatch): Promise<() => Promise<voi
       await PredefinedMenuItem.new({ item: 'Separator' }),
       openInterface,
       showWindow,
+      await PredefinedMenuItem.new({ item: 'Separator' }),
+      localStatus,
+      startService,
+      stopService,
+      serviceDetails,
       await PredefinedMenuItem.new({ item: 'Separator' }),
       quit,
     ],
@@ -50,6 +80,13 @@ export async function installTray(watch: ServerWatch): Promise<() => Promise<voi
   await tray.setShowMenuOnLeftClick(true);
   return async () => {
     await status.setText(watch.summary);
+    const local = get(service);
+    await localStatus.setText(serviceSummary(local));
+    await serviceDetails.setText(
+      local.state === 'absent' ? 'Install service: instructions…' : 'Local service details…',
+    );
+    await startService.setEnabled(canStart(local));
+    await stopService.setEnabled(canStop(local));
     // The tooltip is the only place with room for the time of the last check.
     await tray.setTooltip(
       watch.checkedAt ? `${watch.summary}, checked ${watch.checkedAt}` : watch.summary,

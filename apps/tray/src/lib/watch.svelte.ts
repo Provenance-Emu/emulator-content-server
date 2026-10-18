@@ -7,8 +7,8 @@ export const DEFAULT_ORIGIN = 'http://127.0.0.1:7878';
 /**
  * Watches one server and nothing else.
  *
- * The tray is an API client with no storage path of its own. It does not start
- * the server or read its data directory. A signed-in session, when there is
+ * The tray is an API client with no storage path of its own. It does not read
+ * a data directory. Local service controls use a separate native bridge. A signed-in session, when there is
  * one, stays in this window.
  */
 export class ServerWatch {
