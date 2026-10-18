@@ -10,7 +10,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json && pnpm test",
+    "test": "tsc -p tsconfig.test.json && node --test dist-tests/test/*.test.js"
   },
   "dependencies": {
     "@ecs/client": "workspace:*"

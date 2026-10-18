@@ -1,18 +1,20 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { issueToken } from '@ecs/auth';
-import { blobPath, ensureBlobStore } from '@ecs/storage';
+import { ContentClient, ContentError } from '@ecs/client';
+import { blobPath } from '@ecs/storage';
 import { openServer } from '../src/index.js';
 
 test('a secondary location is readable as a range, and offline is not a missing file', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ecs-server-location-'));
   const extra = join(dir, 'extra');
-  await ensureBlobStore(extra);
+  await mkdir(extra);
+  const dataDir = join(dir, 'data');
   const server = await openServer({
-    dataDir: dir,
+    dataDir,
     limits: { maxUploadBytes: 1024, maxLibraryBytes: 4096, sessionTtlMs: 60_000 },
   });
   try {
@@ -48,12 +50,15 @@ test('a secondary location is readable as a range, and offline is not a missing 
       'abcd',
     );
 
-    const location = server.catalog.createStorageLocation({
-      path: extra,
-      label: 'Extra',
-      actorId: 'test',
-    });
-    server.catalog.setWriteLocation(location.id, 'test');
+    const address = await server.app.listen({ host: '127.0.0.1', port: 0 });
+    const client = new ContentClient(address, auth.authorization.slice(7));
+    const revision = async () => {
+      const row = (await client.items({ libraryId })).items.find((entry) => entry.id === item.id);
+      assert.ok(row);
+      return row.revision;
+    };
+    const location = await client.addStorageLocation({ path: extra, label: 'Extra' });
+    await client.setStorageWriteTarget(location.id);
     const current = await server.app.inject({
       method: 'GET',
       url: `/api/v1/items/${item.id}`,
@@ -70,7 +75,7 @@ test('a secondary location is readable as a range, and offline is not a missing 
     );
 
     await stat(blobPath(extra, secondary.sha256));
-    await assert.rejects(stat(blobPath(dir, secondary.sha256)));
+    await assert.rejects(stat(blobPath(dataDir, secondary.sha256)));
     const ranged = await server.app.inject({
       method: 'GET',
       url: `/api/v1/files/${secondary.id}/content`,
@@ -79,7 +84,50 @@ test('a secondary location is readable as a range, and offline is not a missing 
     assert.equal(ranged.statusCode, 206);
     assert.equal(ranged.body, 'xy');
 
+    const duplicate = await client.upload({
+      libraryId,
+      itemId: item.id,
+      kind: 'rom',
+      displayName: 'duplicate',
+      relativePath: 'duplicate',
+      baseRevision: await revision(),
+      body: new TextEncoder().encode('abcd'),
+    });
+    assert.equal(duplicate.sha256, primary.sha256);
+    assert.equal(server.catalog.blobRecord(primary.sha256)?.locationId, null);
+    await assert.rejects(stat(blobPath(extra, primary.sha256)));
+    await client.setStorageWriteTarget(null);
+    const restored = await client.upload({
+      libraryId,
+      itemId: item.id,
+      kind: 'rom',
+      displayName: 'restored',
+      relativePath: 'restored',
+      baseRevision: await revision(),
+      body: new TextEncoder().encode('mnop'),
+    });
+    await stat(blobPath(dataDir, restored.sha256));
+    await assert.rejects(stat(blobPath(extra, restored.sha256)));
+    await client.setStorageWriteTarget(location.id);
     await rename(extra, join(dir, 'extra-offline'));
+    await assert.rejects(
+      client.upload(
+        {
+          libraryId,
+          itemId: item.id,
+          kind: 'rom',
+          displayName: 'offline',
+          relativePath: 'offline',
+          baseRevision: await revision(),
+          body: new TextEncoder().encode('qrst'),
+        },
+        1,
+      ),
+      (error: unknown) =>
+        error instanceof ContentError &&
+        error.status === 503 &&
+        error.problem?.type === 'urn:ecs:problem:location-offline',
+    );
     const offline = await server.app.inject({
       method: 'GET',
       url: `/api/v1/files/${secondary.id}/content`,

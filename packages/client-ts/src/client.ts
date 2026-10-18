@@ -20,6 +20,10 @@ import type {
   Problem,
   SessionResponse,
   SourceFileList,
+  StorageLocation,
+  StorageLocationDraft,
+  StorageLocationList,
+  StorageWriteTarget,
   SystemList,
   UploadSession,
   User,
@@ -254,6 +258,23 @@ export class ContentClient {
   folders(path: string | null): Promise<FolderListing> {
     const search = path ? `?path=${encodeURIComponent(path)}` : '';
     return this.getJson(`/api/v1/folders${search}`);
+  }
+
+  /** Owner-only storage administration. Paths are on the server, not the client. */
+  storageLocations(): Promise<StorageLocationList> {
+    return this.getJson('/api/v1/storage-locations');
+  }
+
+  addStorageLocation(draft: StorageLocationDraft): Promise<StorageLocation> {
+    return this.post<StorageLocation>('/api/v1/storage-locations', draft);
+  }
+
+  setStorageWriteTarget(id: string | null): Promise<StorageWriteTarget> {
+    return this.putJson('/api/v1/storage-locations/write-target', { id });
+  }
+
+  removeStorageLocation(id: string): Promise<void> {
+    return this.remove(`/api/v1/storage-locations/${encodeURIComponent(id)}`);
   }
 
   roots(): Promise<ContentRootList> {

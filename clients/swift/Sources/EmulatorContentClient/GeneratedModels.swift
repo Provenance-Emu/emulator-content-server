@@ -170,6 +170,50 @@ public struct FolderListing: Codable, Equatable, Sendable {
     }
 }
 
+public struct StorageLocation: Codable, Equatable, Sendable {
+    public var id: String
+    public var path: String
+    public var label: String
+    public var createdAt: String
+    public var online: Bool
+
+    public init(id: String, path: String, label: String, createdAt: String, online: Bool) {
+        self.id = id
+        self.path = path
+        self.label = label
+        self.createdAt = createdAt
+        self.online = online
+    }
+}
+
+public struct StorageLocationList: Codable, Equatable, Sendable {
+    public var items: [StorageLocation]
+    public var writeLocationId: String?
+
+    public init(items: [StorageLocation], writeLocationId: String? = nil) {
+        self.items = items
+        self.writeLocationId = writeLocationId
+    }
+}
+
+public struct StorageLocationDraft: Codable, Equatable, Sendable {
+    public var path: String
+    public var label: String
+
+    public init(path: String, label: String) {
+        self.path = path
+        self.label = label
+    }
+}
+
+public struct StorageWriteTarget: Codable, Equatable, Sendable {
+    public var id: String?
+
+    public init(id: String? = nil) {
+        self.id = id
+    }
+}
+
 public struct ContentRoot: Codable, Equatable, Sendable {
     public var id: String
     public var path: String

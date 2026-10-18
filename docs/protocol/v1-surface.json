@@ -7,6 +7,7 @@
     "DELETE /api/v1/items/:itemId/access/:userId",
     "DELETE /api/v1/libraries/:libraryId/members/:userId",
     "DELETE /api/v1/roots/:rootId",
+    "DELETE /api/v1/storage-locations/:locationId",
     "DELETE /api/v1/uploads/:uploadId",
     "GET /api/v1/access",
     "GET /api/v1/audit",
@@ -25,6 +26,7 @@
     "GET /api/v1/roots",
     "GET /api/v1/sources",
     "GET /api/v1/sources/:sourceId/content",
+    "GET /api/v1/storage-locations",
     "GET /api/v1/systems",
     "GET /api/v1/uploads/:uploadId",
     "GET /api/v1/users",
@@ -45,12 +47,14 @@
     "POST /api/v1/libraries",
     "POST /api/v1/roots",
     "POST /api/v1/roots/:rootId/scan",
+    "POST /api/v1/storage-locations",
     "POST /api/v1/uploads",
     "POST /api/v1/uploads/:uploadId/complete",
     "POST /api/v1/users",
     "PUT /api/v1/access",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
+    "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
   ],
   "schemas": {
@@ -216,6 +220,50 @@
         "parent",
         "path",
         "places"
+      ]
+    },
+    "StorageLocation": {
+      "properties": [
+        "createdAt",
+        "id",
+        "label",
+        "online",
+        "path"
+      ],
+      "required": [
+        "createdAt",
+        "id",
+        "label",
+        "online",
+        "path"
+      ]
+    },
+    "StorageLocationList": {
+      "properties": [
+        "items",
+        "writeLocationId"
+      ],
+      "required": [
+        "items",
+        "writeLocationId"
+      ]
+    },
+    "StorageLocationDraft": {
+      "properties": [
+        "label",
+        "path"
+      ],
+      "required": [
+        "label",
+        "path"
+      ]
+    },
+    "StorageWriteTarget": {
+      "properties": [
+        "id"
+      ],
+      "required": [
+        "id"
       ]
     },
     "ContentRoot": {

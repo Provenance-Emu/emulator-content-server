@@ -84,6 +84,28 @@ export interface FolderListing {
   places: FolderPlace[];
 }
 
+export interface StorageLocation {
+  id: string;
+  path: string;
+  label: string;
+  createdAt: string;
+  online: boolean;
+}
+
+export interface StorageLocationList {
+  items: StorageLocation[];
+  writeLocationId: string | null;
+}
+
+export interface StorageLocationDraft {
+  path: string;
+  label: string;
+}
+
+export interface StorageWriteTarget {
+  id: string | null;
+}
+
 export interface ContentRoot {
   id: string;
   path: string;

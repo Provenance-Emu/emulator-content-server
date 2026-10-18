@@ -11,6 +11,7 @@
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
   import { clearSession, loadSession, saveSession } from './lib/session';
   import Login from './Login.svelte';
+  import Locations from './Locations.svelte';
   import Roots from './Roots.svelte';
   import Status from './Status.svelte';
 
@@ -119,6 +120,7 @@
     <Libraries {client} />
     {#if roots}
       <Roots {client} {roots} />
+      <Locations {client} onchange={() => (noted += 1)} />
       <Grants {client} onchange={() => (noted += 1)} />
       <Audit {client} {noted} />
     {/if}

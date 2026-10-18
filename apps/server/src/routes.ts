@@ -34,6 +34,7 @@ import {
   blobFileSize,
   blobPath,
   createStagingFile,
+  ensureBlobStore,
   FileContentReader,
   hashFile,
   inspectRoot,
@@ -41,12 +42,14 @@ import {
   listVirtualEntries,
   locationOnline,
   openVirtualEntry,
+  pathsOverlap,
   placeBlob,
   probeFile,
   probeRoot,
   removeStaging,
   resolveContentRoot,
   resolveInside,
+  resolveStorageLocation,
   truncateStaging,
   writeAtOffset,
 } from '@ecs/storage';
@@ -83,6 +86,27 @@ const UI_CONTENT_POLICY = [
 
 export function registerRoutes(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
+
+  const placements = new Map<string, number>();
+  function reserveLocation(id: string): () => void {
+    placements.set(id, (placements.get(id) ?? 0) + 1);
+    return () => {
+      const count = placements.get(id) ?? 0;
+      if (count <= 1) placements.delete(id);
+      else placements.set(id, count - 1);
+    };
+  }
+  // Folder validation awaits filesystem metadata. Serialize competing additions
+  // so a parent/child pair cannot both validate against an old catalog snapshot.
+  let registration: Promise<void> = Promise.resolve();
+  function registerFolder<T>(operation: () => Promise<T>): Promise<T> {
+    const result = registration.then(operation);
+    registration = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
 
   app.get('/health', async () => ({ ok: true }));
 
@@ -515,23 +539,32 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       }
       await truncateStaging(stagingPath(context, upload.id), upload.received);
       if (upload.received === 0) throw new DomainError('invalid-body', 400, 'Upload is empty');
-      const placed = await placeUploadBytes(context, stagingPath(context, upload.id));
-      const asset = catalog.completeUpload({
-        uploadId: upload.id,
-        itemId: item.id,
-        kind,
-        displayName: requiredString(body, 'displayName'),
-        relativePath,
-        baseRevision: requiredInteger(body, 'baseRevision'),
-        sha256: placed.sha256,
-        size: placed.size,
-        md5: placed.md5,
-        crc: placed.crc,
-        shareable: !isRestrictedAssetKind(kind),
-        actorId: actor.kind === 'user' ? actor.userId : null,
-        deviceId: deviceOf(actor),
-        locationId: placed.locationId,
-      });
+      const placed = await placeUploadBytes(
+        context,
+        stagingPath(context, upload.id),
+        reserveLocation,
+      );
+      let asset: ReturnType<CatalogDatabase['completeUpload']>;
+      try {
+        asset = catalog.completeUpload({
+          uploadId: upload.id,
+          itemId: item.id,
+          kind,
+          displayName: requiredString(body, 'displayName'),
+          relativePath,
+          baseRevision: requiredInteger(body, 'baseRevision'),
+          sha256: placed.sha256,
+          size: placed.size,
+          md5: placed.md5,
+          crc: placed.crc,
+          shareable: !isRestrictedAssetKind(kind),
+          actorId: actor.kind === 'user' ? actor.userId : null,
+          deviceId: deviceOf(actor),
+          locationId: placed.locationId,
+        });
+      } finally {
+        placed.release();
+      }
       await removeStaging(context.dataDir, upload.id);
       return { status: 201, body: asset };
     });
@@ -747,6 +780,71 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return listFolders(queryString(request, 'path') ?? null);
   });
 
+  app.get('/api/v1/storage-locations', async (request) => {
+    requireOwner(request, 'Only the server owner can read storage locations');
+    const items = await Promise.all(
+      catalog.listStorageLocations().map(async (location) => ({
+        ...location,
+        online: await locationOnline(location.path),
+      })),
+    );
+    return { items, writeLocationId: catalog.writeLocation()?.id ?? null };
+  });
+
+  app.post('/api/v1/storage-locations', async (request, reply) => {
+    const actor = requireOwner(request, 'Only the server owner can add a storage location');
+    const body = jsonObject(request.body);
+    const label = requiredString(body, 'label');
+    // Validate before initializing a folder; the catalog enforces this too.
+    if (label.trim() !== label || label.length > 80 || /[\\/]/.test(label)) {
+      throw new DomainError('invalid-location', 400, 'A location label must be 1-80 characters');
+    }
+    const location = await registerFolder(async () => {
+      const saved = catalog.listStorageLocations();
+      if (saved.some((location) => location.label === label)) {
+        throw new DomainError('conflict', 409, 'That label is already used');
+      }
+      const path = await resolveStorageLocation(
+        context.dataDir,
+        requiredString(body, 'path'),
+        saved.map((location) => location.path),
+        catalog.listContentRoots().map((root) => root.path),
+      );
+      try {
+        await ensureBlobStore(path);
+      } catch {
+        throw new DomainError(
+          'invalid-location',
+          400,
+          'Unable to initialize blob storage in that folder',
+        );
+      }
+      return catalog.createStorageLocation({ path, label, actorId: actor.userId });
+    });
+    return reply.code(201).send({ ...location, online: await locationOnline(location.path) });
+  });
+
+  app.put('/api/v1/storage-locations/write-target', async (request) => {
+    const actor = requireOwner(
+      request,
+      'Only the server owner can select the storage write target',
+    );
+    const body = jsonObject(request.body);
+    const id = body.id === null ? null : requiredString(body, 'id');
+    catalog.setWriteLocation(id, actor.userId);
+    return { id };
+  });
+
+  app.delete('/api/v1/storage-locations/:locationId', async (request, reply) => {
+    const actor = requireOwner(request, 'Only the server owner can remove a storage location');
+    const { locationId } = request.params as { locationId: string };
+    if (placements.has(locationId)) {
+      throw new DomainError('conflict', 409, 'That location has uploads completing');
+    }
+    catalog.deleteStorageLocation(locationId, actor.userId);
+    return reply.code(204).send();
+  });
+
   app.get('/api/v1/roots', async (request) => {
     requireOwner(request, 'Only the server owner can read content roots');
     return { items: catalog.listContentRoots(), nextCursor: null };
@@ -760,12 +858,19 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     if (libraryId !== null && !catalog.getLibrary(libraryId)) {
       throw new DomainError('not-found', 404, 'Library not found');
     }
-    const path = await resolveContentRoot(
-      context.dataDir,
-      requiredString(body, 'path'),
-      catalog.listContentRoots().map((root) => root.path),
-    );
-    const root = catalog.createContentRoot({ path, label, libraryId, actorId: actor.userId });
+    const root = await registerFolder(async () => {
+      const path = await resolveContentRoot(
+        context.dataDir,
+        requiredString(body, 'path'),
+        catalog.listContentRoots().map((root) => root.path),
+      );
+      for (const location of catalog.listStorageLocations()) {
+        if (pathsOverlap(path, location.path)) {
+          throw new DomainError('conflict', 409, 'That folder overlaps a storage location');
+        }
+      }
+      return catalog.createContentRoot({ path, label, libraryId, actorId: actor.userId });
+    });
     reply.code(201);
     return root;
   });
@@ -936,7 +1041,9 @@ function stagingPath(context: ServerContext, uploadId: string): string {
 async function placeUploadBytes(
   context: ServerContext,
   sourcePath: string,
+  reserve: (id: string) => () => void,
 ): Promise<{
+  release: () => void;
   sha256: string;
   size: number;
   md5: string;
@@ -948,14 +1055,22 @@ async function placeUploadBytes(
   if (existing) {
     const root = await blobRoot(context, hashes.sha256);
     await placeBlob(root, sourcePath, hashes);
-    return { ...hashes, locationId: existing.locationId };
+    return { ...hashes, locationId: existing.locationId, release: () => {} };
   }
   const write = context.catalog.writeLocation();
-  if (write && !(await locationOnline(write.path))) {
-    throw new DomainError('location-offline', 503, `Storage location ${write.label} is offline`);
+  // Pin before the first filesystem await and retain the reservation until the
+  // catalog references the blob. Management may change the target meanwhile.
+  const release = write ? reserve(write.id) : () => {};
+  try {
+    if (write && !(await locationOnline(write.path))) {
+      throw new DomainError('location-offline', 503, `Storage location ${write.label} is offline`);
+    }
+    await placeBlob(write?.path ?? context.dataDir, sourcePath, hashes);
+    return { ...hashes, locationId: write?.id ?? null, release };
+  } catch (error) {
+    release();
+    throw error;
   }
-  await placeBlob(write?.path ?? context.dataDir, sourcePath, hashes);
-  return { ...hashes, locationId: write?.id ?? null };
 }
 
 /** The directory that holds this digest. The data directory is the primary, and it has no row. */
