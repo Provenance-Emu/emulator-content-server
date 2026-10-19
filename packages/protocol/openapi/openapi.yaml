@@ -246,6 +246,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FolderListing'
+  /api/v1/storage-locations:
+    get:
+      operationId: listStorageLocations
+      description: Owner only. Includes server paths and current online status.
+      responses:
+        '200':
+          description: Registered locations and the target for new bytes. Null means Primary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageLocationList'
+    post:
+      operationId: createStorageLocation
+      description: Owner only. Initializes blob storage in an existing server folder.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageLocationDraft'
+      responses:
+        '201':
+          description: Location registered. Existing bytes are not moved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageLocation'
+  /api/v1/storage-locations/write-target:
+    put:
+      operationId: setStorageWriteTarget
+      description: Owner only. Selects where new bytes are written; null selects Primary.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageWriteTarget'
+      responses:
+        '200':
+          description: Write target saved. An offline target refuses new uploads until online.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageWriteTarget'
+  /api/v1/storage-locations/{locationId}:
+    delete:
+      operationId: deleteStorageLocation
+      description: Owner only. Forgets an unused location without deleting files. The active target or a location holding catalog blobs returns 409.
+      responses:
+        '204':
+          description: Location forgotten.
   /api/v1/roots:
     get:
       operationId: listContentRoots
@@ -468,6 +519,34 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FolderPlace'
+    StorageLocation:
+      type: object
+      required: [id, path, label, createdAt, online]
+      properties:
+        id: { type: string }
+        path: { type: string }
+        label: { type: string }
+        createdAt: { type: string }
+        online: { type: boolean }
+    StorageLocationList:
+      type: object
+      required: [items, writeLocationId]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/StorageLocation' }
+        writeLocationId: { type: [string, 'null'] }
+    StorageLocationDraft:
+      type: object
+      required: [path, label]
+      properties:
+        path: { type: string }
+        label: { type: string }
+    StorageWriteTarget:
+      type: object
+      required: [id]
+      properties:
+        id: { type: [string, 'null'] }
     ContentRoot:
       type: object
       required: [id, path, label, libraryId, createdAt]
