@@ -53,7 +53,9 @@ requests carrying tray-origin headers. Digest is accepted only under `/dav/`.
 Add authenticated account-session endpoints:
 
 - `POST /api/v1/webdav-credentials`: create a credential for the current user from
-  a label and optional lifetime. Return metadata, a generated login name, and a
+  a trimmed 1–80 character label and optional lifetime of 60 seconds to 365 days
+  (default 90 days). Allow at most 32 active credentials per account. Return
+  metadata, a generated login name, and a
   cryptographically random 32-byte app password once. Send `Cache-Control:
   no-store`. Credential creation has no secret-bearing idempotency cache.
 - `GET /api/v1/webdav-credentials`: list the current user's metadata, including
@@ -79,10 +81,13 @@ password, never a human account password. Validate algorithm, realm, nonce,
 opaque, URI, method, client nonce, eight-digit positive nonce count, response
 length, duplicate fields, and header size. Compare responses in constant time.
 
-Use short-lived server-authenticated nonces bound to this process, and a bounded
-replay cache that rejects a repeated nonce-count for a credential/client nonce.
-Permit distinct out-of-order counts within a bounded window so concurrent client
-requests are not falsely rejected. Expired valid nonces return a fresh challenge
+Use five-minute server-authenticated nonces bound to this process, and a replay
+cache keyed by credential/server nonce/client nonce that rejects repeated counts.
+Retain a 64-count sliding window to permit distinct out-of-order counts without
+falsely rejecting concurrent client requests. Expire entries with their nonce;
+limit the cache to 10,000 entries and refuse new authenticated nonce contexts with
+503 when full rather than evicting live replay protection. Expired valid nonces
+return a fresh challenge
 with `stale=true`; invalid credentials do not. Restart invalidates old nonces.
 Rate-limit failed authentication by socket address without logging credentials.
 Do not apply the login request quota to successful DAV reads. Expiry and
@@ -132,9 +137,12 @@ failure behavior; DAV listing must not hydrate or hash placeholders.
   `getetag`, `creationdate`, and `getlastmodified` where meaningful. Dates use UTC.
   Unknown requested properties receive 404 propstat, including unsupported Finder
   quota/resource-fork properties. Collections have trailing-slash hrefs.
-- Use a namespace-aware XML parser with a small request-body limit and explicit
-  rejection of DTD/entity declarations. Bound nesting and requested-property
-  counts. Malformed XML is 400; oversized XML is 413.
+- Use a namespace-aware XML parser with a 32 KiB request-body limit and explicit
+  rejection of DTD/entity declarations. Limit nesting to 16 and requested
+  properties to 128. Malformed XML is 400; oversized XML is 413. Limit each
+  collection response to 10,000 children and return 507 instead of silently
+  truncating or allocating an unbounded response. Iterate catalog pages within
+  that limit so collections with more than one REST page remain complete.
 - GET/HEAD files stream the same bytes and strong ETags as REST. Honor a single
   byte Range, suffix/open-ended ranges, If-Range, If-None-Match, 206 and 416, and
   HEAD content lengths. Do not buffer whole files. Collection GET/HEAD has no
