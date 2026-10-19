@@ -493,6 +493,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     );
     const header = request.headers['content-range'];
     let offset = upload.received;
+    let expectedBytes: number | undefined;
     if (typeof header === 'string') {
       const parsed = parseContentRange(header);
       if (!parsed) throw new DomainError('invalid-body', 400, 'Content-Range is invalid');
@@ -504,6 +505,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         );
       }
       offset = parsed.start;
+      expectedBytes = parsed.end - parsed.start + 1;
     }
     const declared = request.headers['content-length'];
     if (typeof declared === 'string' && Number(declared) > catalog.limits.maxUploadBytes - offset) {
@@ -516,6 +518,10 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       asStream(request.body),
       catalog.limits.maxUploadBytes,
     );
+    if (expectedBytes !== undefined && written !== expectedBytes) {
+      await truncateStaging(stagingPath(context, upload.id), offset);
+      throw new DomainError('invalid-body', 400, 'Body length does not match Content-Range');
+    }
     catalog.setUploadReceived(upload.id, offset + written);
     return reply.status(204).send();
   });
