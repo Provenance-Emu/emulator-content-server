@@ -47,3 +47,41 @@ test('serve accepts CHD flag/environment configuration and flag wins over enviro
     await rm(root, { recursive: true, force: true });
   }
 });
+
+for (const option of [
+  { flag: '--chdman', environment: 'ECS_CHDMAN_PATH', error: /absolute executable path/ },
+  { flag: '--player-dir', environment: 'ECS_PLAYER_DIR', error: /absolute directory path/ },
+]) {
+  test(`${option.flag} rejects relative flag and environment values while selecting service configuration`, async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ecs-cli-relative-'));
+    try {
+      for (const mode of ['flag', 'environment']) {
+        const env = { ...process.env };
+        delete env.ECS_CHDMAN_PATH;
+        delete env.ECS_PLAYER_DIR;
+        if (mode === 'environment') env[option.environment] = 'relative-tool';
+        // status shares configuration selection with install and never installs a service.
+        const result = spawnSync(
+          process.execPath,
+          [
+            cli,
+            'service',
+            'status',
+            '--data',
+            root,
+            ...(mode === 'flag' ? [option.flag, 'relative-tool'] : []),
+          ],
+          {
+            env,
+            encoding: 'utf8',
+            timeout: 10000,
+          },
+        );
+        assert.equal(result.status, 1, mode);
+        assert.match(result.stderr, option.error, mode);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}

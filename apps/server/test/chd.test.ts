@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { get } from 'node:http';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -29,13 +30,40 @@ test('CHD is opt-in and a configured missing decoder fails startup', async () =>
   }
 });
 
-test('configured CHD supports HTTP ranges and authorization and closes active native requests', async () => {
+test('configured CHD and player coexist with HTTP ranges, authorization and active decoder shutdown', async () => {
   const { PassThrough } = await import('node:stream');
   const { writeFile } = await import('node:fs/promises');
   const { issueToken } = await import('@ecs/auth');
   const dataDir = await mkdtemp(join(tmpdir(), 'ecs-chd-http-'));
   const executable = join(dataDir, 'decoder');
   await writeFile(executable, '', { mode: 0o700 });
+  const playerDir = join(dataDir, 'player-assets');
+  await mkdir(playerDir);
+  const loader = 'export default async () => ({});';
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  const sha = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
+  await writeFile(join(playerDir, 'fceumm_libretro.js'), loader);
+  await writeFile(join(playerDir, 'fceumm_libretro.wasm'), wasm);
+  await writeFile(
+    join(playerDir, 'core.json'),
+    JSON.stringify({
+      version: 1,
+      id: 'fceumm',
+      name: 'FCEUmm',
+      systems: ['com.provenance.nes'],
+      runtime: 'retroarch-emscripten-esm',
+      threaded: false,
+      filesystem: 'memfs',
+      saveCompletion: 'command-reply-v1',
+      frontendCommit: '4d4bfc0fbaacca30d433e5c11b0b2b5242141b66',
+      coreCommit: 'ac0d00a7fc01166f84c7bac01d1084ebfd2b865e',
+      emscriptenVersion: '3.1.46',
+      contentExtension: 'nes',
+      maxContentBytes: 67108864,
+      loader: { file: 'fceumm_libretro.js', sha256: sha(loader) },
+      wasm: { file: 'fceumm_libretro.wasm', sha256: sha(wasm) },
+    }),
+  );
   let decodes = 0;
   let probes = 0;
   let hang = false;
@@ -82,12 +110,14 @@ test('configured CHD supports HTTP ranges and authorization and closes active na
     dataDir,
     chdmanPath: executable,
     chdProviderOptions: options,
+    playerDir,
     localTrust: false,
   });
   try {
     assert.equal(probes, 2);
     const capabilities = await server.app.inject('/api/v1/capabilities');
     assert.deepEqual(capabilities.json().features.virtualFormats, ['zip', 'chd']);
+    assert.equal(capabilities.json().features.webPlayback, true);
     const bootstrap = issueToken();
     server.catalog.saveBootstrapHash(bootstrap.hash);
     const owner = await server.app.inject({
@@ -96,6 +126,10 @@ test('configured CHD supports HTTP ranges and authorization and closes active na
       payload: { token: bootstrap.token, username: 'owner', password: 'correct-horse' },
     });
     const auth = { authorization: `Bearer ${owner.json().token}` };
+    await rm(join(playerDir, 'fceumm_libretro.wasm'));
+    const core = await server.app.inject({ url: '/play/cores/fceumm/core.wasm', headers: auth });
+    assert.equal(core.statusCode, 200);
+    assert.deepEqual(core.rawPayload, wasm);
     const libraries = await server.app.inject({ url: '/api/v1/libraries', headers: auth });
     const libraryId = libraries.json().items[0].id;
     const item = await server.app.inject({

@@ -1206,7 +1206,7 @@ async function sendEntryContent(
   reply.raw.once('close', disconnected);
   socket.once('close', disconnected);
   if (reply.raw.destroyed || socket.destroyed) disconnected();
-  let entry;
+  let entry: Awaited<ReturnType<typeof openVirtualEntry>>;
   try {
     entry = await openVirtualEntry(
       root,
