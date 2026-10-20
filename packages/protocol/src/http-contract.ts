@@ -2,6 +2,7 @@ export const HTTP_OPERATIONS = [
   'GET /health',
   'GET /openapi.yaml',
   'GET /api/v1/capabilities',
+  'GET /api/v1/player/core',
   'GET /api/v1/systems',
   'POST /api/v1/auth/bootstrap',
   'POST /api/v1/auth/login',

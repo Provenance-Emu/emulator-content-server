@@ -245,3 +245,13 @@ test('optional CHD executable survives each service registration without credent
     assert.equal(text.includes(SECRET), false);
   }
 });
+
+test('service registration persists the selected player directory on every platform', () => {
+  for (const platform of ['darwin', 'linux', 'win32'] as const) {
+    const text = renderRegistration(
+      Object.assign(spec('/home/user', '/data', platform), { playerDir: '/opt/trusted-player' }),
+    );
+    assert.match(text, /--player-dir/);
+    assert.match(text, /\/opt\/trusted-player/);
+  }
+});

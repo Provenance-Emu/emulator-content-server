@@ -18,6 +18,7 @@ import './actor.js';
 import type { ServerContext } from './context.js';
 import { sendProblem } from './http.js';
 import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
+import { loadPlayerAssets, registerPlayerAssets } from './player-assets.js';
 import { registerRoutes } from './routes.js';
 import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
 import { registerWebDavCredentials } from './webdav-credentials.js';
@@ -31,6 +32,8 @@ export interface OpenServerOptions {
   displayName?: string;
   webdavEnabled?: boolean;
   uiDir?: string | null;
+  /** Trusted static browser core directory; absent means no playback or filesystem probe. */
+  playerDir?: string;
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
   loginLimit?: number;
@@ -43,6 +46,8 @@ export async function openServer(options: OpenServerOptions): Promise<{
   catalog: CatalogDatabase;
   close: () => Promise<void>;
 }> {
+  const player =
+    options.playerDir === undefined ? undefined : await loadPlayerAssets(options.playerDir);
   await ensureLayout(options.dataDir);
   const dataDir = await realpath(options.dataDir);
   const virtual = new VirtualProviderRegistry([
@@ -60,6 +65,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
   }
   const context: ServerContext = {
     catalog,
+    player,
     dataDir,
     webdavEnabled: options.webdavEnabled === true,
     displayName: options.displayName ?? 'Emulator Content Server',
@@ -194,6 +200,7 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
   });
   registerWebDav(app, context);
   registerRoutes(app, context);
+  registerPlayerAssets(app, context);
   registerWebDavCredentials(app, context);
   return app;
 }

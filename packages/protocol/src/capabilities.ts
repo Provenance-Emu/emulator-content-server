@@ -16,6 +16,7 @@ export interface Capabilities {
     virtualFormats: string[];
     webdav: boolean;
     natTraversal: boolean;
+    webPlayback?: boolean;
   };
   limits: {
     maxUploadBytes: number;
@@ -33,6 +34,7 @@ export function buildCapabilities(input: {
   /** True when this process will admit the local network without a token. */
   lanOpen?: boolean;
   webdavEnabled?: boolean;
+  webPlayback?: boolean;
 }): Capabilities {
   return {
     protocol: { major: API_MAJOR, minor: API_MINOR, path: API_PATH },
@@ -46,6 +48,7 @@ export function buildCapabilities(input: {
       virtualFormats: input.virtualFormats ?? [],
       webdav: input.webdavEnabled === true,
       natTraversal: false,
+      webPlayback: input.webPlayback === true,
     },
     limits: {
       maxUploadBytes: input.maxUploadBytes,

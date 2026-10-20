@@ -59,8 +59,9 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var virtualFormats: [String]
     public var webdav: Bool
     public var natTraversal: Bool
+    public var webPlayback: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -69,6 +70,55 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.virtualFormats = virtualFormats
         self.webdav = webdav
         self.natTraversal = natTraversal
+        self.webPlayback = webPlayback
+    }
+}
+
+public struct PlayerCoreResource: Codable, Equatable, Sendable {
+    public var url: String
+    public var sha256: String
+    public var sizeBytes: Int64
+
+    public init(url: String, sha256: String, sizeBytes: Int64) {
+        self.url = url
+        self.sha256 = sha256
+        self.sizeBytes = sizeBytes
+    }
+}
+
+public struct PlayerCoreDescriptor: Codable, Equatable, Sendable {
+    public var version: Int
+    public var id: String
+    public var name: String
+    public var systems: [String]
+    public var runtime: String
+    public var threaded: Bool
+    public var filesystem: String
+    public var saveCompletion: String
+    public var frontendCommit: String
+    public var coreCommit: String
+    public var emscriptenVersion: String
+    public var contentExtension: String
+    public var maxContentBytes: Int64
+    public var loader: PlayerCoreResource
+    public var wasm: PlayerCoreResource
+
+    public init(version: Int, id: String, name: String, systems: [String], runtime: String, threaded: Bool, filesystem: String, saveCompletion: String, frontendCommit: String, coreCommit: String, emscriptenVersion: String, contentExtension: String, maxContentBytes: Int64, loader: PlayerCoreResource, wasm: PlayerCoreResource) {
+        self.version = version
+        self.id = id
+        self.name = name
+        self.systems = systems
+        self.runtime = runtime
+        self.threaded = threaded
+        self.filesystem = filesystem
+        self.saveCompletion = saveCompletion
+        self.frontendCommit = frontendCommit
+        self.coreCommit = coreCommit
+        self.emscriptenVersion = emscriptenVersion
+        self.contentExtension = contentExtension
+        self.maxContentBytes = maxContentBytes
+        self.loader = loader
+        self.wasm = wasm
     }
 }
 

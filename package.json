@@ -15,7 +15,7 @@
     "ui-check": "pnpm --filter @ecs/web check && pnpm --filter @ecs/tray check",
     "tray": "pnpm --filter @ecs/tray tauri build",
     "tray-dev": "pnpm --filter @ecs/tray tauri dev",
-    "test": "pnpm build && node --disable-warning=ExperimentalWarning scripts/run-tests.mjs",
+    "test": "pnpm build && pnpm --filter @ecs/web test:build && node --disable-warning=ExperimentalWarning scripts/run-tests.mjs",
     "lint": "biome check",
     "format": "biome check --write",
     "generate": "node packages/protocol/scripts/generate-clients.mjs",

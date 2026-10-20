@@ -24,6 +24,7 @@
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
     "GET /api/v1/libraries",
+    "GET /api/v1/player/core",
     "GET /api/v1/roots",
     "GET /api/v1/sources",
     "GET /api/v1/sources/:sourceId/content",
@@ -114,6 +115,7 @@
         "rangeRequests",
         "resumableUploads",
         "virtualFormats",
+        "webPlayback",
         "webdav"
       ],
       "required": [
@@ -125,6 +127,54 @@
         "resumableUploads",
         "virtualFormats",
         "webdav"
+      ]
+    },
+    "PlayerCoreResource": {
+      "properties": [
+        "sha256",
+        "sizeBytes",
+        "url"
+      ],
+      "required": [
+        "sha256",
+        "sizeBytes",
+        "url"
+      ]
+    },
+    "PlayerCoreDescriptor": {
+      "properties": [
+        "contentExtension",
+        "coreCommit",
+        "emscriptenVersion",
+        "filesystem",
+        "frontendCommit",
+        "id",
+        "loader",
+        "maxContentBytes",
+        "name",
+        "runtime",
+        "saveCompletion",
+        "systems",
+        "threaded",
+        "version",
+        "wasm"
+      ],
+      "required": [
+        "contentExtension",
+        "coreCommit",
+        "emscriptenVersion",
+        "filesystem",
+        "frontendCommit",
+        "id",
+        "loader",
+        "maxContentBytes",
+        "name",
+        "runtime",
+        "saveCompletion",
+        "systems",
+        "threaded",
+        "version",
+        "wasm"
       ]
     },
     "Limits": {
