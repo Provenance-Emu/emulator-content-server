@@ -39,13 +39,20 @@ Docker presents a published connection as a private bridge address. The sample t
 
 `ECS_MAX_UPLOAD_BYTES` and `ECS_MAX_LIBRARY_BYTES` override the defaults of 32 GiB per upload and 512 GiB per library.
 
-## Public TLS
+## Remote access and public TLS
+
+For access away from home, use the [VPN and reverse-proxy guide](remote-access.md).
+Select `token` access mode before remote deployment and bind to the server's VPN
+address, or keep a same-host reverse-proxy backend on loopback:
 
 ```sh
-ecs serve --data ./content-data --host 0.0.0.0 --public --tls-terminated
+pnpm ecs serve --data ./content-data --host 127.0.0.1 --public --tls-terminated
 ```
 
-Put a reverse proxy with a certificate in front of the process. The flag records the operator's assertion; the process does not mint a certificate.
+Put an HTTPS reverse proxy with a certificate in front of that private backend.
+`--public` disables socket trust even on loopback, so a proxy cannot inherit owner
+access. `--tls-terminated` records the operator's assertion; ECS still speaks HTTP
+and does not mint a certificate. Forwarded address headers do not grant trust.
 
 ## mDNS
 
