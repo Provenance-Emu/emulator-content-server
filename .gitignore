@@ -14,3 +14,7 @@ coverage/
 dist-release/
 clients/swift/.build/
 .swiftpm/
+
+# Browser acceptance artifacts can contain private application state.
+playwright-report/
+test-results/

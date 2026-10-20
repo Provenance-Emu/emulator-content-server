@@ -22,7 +22,8 @@
     "check-drift": "node packages/protocol/scripts/generate-clients.mjs --check",
     "update-surface": "tsc -b packages/protocol && node packages/protocol/scripts/write-surface.mjs",
     "secret-scan": "node scripts/secret-scan.mjs",
-    "verify": "pnpm lint && pnpm test && pnpm ui-check && pnpm check-drift && pnpm secret-scan && node scripts/check-boundaries.mjs"
+    "verify": "pnpm lint && pnpm test && pnpm ui-check && pnpm check-drift && pnpm secret-scan && node scripts/check-boundaries.mjs",
+    "test:browser": "pnpm build && pnpm ui && pnpm --filter @ecs/web test:browser"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
