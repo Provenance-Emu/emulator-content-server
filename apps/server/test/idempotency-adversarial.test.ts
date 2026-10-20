@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -55,6 +56,14 @@ for (const resource of ['items', 'uploads'] as const) {
       });
     const first = await send(original);
     assert.equal(first.statusCode, 201, first.body);
+    const otherEndpoint = await app.inject({
+      method: 'POST',
+      url: resource === 'items' ? '/api/v1/uploads' : '/api/v1/items',
+      headers: { ...auth, 'idempotency-key': 'adversarial-request-1' },
+      payload: original,
+    });
+    assert.equal(otherEndpoint.statusCode, 409);
+    assert.equal(otherEndpoint.json().type, 'urn:ecs:problem:idempotency-conflict');
     for (let attempt = 0; attempt < 2; attempt++) {
       const conflict = await send(changed);
       assert.equal(conflict.statusCode, 409, conflict.body);
@@ -83,6 +92,16 @@ for (const resource of ['items', 'uploads'] as const) {
     const independent = await send(changed, 'adversarial-request-2');
     assert.equal(independent.statusCode, 201, independent.body);
     assert.notEqual(independent.json().id, first.json().id);
+    server.catalog.saveIdempotency({
+      actorKey: `user:${owner.json().userId}`,
+      key: 'legacy-body-only-key',
+      requestHash: createHash('sha256').update(JSON.stringify(original)).digest('hex'),
+      statusCode: 201,
+      responseJson: JSON.stringify(first.json()),
+    });
+    const legacy = await send(original, 'legacy-body-only-key');
+    assert.equal(legacy.statusCode, 409);
+    assert.equal(legacy.json().type, 'urn:ecs:problem:idempotency-conflict');
   });
 }
 
@@ -195,6 +214,38 @@ test('cached mutations still require current library permissions and token scope
     },
     'permission-grant-1',
   );
+
+  await t.test('a completion key cannot replay a different upload target', async () => {
+    const completion = actions.find((action) => action.key === 'permission-complete-1');
+    assert.ok(completion);
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads',
+      headers: editor,
+      payload: { libraryId },
+    });
+    assert.equal(second.statusCode, 201);
+    const url = `/api/v1/uploads/${second.json().id}`;
+    const put = await app.inject({
+      method: 'PUT',
+      url: `${url}/content`,
+      headers: { ...editor, 'content-type': 'application/octet-stream' },
+      payload: Buffer.from('different'),
+    });
+    assert.equal(put.statusCode, 204);
+    const wrongTarget = await app.inject({
+      method: 'POST',
+      url: `${url}/complete`,
+      payload: completion.payload,
+      headers: { ...editor, 'idempotency-key': completion.key },
+    });
+    assert.equal(wrongTarget.statusCode, 409);
+    assert.equal(wrongTarget.json().type, 'urn:ecs:problem:idempotency-conflict');
+    const state = await app.inject({ url, headers: editor });
+    assert.equal(state.statusCode, 200);
+    assert.equal(state.json().state, 'open');
+    assert.equal(state.json().received, 9);
+  });
 
   for (const phase of ['authorized', 'reduced scope', 'demoted', 'removed', 'restored'] as const) {
     if (phase === 'demoted') assert.equal((await setRole('reader')).statusCode, 204);

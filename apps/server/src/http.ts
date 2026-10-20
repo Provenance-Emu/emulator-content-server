@@ -92,7 +92,9 @@ export async function withIdempotency(
   if (typeof header !== 'string' || !/^[A-Za-z0-9._:-]{8,200}$/.test(header)) {
     throw new DomainError('invalid-body', 400, 'Idempotency-Key is invalid');
   }
-  const requestHash = createHash('sha256').update(JSON.stringify(body)).digest('hex');
+  const requestHash = createHash('sha256')
+    .update(JSON.stringify([request.method, request.url, body]))
+    .digest('hex');
   const key = actorKey(actor);
   const existing = catalog.getIdempotency(key, header);
   if (existing) {
