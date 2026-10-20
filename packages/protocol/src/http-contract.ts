@@ -51,6 +51,9 @@ export const HTTP_OPERATIONS = [
   'POST /api/v1/device-tokens',
   'DELETE /api/v1/device-tokens/:tokenId',
   'GET /api/v1/audit',
+  'GET /api/v1/webdav-credentials',
+  'POST /api/v1/webdav-credentials',
+  'DELETE /api/v1/webdav-credentials/:id',
 ] as const;
 
 export type HttpOperation = (typeof HTTP_OPERATIONS)[number];

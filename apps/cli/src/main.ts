@@ -166,6 +166,7 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       limits: limitsFromEnv(process.env),
       logger: true,
       uiDir,
+      webdavEnabled: listen.webdavEnabled,
       // A public bind sits behind a proxy on loopback, so the socket address
       // cannot decide who is local.
       localTrust: !listen.publicInternet,
@@ -272,6 +273,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
     host: listen.host,
     port: listen.port,
     advertise: listen.advertise,
+    webdavEnabled: listen.webdavEnabled,
     allowLan: listen.allowLan,
     publicInternet: listen.publicInternet,
     tlsTerminated: listen.tlsTerminated,
@@ -284,6 +286,7 @@ function listenConfig(): {
   host: string;
   port: number;
   advertise: boolean;
+  webdavEnabled: boolean;
   allowLan: boolean;
   publicInternet: boolean;
   tlsTerminated: boolean;
@@ -295,6 +298,7 @@ function listenConfig(): {
     host,
     port,
     advertise: has('--advertise'),
+    webdavEnabled: has('--webdav') || process.env.ECS_WEBDAV === '1',
     allowLan: has('--allow-lan') || process.env.ECS_ALLOW_LAN === '1',
     publicInternet: has('--public'),
     tlsTerminated: has('--tls-terminated') || process.env.ECS_TLS_TERMINATED === '1',
@@ -313,7 +317,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--ui <dir>|none]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--ui <dir>|none]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
@@ -325,7 +329,7 @@ ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]
-ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav]
 ecs service uninstall --data ./content-data
 ecs service status --data ./content-data`);
 }

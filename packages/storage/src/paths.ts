@@ -124,8 +124,15 @@ function contains(parent: string, child: string): boolean {
   return left.every((part, index) => part === right[index]);
 }
 
-export async function resolveInside(root: string, target: string): Promise<string> {
+export async function resolveInside(
+  root: string,
+  target: string,
+  options: { pinnedRoot?: boolean } = {},
+): Promise<string> {
   const rootReal = await realpath(root);
+  if (options.pinnedRoot && rootReal !== resolve(root)) {
+    throw new Error('Registered root has changed');
+  }
   const absolute = resolve(root, target);
   const missing: string[] = [];
   let current = absolute;

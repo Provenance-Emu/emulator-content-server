@@ -1,0 +1,15 @@
+{
+  "name": "@ecs/webdav",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "dependencies": {
+    "@ecs/domain": "workspace:*",
+    "@xmldom/xmldom": "0.9.12"
+  }
+}

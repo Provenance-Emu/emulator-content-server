@@ -246,6 +246,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FolderListing'
+  /api/v1/webdav-credentials:
+    get:
+      operationId: listWebdavCredentials
+      description: Account session only. Lists this account's credential metadata, never verifiers.
+      responses:
+        '200':
+          description: Credentials including revoked entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebDavCredentialList'
+    post:
+      operationId: createWebdavCredential
+      description: Account session only. Requires enabled WebDAV. Generates a read-only Digest app password shown once, without idempotency caching.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebDavCredentialDraft'
+      responses:
+        '201':
+          description: Credential issued. Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebDavCredentialCreated'
+  /api/v1/webdav-credentials/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: revokeWebdavCredential
+      description: Account session only. Revokes a credential belonging to this account.
+      responses:
+        '204':
+          description: Credential revoked.
   /api/v1/storage-locations:
     get:
       operationId: listStorageLocations
@@ -519,6 +558,35 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FolderPlace'
+    WebDavCredential:
+      type: object
+      required: [id, name, username, createdAt, expiresAt, revokedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        username: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    WebDavCredentialList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/WebDavCredential' }
+    WebDavCredentialDraft:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        expiresInSeconds: { type: integer, minimum: 60, maximum: 31536000, default: 7776000 }
+    WebDavCredentialCreated:
+      type: object
+      required: [credential, password]
+      properties:
+        credential: { $ref: '#/components/schemas/WebDavCredential' }
+        password: { type: string }
     StorageLocation:
       type: object
       required: [id, path, label, createdAt, online]

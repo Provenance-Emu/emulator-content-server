@@ -9,6 +9,7 @@
     "DELETE /api/v1/roots/:rootId",
     "DELETE /api/v1/storage-locations/:locationId",
     "DELETE /api/v1/uploads/:uploadId",
+    "DELETE /api/v1/webdav-credentials/:id",
     "GET /api/v1/access",
     "GET /api/v1/audit",
     "GET /api/v1/capabilities",
@@ -30,6 +31,7 @@
     "GET /api/v1/systems",
     "GET /api/v1/uploads/:uploadId",
     "GET /api/v1/users",
+    "GET /api/v1/webdav-credentials",
     "GET /health",
     "GET /openapi.yaml",
     "HEAD /api/v1/files/:assetId/content",
@@ -51,6 +53,7 @@
     "POST /api/v1/uploads",
     "POST /api/v1/uploads/:uploadId/complete",
     "POST /api/v1/users",
+    "POST /api/v1/webdav-credentials",
     "PUT /api/v1/access",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
@@ -220,6 +223,51 @@
         "parent",
         "path",
         "places"
+      ]
+    },
+    "WebDavCredential": {
+      "properties": [
+        "createdAt",
+        "expiresAt",
+        "id",
+        "name",
+        "revokedAt",
+        "username"
+      ],
+      "required": [
+        "createdAt",
+        "expiresAt",
+        "id",
+        "name",
+        "revokedAt",
+        "username"
+      ]
+    },
+    "WebDavCredentialList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "WebDavCredentialDraft": {
+      "properties": [
+        "expiresInSeconds",
+        "name"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    "WebDavCredentialCreated": {
+      "properties": [
+        "credential",
+        "password"
+      ],
+      "required": [
+        "credential",
+        "password"
       ]
     },
     "StorageLocation": {

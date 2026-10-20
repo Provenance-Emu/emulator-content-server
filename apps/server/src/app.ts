@@ -1,20 +1,25 @@
 import { randomUUID } from 'node:crypto';
+import { realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hashToken, RateLimiter } from '@ecs/auth';
 import { CatalogDatabase, type CatalogLimits } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { problem } from '@ecs/protocol';
 import { ensureLayout, VirtualProviderRegistry, ZipProvider } from '@ecs/storage';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import './actor.js';
 import type { ServerContext } from './context.js';
 import { sendProblem } from './http.js';
-import { admitLocal, trayOrigin } from './local-access.js';
+import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
 import { registerRoutes } from './routes.js';
+import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
+import { registerWebDavCredentials } from './webdav-credentials.js';
 
 export interface OpenServerOptions {
   dataDir: string;
   displayName?: string;
+  webdavEnabled?: boolean;
   uiDir?: string | null;
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
@@ -29,17 +34,19 @@ export async function openServer(options: OpenServerOptions): Promise<{
   close: () => Promise<void>;
 }> {
   await ensureLayout(options.dataDir);
-  const catalog = new CatalogDatabase(join(options.dataDir, 'library.sqlite'), options.limits);
+  const dataDir = await realpath(options.dataDir);
+  const catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'), options.limits);
   const context: ServerContext = {
     catalog,
-    dataDir: options.dataDir,
+    dataDir,
+    webdavEnabled: options.webdavEnabled === true,
     displayName: options.displayName ?? 'Emulator Content Server',
     virtual: new VirtualProviderRegistry([new ZipProvider()]),
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
     uiDir: options.uiDir ?? null,
     localTrust: options.localTrust !== false,
   };
-  const app = buildApp(context, options.logger ?? false);
+  const app = await buildApp(context, options.logger ?? false);
   return {
     app,
     catalog,
@@ -50,7 +57,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
   };
 }
 
-export function buildApp(context: ServerContext, logger = false): FastifyInstance {
+export async function buildApp(context: ServerContext, logger = false): Promise<FastifyInstance> {
   context.catalog.ensureServer(context.displayName);
   const app = Fastify({
     logger: logger
@@ -70,6 +77,16 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
     bodyLimit: 1024 * 1024,
   });
   app.decorateRequest('actor', null);
+  // A generous socket ceiling also bounds invalid bearer attempts before authentication.
+  // DAV's much smaller failed-login budget remains independent of successful reads.
+  await app.register(rateLimit, {
+    global: false,
+    max: 6000,
+    timeWindow: 60_000,
+    keyGenerator: peerAddress,
+    errorResponseBuilder: () => new DomainError('rate-limited', 429, 'Too many requests'),
+  });
+  app.addHook('onRequest', app.rateLimit());
   app.addContentTypeParser(
     'application/octet-stream',
     { bodyLimit: context.catalog.limits.maxUploadBytes },
@@ -77,8 +94,13 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
       done(null, payload);
     },
   );
+  const authenticateDav = davAuthenticator(context);
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
+    if (isDavRequest(request.raw.url ?? request.url)) {
+      if (!context.webdavEnabled) return reply.code(404).send({ status: 404, title: 'Not Found' });
+      return authenticateDav(request, reply);
+    }
     const origin = request.headers.origin;
     if (trayOrigin(typeof origin === 'string' ? origin : undefined)) {
       reply.header('access-control-allow-origin', origin);
@@ -134,6 +156,8 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
         }),
       );
   });
+  registerWebDav(app, context);
   registerRoutes(app, context);
+  registerWebDavCredentials(app, context);
   return app;
 }

@@ -5,6 +5,7 @@ import type { VirtualProviderRegistry } from '@ecs/storage';
 export interface ServerContext {
   catalog: CatalogDatabase;
   dataDir: string;
+  webdavEnabled: boolean;
   displayName: string;
   virtual: VirtualProviderRegistry;
   limiter: RateLimiter;

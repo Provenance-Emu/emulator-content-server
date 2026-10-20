@@ -32,6 +32,7 @@ export function buildCapabilities(input: {
   bootstrapped?: boolean;
   /** True when this process will admit the local network without a token. */
   lanOpen?: boolean;
+  webdavEnabled?: boolean;
 }): Capabilities {
   return {
     protocol: { major: API_MAJOR, minor: API_MINOR, path: API_PATH },
@@ -43,7 +44,7 @@ export function buildCapabilities(input: {
       changeFeed: true,
       guestGrants: true,
       virtualFormats: input.virtualFormats ?? [],
-      webdav: false,
+      webdav: input.webdavEnabled === true,
       natTraversal: false,
     },
     limits: {

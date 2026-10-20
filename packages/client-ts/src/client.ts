@@ -28,6 +28,9 @@ import type {
   UploadSession,
   User,
   UserDraft,
+  WebDavCredentialCreated,
+  WebDavCredentialDraft,
+  WebDavCredentialList,
 } from './generated.js';
 
 export interface ResumePlan {
@@ -261,6 +264,18 @@ export class ContentClient {
   }
 
   /** Owner-only storage administration. Paths are on the server, not the client. */
+  webdavCredentials(): Promise<WebDavCredentialList> {
+    return this.getJson('/api/v1/webdav-credentials');
+  }
+
+  createWebdavCredential(draft: WebDavCredentialDraft): Promise<WebDavCredentialCreated> {
+    return this.post('/api/v1/webdav-credentials', draft);
+  }
+
+  revokeWebdavCredential(id: string): Promise<void> {
+    return this.remove(`/api/v1/webdav-credentials/${encodeURIComponent(id)}`);
+  }
+
   storageLocations(): Promise<StorageLocationList> {
     return this.getJson('/api/v1/storage-locations');
   }

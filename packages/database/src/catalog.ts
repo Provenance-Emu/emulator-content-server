@@ -41,6 +41,15 @@ export interface StorageLocationRecord {
   createdAt: string;
 }
 
+export interface WebDavCredentialRecord {
+  id: string;
+  name: string;
+  username: string;
+  expiresAt: string;
+  createdAt: string;
+  revokedAt: string | null;
+}
+
 export interface UploadRecord {
   id: string;
   userId: string | null;
@@ -267,6 +276,11 @@ export class CatalogDatabase {
            WHERE user_id = ? AND revoked_at IS NULL AND token_hash != COALESCE(?, '')`,
         )
         .run(nowIso(), userId, keepTokenHash);
+      this.db
+        .prepare(
+          'UPDATE webdav_credentials SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL',
+        )
+        .run(nowIso(), userId);
       this.insertAudit(actorId, 'set-password', 'user', userId, {});
       return true;
     });
@@ -790,8 +804,10 @@ export class CatalogDatabase {
     return input.files.length;
   }
 
-  listSources(rootId: string): SourceFileRecord[] {
-    return this.sourceRows(rootId).map((row) => mapSource(row));
+  listSources(rootId: string, limit?: number): SourceFileRecord[] {
+    if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1))
+      throw new Error('Invalid source row limit');
+    return this.sourceRows(rootId, limit).map((row) => mapSource(row));
   }
 
   getSource(id: string): SourceFileRecord | null {
@@ -868,15 +884,15 @@ export class CatalogDatabase {
     });
   }
 
-  private sourceRows(rootId: string): SourceRow[] {
+  private sourceRows(rootId: string, limit?: number): SourceRow[] {
     return this.db
       .prepare(
         `SELECT s.*, r.library_id
          FROM source_files s JOIN content_roots r ON r.id = s.root_id
          WHERE s.root_id = ?
-         ORDER BY s.relative_path`,
+         ORDER BY s.relative_path LIMIT ?`,
       )
-      .all(rootId) as SourceRow[];
+      .all(rootId, limit ?? -1) as SourceRow[];
   }
 
   private contentRootAt(path: string): ContentRootRecord | null {
@@ -1075,9 +1091,15 @@ export class CatalogDatabase {
     afterId: string | null;
     limit: number;
     itemId: string | null;
+    readableByUserId?: string;
   }): { items: ItemRecord[]; nextCursor: string | null } {
     const params: SQLInputValue[] = [input.libraryId];
     let sql = 'SELECT * FROM items WHERE library_id = ? AND deleted_at IS NULL';
+    if (input.readableByUserId) {
+      sql += ` AND EXISTS (SELECT 1 FROM item_acl a
+        WHERE a.item_id = items.id AND a.user_id = ? AND a.permission = 'read')`;
+      params.push(input.readableByUserId);
+    }
     if (input.itemId) {
       sql += ' AND id = ?';
       params.push(input.itemId);
@@ -1621,6 +1643,116 @@ export class CatalogDatabase {
       revokedAt: row.revoked_at,
       createdBy: row.created_by,
     }));
+  }
+
+  createWebDavCredential(input: {
+    userId: string;
+    name: string;
+    username: string;
+    ha1Md5: string;
+    ha1Sha256: string;
+    expiresAt: string;
+  }): WebDavCredentialRecord {
+    if (
+      !input.name ||
+      input.name.trim() !== input.name ||
+      input.name.length > 80 ||
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: labels must not contain controls
+      /[\u0000-\u001f\u007f]/.test(input.name) ||
+      !/^[a-zA-Z0-9_-]{1,100}$/.test(input.username) ||
+      !/^[a-f0-9]{32}$/.test(input.ha1Md5) ||
+      !/^[a-f0-9]{64}$/.test(input.ha1Sha256) ||
+      !Number.isFinite(Date.parse(input.expiresAt)) ||
+      input.expiresAt <= nowIso()
+    ) {
+      throw new DomainError('invalid-body', 400, 'Invalid WebDAV credential');
+    }
+    return this.transaction(() => {
+      const count = this.one<{ count: number }>(
+        'SELECT COUNT(*) AS count FROM webdav_credentials WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?',
+        input.userId,
+        nowIso(),
+      );
+      if ((count?.count ?? 0) >= 32)
+        throw new DomainError('quota-exceeded', 409, 'Too many active WebDAV credentials');
+      const credential: WebDavCredentialRecord = {
+        id: randomUUID(),
+        name: input.name,
+        username: input.username,
+        expiresAt: input.expiresAt,
+        createdAt: nowIso(),
+        revokedAt: null,
+      };
+      this.db
+        .prepare(`INSERT INTO webdav_credentials
+        (id,user_id,name,username,ha1_md5,ha1_sha256,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?)`)
+        .run(
+          credential.id,
+          input.userId,
+          input.name,
+          input.username,
+          input.ha1Md5,
+          input.ha1Sha256,
+          input.expiresAt,
+          credential.createdAt,
+        );
+      this.insertAudit(
+        input.userId,
+        'create-webdav-credential',
+        'webdav-credential',
+        credential.id,
+        { name: input.name },
+      );
+      return credential;
+    });
+  }
+
+  listWebDavCredentials(userId: string): WebDavCredentialRecord[] {
+    return this.db
+      .prepare(`SELECT id,name,username,expires_at AS expiresAt,
+      created_at AS createdAt,revoked_at AS revokedAt FROM webdav_credentials
+      WHERE user_id = ? ORDER BY created_at,id`)
+      .all(userId) as unknown as WebDavCredentialRecord[];
+  }
+
+  findWebDavCredential(username: string): {
+    id: string;
+    userId: string;
+    accountUsername: string;
+    isOwner: boolean;
+    ha1Md5: string;
+    ha1Sha256: string;
+    expiresAt: string;
+    revokedAt: string | null;
+  } | null {
+    const row = this.one<{
+      id: string;
+      userId: string;
+      accountUsername: string;
+      isOwner: number;
+      ha1Md5: string;
+      ha1Sha256: string;
+      expiresAt: string;
+      revokedAt: string | null;
+    }>(
+      `SELECT d.id,d.user_id AS userId,u.username AS accountUsername,u.is_owner AS isOwner,
+       d.ha1_md5 AS ha1Md5,d.ha1_sha256 AS ha1Sha256,d.expires_at AS expiresAt,d.revoked_at AS revokedAt
+       FROM webdav_credentials d JOIN users u ON u.id = d.user_id
+       WHERE d.username = ? AND d.revoked_at IS NULL AND d.expires_at > ?`,
+      username,
+      nowIso(),
+    );
+    return row ? { ...row, isOwner: row.isOwner === 1 } : null;
+  }
+
+  revokeWebDavCredential(id: string, userId: string): boolean {
+    const result = this.db
+      .prepare(`UPDATE webdav_credentials SET revoked_at = ?
+      WHERE id = ? AND user_id = ? AND revoked_at IS NULL`)
+      .run(nowIso(), id, userId);
+    if (result.changes === 0) return false;
+    this.insertAudit(userId, 'revoke-webdav-credential', 'webdav-credential', id, {});
+    return true;
   }
 
   createDeviceToken(input: {

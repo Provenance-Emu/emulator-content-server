@@ -82,7 +82,10 @@ test('single byte ranges clamp, reject multiples, and honor suffixes', () => {
   assert.equal(parseSingleRange('bytes=0-1,2-3', 10).type, 'invalid');
   assert.equal(parseSingleRange('bytes=20-30', 10).type, 'unsatisfiable');
   assert.equal(etagMatches('W/"abc", "def"', '"def"'), true);
+  assert.equal(etagMatches('W/"abc"', 'W/"abc"'), true);
+  assert.equal(etagMatches('"abc"', 'W/"abc"'), true);
   assert.equal(ifRangeMatches('W/"abc"', '"abc"'), false);
+  assert.equal(ifRangeMatches('"abc"', 'W/"abc"'), false);
   assert.equal(ifRangeMatches('"abc"', '"abc"'), true);
 });
 
@@ -96,6 +99,10 @@ test('OpenAPI contains every v1 operation and matches the committed surface', ()
   const document = loadOpenApi();
   assert.deepEqual(missingContractOperations(document), []);
   const current = extractSurface(document);
+  assert.equal(
+    current.paths.some((path) => path.startsWith('PARAMETERS ')),
+    false,
+  );
   const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as typeof current;
   assert.deepEqual(findBreakingChanges(baseline, current), []);
   assert.deepEqual(current, baseline);
