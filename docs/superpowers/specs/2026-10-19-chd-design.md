@@ -1,6 +1,10 @@
 # First disc provider: CHD v5 with an optional operator decoder
 
-Read-only design, 2026-10-19. No implementation, fixture generation, installs, source edits, index changes, commits, or library access performed. The only write is this report. Repository AGENTS.md and the supplied instructions were read; RTK.md is absent from this checkout and the checked parent/source locations.
+## Binding implementation profile
+
+The companion implementation plan fixes the proposed interfaces and limits: `bundle` resolution plus optional `materializeBundle`/`close` ports, storage factory `createChdProvider(executable)`, version `chd-v1`, at most 128 metadata records and 64 KiB metadata, one active decoder and eight queued distinct groups per provider instance. Preflight and exact-size acceptance apply to the complete group. Byte-overrun monitoring and private staging are not an OS disk/memory sandbox. Unsupported layouts and nested CHDs are rejected explicitly; other disc formats are not implied by CHD support.
+
+Design based on read-only investigation, 2026-10-19. No product implementation or fixture generation has been performed. Repository AGENTS.md and the supplied instructions were read; RTK.md is absent from this checkout and the checked parent/source locations.
 
 ## Recommendation and explicit scope
 
@@ -8,7 +12,7 @@ Use CHD v5 as the first disc provider, with an explicitly configured operator-ow
 
 A correct first change should support standalone DVD CHDs as `disc.iso`, plus a precisely bounded CD subset as `disc.cue` and `disc.bin`. For the smallest CD slice with exact pre-extraction size metadata, accept modern CHT2, one session, no subchannels, zero pregap/postgap, and only individually tested MODE1, MODE1_RAW, MODE2_RAW, and AUDIO tracks. Include multiple tracks and mixed data/audio. Reject any layout outside that subset, including GD-ROM, multisession, nonzero gaps, legacy metadata, and unsupported track modes, with a clear unsupported-entry response. This is intentionally narrower than every CD CHD. Expanding gap support later requires generated gap/index fixtures and proven byte accounting, not just accepting the metadata strings.
 
-Do not advertise support for RVZ, WIA, GCZ, CISO, delta/parent CHDs, HD/laserdisc/raw CHDs, or older CHD header versions. If the bounded CD slice cannot be finished correctly, ship DVD-only and say exactly that; do not expose `disc.raw` as a playable CD representation.
+Do not advertise support for RVZ, WIA, GCZ, CISO, delta/parent CHDs, HD/laserdisc/raw CHDs, or older CHD header versions. The accepted scope includes that bounded CD slice; do not silently reduce it to DVD-only or expose `disc.raw` as a playable CD representation.
 
 MAME documents separate CD and DVD extraction commands; the installed help confirms CD supports separate descriptor/binary output and DVD supports one output file. Delta input requires a parent, which this provider will not supply. [MAME chdman documentation](https://docs.mamedev.org/tools/chdman.html).
 
