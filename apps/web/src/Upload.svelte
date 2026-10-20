@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { ContentClient, Item, SystemSummary } from '@ecs/client';
+  import { onDestroy } from 'svelte';
+  import { kindLabel } from './lib/content-format';
   import { bytes } from './lib/format';
   import { explain } from './lib/problems';
 
@@ -8,12 +10,14 @@
     libraryId,
     item,
     oncomplete,
+    onbusy = () => {},
   }: {
     client: ContentClient;
     libraryId: string;
     /** The item to add a file to, or null to create one from this upload. */
     item: Item | null;
     oncomplete: () => void;
+    onbusy?: (busy: boolean) => void;
   } = $props();
 
   /** Pieces this size keep progress moving and bound what a break costs. */
@@ -27,6 +31,11 @@
     'bios',
     'system_file',
   ];
+
+  let disposed = false;
+  onDestroy(() => {
+    disposed = true;
+  });
 
   let field: HTMLInputElement | null = $state(null);
   let chosen = $state<File | null>(null);
@@ -42,10 +51,10 @@
 
   async function loadSystems(): Promise<void> {
     try {
-      systems = (await client.systems()).systems;
-      if (!system) system = systems[0]?.identifier ?? '';
+      const result = await client.systems();
+      if (!disposed) systems = result.systems;
     } catch (error) {
-      failure = explain(error);
+      if (!disposed) failure = explain(error);
     }
   }
 
@@ -58,8 +67,9 @@
   async function send(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     const file = chosen;
-    if (!file) return;
+    if (!file || working || (!item && (!system || kind !== 'rom'))) return;
     working = true;
+    onbusy(true);
     failure = null;
     sent = 0;
     try {
@@ -67,7 +77,12 @@
       // folder has none, so the first upload has to create one.
       const target =
         item ??
-        (await client.createItem({ libraryId, systemIdentifier: system, title: title.trim() }));
+        (await client.createItem({
+          libraryId,
+          systemIdentifier: system,
+          title: title.trim(),
+        }));
+      if (disposed) return;
       await client.upload({
         libraryId,
         itemId: target.id,
@@ -78,9 +93,10 @@
         body: file,
         chunkBytes: CHUNK_BYTES,
         onProgress: (bytesSent) => {
-          sent = bytesSent;
+          if (!disposed) sent = bytesSent;
         },
       });
+      if (disposed) return;
       chosen = null;
       title = '';
       // The input keeps showing the file it was given until it is cleared, which
@@ -88,9 +104,12 @@
       if (field) field.value = '';
       oncomplete();
     } catch (error) {
-      failure = explain(error);
+      if (!disposed) failure = explain(error);
     } finally {
-      working = false;
+      if (!disposed) {
+        working = false;
+        onbusy(false);
+      }
     }
   }
 
@@ -107,8 +126,8 @@
     <label>
       Kind
       <select bind:value={kind}>
-        {#each KINDS as option (option)}
-          <option value={option}>{option}</option>
+        {#each item ? KINDS : ['rom'] as option (option)}
+          <option value={option}>{kindLabel(option)}</option>
         {/each}
       </select>
     </label>
@@ -120,13 +139,14 @@
       <label>
         System
         <select bind:value={system} required>
+          <option value="" disabled>Choose a system</option>
           {#each systems as entry (entry.identifier)}
             <option value={entry.identifier}>{entry.name}</option>
           {/each}
         </select>
       </label>
     {/if}
-    <button type="submit" disabled={working || !chosen}>Upload</button>
+    <button type="submit" disabled={working || !chosen || (!item && !system)}>Upload</button>
   </form>
   {#if chosen && (working || sent > 0)}
     <p class="dim">

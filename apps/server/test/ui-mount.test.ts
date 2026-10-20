@@ -104,7 +104,7 @@ test('the public isolated play document has its own policy and reuses unchanged 
     const ui = await app.inject({ url: '/ui/' });
     assert.equal(
       ui.headers['content-security-policy'],
-      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     );
     assert.equal(ui.headers['cross-origin-opener-policy'], undefined);
     const script = await app.inject({ url: '/ui/assets/player.js' });
