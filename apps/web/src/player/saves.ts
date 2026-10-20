@@ -17,6 +17,12 @@ type CapturedSave = Omit<UploadRequest, 'body' | 'kind'> & {
   body: Uint8Array<ArrayBuffer>;
 };
 
+// getRandomValues is available on ordinary LAN HTTP; randomUUID requires a secure context.
+function logicalSaveKey(): string {
+  const entropy = crypto.getRandomValues(new Uint8Array(16));
+  return `browser-${Array.from(entropy, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+}
+
 /** The gameplay baseline belongs to the bytes loaded at start, never a polled manifest. */
 export class SaveSynchronizer {
   private request: CapturedSave | null = null;
@@ -86,7 +92,7 @@ export class SaveSynchronizer {
         relativePath,
         baseRevision: this.baseline,
         body,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: logicalSaveKey(),
       };
       return await this.uploadPending();
     } finally {
