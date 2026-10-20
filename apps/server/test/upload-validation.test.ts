@@ -12,6 +12,9 @@ for (const input of [
   { name: 'gapped', range: 'bytes 6-7/10', bytes: 'XY', status: 409 },
   { name: 'longer than declared', range: 'bytes 4-5/10', bytes: 'XYZ', status: 400 },
   { name: 'shorter than declared', range: 'bytes 4-7/10', bytes: 'XY', status: 400 },
+  { name: 'ending at the total', range: 'bytes 4-5/5', bytes: 'XY', status: 400 },
+  { name: 'ending past the total', range: 'bytes 4-5/4', bytes: 'XY', status: 400 },
+  { name: 'with a zero total', range: 'bytes 4-5/0', bytes: 'XY', status: 400 },
 ]) {
   test(`a chunk ${input.name} preserves the committed upload prefix`, async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ecs-upload-validation-'));

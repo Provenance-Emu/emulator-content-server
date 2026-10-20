@@ -61,6 +61,6 @@ export function parseContentRange(
   const totalRaw = match[3] ?? '*';
   if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start) return null;
   const total = totalRaw === '*' ? null : Number(totalRaw);
-  if (total !== null && !Number.isSafeInteger(total)) return null;
+  if (total !== null && (!Number.isSafeInteger(total) || end >= total)) return null;
   return { start, end, total };
 }
