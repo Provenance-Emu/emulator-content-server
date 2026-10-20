@@ -46,4 +46,72 @@ jobs:
         shell: bash
         run: |
           test -n "$ECS_CHDMAN_PATH" && test -x "$ECS_CHDMAN_PATH"
-          node --test packages/storage/dist/test/chd-integration.test.js
+          node --test packages/storage/dist/test/chd-integration.test.js apps/server/dist/test/chd-native-acceptance.test.js
+
+  generated-native-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Native build dependencies
+        id: dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential python3 libsdl2-dev libfontconfig1-dev libasio-dev libexpat1-dev zlib1g-dev libflac-dev libutf8proc-dev libzstd-dev pkg-config procps
+          echo "key=$(dpkg-query -W | sha256sum | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: decoder-cache
+        with:
+          path: ${{ runner.temp }}/ecs-chdman
+          key: chdman-0289-ubuntu24-${{ runner.arch }}-${{ steps.dependencies.outputs.key }}-${{ hashFiles('scripts/chdman/build-pinned-linux.sh', '.github/workflows/chd-native.yml') }}
+      - if: steps.decoder-cache.outputs.cache-hit != 'true'
+        run: sh scripts/chdman/build-pinned-linux.sh
+      - name: Configure required cached decoder
+        run: echo "ECS_CHDMAN_PATH=$RUNNER_TEMP/ecs-chdman/chdman" >> "$GITHUB_ENV"
+      - run: pnpm build
+      - name: Require configured decoder and run generated native HTTP fixtures
+        run: |
+          test -n "$ECS_CHDMAN_PATH" && test -x "$ECS_CHDMAN_PATH"
+          node --test packages/storage/dist/test/chd-integration.test.js apps/server/dist/test/chd-native-acceptance.test.js
+
+  generated-native-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify and extract official MAME 0.289 decoder
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'mame0289b_x64.exe'
+          Invoke-WebRequest 'https://github.com/mamedev/mame/releases/download/mame0289/mame0289b_x64.exe' -OutFile $archive
+          $expected = 'a1aa7912168c9d1b05e611906bc21b8b9be3935822aead36d12a1da363150b7d'
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'MAME archive integrity mismatch'
+          }
+          $decoder = Join-Path $env:RUNNER_TEMP 'ecs-chdman'
+          & 7z x $archive chdman.exe "-o$decoder" -y
+          if ($LASTEXITCODE -ne 0) { throw 'MAME decoder extraction failed' }
+          "ECS_CHDMAN_PATH=$(Join-Path $decoder 'chdman.exe')" >> $env:GITHUB_ENV
+      - run: pnpm build
+      - name: Require configured decoder and run generated native HTTP fixtures
+        shell: pwsh
+        run: |
+          if (-not (Test-Path $env:ECS_CHDMAN_PATH -PathType Leaf)) { throw 'Missing configured decoder' }
+          node --test packages/storage/dist/test/chd-integration.test.js apps/server/dist/test/chd-native-acceptance.test.js
+          if ($LASTEXITCODE -ne 0) { throw 'Native acceptance failed' }
