@@ -804,8 +804,10 @@ export class CatalogDatabase {
     return input.files.length;
   }
 
-  listSources(rootId: string): SourceFileRecord[] {
-    return this.sourceRows(rootId).map((row) => mapSource(row));
+  listSources(rootId: string, limit?: number): SourceFileRecord[] {
+    if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1))
+      throw new Error('Invalid source row limit');
+    return this.sourceRows(rootId, limit).map((row) => mapSource(row));
   }
 
   getSource(id: string): SourceFileRecord | null {
@@ -882,15 +884,15 @@ export class CatalogDatabase {
     });
   }
 
-  private sourceRows(rootId: string): SourceRow[] {
+  private sourceRows(rootId: string, limit?: number): SourceRow[] {
     return this.db
       .prepare(
         `SELECT s.*, r.library_id
          FROM source_files s JOIN content_roots r ON r.id = s.root_id
          WHERE s.root_id = ?
-         ORDER BY s.relative_path`,
+         ORDER BY s.relative_path LIMIT ?`,
       )
-      .all(rootId) as SourceRow[];
+      .all(rootId, limit ?? -1) as SourceRow[];
   }
 
   private contentRootAt(path: string): ContentRootRecord | null {
@@ -1089,9 +1091,15 @@ export class CatalogDatabase {
     afterId: string | null;
     limit: number;
     itemId: string | null;
+    readableByUserId?: string;
   }): { items: ItemRecord[]; nextCursor: string | null } {
     const params: SQLInputValue[] = [input.libraryId];
     let sql = 'SELECT * FROM items WHERE library_id = ? AND deleted_at IS NULL';
+    if (input.readableByUserId) {
+      sql += ` AND EXISTS (SELECT 1 FROM item_acl a
+        WHERE a.item_id = items.id AND a.user_id = ? AND a.permission = 'read')`;
+      params.push(input.readableByUserId);
+    }
     if (input.itemId) {
       sql += ' AND id = ?';
       params.push(input.itemId);

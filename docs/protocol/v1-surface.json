@@ -37,7 +37,6 @@
     "HEAD /api/v1/files/:assetId/content",
     "HEAD /api/v1/files/:assetId/entries/:entryId/content",
     "HEAD /api/v1/sources/:sourceId/content",
-    "PARAMETERS /api/v1/webdav-credentials/:id",
     "PATCH /api/v1/items/:itemId",
     "PATCH /api/v1/users/:userId",
     "POST /api/v1/auth/bootstrap",

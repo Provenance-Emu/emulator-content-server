@@ -1,4 +1,3 @@
-import { stat } from 'node:fs/promises';
 import { authorize } from '@ecs/auth';
 import {
   type Actor,
@@ -6,11 +5,19 @@ import {
   type ContentRootRecord,
   DomainError,
   type ItemRecord,
+  type SourceFileRecord,
 } from '@ecs/domain';
 import { isRestrictedAssetKind, strongEtag, validateAssetKind } from '@ecs/protocol';
 import { probeRoot, resolveInside } from '@ecs/storage';
 import { type DavNamespace, type DavResource, parseDavPath } from '@ecs/webdav';
 import type { ServerContext } from './context.js';
+import { sourceMetadata } from './source-metadata.js';
+
+interface SourceNode {
+  source?: SourceFileRecord;
+  ambiguous: boolean;
+  children: Set<string>;
+}
 
 function tooLarge(): never {
   throw new DomainError('quota-exceeded', 507, 'Collection is too large');
@@ -29,6 +36,7 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
   let visited = 0;
   const itemCache = new Map<string, ItemRecord[]>();
   const probes = new Map<string, ReturnType<typeof probeRoot>>();
+  const sourceIndexes = new Map<string, Map<string, SourceNode>>();
   const collection = (segments: string[], displayName: string): DavResource => ({
     segments,
     displayName,
@@ -53,6 +61,7 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
   function items(libraryId: string): ItemRecord[] {
     const cached = itemCache.get(libraryId);
     if (cached) return cached;
+    if (actor.kind === 'user' && !actor.scopes.includes('read')) return [];
     let afterId: string | null = null;
     const result: ItemRecord[] = [];
     do {
@@ -61,6 +70,8 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
         afterId,
         limit: 100,
         itemId: actor.kind === 'guest' ? actor.itemId : null,
+        readableByUserId:
+          actor.kind === 'user' && !libraryRead(libraryId) ? actor.userId : undefined,
       });
       for (const item of page.items) {
         if (++visited > 10000) tooLarge();
@@ -77,20 +88,47 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
     if (actor.kind === 'user' && actor.isOwner) return true;
     return root.libraryId !== null && libraryRead(root.libraryId);
   }
-  function sourceEntries(rootId: string) {
-    return catalog
-      .listSources(rootId)
-      .filter((source) => {
-        const kind = validateAssetKind(source.kind);
-        if (actor.kind === 'guest' && kind && isRestrictedAssetKind(kind)) return false;
-        try {
-          parseDavPath(`/dav/${source.relativePath.split('/').map(encodeURIComponent).join('/')}`);
-          return true;
-        } catch {
-          return false;
-        }
-      })
-      .map((source) => ({ source, parts: source.relativePath.normalize('NFC').split('/') }));
+  function sourceIndex(rootId: string): Map<string, SourceNode> {
+    const cached = sourceIndexes.get(rootId);
+    if (cached) return cached;
+    // SQL bounds allocation, including the extra row that detects overflow.
+    const sources = catalog.listSources(rootId, 10001);
+    if (sources.length > 10000) tooLarge();
+    const index = new Map<string, SourceNode>();
+    const node = (key: string) => {
+      let value = index.get(key);
+      if (!value) {
+        if (index.size >= 10000) tooLarge();
+        value = { ambiguous: false, children: new Set<string>() };
+        index.set(key, value);
+      }
+      return value;
+    };
+    node('');
+    for (const source of sources) {
+      if (++visited > 10000) tooLarge();
+      const kind = validateAssetKind(source.kind);
+      if (actor.kind === 'guest' && kind && isRestrictedAssetKind(kind)) continue;
+      let parts: string[];
+      try {
+        parts = parseDavPath(
+          `/dav/${source.relativePath.split('/').map(encodeURIComponent).join('/')}`,
+        );
+      } catch {
+        continue;
+      }
+      let key = '';
+      for (const part of parts) {
+        node(key).children.add(part);
+        key = key ? `${key}/${part}` : part;
+        node(key);
+      }
+      const leaf = node(key);
+      if (leaf.source) leaf.ambiguous = true;
+      leaf.source = source;
+    }
+    sourceIndexes.set(rootId, index);
+    return index;
   }
   async function resolve(segments: string[]): Promise<DavResource | null> {
     const [area, libraryOrRoot, itemId, leaf] = segments;
@@ -132,29 +170,27 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
     if (!root || !rootRead(root)) return null;
     if (segments.length === 2) return collection(segments, root.label);
     const rest = segments.slice(2);
-    const entries = sourceEntries(root.id);
-    const matches = entries.filter(
-      ({ parts }) => parts.length === rest.length && parts.every((p, i) => p === rest[i]),
-    );
-    const directory = entries.some(
-      ({ parts }) => parts.length > rest.length && rest.every((p, i) => p === parts[i]),
-    );
-    if (matches.length > 1 || (matches.length && directory))
+    const node = sourceIndex(root.id).get(rest.join('/'));
+    if (!node) return null;
+    const directory = node.children.size > 0;
+    if (node.ambiguous || (node.source && directory))
       throw new DomainError('conflict', 409, 'Ambiguous source name');
-    const source = matches[0]?.source;
+    const source = node.source;
     if (source) {
       let size = source.size;
       let modifiedAt: string | undefined;
-      if (!probes.has(root.id)) probes.set(root.id, probeRoot(root.path));
-      if ((await probes.get(root.id))?.online) {
-        try {
-          const full = await resolveInside(root.path, source.relativePath);
-          const metadata = await stat(full);
+      let etag: string | undefined;
+      try {
+        const full = await resolveInside(root.path, source.relativePath, { pinnedRoot: true });
+        if (!probes.has(root.id)) probes.set(root.id, probeRoot(root.path));
+        if ((await probes.get(root.id))?.online) {
+          const metadata = await sourceMetadata(full, source.id);
           size = metadata.size;
-          modifiedAt = metadata.mtime.toISOString();
-        } catch {
-          /* Preserve catalog metadata offline; content reads recheck presence. */
+          modifiedAt = metadata.modifiedAt;
+          etag = metadata.etag;
         }
+      } catch {
+        /* Preserve catalog metadata offline; content reads recheck presence. */
       }
       return {
         segments,
@@ -162,7 +198,7 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
         kind: 'source',
         id: source.id,
         size,
-        etag: strongEtag(`source-${source.id}-${size}`),
+        etag,
         modifiedAt,
       };
     }
@@ -198,13 +234,8 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
           .filter(rootRead)
           .map((root) => ['sources', root.id]);
       else {
-        const prefix = segments.slice(2);
-        const names = new Set<string>();
-        for (const { parts } of sourceEntries(segments[1] ?? '')) {
-          if (prefix.every((part, i) => parts[i] === part) && parts.length > prefix.length)
-            names.add(parts[prefix.length] ?? '');
-        }
-        paths = [...names].map((name) => [...segments, name]);
+        const node = sourceIndex(segments[1] ?? '').get(segments.slice(2).join('/'));
+        paths = [...(node?.children ?? [])].map((name) => [...segments, name]);
       }
     }
     if (paths.length > 10000) tooLarge();

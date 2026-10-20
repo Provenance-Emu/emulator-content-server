@@ -97,15 +97,23 @@ rclone copy ecs:libraries ./downloaded-content
 - An unplugged source/storage location returns 503 for reads. A source placeholder
   returns 409 instead of starting an iCloud download. Reconnect or hydrate the
   file through the provider before retrying.
-- GET and HEAD support one byte range, strong ETags, conditional reads, 206, and
-  416. Multiple ranges are refused. Stored bytes and range headers match REST.
+- GET and HEAD support one byte range, conditional reads, 206, and 416. Stored
+  blobs have strong content ETags. Mutable sources use weak filesystem metadata
+  validators without opening placeholders; If-Range on those sources returns the
+  complete current file. Multiple ranges are refused. DAV and REST share readers.
 
 PROPFIND accepts Depth 0 or 1 and returns 207 XML. Send an explicit Depth header:
 missing/infinite depth is refused to avoid recursive traversal. Unknown properties
 have 404 propstat entries. XML is limited to 32 KiB, 16 nesting levels, and 128
 properties; DTD/entity declarations are refused. Collections are limited to 10,000
-children per response and excessive listings fail with 507 rather than truncate.
+children per response. Source indexes and visible-item traversal are also bounded
+at 10,000 entries/nodes per request; excessive listings fail with 507 rather than
+truncate. Hidden item rows are filtered in SQL before pagination.
 Authentication nonces last five minutes; clients can retry a stale challenge.
+Failed DAV logins have a separate ten-attempt/minute budget. A general ceiling of
+6,000 requests/minute per socket peer protects authentication and applies to all
+routes; forwarded headers do not change the peer key. Rate-limited requests return
+429 and the general ceiling includes Retry-After.
 
 ## Verification
 
@@ -115,6 +123,10 @@ REST range parity, ACL changes, credential lifecycle, hostile XML/paths, source
 placeholders, secondary storage, and migration/reopen behavior. Record the actual
 native Finder mount result in the PR; protocol tests alone do not establish that
 an installed Finder version was tested.
+
+The Windows SSPI build of curl cannot use SHA-256 Digest, so its native curl test
+is skipped; independent SHA-256 and MD5 protocol clients still run on Windows.
+Use a curl build with SHA-256 Digest support for that client check.
 
 Protocol references: [RFC 4918](https://www.rfc-editor.org/rfc/rfc4918.html),
 [RFC 7616](https://www.rfc-editor.org/rfc/rfc7616.html),

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, rename, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { promisify } from 'node:util';
 import { issueToken } from '@ecs/auth';
@@ -218,6 +220,50 @@ test('ACL listings and direct requests hide restricted guest assets and respect 
     await f.close();
   }
 });
+test('one item grant remains browseable in a library with over 10000 hidden items', async () => {
+  const f = await davFixture();
+  try {
+    const db = new DatabaseSync(join(f.dataDir, 'library.sqlite'));
+    try {
+      db.exec('BEGIN');
+      const insert = db.prepare(`INSERT INTO items
+        (id, library_id, system_identifier, title, revision, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 1, ?, ?)`);
+      const now = new Date().toISOString();
+      for (let i = 0; i < 10001; i++)
+        insert.run(randomUUID(), f.library.id, 'com.provenance.nes', 'Hidden', now, now);
+      db.exec('COMMIT');
+    } finally {
+      db.close();
+    }
+    const user = f.server.catalog.createUser({
+      username: 'single-grant',
+      passwordHash: 'fixture',
+      actorId: f.session.userId,
+    });
+    f.server.catalog.setItemPermission(f.item.id, user.id, 'read', f.session.userId);
+    const token = issueToken();
+    f.server.catalog.createSession(user.id, token.hash);
+    let examined = 0;
+    const original = f.server.catalog.listItems.bind(f.server.catalog);
+    f.server.catalog.listItems = (input) => {
+      const page = original(input);
+      examined += page.items.length;
+      return page;
+    };
+    const response = await f.server.app.inject({
+      method: 'PROPFIND' as 'GET',
+      url: `/dav/libraries/${f.library.id}/`,
+      headers: { authorization: `Bearer ${token.token}`, depth: '1' },
+    });
+    assert.equal(response.statusCode, 207);
+    assert.ok(response.body.includes(f.item.id));
+    assert.equal(examined, 1);
+    assert.equal((response.body.match(/<d:response>/g) ?? []).length, 2);
+  } finally {
+    await f.close();
+  }
+});
 test('scanned sources preserve names and recheck disk presence without exposing absolute paths', async () => {
   const f = await davFixture();
   try {
@@ -242,6 +288,147 @@ test('scanned sources preserve names and recheck disk presence without exposing 
     assert.equal(
       (await f.server.app.inject({ method: 'GET', url: path, headers: f.headers })).statusCode,
       503,
+    );
+  } finally {
+    await f.close();
+  }
+});
+test('registered source roots cannot be replaced by symlinks to outside bytes', async () => {
+  const f = await davFixture();
+  try {
+    const root = await f.source();
+    const source = f.server.catalog.listSources(root.id)[0];
+    assert.ok(source);
+    const outside = join(f.base, 'outside');
+    await mkdir(join(outside, 'nested'), { recursive: true });
+    await writeFile(join(outside, source.relativePath), Buffer.alloc(64, 255));
+    await rename(f.sourceDir, join(f.base, 'original'));
+    await symlink(outside, f.sourceDir, 'junction');
+    for (const url of [
+      `/dav/sources/${root.id}/nested/%C3%BC%20%26%20file.bin`,
+      `/api/v1/sources/${source.id}/content`,
+    ]) {
+      const response = await f.server.app.inject({ url, headers: f.headers });
+      assert.equal(response.statusCode, 404);
+    }
+  } finally {
+    await f.close();
+  }
+});
+test('source validators change on same-size edits and agree between DAV and REST', async () => {
+  const f = await davFixture();
+  try {
+    const root = await f.source();
+    const source = f.server.catalog.listSources(root.id)[0];
+    assert.ok(source);
+    const url = `/dav/sources/${root.id}/nested/%C3%BC%20%26%20file.bin`;
+    const before = await f.server.app.inject({ url, headers: f.headers });
+    const oldTag = String(before.headers.etag);
+    const full = join(f.sourceDir, source.relativePath);
+    const info = await stat(full);
+    const changed = Buffer.alloc(64, 254);
+    await writeFile(full, changed);
+    await utimes(full, info.atime, new Date(info.mtimeMs + 2000));
+    for (const path of [url, `/api/v1/sources/${source.id}/content`]) {
+      const after = await f.server.app.inject({
+        url: path,
+        headers: { ...f.headers, 'if-none-match': oldTag },
+      });
+      assert.equal(after.statusCode, 200);
+      assert.deepEqual(after.rawPayload, changed);
+      assert.notEqual(after.headers.etag, oldTag);
+      const currentTag = String(after.headers.etag);
+      assert.match(currentTag, /^W\//);
+      assert.equal(
+        (
+          await f.server.app.inject({
+            url: path,
+            headers: { ...f.headers, 'if-none-match': currentTag },
+          })
+        ).statusCode,
+        304,
+      );
+      assert.equal(
+        (
+          await f.server.app.inject({
+            url: path,
+            headers: { ...f.headers, range: 'bytes=0-7', 'if-range': currentTag },
+          })
+        ).statusCode,
+        200,
+        'metadata validators cannot safely combine ranges',
+      );
+      const listing = await f.server.app.inject({
+        method: 'PROPFIND' as 'GET',
+        url,
+        headers: { ...f.headers, depth: '0' },
+      });
+      assert.ok(listing.body.includes(currentTag.replaceAll('"', '&quot;')));
+    }
+  } finally {
+    await f.close();
+  }
+});
+test('source Depth-1 listings scan a bounded catalog once per request', async () => {
+  const f = await davFixture();
+  try {
+    const root = await f.source();
+    f.server.catalog.applyInspection({
+      rootId: root.id,
+      actorId: f.session.userId,
+      online: true,
+      files: Array.from({ length: 500 }, (_, i) => ({
+        relativePath: `directory-${i}/file.bin`,
+        displayName: 'file.bin',
+        size: 64,
+        blocks: 1,
+        kind: 'rom',
+        systemId: null,
+        availability: 'local' as const,
+      })),
+    });
+    let calls = 0;
+    let rowLimit: number | undefined;
+    assert.equal(f.server.catalog.listSources(root.id, 10).length, 10);
+    assert.throws(() => f.server.catalog.listSources(root.id, 0));
+    const original = f.server.catalog.listSources.bind(f.server.catalog);
+    f.server.catalog.listSources = (id, ...limit: number[]) => {
+      calls++;
+      rowLimit = limit[0];
+      return original(id, limit[0]);
+    };
+    const response = await f.server.app.inject({
+      method: 'PROPFIND' as 'GET',
+      url: `/dav/sources/${root.id}/`,
+      headers: { ...f.headers, depth: '1' },
+    });
+    assert.equal(response.statusCode, 207);
+    assert.equal((response.body.match(/<d:response>/g) ?? []).length, 501);
+    assert.equal(calls, 1);
+    assert.equal(rowLimit, 10001);
+    f.server.catalog.applyInspection({
+      rootId: root.id,
+      actorId: f.session.userId,
+      online: true,
+      files: Array.from({ length: 10001 }, (_, i) => ({
+        relativePath: `file-${i}.bin`,
+        displayName: 'file.bin',
+        size: 64,
+        blocks: 1,
+        kind: 'rom',
+        systemId: null,
+        availability: 'local' as const,
+      })),
+    });
+    assert.equal(
+      (
+        await f.server.app.inject({
+          method: 'PROPFIND' as 'GET',
+          url: `/dav/sources/${root.id}/`,
+          headers: { ...f.headers, depth: '1' },
+        })
+      ).statusCode,
+      507,
     );
   } finally {
     await f.close();
@@ -337,6 +524,22 @@ test('mutations, malformed XML and escaping paths cannot change or escape conten
   }
 });
 test('real curl Digest client can browse with a generated app password', async (t) => {
+  try {
+    const version = await promisify(execFile)('curl', ['--version']);
+    if (process.platform === 'win32' && /\bSSPI\b/.test(version.stdout)) {
+      // https://curl.se/docs/knownbugs.html#SHA_256_digest_not_supported_in
+      t.skip(
+        'Windows SSPI curl lacks SHA-256 Digest; independent client tests cover both algorithms',
+      );
+      return;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      t.skip('curl unavailable');
+      return;
+    }
+    throw error;
+  }
   const f = await davFixture();
   try {
     const created = await f.server.app.inject({
@@ -459,6 +662,16 @@ test('secondary bytes use the same range reader and report an unplugged location
     assert.equal(content.statusCode, 206);
     assert.deepEqual(content.rawPayload, f.bytes.subarray(0, 5));
     await rename(extra, join(f.base, 'offline-extra'));
+    const outside = join(f.base, 'outside-storage');
+    const { dirname } = await import('node:path');
+    const outsideBlob = blobPath(outside, asset.sha256);
+    await mkdir(dirname(outsideBlob), { recursive: true });
+    await writeFile(outsideBlob, Buffer.alloc(64, 253));
+    await symlink(outside, extra, 'junction');
+    for (const url of [path, `/api/v1/files/${asset.id}/content`]) {
+      assert.equal((await f.server.app.inject({ url, headers: f.headers })).statusCode, 404);
+    }
+    await rm(extra);
     assert.equal(
       (await f.server.app.inject({ method: 'GET', url: path, headers: f.headers })).statusCode,
       503,

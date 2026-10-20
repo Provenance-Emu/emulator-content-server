@@ -21,10 +21,19 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { assetDecision, requireActor } from './http.js';
+import { sourceMetadata } from './source-metadata.js';
 export async function blobRoot(context: ServerContext, sha256: string): Promise<string> {
   const record = context.catalog.blobRecord(sha256);
   if (!record?.locationId) return context.dataDir;
   const location = context.catalog.getStorageLocation(record.locationId);
+  if (location) {
+    try {
+      await resolveInside(location.path, 'blobs', { pinnedRoot: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        throw new DomainError('not-found', 404, 'Stored bytes are unavailable');
+    }
+  }
   if (!location || !(await locationOnline(location.path))) {
     throw new DomainError(
       'location-offline',
@@ -43,7 +52,9 @@ async function storedBlob(
   try {
     let path: string;
     try {
-      path = await resolveInside(root, relative(root, blobPath(root, sha256)));
+      path = await resolveInside(root, relative(root, blobPath(root, sha256)), {
+        pinnedRoot: true,
+      });
     } catch {
       throw new DomainError('not-found', 404, 'Stored bytes are unavailable');
     }
@@ -98,16 +109,20 @@ export async function sendSourceContent(
   }
   const root = context.catalog.getContentRoot(source.rootId);
   if (!root) throw new DomainError('not-found', 404, 'Source file not found');
+  let full: string;
+  try {
+    full = await resolveInside(root.path, source.relativePath, { pinnedRoot: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      context.catalog.markRootOffline(root.id);
+      throw new DomainError('source-offline', 503, 'That disk is not connected');
+    }
+    throw new DomainError('not-found', 404, 'Source file not found');
+  }
   const probe = await probeRoot(root.path);
   if (!probe.online) {
     context.catalog.markRootOffline(root.id);
     throw new DomainError('source-offline', 503, 'That disk is not connected');
-  }
-  let full: string;
-  try {
-    full = await resolveInside(root.path, source.relativePath);
-  } catch {
-    throw new DomainError('not-found', 404, 'Source file not found');
   }
   const live = await probeFile(full, probe.medium, true);
   context.catalog.updateSourcePresence(source.id, live);
@@ -117,13 +132,13 @@ export async function sendSourceContent(
   if (live.availability === 'offline') {
     throw new DomainError('source-offline', 503, 'That disk is not connected');
   }
-  const etag = strongEtag(`source-${source.id}-${live.size}`);
+  const { etag, size } = await sourceMetadata(full, source.id);
   reply.header('accept-ranges', 'bytes');
   reply.header('etag', etag);
   if (etagMatches(headerString(request, 'if-none-match'), etag)) {
     return reply.status(304).send();
   }
-  return sendRange(request, reply, { path: full, offset: 0, size: live.size, etag });
+  return sendRange(request, reply, { path: full, offset: 0, size, etag });
 }
 
 export async function sendContent(
