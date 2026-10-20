@@ -10,26 +10,28 @@ The supported configuration is a single-thread, self-contained ES-module RetroAr
 
 | Component | Required value |
 | --- | --- |
-| RetroArch frontend | `4d4bfc0fbaacca30d433e5c11b0b2b5242141b66` |
+| RetroArch upstream base | `4d4bfc0fbaacca30d433e5c11b0b2b5242141b66` |
 | FCEUmm core | `ac0d00a7fc01166f84c7bac01d1084ebfd2b865e` |
-| Proposed Emscripten SDK | `3.1.46` |
+| Emscripten SDK | `3.1.46` |
 | Runtime / filesystem | `retroarch-emscripten-esm` / `memfs` |
 | Threading / completion | `false` / `command-reply-v1` |
 | System / extension | `com.provenance.nes` / `nes` |
 
-These source pins and SDK recipe have **not been compiled or accepted together here**. The available host toolchain does not verify SDK 3.1.46. Resolve build incompatibilities in the acceptance environment and publish the exact successful SDK/profile before claiming verification; the current descriptor validator deliberately admits only the proposed pinned profile. A version string or the presence of command exports does not prove completed saves work. RetroArch v1.21.0 lacks this completion ABI. Nightly/buildbot pairs are unsupported.
+The exact base/core pins compile with SDK 3.1.46. The supported build also requires the bundled [SAVE_FILES correction](../../scripts/browser-core/retroarch-save-files.patch), SHA-256 `ffc78048f23214a2aaccd84e7c8e443edfce06a194aa501818dcb11923738f21`. The unmodified frontend writes NES SRAM but then reports failure for FCEUmm’s absent RTC region. The correction skips absent regions while preserving failure when all regions are absent or any real write fails. The browser still requires the completed success reply and never uploads after an error.
 
-Starting from those exact upstream checkouts with SDK 3.1.46 activated, the proposed [upstream single-thread procedure](https://github.com/libretro/RetroArch/blob/4d4bfc0fbaacca30d433e5c11b0b2b5242141b66/pkg/emscripten/README.md) is:
+`frontendCommit` identifies the upstream **base**, with that exact patch applied; it does not claim an unmodified upstream tree. Artifact hashes identify the resulting bytes. See the [local acceptance record](browser-playback-acceptance.md) for the actual tested pair and remaining limits. RetroArch v1.21.0 and nightly/buildbot pairs remain unsupported.
+
+Clone the exact upstream frontend/core checkouts outside this repository, activate the official SDK 3.1.46, then use the bounded build helper:
 
 ```sh
-# In the pinned FCEUmm checkout:
-emmake make -f Makefile.libretro platform=emscripten
-# Copy fceumm_libretro_emscripten.bc into the pinned RetroArch checkout
-# as libretro_emscripten.bc, then in that checkout:
-emmake make -f Makefile.emscripten LIBRETRO=fceumm \
-  HAVE_THREADS=0 PROXY_TO_PTHREAD=0 HAVE_WASMFS=0 HAVE_EXTRA_WASMFS=0 \
-  HAVE_AUDIOWORKLET=0 JSPI=0 FS_DEBUG=0
+# In external RetroArch and libretro-fceumm checkouts, respectively:
+git -C /absolute/RetroArch checkout 4d4bfc0fbaacca30d433e5c11b0b2b5242141b66
+git -C /absolute/libretro-fceumm checkout ac0d00a7fc01166f84c7bac01d1084ebfd2b865e
+# In this repository, after sourcing the SDK's emsdk_env.sh:
+node scripts/browser-core/build.mjs /absolute/RetroArch /absolute/libretro-fceumm /absolute/new-operator-core
 ```
+
+The helper verifies SDK/source pins, patch digest and applicability, rejects unrelated tracked changes, clones committed sources into isolated temporary build directories, builds with two workers, and writes only the loader, WASM and descriptor into a new or empty external operator directory. It accepts a clean base checkout or the exact already-applied patch. It computes hashes from the finished artifacts rather than installing example digests. The [upstream procedure](https://github.com/libretro/RetroArch/blob/4d4bfc0fbaacca30d433e5c11b0b2b5242141b66/pkg/emscripten/README.md) is the basis for the helper’s explicit flags.
 
 The build must provide `fceumm_libretro.js` and `fceumm_libretro.wasm`. The loader must have a default asynchronous ES-module factory and direct JavaScript methods `EmscriptenSendCommand(string)` and `EmscriptenReceiveCommandReply(): string | undefined`. Browser startup also requires `FS.mkdirTree`, `FS.writeFile`, `FS.readFile` and `callMain`. Relative/static/dynamic imports, workers/worklets and secondary dependency requests are refused. This conservative loader check may require a browser-only build adjustment during real-core acceptance; it is not evidence that the proposed recipe already meets this restriction. Do not enable an unauthenticated fallback. No JSPI, WasmFS, OPFS, dynamic core loading or threading is supported.
 
@@ -81,8 +83,8 @@ Uploads use the item revision captured with the loaded saves. Successful non-con
 
 A failed upload retains copied bytes, one idempotency key and the original base revision. Retry sends that same logical save; Export downloads its retained bytes. Another capture is blocked while pending. A read-only reader can play, then receives the API’s authorization problem on upload and can export. Pending data is session-only and lost on navigation/reload; no unload upload is promised. Retry or export before Stop.
 
-## Manual acceptance still required
+## Acceptance and operator validation
 
-Generated tests exercise transport, API authorization, byte staging, minimal valid WASM instantiation, delayed fake command completion, retry and real API keep-both. They do **not** execute a native NES core or establish rendering, audio, input, actual state restoration or cross-emulator save compatibility.
+Generated tests exercise transport, API authorization, byte staging, minimal valid WASM instantiation, delayed fake command completion, retry and real API keep-both. They do **not** execute a native NES core or establish rendering, audio, input, actual state restoration or cross-emulator save compatibility. The separate [2026-10-20 local acceptance](browser-playback-acceptance.md) executes the pinned patched pair with an original generated program; it does not establish cross-emulator compatibility.
 
 Before calling a particular artifact pair verified, build the exact profile, record its actual hashes and successful SDK, then use a lawful NES test program to verify rendering/audio/input, real SRAM save/reload and slot-0 state save/load. Repeat through a bearer-only reverse proxy, including read-only export, phone/browser stale-save conflicts, failed startup and timed-out command recovery. No core binaries, ROMs, real saves or nightly downloads belong in this repository.
