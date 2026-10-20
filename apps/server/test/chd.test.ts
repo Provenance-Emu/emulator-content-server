@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import fs, { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { get } from 'node:http';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -279,6 +280,10 @@ for (const survivor of [true, false]) {
       join: ReturnType<typeof gate<void>>;
     }> = [];
     let started = gate();
+    const monitorEntered = gate();
+    const releaseMonitor = gate();
+    let transientPath: string | undefined;
+    const errors: Array<{ code?: string; message: string }> = [];
     const server = await openServer({
       dataDir,
       chdmanPath: executable,
@@ -309,7 +314,8 @@ for (const survivor of [true, false]) {
             },
           });
           // A side output proves cleanup must wait for child exit, not merely kill().
-          void writeFile(join(options.cwd, 'partial'), 'in progress').then(() => started.resolve());
+          transientPath = join(options.cwd, 'partial');
+          void writeFile(transientPath, 'in progress').then(() => started.resolve());
           return {
             stdout,
             stderr,
@@ -328,6 +334,7 @@ for (const survivor of [true, false]) {
     });
     const cancelled = gate();
     server.app.addHook('onError', async (_request, _reply, error) => {
+      errors.push({ code: (error as NodeJS.ErrnoException).code, message: error.message });
       if (/cancelled/i.test(error.message)) cancelled.resolve();
     });
     const bootstrap = issueToken();
@@ -400,6 +407,17 @@ for (const survivor of [true, false]) {
         return result;
       },
     );
+    const originalLstat = fs.lstat;
+    let gated = false;
+    t.mock.method(fs, 'lstat', async (...args: Parameters<typeof originalLstat>) => {
+      if (survivor && !gated && args[0] === transientPath) {
+        gated = true;
+        monitorEntered.resolve();
+        await releaseMonitor.promise;
+      }
+      return originalLstat(...args);
+    });
+    syncBuiltinESMExports();
     const first = get(url, { headers: auth });
     first.on('error', () => {});
     try {
@@ -422,9 +440,15 @@ for (const survivor of [true, false]) {
           first.destroy();
           await within(cancelled.promise, 'disconnected HTTP waiter was not cancelled');
           assert.equal(jobs.length, 1);
+          await within(monitorEntered.promise, 'monitor did not enumerate temporary output');
           await job.finish();
+          releaseMonitor.resolve();
           const result = await within(response.promise, 'survivor did not finish');
-          assert.equal(result.status, 206);
+          assert.equal(
+            result.status,
+            206,
+            JSON.stringify({ errors, body: result.bytes.toString() }),
+          );
           assert.deepEqual(result.bytes, bytes.subarray(19, 66));
           assert.equal(jobs.length, 1);
         } finally {
@@ -459,8 +483,11 @@ for (const survivor of [true, false]) {
       }
     } finally {
       first.destroy();
+      releaseMonitor.resolve();
       for (const job of jobs) job.join.resolve();
       await server.close();
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
       await rm(dataDir, { recursive: true, force: true });
     }
   });

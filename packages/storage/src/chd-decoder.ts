@@ -54,10 +54,18 @@ function failure(message: string): DomainError {
   return new DomainError('archive-rejected', 422, message);
 }
 
-async function stagedBytes(directory: string): Promise<number> {
+async function stagedBytes(directory: string, active = false): Promise<number> {
   let size = 0;
   for (const name of await readdir(directory)) {
-    const info = await lstat(join(directory, name));
+    let info: Awaited<ReturnType<typeof lstat>>;
+    try {
+      info = await lstat(join(directory, name));
+    } catch (error) {
+      // A running decoder may remove a temporary output after readdir. Final
+      // artifact validation remains strict after the process has exited.
+      if (active && (error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw error;
+    }
     if (!info.isFile() || info.isSymbolicLink())
       throw failure('CHD decoder produced an unsafe output');
     size += info.size;
@@ -125,7 +133,7 @@ async function runProcess(
     while (!exited) {
       checkDeadline(deadline, signal);
       if (fault) throw fault;
-      if (outputLimit !== undefined && (await stagedBytes(cwd)) > outputLimit)
+      if (outputLimit !== undefined && (await stagedBytes(cwd, true)) > outputLimit)
         throw failure('CHD decoder output exceeds quota');
       await Promise.race([
         exit,

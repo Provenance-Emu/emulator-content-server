@@ -566,3 +566,136 @@ test('valid command help with exit one enables the decoder', async () => {
   });
   await f.cleanup();
 });
+
+test('active decoder tolerates a temporary file removed between enumeration and stat', async (t) => {
+  let enumerated!: () => void;
+  const inspecting = new Promise<void>((resolve) => {
+    enumerated = resolve;
+  });
+  let removed!: () => void;
+  const gone = new Promise<void>((resolve) => {
+    removed = resolve;
+  });
+  let temporary: string | undefined;
+  let gated = false;
+  const original = fs.lstat;
+  t.mock.method(fs, 'lstat', async (...args: Parameters<typeof original>) => {
+    if (!gated && args[0] === temporary) {
+      gated = true;
+      enumerated();
+      await gone;
+    }
+    return original(...args);
+  });
+  syncBuiltinESMExports();
+  const f = await fixture(
+    synthetic(),
+    decoder(async (args, cwd) => {
+      temporary = join(cwd, 'temporary');
+      await writeFile(temporary, 'temporary output');
+      await inspecting;
+      await fs.rm(temporary);
+      await dvdOutput(args, cwd);
+      removed();
+    }),
+  );
+  try {
+    const out = join(f.root, 'out');
+    await mkdir(out);
+    const bundle = await f.provider.materializeBundle?.(f.path, 'disc', out, QUOTA);
+    assert.equal(bundle?.files[0]?.size, 4096);
+    assert.deepEqual(await readFile(join(out, 'disc.iso')), Buffer.alloc(4096, 7));
+    assert.deepEqual(await readdir(out), ['disc.iso']);
+  } finally {
+    removed();
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    await f.cleanup();
+  }
+});
+
+for (const code of ['EACCES', 'EIO']) {
+  test(`active output monitor preserves ${code} failures`, async (t) => {
+    let scanned!: () => void;
+    const inspected = new Promise<void>((resolve) => {
+      scanned = resolve;
+    });
+    let output: string | undefined;
+    let injected = false;
+    const original = fs.lstat;
+    t.mock.method(fs, 'lstat', async (...args: Parameters<typeof original>) => {
+      if (!injected && args[0] === output) {
+        injected = true;
+        scanned();
+        throw Object.assign(new Error('controlled monitor failure'), { code });
+      }
+      return original(...args);
+    });
+    syncBuiltinESMExports();
+    const f = await fixture(
+      synthetic(),
+      decoder(async (args, cwd) => {
+        output = join(cwd, 'disc.iso');
+        await dvdOutput(args, cwd);
+        await inspected;
+      }),
+    );
+    try {
+      const out = join(f.root, 'out');
+      await mkdir(out);
+      await assert.rejects(
+        f.provider.materializeBundle?.(f.path, 'disc', out, QUOTA) ?? Promise.resolve(),
+        (error) => (error as NodeJS.ErrnoException).code === code,
+      );
+      assert.deepEqual(await readdir(out), []);
+    } finally {
+      scanned();
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+      await f.cleanup();
+    }
+  });
+}
+
+test('post-exit artifact disappearance is rejected without publishing a bundle', async (t) => {
+  let output: string | undefined;
+  let exited = false;
+  let removed = false;
+  const original = fs.lstat;
+  t.mock.method(fs, 'lstat', async (...args: Parameters<typeof original>) => {
+    if (exited && !removed && args[0] === output) {
+      removed = true;
+      await fs.rm(output);
+    }
+    return original(...args);
+  });
+  syncBuiltinESMExports();
+  const run = decoder(async (args, cwd) => {
+    output = join(cwd, 'disc.iso');
+    await dvdOutput(args, cwd);
+  });
+  const f = await fixture(synthetic(), (exe, args, options) => {
+    const process = run(exe, args, options);
+    if (args[0] === 'help') return process;
+    return {
+      ...process,
+      exited: process.exited.then((result) => {
+        exited = true;
+        return result;
+      }),
+    };
+  });
+  try {
+    const out = join(f.root, 'out');
+    await mkdir(out);
+    await assert.rejects(
+      f.provider.materializeBundle?.(f.path, 'disc', out, QUOTA) ?? Promise.resolve(),
+    );
+    assert.equal(removed, true);
+    assert.deepEqual(await readdir(out), []);
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    await f.cleanup();
+  }
+});
