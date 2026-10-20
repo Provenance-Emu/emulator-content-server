@@ -11,10 +11,24 @@ actual=$(shasum -a 256 "$work/source.tar.gz" | cut -d ' ' -f 1)
 [ "$actual" = "$expected" ] || { echo 'MAME source integrity mismatch' >&2; exit 1; }
 tar -xzf "$work/source.tar.gz" -C "$work"
 cd "$work/mame-mame0289"
-make -j3 TOOLS=1 EMULATOR=0 OSD=sdl3 USE_LIBSDL=1 \
+# Homebrew formula builds receive these search paths from superenv. A plain
+# CI shell does not; provide them through MAME's documented build/link options.
+# pkg-config also carries transitive include flags (for example libogg).
+for dependency in flac utf8proc zstd sdl3; do
+  prefix=$(brew --prefix "$dependency")
+  PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+done
+export PKG_CONFIG_PATH
+includes="$(pkg-config --cflags flac libutf8proc libzstd) -I$(brew --prefix asio)/include"
+libraries=$(pkg-config --libs-only-L flac libutf8proc libzstd)
+# The upstream generated solution exposes chdman with its dependency graph.
+# Generate it with the official top-level rule, then build only that target.
+project=build/projects/sdl3/mame/gmake-osx-clang
+make -j3 generate "$project/Makefile" TOOLS=1 EMULATOR=0 OSD=sdl3 USE_LIBSDL=1 \
   USE_SYSTEM_LIB_EXPAT=1 USE_SYSTEM_LIB_ZLIB=1 USE_SYSTEM_LIB_ASIO=1 \
   USE_SYSTEM_LIB_FLAC=1 USE_SYSTEM_LIB_UTF8PROC=1 USE_SYSTEM_LIB_ZSTD=1 \
-  PYTHON_EXECUTABLE=python3
+  PYTHON_EXECUTABLE=python3 ARCHOPTS="$includes" LDOPTS="$libraries"
+make -j3 -C "$project" config=release64 chdman
 test -x "$PWD/chdman"
 mkdir -p "$RUNNER_TEMP/ecs-chdman"
 cp "$PWD/chdman" "$RUNNER_TEMP/ecs-chdman/chdman"

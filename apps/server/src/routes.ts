@@ -1163,13 +1163,30 @@ async function sendEntryContent(
   if (etagMatches(headerString(request, 'if-none-match'), etag)) {
     return reply.status(304).send();
   }
-  const entry = await openVirtualEntry(
-    root,
-    asset.sha256,
-    context.virtual,
-    entryId,
-    context.dataDir,
-  );
+  const controller = new AbortController();
+  // IncomingMessage.close also fires for a normally consumed GET body. The
+  // response/socket lifetime identifies a client gone during materialization.
+  const socket = request.raw.socket;
+  const disconnected = () => {
+    if (!reply.raw.writableFinished) controller.abort();
+  };
+  reply.raw.once('close', disconnected);
+  socket.once('close', disconnected);
+  if (reply.raw.destroyed || socket.destroyed) disconnected();
+  let entry;
+  try {
+    entry = await openVirtualEntry(
+      root,
+      asset.sha256,
+      context.virtual,
+      entryId,
+      context.dataDir,
+      controller.signal,
+    );
+  } finally {
+    reply.raw.removeListener('close', disconnected);
+    socket.removeListener('close', disconnected);
+  }
   if (!entry) throw new DomainError('not-found', 404, 'Archive entry not found');
   return sendRange(request, reply, {
     path: entry.path,
