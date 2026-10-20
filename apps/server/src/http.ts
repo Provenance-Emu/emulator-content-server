@@ -5,6 +5,12 @@ import { type Actor, type AssetRecord, DomainError, type ItemRecord } from '@ecs
 import { type ItemPermission, problem } from '@ecs/protocol';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
+type IdempotencyResult = { status: number; body: unknown };
+const pendingIdempotency = new WeakMap<
+  CatalogDatabase,
+  Map<string, { requestHash: string; result: Promise<IdempotencyResult> }>
+>();
+
 export function sendProblem(
   reply: FastifyReply,
   error: DomainError,
@@ -97,25 +103,43 @@ export async function withIdempotency(
     .digest('hex');
   const key = actorKey(actor);
   const existing = catalog.getIdempotency(key, header);
+  const pendingKey = JSON.stringify([key, header]);
+  let pending = pendingIdempotency.get(catalog);
+  const active = pending?.get(pendingKey);
+  const recordedHash = existing?.requestHash ?? active?.requestHash;
+  if (recordedHash !== undefined && recordedHash !== requestHash) {
+    throw new DomainError(
+      'idempotency-conflict',
+      409,
+      'Idempotency key was reused with a different request',
+    );
+  }
   if (existing) {
-    if (existing.requestHash !== requestHash) {
-      throw new DomainError(
-        'idempotency-conflict',
-        409,
-        'Idempotency key was reused with a different request',
-      );
-    }
     return { status: existing.statusCode, body: JSON.parse(existing.responseJson) as unknown };
   }
-  const result = await exec();
-  catalog.saveIdempotency({
-    actorKey: key,
-    key: header,
-    requestHash,
-    statusCode: result.status,
-    responseJson: JSON.stringify(result.body),
+  if (active) return active.result;
+  if (!pending) {
+    pending = new Map();
+    pendingIdempotency.set(catalog, pending);
+  }
+  // Register before execution can yield, including during staging-file creation.
+  const result = Promise.resolve().then(async () => {
+    const response = await exec();
+    catalog.saveIdempotency({
+      actorKey: key,
+      key: header,
+      requestHash,
+      statusCode: response.status,
+      responseJson: JSON.stringify(response.body),
+    });
+    return response;
   });
-  return result;
+  pending.set(pendingKey, { requestHash, result });
+  try {
+    return await result;
+  } finally {
+    pending.delete(pendingKey);
+  }
 }
 
 export function libraryDecision(

@@ -10,6 +10,8 @@ Errors use `application/problem+json` with a `urn:ecs:problem:<code>` type and t
 
 Idempotency keys are scoped to the authenticated actor. A replay must match the original HTTP method, request URL (including resource IDs and query string), and JSON body. Reusing a key for a different request returns HTTP 409 with `urn:ecs:problem:idempotency-conflict`. Current authorization is checked before a cached response is returned.
 
+Matching simultaneous requests in one server process share the in-progress operation and its result. A conflicting request returns 409 even while the first is running. Failed operations release their key so a client can retry. This coordination is local to one process; it does not provide cross-process locking or make the operation and receipt atomic across a crash.
+
 Receipts written by older servers that fingerprinted only the body also return this conflict after upgrade: their original target cannot be verified. Clients should inspect the resource or upload status before choosing a new key, since the original operation may already have succeeded.
 
 Manifest files mirror the fields an app needs to pull a game: kind, relative path, size, SHA-256, MD5, CRC, required flag, and content path. ROM, BIOS, and system files are required. Screenshots, artwork, and saves are optional.
