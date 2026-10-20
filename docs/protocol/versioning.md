@@ -14,6 +14,8 @@ Matching simultaneous requests in one server process share the in-progress opera
 
 Chunk writes, completion, and cancellation share a per-upload mutation guard within each server process. A competing mutation returns HTTP 409 with `urn:ecs:problem:upload-busy`; clients should check upload status after the active operation finishes before retrying. Closed uploads reject new mutations with `urn:ecs:problem:upload-closed`. An authorized idempotent replay of a completed upload still returns its original result. Different uploads can proceed concurrently.
 
+Upload ownership does not replace authorization. Status reads require current library read permission and token scope; chunk writes, completion, and cancellation require write permission and scope. These checks apply to existing uploads after role changes or membership removal, as well as to newly created uploads.
+
 Receipts written by older servers that fingerprinted only the body also return this conflict after upgrade: their original target cannot be verified. Clients should inspect the resource or upload status before choosing a new key, since the original operation may already have succeeded.
 
 Manifest files mirror the fields an app needs to pull a game: kind, relative path, size, SHA-256, MD5, CRC, required flag, and content path. ROM, BIOS, and system files are required. Screenshots, artwork, and saves are optional.
