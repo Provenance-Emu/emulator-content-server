@@ -38,7 +38,7 @@ export interface LibraryBrowserController extends Readable<LibraryBrowserState> 
   setQuery(filters: Partial<BrowseFilters>): Promise<void>;
   next(): Promise<void>;
   previous(): Promise<void>;
-  refresh(options?: { restart?: boolean }): Promise<void>;
+  refresh(options?: { restart?: boolean; clear?: boolean }): Promise<void>;
   open(entry: LibraryBrowseEntry, position: ReturnPosition): void;
   back(): ReturnPosition | null;
   dispose(): void;
@@ -200,6 +200,13 @@ export function createLibraryBrowser(
       if (options.restart) {
         clear();
         return read(1, null);
+      }
+      if (options.clear) {
+        // Access rejection invalidates old requests and bodies without losing the saved page/query.
+        epoch++;
+        pending = null;
+        position = null;
+        update({ items: [], active: null });
       }
       if (current.requiresRefresh) return Promise.resolve();
       return pending ?? read(current.page, cursors[current.page - 1] ?? null);

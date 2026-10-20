@@ -177,3 +177,112 @@ test('preview streamed bytes obey the size budget even without a Content-Length 
   assert.equal(f.requests.length, 1);
   assert.equal(get(p).loading, false);
 });
+
+for (const status of [401, 403] as const) {
+  test(`preview rejection ${status} emits its authorization signal after URL cleanup and suppresses sibling rejections`, async (t) => {
+    const objects = urls(t);
+    const denied = deferred<Response>();
+    let n = 0;
+    const f = transport(() =>
+      n++ === 0 ? new Response(png) : denied.promise.then((result) => result.clone()),
+    );
+    t.after(f.restore);
+    const rejections: number[] = [];
+    const previews = createPreviews(f.client, {
+      authorizationRejected(rejected) {
+        assert.deepEqual(get(previews).urls, {});
+        assert.equal(objects.revoked.length, 1);
+        rejections.push(rejected);
+      },
+    });
+    t.after(() => previews.dispose());
+    const reading = previews.setPage([preview('good'), preview('denied-1'), preview('denied-2')]);
+    await flush();
+    denied.resolve(problem(status));
+    await reading;
+    assert.deepEqual(rejections, [status]);
+    assert.equal(get(previews).loading, false);
+  });
+}
+
+test('stale-page and disposed preview authorization failures never signal against newer views', async (t) => {
+  urls(t);
+  const old = deferred<Response>();
+  const disposed = deferred<Response>();
+  const f = transport((url) =>
+    url.pathname.includes('art-old')
+      ? old.promise
+      : url.pathname.includes('art-disposed')
+        ? disposed.promise
+        : new Response(png),
+  );
+  t.after(f.restore);
+  const rejections: number[] = [];
+  const previews = createPreviews(f.client, {
+    authorizationRejected: (status) => rejections.push(status),
+  });
+  const oldRead = previews.setPage([preview('old')]);
+  await previews.setPage([preview('current')]);
+  old.resolve(problem(401));
+  await oldRead;
+  assert.deepEqual(rejections, []);
+  assert.equal(Object.keys(get(previews).urls)[0], 'item:current');
+  const delayed = previews.setPage([preview('disposed')]);
+  previews.dispose();
+  disposed.resolve(problem(403));
+  await delayed;
+  assert.deepEqual(rejections, []);
+  assert.deepEqual(get(previews).urls, {});
+});
+
+test('ordinary unavailable unsupported oversized and network preview failures do not signal auth loss', async (t) => {
+  urls(t);
+  const f = transport((url) => {
+    if (url.pathname.includes('network')) throw new TypeError('generated network failure');
+    if (url.pathname.includes('unsupported')) return new Response(new Uint8Array([1, 2, 3]));
+    if (url.pathname.includes('oversized'))
+      return new Response(new Uint8Array(2 * 1024 * 1024 + 1));
+    return problem(503);
+  });
+  t.after(f.restore);
+  const rejections: number[] = [];
+  const previews = createPreviews(f.client, {
+    authorizationRejected: (status) => rejections.push(status),
+  });
+  t.after(() => previews.dispose());
+  await previews.setPage(['network', 'unsupported', 'oversized', 'unavailable'].map(preview));
+  assert.deepEqual(rejections, []);
+  assert.deepEqual(get(previews).urls, {});
+  assert.equal(get(previews).loading, false);
+});
+
+test('authorization cleanup cannot signal against a page replaced synchronously by a subscriber', async (t) => {
+  urls(t);
+  const denied = deferred<Response>();
+  const f = transport((url) =>
+    url.pathname.includes('denied') ? denied.promise : new Response(png),
+  );
+  t.after(f.restore);
+  const rejections: number[] = [];
+  const previews = createPreviews(f.client, {
+    authorizationRejected: (status) => rejections.push(status),
+  });
+  t.after(() => previews.dispose());
+  let replace = false;
+  let replacement: Promise<void> | null = null;
+  const unsubscribe = previews.subscribe((state) => {
+    if (replace && !state.loading && Object.keys(state.urls).length === 0) {
+      replace = false;
+      replacement = previews.setPage([preview('new-context-page')]);
+    }
+  });
+  t.after(unsubscribe);
+  const old = previews.setPage([preview('old-good'), preview('denied')]);
+  await flush();
+  replace = true;
+  denied.resolve(problem(401));
+  await old;
+  await replacement;
+  assert.deepEqual(rejections, []);
+  assert.deepEqual(Object.keys(get(previews).urls), ['item:new-context-page']);
+});

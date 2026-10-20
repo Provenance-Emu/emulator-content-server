@@ -59,6 +59,7 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
   const store = writable(current);
   let epoch = 0;
   let disposed = false;
+  let sourceDenied = false;
   let pending: Promise<void> | null = null;
   const live = (run: number) => !disposed && run === epoch;
   function update(patch: Partial<DetailState>) {
@@ -67,7 +68,10 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
   }
   function failure(error: unknown) {
     const status = error instanceof ContentError ? error.status : null;
-    if (status === 401 || status === 403 || status === 404) update(empty());
+    if (status === 401 || status === 403 || status === 404) {
+      sourceDenied = entry.entityType === 'source';
+      update(empty());
+    }
     update({ failure: explain(error), status });
   }
   async function read(run: number) {
@@ -119,7 +123,7 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
   return {
     subscribe: store.subscribe,
     load() {
-      if (disposed || current.adopting || current.reading) return Promise.resolve();
+      if (disposed || sourceDenied || current.adopting || current.reading) return Promise.resolve();
       if (pending) return pending;
       const run = ++epoch;
       update({ loading: true, reading: null, failure: null, status: null });

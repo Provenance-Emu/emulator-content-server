@@ -247,3 +247,62 @@ test('background detail loads do not discard an explicit in-progress download', 
   assert.deepEqual((await downloading)?.bytes, new Uint8Array([1, 2, 3]));
   assert.equal(get(d).reading, null);
 });
+
+for (const status of [401, 403, 404]) {
+  test(`source rejection ${status} cannot restore captured metadata until replaced from a fresh browse envelope`, async (t) => {
+    const captured = entry('source', 'source');
+    const fresh = entry('source', 'source');
+    assert.ok(fresh.source);
+    fresh.source.availability = 'offline';
+    const f = transport((url) => {
+      if (url.pathname === '/api/v1/browse')
+        return Response.json({ items: [fresh], nextCursor: null });
+      assert.equal(url.pathname, '/api/v1/sources/source/content');
+      return problem(status);
+    });
+    t.after(f.restore);
+    const detail = createDetail(f.client, captured);
+    t.after(() => detail.dispose());
+    await detail.load();
+    assert.equal(get(detail).source?.id, 'source');
+    assert.equal(f.requests.length, 0);
+    assert.equal(await detail.download(), null);
+    assert.equal(get(detail).source, null);
+    await detail.load();
+    await detail.load();
+    assert.equal(get(detail).source, null);
+    assert.equal(get(detail).entry, null);
+    assert.equal(get(detail).status, status);
+    assert.equal(await detail.download(), null);
+    assert.equal(f.requests.length, 1);
+    const page = await f.client.browse({ libraryId: 'library', category: 'games' });
+    const authorized = page.items[0];
+    assert.ok(authorized);
+    const replacement = createDetail(f.client, authorized);
+    t.after(() => replacement.dispose());
+    await replacement.load();
+    assert.equal(get(replacement).source?.availability, 'offline');
+    assert.equal(get(replacement).status, null);
+    assert.equal(f.requests.length, 2);
+    assert.deepEqual(
+      f.requests.map((url) => url.pathname),
+      ['/api/v1/sources/source/content', '/api/v1/browse'],
+    );
+  });
+}
+
+test('ordinary source download failures preserve network-free source metadata reload', async (t) => {
+  const f = transport(() => problem(503));
+  t.after(f.restore);
+  const detail = createDetail(f.client, entry('source', 'source'));
+  t.after(() => detail.dispose());
+  await detail.load();
+  assert.equal(await detail.download(), null);
+  assert.equal(get(detail).source?.id, 'source');
+  assert.equal(get(detail).status, 503);
+  assert.equal(f.requests.length, 3); // Existing client transient retries.
+  await detail.load();
+  assert.equal(get(detail).source?.id, 'source');
+  assert.equal(get(detail).status, null);
+  assert.equal(f.requests.length, 3);
+});

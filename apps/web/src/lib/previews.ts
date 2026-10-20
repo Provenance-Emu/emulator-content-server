@@ -9,6 +9,9 @@ export interface PreviewController extends Readable<PreviewState> {
   setPage(entries: LibraryBrowseEntry[]): Promise<void>;
   dispose(): void;
 }
+export interface PreviewOptions {
+  authorizationRejected?(status: 401 | 403): void;
+}
 const MAX_BYTES = 2 * 1024 * 1024;
 
 /** Derive MIME from a raster signature, never from its extension or a remote response header. */
@@ -31,7 +34,10 @@ function imageType(bytes: Uint8Array): string | null {
 }
 
 /** Keep this instance across page changes so old requests continue to occupy their four slots. */
-export function createPreviews(client: ContentClient): PreviewController {
+export function createPreviews(
+  client: ContentClient,
+  options: PreviewOptions = {},
+): PreviewController {
   let current: PreviewState = { urls: {}, loading: false };
   const store = writable(current);
   let epoch = 0;
@@ -75,8 +81,11 @@ export function createPreviews(client: ContentClient): PreviewController {
             work.run === epoch &&
             error instanceof ContentError &&
             (error.status === 401 || error.status === 403)
-          )
+          ) {
+            const rejectedEpoch = epoch + 1;
             clear();
+            if (!disposed && epoch === rejectedEpoch) options.authorizationRejected?.(error.status);
+          }
           // Unavailable/oversized/unsupported images retain the title/system fallback.
         } finally {
           active--;
