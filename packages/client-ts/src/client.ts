@@ -392,7 +392,10 @@ export class ContentClient {
     return this.downloadPath(`/api/v1/files/${encodeURIComponent(assetId)}/content`, query);
   }
 
-  private async downloadPath(path: string, query: DownloadQuery): Promise<DownloadResponse> {
+  private async downloadPath(
+    path: string,
+    query: DownloadQuery,
+  ): Promise<DownloadResponse & { bodyBytes: number | null }> {
     const plan = planResume(query.localBytes ?? 0, null);
     const headers = this.headers();
     if (plan.range) {
@@ -403,6 +406,7 @@ export class ContentClient {
     if (!response.ok && response.status !== 304 && response.status !== 416)
       throw await failure(response);
     let total: number | null;
+    let bodyBytes: number | null = null;
     try {
       total = totalBytes(response);
       if (response.status === 206) {
@@ -424,6 +428,7 @@ export class ContentClient {
         ) {
           throw new RangeError('Invalid content range or length');
         }
+        bodyBytes = end - start + 1;
         if (query.etag && response.headers.get('etag') !== query.etag) {
           throw new Error('Content validator changed during resumed download');
         }
@@ -440,6 +445,7 @@ export class ContentClient {
       offset: instruction === 'append' ? plan.offset : 0,
       etag: response.headers.get('etag'),
       totalBytes: total,
+      bodyBytes,
       body: carriesContent ? response.body : null,
     };
   }
@@ -480,6 +486,11 @@ export class ContentClient {
           etag = undefined;
         }
         const response = await this.downloadPath(path, { localBytes: received, etag });
+        if (response.instruction === 'not-modified' || response.instruction === 'unsatisfiable') {
+          throw new RangeError(
+            'Cannot collect a complete representation from a response without a body',
+          );
+        }
         if (response.totalBytes !== null && response.totalBytes > maxBytes) {
           await response.body?.cancel();
           throw new RangeError('Content exceeds maximum byte limit');
@@ -490,12 +501,20 @@ export class ContentClient {
         }
         etag = response.etag ?? undefined;
         options.onProgress?.(received, response.totalBytes);
+        let bodyReceived = 0;
         for await (const chunk of chunks(response.body)) {
+          if (response.bodyBytes !== null && chunk.byteLength > response.bodyBytes - bodyReceived) {
+            throw new RangeError('Content body exceeds the declared range length');
+          }
           if (chunk.byteLength > maxBytes - received)
             throw new RangeError('Content exceeds maximum byte limit');
           held.push(chunk.slice());
+          bodyReceived += chunk.byteLength;
           received += chunk.byteLength;
           options.onProgress?.(received, response.totalBytes);
+        }
+        if (response.bodyBytes !== null && bodyReceived !== response.bodyBytes) {
+          throw new RangeError('Content body ended before the declared range length');
         }
         if (response.totalBytes !== null && received !== response.totalBytes) {
           throw new Error('The asset body ended before the size the server stated');
