@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import nativeFs from 'node:fs';
 import fs, { mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { dirname, join } from 'node:path';
@@ -69,7 +70,161 @@ test('simultaneous CUE/BIN opens publish one complete group and reuse verified r
   }
 });
 
-for (const mode of ['manifest', 'version', 'hash', 'truncated', 'symlink'] as const) {
+// Observe real filesystem streams, leaving the decoder, cache validation and
+// range reader intact. A warm lookup must never stream an entire sibling BIN.
+test('unchanged published groups reuse verification for selected entries and ranged reads', async (t) => {
+  const f = await cacheFixture();
+  let hashes = 0;
+  const original = nativeFs.createReadStream;
+  t.mock.method(nativeFs, 'createReadStream', (...args: Parameters<typeof original>) => {
+    if (String(args[0]).includes('virtual-cache') && args[1] === undefined) hashes += 1;
+    return original(...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    const seed = await openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+    assert.ok(seed);
+    assert.ok(hashes >= 2, 'publication verifies both generated artifacts');
+    hashes = 0;
+    for (const id of ['0', '1', '0', '1']) {
+      const opened = await openVirtualEntry(f.root, f.blob.sha256, f.registry, id);
+      assert.ok(opened);
+      const chunks: Buffer[] = [];
+      for await (const chunk of new FileContentReader(opened.path, opened.size).openRange(13, 31))
+        chunks.push(Buffer.from(chunk));
+      assert.deepEqual(
+        Buffer.concat(chunks),
+        id === '0' ? Buffer.from(CUE).subarray(13, 32) : Buffer.alloc(19, 37),
+      );
+    }
+    assert.equal(hashes, 0, 'warm selected-entry and range opens must not rehash any artifacts');
+    assert.equal(f.decodes(), 1);
+
+    const cold = new VirtualProviderRegistry([f.provider], QUOTA);
+    assert.ok(await openVirtualEntry(f.root, f.blob.sha256, cold, '0'));
+    assert.equal(hashes, 2, 'a cold registry verifies every artifact once');
+    assert.ok(await openVirtualEntry(f.root, f.blob.sha256, cold, '1'));
+    assert.equal(hashes, 2, 'the cold registry reuses its successful verification');
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    await f.cleanup();
+  }
+});
+
+test('warm DVD range opens do not stream the complete ISO again', async (t) => {
+  const f = await fixture(synthetic(), (exe, args, options) => {
+    const child = probeRunner(exe, args, options);
+    if (args[0] === 'help') return child;
+    return {
+      ...child,
+      exited: writeFile(join(options.cwd, 'disc.iso'), Buffer.alloc(4096, 37)).then(() => ({
+        code: 0,
+      })),
+    };
+  });
+  try {
+    await ensureLayout(f.root);
+    const blob = await placeBlob(f.root, f.path);
+    const registry = new VirtualProviderRegistry([f.provider], QUOTA);
+    const seed = await openVirtualEntry(f.root, blob.sha256, registry, '0');
+    assert.ok(seed);
+    let hashes = 0;
+    const original = nativeFs.createReadStream;
+    t.mock.method(nativeFs, 'createReadStream', (...args: Parameters<typeof original>) => {
+      if (args[0] === seed.path && args[1] === undefined) hashes += 1;
+      return original(...args);
+    });
+    syncBuiltinESMExports();
+    for (let index = 0; index < 3; index++) {
+      const opened = await openVirtualEntry(f.root, blob.sha256, registry, '0');
+      assert.ok(opened);
+      const chunks: Buffer[] = [];
+      for await (const chunk of new FileContentReader(opened.path, opened.size).openRange(13, 31))
+        chunks.push(Buffer.from(chunk));
+      assert.deepEqual(Buffer.concat(chunks), Buffer.alloc(19, 37));
+    }
+    assert.equal(hashes, 0, 'small DVD ranges must not hash the full ISO');
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    await f.cleanup();
+  }
+});
+
+test('a group changed after one artifact was hashed cannot memoize that earlier verification', async (t) => {
+  const f = await cacheFixture();
+  try {
+    const seed = await openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+    assert.ok(seed);
+    const cue = join(dirname(seed.path), 'disc.cue');
+    const original = nativeFs.createReadStream;
+    let changed = false;
+    t.mock.method(nativeFs, 'createReadStream', (...args: Parameters<typeof original>) => {
+      if (args[0] === seed.path && !changed) {
+        changed = true;
+        // CUE was already hashed; mutate it before validation completes BIN.
+        nativeFs.writeFileSync(cue, Buffer.alloc(Buffer.byteLength(CUE), 0));
+      }
+      return original(...args);
+    });
+    syncBuiltinESMExports();
+    const cold = new VirtualProviderRegistry([f.provider], QUOTA);
+    assert.ok(await openVirtualEntry(f.root, f.blob.sha256, cold, '0'));
+    assert.equal(changed, true);
+    assert.equal(await readFile(cue, 'utf8'), CUE);
+    assert.equal(f.decodes(), 2, 'concurrent modification invalidates and repairs the whole group');
+    assert.ok(await openVirtualEntry(f.root, f.blob.sha256, cold, '0'));
+    assert.equal(await readFile(cue, 'utf8'), CUE);
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    await f.cleanup();
+  }
+});
+
+for (const mode of ['cancel', 'shutdown'] as const) {
+  test(`warm validation still respects ${mode} during filesystem identity checks`, async (t) => {
+    const f = await cacheFixture();
+    try {
+      const seed = await openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+      assert.ok(seed);
+      const controller = new AbortController();
+      const original = fs.lstat;
+      t.mock.method(fs, 'lstat', async (...args: Parameters<typeof original>) => {
+        const result = await original(...args);
+        if (args[0] === seed.path) {
+          if (mode === 'cancel') controller.abort();
+          else void f.registry.close();
+        }
+        return result;
+      });
+      syncBuiltinESMExports();
+      await assert.rejects(
+        openVirtualEntry(f.root, f.blob.sha256, f.registry, '0', f.root, controller.signal),
+        /cancelled|closed/i,
+      );
+      assert.equal(f.decodes(), 1);
+    } finally {
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+      await f.registry.close();
+      await f.cleanup();
+    }
+  });
+}
+
+for (const mode of [
+  'manifest',
+  'missing-manifest',
+  'manifest-symlink',
+  'version',
+  'hash',
+  'restored-mtime',
+  'truncated',
+  'symlink',
+  'extra',
+] as const) {
   test(`cache rejects stale or invalid ${mode} and re-extracts the complete group`, async () => {
     const f = await cacheFixture();
     try {
@@ -77,6 +232,17 @@ for (const mode of ['manifest', 'version', 'hash', 'truncated', 'symlink'] as co
       assert.ok(bin);
       const manifestPath = join(dirname(bin.path), 'manifest.json');
       if (mode === 'manifest') await writeFile(manifestPath, '{}');
+      if (mode === 'missing-manifest') await rm(manifestPath);
+      if (mode === 'manifest-symlink') {
+        await rm(manifestPath);
+        await symlink(f.blob.path, manifestPath);
+      }
+      if (mode === 'extra') await writeFile(join(dirname(bin.path), 'unexpected'), 'extra');
+      if (mode === 'restored-mtime') {
+        const before = await fs.stat(bin.path);
+        await writeFile(bin.path, Buffer.alloc(4400, 0));
+        await fs.utimes(bin.path, before.atime, before.mtime);
+      }
       if (mode === 'version') {
         const m = JSON.parse(await readFile(manifestPath, 'utf8'));
         m.version = 'chd-v0';

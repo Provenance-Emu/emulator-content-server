@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { type BigIntStats, createReadStream } from 'node:fs';
 import {
   lstat,
   mkdir,
@@ -23,6 +23,76 @@ interface Flight {
   waiters: number;
 }
 const flights = new WeakMap<VirtualProviderRegistry, Map<string, Flight>>();
+
+interface GroupSnapshot {
+  directory: string;
+  node: string;
+  files: string[];
+}
+interface VerifiedGroup {
+  bundle: VirtualArtifactBundle;
+  entries: string;
+  snapshot: GroupSnapshot;
+}
+// Registry lifetime bounds ownership; the LRU also bounds long-lived servers.
+const verifiedGroups = new WeakMap<VirtualProviderRegistry, Map<string, VerifiedGroup>>();
+const MAX_VERIFIED_GROUPS = 128;
+
+function identity(info: BigIntStats): string {
+  return [info.dev, info.ino, info.mode, info.size, info.mtimeNs, info.ctimeNs].join(':');
+}
+
+async function snapshot(
+  directory: string,
+  entries: VirtualEntry[],
+  deadline: number,
+  signal: AbortSignal,
+): Promise<GroupSnapshot | null> {
+  checkDeadline(deadline, signal);
+  const info = await lstat(directory, { bigint: true });
+  if (!info.isDirectory() || info.isSymbolicLink()) return null;
+  const names = await readdir(directory);
+  if (
+    names.length !== entries.length + 1 ||
+    names.some((name) => name !== 'manifest.json' && !entries.some((entry) => entry.path === name))
+  )
+    return null;
+  const files: string[] = [];
+  for (const [name, size] of [
+    ['manifest.json', undefined],
+    ...entries.map((entry) => [entry.path, entry.uncompressedSize] as const),
+  ] as const) {
+    checkDeadline(deadline, signal);
+    const file = await lstat(join(directory, name), { bigint: true });
+    if (
+      !file.isFile() ||
+      file.isSymbolicLink() ||
+      (size === undefined ? file.size > 65536n : file.size !== BigInt(size))
+    )
+      return null;
+    files.push(identity(file));
+  }
+  checkDeadline(deadline, signal);
+  return { directory: identity(info), node: `${info.dev}:${info.ino}`, files };
+}
+
+function sameFiles(left: GroupSnapshot, right: GroupSnapshot): boolean {
+  return (
+    left.files.length === right.files.length &&
+    left.files.every((file, i) => file === right.files[i])
+  );
+}
+
+function remember(
+  groups: Map<string, VerifiedGroup>,
+  directory: string,
+  group: VerifiedGroup,
+): void {
+  groups.delete(directory);
+  groups.set(directory, group);
+  const oldest = groups.keys().next().value;
+  if (groups.size > MAX_VERIFIED_GROUPS && oldest !== undefined) groups.delete(oldest);
+}
 
 export async function chdHash(
   file: string,
@@ -55,28 +125,34 @@ async function validate(
   entries: VirtualEntry[],
   deadline: number,
   signal: AbortSignal,
-): Promise<VirtualArtifactBundle | null> {
+  groups?: Map<string, VerifiedGroup>,
+): Promise<VerifiedGroup | null> {
   try {
-    checkDeadline(deadline, signal);
-    const info = await lstat(directory);
-    if (!info.isDirectory() || info.isSymbolicLink()) return null;
-    const manifestPath = join(directory, 'manifest.json');
-    const manifestInfo = await lstat(manifestPath);
-    if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() || manifestInfo.size > 65536)
-      return null;
-    const manifest: VirtualArtifactBundle = JSON.parse(await readFile(manifestPath, 'utf8'));
+    const before = await snapshot(directory, entries, deadline, signal);
+    const signature = JSON.stringify(
+      entries.map((entry) => [entry.entryId, entry.path, entry.uncompressedSize]),
+    );
+    const cached = groups?.get(directory);
+    groups?.delete(directory);
+    if (!before) return null;
+    if (
+      groups &&
+      cached &&
+      cached.entries === signature &&
+      cached.snapshot.directory === before.directory &&
+      sameFiles(cached.snapshot, before)
+    ) {
+      checkDeadline(deadline, signal);
+      remember(groups, directory, cached);
+      return cached;
+    }
+    const manifest: VirtualArtifactBundle = JSON.parse(
+      await readFile(join(directory, 'manifest.json'), 'utf8'),
+    );
     if (
       manifest.version !== CHD_VERSION ||
       !Array.isArray(manifest.files) ||
       manifest.files.length !== entries.length
-    )
-      return null;
-    const names = await readdir(directory);
-    if (
-      names.length !== entries.length + 1 ||
-      names.some(
-        (name) => name !== 'manifest.json' && !entries.some((entry) => entry.path === name),
-      )
     )
       return null;
     for (const [index, entry] of entries.entries()) {
@@ -90,14 +166,17 @@ async function validate(
         !/^[a-f0-9]{64}$/.test(file.sha256)
       )
         return null;
-      const path = join(directory, entry.path);
-      const stat = await lstat(path);
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== file.size) return null;
-      const actual = await chdHash(path, deadline, signal);
+      const actual = await chdHash(join(directory, entry.path), deadline, signal);
       if (actual.size !== file.size || actual.sha256 !== file.sha256) return null;
     }
-    return manifest;
+    // Never associate a successful hash with metadata from a concurrent edit.
+    const after = await snapshot(directory, entries, deadline, signal);
+    if (!after || before.directory !== after.directory || !sameFiles(before, after)) return null;
+    const verified = { bundle: manifest, entries: signature, snapshot: after };
+    if (groups) remember(groups, directory, verified);
+    return verified;
   } catch (error) {
+    groups?.delete(directory);
     checkDeadline(deadline, signal);
     if (error instanceof DomainError) throw error;
     return null;
@@ -161,6 +240,11 @@ export async function openChdBundle(
     map = new Map();
     flights.set(registry, map);
   }
+  const groups = verifiedGroups.get(registry) ?? new Map<string, VerifiedGroup>();
+  if (!verifiedGroups.has(registry)) {
+    verifiedGroups.set(registry, groups);
+    registry.signal.addEventListener('abort', () => groups.clear(), { once: true });
+  }
   checkDeadline(deadline, signal);
   checkDeadline(deadline, registry.signal);
   let flight = map.get(key);
@@ -192,13 +276,19 @@ export async function openChdBundle(
         if (!layout || layout.format !== format)
           throw new DomainError('unsupported-entry', 422, 'CHD bundle is unavailable');
         checkDeadline(deadline, operationSignal);
-        const cached = await validate(directory, layout.entries, deadline, operationSignal);
-        if (cached) return cached;
+        const cached = await validate(directory, layout.entries, deadline, operationSignal, groups);
+        if (cached) return cached.bundle;
         await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
         const release = await acquireGroupLock(directory, deadline, operationSignal);
         try {
-          const winner = await validate(directory, layout.entries, deadline, operationSignal);
-          if (winner) return winner;
+          const winner = await validate(
+            directory,
+            layout.entries,
+            deadline,
+            operationSignal,
+            groups,
+          );
+          if (winner) return winner.bundle;
           await discardInvalid(directory);
           const staging = await mkdtemp(`${directory}.partial-`);
           try {
@@ -219,7 +309,17 @@ export async function openChdBundle(
               throw new DomainError('archive-rejected', 422, 'Invalid CHD artifact bundle');
             checkDeadline(deadline, operationSignal);
             await rename(staging, directory);
-            return verified;
+            const published = await snapshot(directory, layout.entries, deadline, operationSignal);
+            // Rename changes directory timestamps. Reuse publication hashes only
+            // when the directory inode and every verified file are unchanged.
+            if (
+              published &&
+              published.node === verified.snapshot.node &&
+              sameFiles(published, verified.snapshot)
+            )
+              remember(groups, directory, { ...verified, snapshot: published });
+            checkDeadline(deadline, operationSignal);
+            return verified.bundle;
           } finally {
             await rm(staging, { recursive: true, force: true });
           }
