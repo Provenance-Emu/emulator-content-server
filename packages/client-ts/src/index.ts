@@ -39,6 +39,8 @@ export type {
   LibraryList,
   Manifest,
   ManifestFile,
+  PlayerCoreDescriptor,
+  PlayerCoreResource,
   Problem,
   SessionResponse,
   SourceFile,

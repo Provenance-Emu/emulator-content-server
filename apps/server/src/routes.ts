@@ -154,6 +154,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       bootstrapped: catalog.server().bootstrapped,
       lanOpen: context.localTrust && policy.mode !== 'token',
       webdavEnabled: context.webdavEnabled,
+      webPlayback: context.player !== undefined,
     });
   });
 

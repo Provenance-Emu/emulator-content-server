@@ -17,6 +17,7 @@ import type {
   ItemList,
   LibraryList,
   Manifest,
+  PlayerCoreDescriptor,
   Problem,
   SessionResponse,
   SourceFileList,
@@ -93,6 +94,8 @@ export interface DownloadQuery {
 
 export interface CollectOptions {
   attempts?: number;
+  /** Maximum whole body size, checked against headers and streamed bytes before retaining them. */
+  maxBytes?: number;
   /** Called as bytes arrive, with the whole size when the server states one. */
   onProgress?: (received: number, total: number | null) => void;
 }
@@ -141,6 +144,27 @@ export class ContentClient {
 
   setToken(token: string | undefined): void {
     this.token = token;
+  }
+
+  playerCore(): Promise<PlayerCoreDescriptor> {
+    return this.getJson('/api/v1/player/core', 'error');
+  }
+
+  /** Authenticated immutable core snapshots; no descriptor URL is followed. */
+  async playerCoreAssets(id: string): Promise<{ loader: CollectedAsset; wasm: CollectedAsset }> {
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(id)) throw new Error('Invalid core identifier');
+    const loader = await this.collectPath(`/play/cores/${id}/loader.js`, {
+      maxBytes: 8 * 1024 * 1024,
+    });
+    const wasm = await this.collectPath(`/play/cores/${id}/core.wasm`, {
+      maxBytes: 64 * 1024 * 1024,
+    });
+    return { loader, wasm };
+  }
+
+  /** Reads only a typed source endpoint, with the same resume guarantees as assets. */
+  collectSource(sourceId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
+    return this.collectPath(`/api/v1/sources/${encodeURIComponent(sourceId)}/content`, options);
   }
 
   capabilities(): Promise<Capabilities> {
@@ -365,14 +389,49 @@ export class ContentClient {
    * caller, which is what keeps this package free of a filesystem.
    */
   async download(assetId: string, query: DownloadQuery = {}): Promise<DownloadResponse> {
+    return this.downloadPath(`/api/v1/files/${encodeURIComponent(assetId)}/content`, query);
+  }
+
+  private async downloadPath(path: string, query: DownloadQuery): Promise<DownloadResponse> {
     const plan = planResume(query.localBytes ?? 0, null);
     const headers = this.headers();
     if (plan.range) {
       headers.range = plan.range;
       if (query.etag) headers['if-range'] = query.etag;
     }
-    const response = await fetch(this.url(`/api/v1/files/${assetId}/content`), { headers });
-    if (response.status >= 400 && response.status !== 416) throw await failure(response);
+    const response = await fetch(this.url(path), { headers, redirect: 'error' });
+    if (!response.ok && response.status !== 304 && response.status !== 416)
+      throw await failure(response);
+    let total: number | null;
+    try {
+      total = totalBytes(response);
+      if (response.status === 206) {
+        const range = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(
+          response.headers.get('content-range') ?? '',
+        );
+        const start = Number(range?.[1]);
+        const end = Number(range?.[2]);
+        const length = response.headers.get('content-length');
+        if (
+          !range ||
+          !Number.isSafeInteger(start) ||
+          !Number.isSafeInteger(end) ||
+          start !== plan.offset ||
+          end < start ||
+          total === null ||
+          end >= total ||
+          (length !== null && Number(length) !== end - start + 1)
+        ) {
+          throw new RangeError('Invalid content range or length');
+        }
+        if (query.etag && response.headers.get('etag') !== query.etag) {
+          throw new Error('Content validator changed during resumed download');
+        }
+      }
+    } catch (error) {
+      await response.body?.cancel();
+      throw error;
+    }
     const instruction = interpretDownload(response.status, plan.offset);
     const carriesContent = instruction === 'append' || instruction === 'restart';
     if (!carriesContent) await response.body?.cancel();
@@ -380,7 +439,7 @@ export class ContentClient {
       instruction,
       offset: instruction === 'append' ? plan.offset : 0,
       etag: response.headers.get('etag'),
-      totalBytes: totalBytes(response),
+      totalBytes: total,
       body: carriesContent ? response.body : null,
     };
   }
@@ -394,14 +453,37 @@ export class ContentClient {
    * Holding the result in memory is the caller's budget. A client with a
    * filesystem should drive `download` and write each body to disk instead.
    */
-  async collect(assetId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
+  collect(assetId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
+    return this.collectPath(`/api/v1/files/${encodeURIComponent(assetId)}/content`, options);
+  }
+
+  private async collectPath(path: string, options: CollectOptions): Promise<CollectedAsset> {
     const attempts = options.attempts ?? 3;
+    const maxBytes = options.maxBytes ?? Number.MAX_SAFE_INTEGER;
+    if (
+      !Number.isSafeInteger(maxBytes) ||
+      maxBytes <= 0 ||
+      !Number.isSafeInteger(attempts) ||
+      attempts < 1
+    ) {
+      throw new RangeError('Invalid collection byte limit or attempts');
+    }
     let held: Uint8Array[] = [];
     let received = 0;
     let etag: string | undefined;
     for (let attempt = 1; ; attempt += 1) {
       try {
-        const response = await this.download(assetId, { localBytes: received, etag });
+        // Partial bytes without a strong validator cannot safely be spliced together.
+        if (received > 0 && (!etag || !/^"[^"\r\n]*"$/.test(etag))) {
+          held = [];
+          received = 0;
+          etag = undefined;
+        }
+        const response = await this.downloadPath(path, { localBytes: received, etag });
+        if (response.totalBytes !== null && response.totalBytes > maxBytes) {
+          await response.body?.cancel();
+          throw new RangeError('Content exceeds maximum byte limit');
+        }
         if (response.instruction !== 'append') {
           held = [];
           received = 0;
@@ -409,7 +491,9 @@ export class ContentClient {
         etag = response.etag ?? undefined;
         options.onProgress?.(received, response.totalBytes);
         for await (const chunk of chunks(response.body)) {
-          held.push(chunk);
+          if (chunk.byteLength > maxBytes - received)
+            throw new RangeError('Content exceeds maximum byte limit');
+          held.push(chunk.slice());
           received += chunk.byteLength;
           options.onProgress?.(received, response.totalBytes);
         }
@@ -531,8 +615,8 @@ export class ContentClient {
     if (!response.ok) throw await failure(response);
   }
 
-  private async getJson<T>(path: string): Promise<T> {
-    const response = await fetch(this.url(path), { headers: this.headers() });
+  private async getJson<T>(path: string, redirect?: RequestInit['redirect']): Promise<T> {
+    const response = await fetch(this.url(path), { headers: this.headers(), redirect });
     if (!response.ok) throw await failure(response);
     return (await response.json()) as T;
   }
@@ -554,6 +638,7 @@ export class ContentClient {
  * us. A stale revision or a rejected path fails the same way every time.
  */
 function isRetryable(error: unknown): boolean {
+  if (error instanceof RangeError) return false;
   if (!(error instanceof ContentError)) return true;
   if (error.status >= 500) return true;
   return error.status === 409 && error.problem?.type.endsWith('upload-gap') === true;
@@ -572,7 +657,12 @@ function totalBytes(response: Response): number | null {
   const total = range
     ? (/\/(\d+)$/.exec(range)?.[1] ?? null)
     : response.headers.get('content-length');
-  return total === null ? null : Number(total);
+  if (total === null) return null;
+  const parsed = Number(total);
+  if (!/^\d+$/.test(total) || !Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new RangeError('Invalid content size or length');
+  }
+  return parsed;
 }
 
 function sizeOf(body: UploadBody): number {
@@ -582,13 +672,18 @@ function sizeOf(body: UploadBody): number {
 async function* chunks(body: ReadableStream<Uint8Array> | null): AsyncGenerator<Uint8Array> {
   if (!body) return;
   const reader = body.getReader();
+  let completed = false;
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) return;
+      if (done) {
+        completed = true;
+        return;
+      }
       if (value) yield value;
     }
   } finally {
+    if (!completed) await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }
