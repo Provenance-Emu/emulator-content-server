@@ -3,6 +3,7 @@ import { mkdtemp, open, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import test from 'node:test';
 import { placeBlob, writeAtOffset } from '../src/blobs.js';
 import { crc32Hex, hashFile } from '../src/hash.js';
@@ -66,22 +67,69 @@ test('an interrupted ranged write truncates back to the committed offset', async
   await rm(dir, { recursive: true, force: true });
 });
 
-test('reads the tail of a multi-gigabyte sparse file without scanning it', async () => {
+test('sparse range reads preserve offsets across 2 GiB and 4 GiB boundaries', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'ecs-sparse-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
   const file = join(dir, 'sparse.bin');
+  const twoGiB = 2 * 1024 * 1024 * 1024;
+  const fourGiB = 4 * 1024 * 1024 * 1024;
+  const size = fourGiB + 4096;
   const handle = await open(file, 'w');
-  const size = 2 * 1024 * 1024 * 1024;
   try {
     await handle.truncate(size);
-    await handle.write(Buffer.from('TAIL'), 0, 4, size - 4);
+    for (const marker of [
+      { offset: 0, bytes: 'HEAD' },
+      { offset: twoGiB - 2, bytes: 'SIGN' },
+      { offset: fourGiB - 2, bytes: 'WRAP' },
+      { offset: size - 4, bytes: 'TAIL' },
+    ]) {
+      const bytes = Buffer.from(marker.bytes);
+      await handle.write(bytes, 0, bytes.length, marker.offset);
+    }
   } finally {
     await handle.close();
   }
   const reader = new FileContentReader(file, size);
-  const chunks: Buffer[] = [];
-  for await (const chunk of reader.openRange(size - 4, size - 1)) chunks.push(Buffer.from(chunk));
-  assert.equal(Buffer.concat(chunks).toString(), 'TAIL');
-  await rm(dir, { recursive: true, force: true });
+  // Hop backwards as well as forwards to catch a reader that retains a cursor.
+  for (const input of [
+    { name: 'tail beyond 4 GiB', start: size - 4, end: size - 1, bytes: Buffer.from('TAIL') },
+    { name: 'head after tail', start: 0, end: 3, bytes: Buffer.from('HEAD') },
+    { name: 'cross 4 GiB', start: fourGiB - 2, end: fourGiB + 1, bytes: Buffer.from('WRAP') },
+    { name: 'cross 2 GiB', start: twoGiB - 2, end: twoGiB + 1, bytes: Buffer.from('SIGN') },
+    {
+      name: 'sparse hole beyond 4 GiB',
+      start: fourGiB + 100,
+      end: fourGiB + 115,
+      bytes: Buffer.alloc(16),
+    },
+    { name: 'single final byte', start: size - 1, end: size - 1, bytes: Buffer.from('L') },
+    {
+      name: 'repeat high offset',
+      start: fourGiB - 2,
+      end: fourGiB + 1,
+      bytes: Buffer.from('WRAP'),
+    },
+  ]) {
+    await t.test(input.name, async () => {
+      const chunks: Buffer[] = [];
+      let received = 0;
+      const stream = reader.openRange(input.start, input.end);
+      try {
+        for await (const chunk of stream) {
+          const bytes = Buffer.from(chunk);
+          received += bytes.length;
+          // Fail before collecting a whole sparse file if range bounds regress.
+          assert.ok(received <= input.bytes.length, 'range streamed beyond its requested end');
+          chunks.push(bytes);
+        }
+      } finally {
+        stream.destroy();
+        await finished(stream).catch(() => {});
+      }
+      assert.equal(received, input.bytes.length);
+      assert.deepEqual(Buffer.concat(chunks), input.bytes);
+    });
+  }
 });
 
 test('symlink targets cannot escape the data root', async (t) => {
