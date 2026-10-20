@@ -111,7 +111,7 @@ importers:
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: 6.2.1
-        version: 6.2.1(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1))
+        version: 6.2.1(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1))
       '@tauri-apps/cli':
         specifier: 2.12.2
         version: 2.12.2
@@ -122,8 +122,8 @@ importers:
         specifier: 4.3.4
         version: 4.3.4(picomatch@4.0.7)(svelte@5.57.2)(typescript@5.9.3)
       vite:
-        specifier: 7.3.5
-        version: 7.3.5(@types/node@22.19.11)(yaml@2.9.1)
+        specifier: 7.3.7
+        version: 7.3.7(@types/node@22.19.11)(yaml@2.9.1)
 
   apps/web:
     dependencies:
@@ -136,7 +136,7 @@ importers:
         version: 1.58.2
       '@sveltejs/vite-plugin-svelte':
         specifier: 6.2.1
-        version: 6.2.1(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1))
+        version: 6.2.1(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1))
       svelte:
         specifier: 5.57.2
         version: 5.57.2
@@ -144,8 +144,8 @@ importers:
         specifier: 4.3.4
         version: 4.3.4(picomatch@4.0.7)(svelte@5.57.2)(typescript@5.9.3)
       vite:
-        specifier: 7.3.5
-        version: 7.3.5(@types/node@22.19.11)(yaml@2.9.1)
+        specifier: 7.3.7
+        version: 7.3.7(@types/node@22.19.11)(yaml@2.9.1)
 
   packages/auth:
     dependencies:
@@ -1131,8 +1131,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  vite@7.3.5:
-    resolution: {integrity: sha512-KuOaNhcnGFN2zIPGA7wRmzF+lJA1sea7rHq17aiJ++9lzY1WWG6Jpwqwe1KNbRVPIqHmr8GLYx7jbrQcN/7/ww==}
+  vite@7.3.7:
+    resolution: {integrity: sha512-AHEzTORMbi7/7aXp7w7KZ5+DCUdSeLsJz0grY8xHpc9DHdYb0vQu6DqJfm2tOw3gDExNgPgnJTXxM6syYFHaCA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -1464,22 +1464,22 @@ snapshots:
     dependencies:
       acorn: 8.19.0
 
-  '@sveltejs/vite-plugin-svelte-inspector@5.0.2(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1)))(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1))':
+  '@sveltejs/vite-plugin-svelte-inspector@5.0.2(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1)))(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1))':
     dependencies:
-      '@sveltejs/vite-plugin-svelte': 6.2.1(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1))
+      '@sveltejs/vite-plugin-svelte': 6.2.1(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1))
       obug: 2.2.1
       svelte: 5.57.2
-      vite: 7.3.5(@types/node@22.19.11)(yaml@2.9.1)
+      vite: 7.3.7(@types/node@22.19.11)(yaml@2.9.1)
 
-  '@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1))':
+  '@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1))':
     dependencies:
-      '@sveltejs/vite-plugin-svelte-inspector': 5.0.2(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1)))(svelte@5.57.2)(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1))
+      '@sveltejs/vite-plugin-svelte-inspector': 5.0.2(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1)))(svelte@5.57.2)(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1))
       debug: 4.4.3
       deepmerge: 4.3.1
       magic-string: 0.30.21
       svelte: 5.57.2
-      vite: 7.3.5(@types/node@22.19.11)(yaml@2.9.1)
-      vitefu: 1.1.3(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1))
+      vite: 7.3.7(@types/node@22.19.11)(yaml@2.9.1)
+      vitefu: 1.1.3(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -1948,7 +1948,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1):
+  vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1):
     dependencies:
       esbuild: 0.27.7
       fdir: 6.5.0(picomatch@4.0.7)
@@ -1961,9 +1961,9 @@ snapshots:
       fsevents: 2.3.3
       yaml: 2.9.1
 
-  vitefu@1.1.3(vite@7.3.5(@types/node@22.19.11)(yaml@2.9.1)):
+  vitefu@1.1.3(vite@7.3.7(@types/node@22.19.11)(yaml@2.9.1)):
     optionalDependencies:
-      vite: 7.3.5(@types/node@22.19.11)(yaml@2.9.1)
+      vite: 7.3.7(@types/node@22.19.11)(yaml@2.9.1)
 
   yaml@2.9.1: {}
 
