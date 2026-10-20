@@ -226,6 +226,35 @@ ALTER TABLE blobs ADD COLUMN location_id TEXT REFERENCES storage_locations(id);
 ALTER TABLE server_state ADD COLUMN write_location_id TEXT REFERENCES storage_locations(id);
 `;
 
+const WEBDAV_CREDENTIALS_SQL = `
+CREATE TABLE webdav_credentials (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  name TEXT NOT NULL,
+  username TEXT NOT NULL UNIQUE,
+  ha1_md5 TEXT NOT NULL,
+  ha1_sha256 TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  revoked_at TEXT
+);
+CREATE INDEX webdav_credentials_user ON webdav_credentials(user_id);
+`;
+
+const LIBRARY_BROWSE_SQL = `
+ALTER TABLE content_roots ADD COLUMN last_checked_at TEXT;
+ALTER TABLE content_roots ADD COLUMN availability TEXT NOT NULL DEFAULT 'unknown' CHECK (availability IN ('unknown','online','offline'));
+ALTER TABLE content_roots ADD COLUMN medium TEXT;
+ALTER TABLE content_roots ADD COLUMN scan_state TEXT NOT NULL DEFAULT 'unknown' CHECK (scan_state IN ('unknown','pending','completed','failed'));
+ALTER TABLE content_roots ADD COLUMN last_scan_started_at TEXT;
+ALTER TABLE content_roots ADD COLUMN last_scan_completed_at TEXT;
+ALTER TABLE content_roots ADD COLUMN scan_error TEXT;
+CREATE INDEX content_roots_library ON content_roots(library_id, id);
+CREATE INDEX source_files_root_kind ON source_files(root_id, kind, id);
+CREATE INDEX assets_item_kind_live ON assets(item_id, kind, id) WHERE deleted_at IS NULL;
+CREATE INDEX items_library_live ON items(library_id, id) WHERE deleted_at IS NULL;
+`;
+
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, sql: INITIAL_SQL },
   { version: 2, sql: CONTENT_ROOTS_SQL },
@@ -234,6 +263,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 5, sql: ACCESS_POLICY_SQL },
   { version: 6, sql: SOURCE_FILES_SQL },
   { version: 7, sql: STORAGE_LOCATIONS_SQL },
+  { version: 8, sql: WEBDAV_CREDENTIALS_SQL },
+  { version: 9, sql: LIBRARY_BROWSE_SQL },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

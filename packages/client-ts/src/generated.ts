@@ -33,6 +33,31 @@ export interface FeatureFlags {
   virtualFormats: string[];
   webdav: boolean;
   natTraversal: boolean;
+  webPlayback?: boolean;
+}
+
+export interface PlayerCoreResource {
+  url: string;
+  sha256: string;
+  sizeBytes: number;
+}
+
+export interface PlayerCoreDescriptor {
+  version: number;
+  id: string;
+  name: string;
+  systems: string[];
+  runtime: string;
+  threaded: boolean;
+  filesystem: string;
+  saveCompletion: string;
+  frontendCommit: string;
+  coreCommit: string;
+  emscriptenVersion: string;
+  contentExtension: string;
+  maxContentBytes: number;
+  loader: PlayerCoreResource;
+  wasm: PlayerCoreResource;
 }
 
 export interface Limits {
@@ -53,6 +78,7 @@ export interface SystemList {
 export interface Library {
   id: string;
   name: string;
+  canCreateItems?: boolean;
   ownerId: string;
   revision: number;
   createdAt: string;
@@ -82,6 +108,29 @@ export interface FolderListing {
   parent: string | null;
   entries: FolderEntry[];
   places: FolderPlace[];
+}
+
+export interface WebDavCredential {
+  id: string;
+  name: string;
+  username: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+}
+
+export interface WebDavCredentialList {
+  items: WebDavCredential[];
+}
+
+export interface WebDavCredentialDraft {
+  name: string;
+  expiresInSeconds?: number;
+}
+
+export interface WebDavCredentialCreated {
+  credential: WebDavCredential;
+  password: string;
 }
 
 export interface StorageLocation {
@@ -360,4 +409,42 @@ export interface GuestGrant {
 
 export interface GuestGrantList {
   items: GuestGrant[];
+}
+
+export interface RootLibraryAssignment {
+  libraryId: string;
+}
+
+export interface LibraryBrowseEntry {
+  entityType: string;
+  id: string;
+  name: string;
+  libraryId: string | null;
+  systemId: string | null;
+  canUpload: boolean;
+  canAdopt: boolean;
+  item?: Item;
+  asset?: Asset;
+  source?: SourceFile;
+  parentItem?: Item;
+  previewAsset?: Asset;
+}
+
+export interface LibraryBrowsePage {
+  items: LibraryBrowseEntry[];
+  nextCursor: string | null;
+}
+
+export interface ContentRootSummary {
+  root: ContentRoot;
+  indexedFileCount: number;
+  scanState: string;
+  lastScanAt: string | null;
+  lastCheckAt: string | null;
+  online: boolean | null;
+  medium: string | null;
+}
+
+export interface ContentRootSummaryList {
+  items: ContentRootSummary[];
 }

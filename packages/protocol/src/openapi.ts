@@ -39,8 +39,10 @@ export function loadOpenApi(): OpenApiDocument {
 
 export function extractSurface(document: OpenApiDocument): ContractSurface {
   const paths: string[] = [];
+  const operations = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
   for (const [path, methods] of Object.entries(document.paths)) {
     for (const method of Object.keys(methods)) {
+      if (!operations.has(method)) continue;
       paths.push(`${method.toUpperCase()} ${path.replaceAll(/\{([^}]+)\}/g, ':$1')}`);
     }
   }

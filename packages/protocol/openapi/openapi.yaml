@@ -28,6 +28,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Capabilities'
+  /api/v1/player/core:
+    get:
+      operationId: getPlayerCore
+      description: Trusted browser core metadata. Requires an admitted actor with read permission.
+      responses:
+        '200':
+          description: Configured core descriptor without operator filesystem paths.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerCoreDescriptor'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Read permission required.
+        '404':
+          description: Browser playback is not configured.
   /api/v1/systems:
     get:
       operationId: listSystems
@@ -84,6 +101,97 @@ paths:
       responses:
         '204':
           description: Password replaced.
+  /api/v1/browse:
+    get:
+      operationId: browseLibrary
+      description: Bounded authorized collection. Exactly one of libraryId or unassigned=true is required. Unknown systems use systemId=unknown. Authorization and category filtering precede paging. Cursors bind normalized query and actor; changed or vanished anchors require refresh.
+      parameters:
+        - { name: libraryId, in: query, schema: { type: string } }
+        - { name: unassigned, in: query, schema: { type: boolean }, description: Actual owner only. }
+        - { name: category, in: query, required: true, schema: { type: string, enum: [games, saves, media, system_files] } }
+        - { name: rootId, in: query, schema: { type: string } }
+        - { name: systemId, in: query, schema: { type: string } }
+        - { name: search, in: query, schema: { type: string, maxLength: 256 } }
+        - { name: sort, in: query, schema: { type: string, enum: [name_asc, name_desc], default: name_asc } }
+        - { name: cursor, in: query, schema: { type: string, maxLength: 4096 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        '200':
+          description: Authorized page; at most the requested limit. No absolute filesystem paths.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryBrowsePage' }
+        '400': { description: Invalid query or cursor. Refresh after a changed anchor. }
+        '401': { description: Authentication required. }
+        '403': { description: Read scope or owner authority required. }
+        '404': { description: Scope or folder unavailable. }
+  /api/v1/browse-libraries:
+    get:
+      operationId: browseLibraries
+      description: Libraries discoverable through membership or live readable item grants. canCreateItems reflects current create policy.
+      responses:
+        '200':
+          description: Accessible libraries.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryList' }
+  /api/v1/root-summaries:
+    get:
+      operationId: rootSummaries
+      description: Actual owner only. Cached counts and scan/check state; performs no probes or scans. Optional libraryId and unassigned=true filters are exclusive.
+      parameters:
+        - { name: libraryId, in: query, schema: { type: string } }
+        - { name: unassigned, in: query, schema: { type: boolean } }
+      responses:
+        '200':
+          description: Cached folder summaries; missing check means unknown availability.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRootSummaryList' }
+        '400': { description: Invalid filter. }
+        '403': { description: Actual owner authority required. }
+  /api/v1/libraries/{libraryId}:
+    patch:
+      operationId: renameLibrary
+      description: Actual owner only. Renames a library without moving content.
+      parameters:
+        - { name: libraryId, in: path, required: true, schema: { type: string } }
+        - { name: If-Match, in: header, required: true, schema: { type: string }, description: 'Revision validator "rev-N".' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LibraryDraft' }
+      responses:
+        '200':
+          description: Renamed library.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Library' }
+        '409': { description: Revision conflict. }
+        '428': { description: Revision validator required. }
+        '403': { description: Actual owner authority required. }
+        '404': { description: Library unavailable. }
+  /api/v1/roots/{rootId}/library:
+    put:
+      operationId: assignRoot
+      description: Actual owner only. Assigns an unassigned folder in place; idempotent for the same target, rejects moving an assigned folder.
+      parameters:
+        - { name: rootId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RootLibraryAssignment' }
+      responses:
+        '200':
+          description: Assigned folder.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRoot' }
+        '409': { description: Folder already assigned elsewhere. }
+        '403': { description: Actual owner authority required. }
+        '404': { description: Library or folder unavailable. }
   /api/v1/libraries:
     get:
       operationId: listLibraries
@@ -246,6 +354,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FolderListing'
+  /api/v1/webdav-credentials:
+    get:
+      operationId: listWebdavCredentials
+      description: Account session only. Lists this account's credential metadata, never verifiers.
+      responses:
+        '200':
+          description: Credentials including revoked entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebDavCredentialList'
+    post:
+      operationId: createWebdavCredential
+      description: Account session only. Requires enabled WebDAV. Generates a read-only Digest app password shown once, without idempotency caching.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebDavCredentialDraft'
+      responses:
+        '201':
+          description: Credential issued. Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebDavCredentialCreated'
+  /api/v1/webdav-credentials/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: revokeWebdavCredential
+      description: Account session only. Revokes a credential belonging to this account.
+      responses:
+        '204':
+          description: Credential revoked.
   /api/v1/storage-locations:
     get:
       operationId: listStorageLocations
@@ -445,6 +592,35 @@ components:
           items: { type: string }
         webdav: { type: boolean }
         natTraversal: { type: boolean }
+        webPlayback: { type: boolean }
+    PlayerCoreResource:
+      type: object
+      required: [url, sha256, sizeBytes]
+      properties:
+        url: { type: string, description: Fixed same-origin protected resource path. }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        sizeBytes: { type: integer, format: int64, minimum: 1, maximum: 67108864 }
+    PlayerCoreDescriptor:
+      type: object
+      required: [version, id, name, systems, runtime, threaded, filesystem, saveCompletion, frontendCommit, coreCommit, emscriptenVersion, contentExtension, maxContentBytes, loader, wasm]
+      properties:
+        version: { type: integer, enum: [1] }
+        id: { type: string, pattern: '^[a-z0-9][a-z0-9_-]{0,63}$' }
+        name: { type: string, maxLength: 80 }
+        systems:
+          type: array
+          items: { type: string, enum: [com.provenance.nes] }
+        runtime: { type: string, enum: [retroarch-emscripten-esm] }
+        threaded: { type: boolean, enum: [false] }
+        filesystem: { type: string, enum: [memfs] }
+        saveCompletion: { type: string, enum: [command-reply-v1] }
+        frontendCommit: { type: string, enum: [4d4bfc0fbaacca30d433e5c11b0b2b5242141b66] }
+        coreCommit: { type: string, enum: [ac0d00a7fc01166f84c7bac01d1084ebfd2b865e] }
+        emscriptenVersion: { type: string, enum: [3.1.46] }
+        contentExtension: { type: string, enum: [nes] }
+        maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 67108864 }
+        loader: { $ref: '#/components/schemas/PlayerCoreResource' }
+        wasm: { $ref: '#/components/schemas/PlayerCoreResource' }
     Limits:
       type: object
       required: [maxUploadBytes, maxPageSize]
@@ -471,6 +647,7 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
+        canCreateItems: { type: boolean, description: Present on browse-libraries; current permission to create global items. }
         ownerId: { type: string }
         revision: { type: integer }
         createdAt: { type: string }
@@ -519,6 +696,35 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FolderPlace'
+    WebDavCredential:
+      type: object
+      required: [id, name, username, createdAt, expiresAt, revokedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        username: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    WebDavCredentialList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/WebDavCredential' }
+    WebDavCredentialDraft:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        expiresInSeconds: { type: integer, minimum: 60, maximum: 31536000, default: 7776000 }
+    WebDavCredentialCreated:
+      type: object
+      required: [credential, password]
+      properties:
+        credential: { $ref: '#/components/schemas/WebDavCredential' }
+        password: { type: string }
     StorageLocation:
       type: object
       required: [id, path, label, createdAt, online]
@@ -866,3 +1072,52 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/GuestGrant' }
+    RootLibraryAssignment:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId: { type: string }
+    LibraryBrowseEntry:
+      type: object
+      description: entityType selects exactly one matching item, asset or source payload. parentItem is present only for asset entries; previewAsset only for item entries and is an authorized existing artwork asset. Flags reflect current endpoint permissions and are false where inapplicable.
+      required: [entityType, id, name, libraryId, systemId, canUpload, canAdopt]
+      properties:
+        entityType: { type: string, enum: [item, asset, source] }
+        id: { type: string }
+        name: { type: string }
+        libraryId: { type: [string, 'null'] }
+        systemId: { type: [string, 'null'] }
+        canUpload: { type: boolean }
+        canAdopt: { type: boolean }
+        item: { $ref: '#/components/schemas/Item' }
+        asset: { $ref: '#/components/schemas/Asset' }
+        source: { $ref: '#/components/schemas/SourceFile' }
+        parentItem: { $ref: '#/components/schemas/Item' }
+        previewAsset: { $ref: '#/components/schemas/Asset' }
+    LibraryBrowsePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/LibraryBrowseEntry' }
+        nextCursor: { type: [string, 'null'], maxLength: 4096 }
+    ContentRootSummary:
+      type: object
+      required: [root, indexedFileCount, scanState, lastScanAt, lastCheckAt, online, medium]
+      properties:
+        root: { $ref: '#/components/schemas/ContentRoot' }
+        indexedFileCount: { type: integer, minimum: 0 }
+        scanState: { type: string, enum: [unknown, pending, completed, failed] }
+        lastScanAt: { type: [string, 'null'] }
+        lastCheckAt: { type: [string, 'null'] }
+        online: { type: [boolean, 'null'] }
+        medium: { type: [string, 'null'] }
+    ContentRootSummaryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ContentRootSummary' }

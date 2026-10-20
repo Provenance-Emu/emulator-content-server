@@ -9,8 +9,11 @@
     "DELETE /api/v1/roots/:rootId",
     "DELETE /api/v1/storage-locations/:locationId",
     "DELETE /api/v1/uploads/:uploadId",
+    "DELETE /api/v1/webdav-credentials/:id",
     "GET /api/v1/access",
     "GET /api/v1/audit",
+    "GET /api/v1/browse",
+    "GET /api/v1/browse-libraries",
     "GET /api/v1/capabilities",
     "GET /api/v1/changes",
     "GET /api/v1/files/:assetId",
@@ -23,6 +26,8 @@
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
     "GET /api/v1/libraries",
+    "GET /api/v1/player/core",
+    "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
     "GET /api/v1/sources",
     "GET /api/v1/sources/:sourceId/content",
@@ -30,12 +35,14 @@
     "GET /api/v1/systems",
     "GET /api/v1/uploads/:uploadId",
     "GET /api/v1/users",
+    "GET /api/v1/webdav-credentials",
     "GET /health",
     "GET /openapi.yaml",
     "HEAD /api/v1/files/:assetId/content",
     "HEAD /api/v1/files/:assetId/entries/:entryId/content",
     "HEAD /api/v1/sources/:sourceId/content",
     "PATCH /api/v1/items/:itemId",
+    "PATCH /api/v1/libraries/:libraryId",
     "PATCH /api/v1/users/:userId",
     "POST /api/v1/auth/bootstrap",
     "POST /api/v1/auth/login",
@@ -51,9 +58,11 @@
     "POST /api/v1/uploads",
     "POST /api/v1/uploads/:uploadId/complete",
     "POST /api/v1/users",
+    "POST /api/v1/webdav-credentials",
     "PUT /api/v1/access",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
+    "PUT /api/v1/roots/:rootId/library",
     "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
   ],
@@ -111,6 +120,7 @@
         "rangeRequests",
         "resumableUploads",
         "virtualFormats",
+        "webPlayback",
         "webdav"
       ],
       "required": [
@@ -122,6 +132,54 @@
         "resumableUploads",
         "virtualFormats",
         "webdav"
+      ]
+    },
+    "PlayerCoreResource": {
+      "properties": [
+        "sha256",
+        "sizeBytes",
+        "url"
+      ],
+      "required": [
+        "sha256",
+        "sizeBytes",
+        "url"
+      ]
+    },
+    "PlayerCoreDescriptor": {
+      "properties": [
+        "contentExtension",
+        "coreCommit",
+        "emscriptenVersion",
+        "filesystem",
+        "frontendCommit",
+        "id",
+        "loader",
+        "maxContentBytes",
+        "name",
+        "runtime",
+        "saveCompletion",
+        "systems",
+        "threaded",
+        "version",
+        "wasm"
+      ],
+      "required": [
+        "contentExtension",
+        "coreCommit",
+        "emscriptenVersion",
+        "filesystem",
+        "frontendCommit",
+        "id",
+        "loader",
+        "maxContentBytes",
+        "name",
+        "runtime",
+        "saveCompletion",
+        "systems",
+        "threaded",
+        "version",
+        "wasm"
       ]
     },
     "Limits": {
@@ -156,6 +214,7 @@
     },
     "Library": {
       "properties": [
+        "canCreateItems",
         "createdAt",
         "id",
         "name",
@@ -220,6 +279,51 @@
         "parent",
         "path",
         "places"
+      ]
+    },
+    "WebDavCredential": {
+      "properties": [
+        "createdAt",
+        "expiresAt",
+        "id",
+        "name",
+        "revokedAt",
+        "username"
+      ],
+      "required": [
+        "createdAt",
+        "expiresAt",
+        "id",
+        "name",
+        "revokedAt",
+        "username"
+      ]
+    },
+    "WebDavCredentialList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "WebDavCredentialDraft": {
+      "properties": [
+        "expiresInSeconds",
+        "name"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    "WebDavCredentialCreated": {
+      "properties": [
+        "credential",
+        "password"
+      ],
+      "required": [
+        "credential",
+        "password"
       ]
     },
     "StorageLocation": {
@@ -754,6 +858,77 @@
       ]
     },
     "GuestGrantList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "RootLibraryAssignment": {
+      "properties": [
+        "libraryId"
+      ],
+      "required": [
+        "libraryId"
+      ]
+    },
+    "LibraryBrowseEntry": {
+      "properties": [
+        "asset",
+        "canAdopt",
+        "canUpload",
+        "entityType",
+        "id",
+        "item",
+        "libraryId",
+        "name",
+        "parentItem",
+        "previewAsset",
+        "source",
+        "systemId"
+      ],
+      "required": [
+        "canAdopt",
+        "canUpload",
+        "entityType",
+        "id",
+        "libraryId",
+        "name",
+        "systemId"
+      ]
+    },
+    "LibraryBrowsePage": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "ContentRootSummary": {
+      "properties": [
+        "indexedFileCount",
+        "lastCheckAt",
+        "lastScanAt",
+        "medium",
+        "online",
+        "root",
+        "scanState"
+      ],
+      "required": [
+        "indexedFileCount",
+        "lastCheckAt",
+        "lastScanAt",
+        "medium",
+        "online",
+        "root",
+        "scanState"
+      ]
+    },
+    "ContentRootSummaryList": {
       "properties": [
         "items"
       ],

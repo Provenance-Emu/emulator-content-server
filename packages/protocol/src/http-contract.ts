@@ -2,6 +2,7 @@ export const HTTP_OPERATIONS = [
   'GET /health',
   'GET /openapi.yaml',
   'GET /api/v1/capabilities',
+  'GET /api/v1/player/core',
   'GET /api/v1/systems',
   'POST /api/v1/auth/bootstrap',
   'POST /api/v1/auth/login',
@@ -11,6 +12,11 @@ export const HTTP_OPERATIONS = [
   'GET /api/v1/users',
   'POST /api/v1/users',
   'PATCH /api/v1/users/:userId',
+  'GET /api/v1/browse',
+  'GET /api/v1/browse-libraries',
+  'GET /api/v1/root-summaries',
+  'PATCH /api/v1/libraries/:libraryId',
+  'PUT /api/v1/roots/:rootId/library',
   'GET /api/v1/libraries',
   'POST /api/v1/libraries',
   'PUT /api/v1/libraries/:libraryId/members/:userId',
@@ -51,6 +57,9 @@ export const HTTP_OPERATIONS = [
   'POST /api/v1/device-tokens',
   'DELETE /api/v1/device-tokens/:tokenId',
   'GET /api/v1/audit',
+  'GET /api/v1/webdav-credentials',
+  'POST /api/v1/webdav-credentials',
+  'DELETE /api/v1/webdav-credentials/:id',
 ] as const;
 
 export type HttpOperation = (typeof HTTP_OPERATIONS)[number];

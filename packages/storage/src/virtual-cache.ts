@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { DomainError, type VirtualEntry } from '@ecs/domain';
+import { openChdBundle } from './chd-cache.js';
 import { blobPath, virtualCachePath } from './paths.js';
 import type { VirtualProviderRegistry } from './virtual.js';
 
@@ -23,7 +25,9 @@ export async function openVirtualEntry(
   registry: VirtualProviderRegistry,
   entryId: string,
   cacheRoot = root,
+  signal?: AbortSignal,
 ): Promise<VirtualEntryBytes | null> {
+  const deadline = performance.now() + registry.quota.timeoutMs;
   let file = blobPath(root, containerSha256);
   let id = entryId;
   let prefix = '';
@@ -39,6 +43,32 @@ export async function openVirtualEntry(
         offset: resolution.offset,
         size: resolution.entry.uncompressedSize,
         logicalPath: `${logical}${resolution.entry.path}`,
+      };
+    }
+    if (resolution.kind === 'bundle') {
+      if (hop !== 0)
+        throw new DomainError(
+          'unsupported-entry',
+          422,
+          'Nested CHD after an expansion is not supported',
+        );
+      const artifact = await openChdBundle(
+        cacheRoot,
+        containerSha256,
+        registry,
+        format,
+        file,
+        resolution.bundleId,
+        resolution.entry,
+        signal,
+        deadline,
+      );
+      return {
+        format,
+        path: artifact.path,
+        offset: 0,
+        size: artifact.size,
+        logicalPath: resolution.entry.path,
       };
     }
     const absolute = prefix === '' ? resolution.entryId : `${prefix}.${resolution.entryId}`;

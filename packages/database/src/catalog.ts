@@ -15,6 +15,14 @@ import {
   type SourceAvailability,
   type SourceFileRecord,
 } from '@ecs/domain';
+import {
+  type BrowsePosition,
+  type BrowseRecord,
+  type BrowseSelection,
+  browseKeys,
+  type ContentRootSummaryRecord,
+  type RootSummaryFilter,
+} from './library-browse.js';
 import { pendingMigrations } from './schema.js';
 
 export interface CatalogLimits {
@@ -39,6 +47,15 @@ export interface StorageLocationRecord {
   label: string;
   path: string;
   createdAt: string;
+}
+
+export interface WebDavCredentialRecord {
+  id: string;
+  name: string;
+  username: string;
+  expiresAt: string;
+  createdAt: string;
+  revokedAt: string | null;
 }
 
 export interface UploadRecord {
@@ -94,6 +111,11 @@ export class CatalogDatabase {
       this.db.exec('PRAGMA journal_mode = WAL');
       this.db.exec('PRAGMA synchronous = FULL');
       this.db.exec('PRAGMA busy_timeout = 5000');
+      this.db.function('ecs_browse_fold', { deterministic: true }, (value) =>
+        String(value ?? '')
+          .normalize('NFC')
+          .toLowerCase(),
+      );
       this.migrate();
     } catch (error) {
       this.db.close();
@@ -267,6 +289,11 @@ export class CatalogDatabase {
            WHERE user_id = ? AND revoked_at IS NULL AND token_hash != COALESCE(?, '')`,
         )
         .run(nowIso(), userId, keepTokenHash);
+      this.db
+        .prepare(
+          'UPDATE webdav_credentials SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL',
+        )
+        .run(nowIso(), userId);
       this.insertAudit(actorId, 'set-password', 'user', userId, {});
       return true;
     });
@@ -480,6 +507,291 @@ export class CatalogDatabase {
     return { id, name, ownerId, revision: 1, createdAt };
   }
 
+  browseLibrary(input: BrowseSelection): { items: BrowseRecord[]; next: BrowsePosition | null } {
+    return this.transaction(() => {
+      const keys = browseKeys(this.db, input);
+      const more = keys.length > input.limit;
+      const selected = keys.slice(0, input.limit);
+      const items: BrowseRecord[] = selected.map((key) => {
+        if (key.entity_type === 'item') {
+          const item = this.getItem(key.id);
+          if (!item) throw new DomainError('not-found', 404, 'Item not found');
+          return {
+            entityType: 'item',
+            item,
+            previewAsset: key.preview_id ? this.getAsset(key.preview_id) : null,
+          };
+        }
+        if (key.entity_type === 'source') {
+          const source = this.getSource(key.id);
+          if (!source) throw new DomainError('not-found', 404, 'Source not found');
+          return { entityType: 'source', source };
+        }
+        const asset = this.getAsset(key.id);
+        if (!asset) throw new DomainError('not-found', 404, 'Asset not found');
+        const item = this.getItem(asset.itemId);
+        if (!item) throw new DomainError('not-found', 404, 'Item not found');
+        return { entityType: 'asset', asset, item };
+      });
+      const last = selected.at(-1);
+      return { items, next: more && last ? { entityType: last.entity_type, id: last.id } : null };
+    });
+  }
+
+  listContentRootSummaries(filter: RootSummaryFilter): ContentRootSummaryRecord[] {
+    // These are management summaries containing server paths, never public browse DTOs.
+    if (
+      filter.actor.kind !== 'user' ||
+      !filter.actor.isOwner ||
+      !filter.actor.scopes.includes('read')
+    )
+      return [];
+    const where =
+      filter.libraryId === undefined
+        ? ''
+        : filter.libraryId === null
+          ? 'AND r.library_id IS NULL'
+          : 'AND r.library_id = ?';
+    const rows = this.db
+      .prepare(`SELECT r.*, (SELECT COUNT(*) FROM source_files s WHERE s.root_id = r.id) AS indexed_file_count
+      FROM content_roots r WHERE (r.library_id IS NULL OR EXISTS (SELECT 1 FROM libraries l WHERE l.id = r.library_id AND l.deleted_at IS NULL)) ${where}
+      ORDER BY r.created_at, r.id`)
+      .all(...(typeof filter.libraryId === 'string' ? [filter.libraryId] : [])) as Array<
+      ContentRootRow & {
+        indexed_file_count: number;
+        last_checked_at: string | null;
+        availability: ContentRootSummaryRecord['availability'];
+        medium: string | null;
+        scan_state: ContentRootSummaryRecord['scanState'];
+        last_scan_started_at: string | null;
+        last_scan_completed_at: string | null;
+        scan_error: string | null;
+      }
+    >;
+    return rows.map((row) => ({
+      ...mapContentRoot(row),
+      indexedFileCount: Number(row.indexed_file_count),
+      lastCheckedAt: row.last_checked_at,
+      availability: row.availability,
+      medium: row.medium,
+      scanState: row.scan_state,
+      lastScanStartedAt: row.last_scan_started_at,
+      lastScanCompletedAt: row.last_scan_completed_at,
+      scanError: row.scan_error,
+    }));
+  }
+
+  renameLibrary(input: {
+    id: string;
+    name: string;
+    baseRevision: number;
+    actorId: string;
+    deviceId: string | null;
+  }): LibraryRecord {
+    return this.transaction(() => {
+      const current = this.getLibrary(input.id);
+      if (!current) throw new DomainError('not-found', 404, 'Library not found');
+      const result = this.db
+        .prepare(
+          'UPDATE libraries SET name = ?, revision = revision + 1 WHERE id = ? AND revision = ? AND deleted_at IS NULL',
+        )
+        .run(input.name, input.id, input.baseRevision);
+      if (result.changes === 0)
+        throw new DomainError('conflict', 409, 'Library revision does not match');
+      this.insertChange(
+        'library',
+        input.id,
+        'upsert',
+        input.id,
+        null,
+        false,
+        nowIso(),
+        input.deviceId,
+      );
+      this.insertAudit(input.actorId, 'rename-library', 'library', input.id, { name: input.name });
+      return { ...current, name: input.name, revision: current.revision + 1 };
+    });
+  }
+
+  assignUnassignedRoot(input: {
+    rootId: string;
+    libraryId: string;
+    actorId: string;
+    deviceId: string | null;
+  }): ContentRootRecord {
+    return this.transaction(() => {
+      if (!this.getLibrary(input.libraryId))
+        throw new DomainError('not-found', 404, 'Library not found');
+      const root = this.getContentRoot(input.rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      if (root.libraryId === input.libraryId) return root;
+      if (root.libraryId !== null)
+        throw new DomainError('conflict', 409, 'That folder already belongs to a library');
+      this.db
+        .prepare('UPDATE content_roots SET library_id = ? WHERE id = ? AND library_id IS NULL')
+        .run(input.libraryId, input.rootId);
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        input.libraryId,
+        null,
+        false,
+        nowIso(),
+        input.deviceId,
+      );
+      this.insertAudit(input.actorId, 'assign-content-root', 'content-root', root.id, {
+        libraryId: input.libraryId,
+      });
+      return { ...root, libraryId: input.libraryId };
+    });
+  }
+
+  contentRootMedium(rootId: string): string | null {
+    return (
+      this.one<{ medium: string | null }>('SELECT medium FROM content_roots WHERE id = ?', rootId)
+        ?.medium ?? null
+    );
+  }
+
+  recoverInterruptedRootScans(): number {
+    return this.transaction(() => {
+      const pending = this.db
+        .prepare("SELECT id, library_id FROM content_roots WHERE scan_state = 'pending'")
+        .all() as Array<{ id: string; library_id: string | null }>;
+      const timestamp = nowIso();
+      this.db
+        .prepare(
+          "UPDATE content_roots SET scan_state = 'failed', last_scan_completed_at = ?, scan_error = 'Scan interrupted. Retry scan.' WHERE scan_state = 'pending'",
+        )
+        .run(timestamp);
+      for (const root of pending)
+        this.insertChange(
+          'content-root',
+          root.id,
+          'upsert',
+          root.library_id,
+          null,
+          false,
+          timestamp,
+          null,
+        );
+      return pending.length;
+    });
+  }
+
+  recordRootCheck(input: {
+    rootId: string;
+    availability: 'online' | 'offline';
+    medium: string | null;
+    checkedAt?: string;
+  }): void {
+    this.transaction(() => {
+      const root = this.getContentRoot(input.rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      const previous = this.one<{ availability: string; medium: string | null }>(
+        'SELECT availability, medium FROM content_roots WHERE id = ?',
+        input.rootId,
+      );
+      this.db
+        .prepare(
+          'UPDATE content_roots SET last_checked_at = ?, availability = ?, medium = ? WHERE id = ?',
+        )
+        .run(input.checkedAt ?? nowIso(), input.availability, input.medium, input.rootId);
+      if (previous?.availability === input.availability && previous.medium === input.medium) return;
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        root.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
+    });
+  }
+
+  beginRootScan(rootId: string): void {
+    this.transaction(() => {
+      const root = this.getContentRoot(rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      if (
+        this.one<{ scan_state: string }>(
+          'SELECT scan_state FROM content_roots WHERE id = ?',
+          rootId,
+        )?.scan_state === 'pending'
+      )
+        throw new DomainError('conflict', 409, 'A scan is already pending for that folder');
+      this.db
+        .prepare(
+          "UPDATE content_roots SET scan_state = 'pending', last_scan_started_at = ?, last_scan_completed_at = NULL, scan_error = NULL WHERE id = ?",
+        )
+        .run(nowIso(), rootId);
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        root.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
+    });
+  }
+
+  finishRootScan(input: { rootId: string; succeeded: boolean }): void {
+    this.transaction(() => {
+      const root = this.getContentRoot(input.rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      this.db
+        .prepare(
+          'UPDATE content_roots SET scan_state = ?, last_scan_completed_at = ?, scan_error = ? WHERE id = ?',
+        )
+        .run(
+          input.succeeded ? 'completed' : 'failed',
+          nowIso(),
+          input.succeeded ? null : 'Scan failed. Retry scan.',
+          input.rootId,
+        );
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        root.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
+    });
+  }
+
+  listBrowseLibraries(actor: Actor): LibraryRecord[] {
+    if (actor.kind === 'guest') {
+      if (!actor.capabilities.includes('read')) return [];
+      const library = this.getLibrary(actor.libraryId);
+      return library ? [library] : [];
+    }
+    if (!actor.scopes.includes('read')) return [];
+    if (actor.isOwner || actor.localTrust === true) return this.listLibraries(actor.userId, true);
+    const rows = this.db
+      .prepare(`SELECT l.* FROM libraries l WHERE l.deleted_at IS NULL AND (
+      EXISTS (SELECT 1 FROM memberships m WHERE m.library_id = l.id AND m.user_id = ?)
+      OR EXISTS (SELECT 1 FROM items i JOIN item_acl acl ON acl.item_id = i.id
+        WHERE i.library_id = l.id AND i.deleted_at IS NULL AND acl.user_id = ? AND acl.permission = 'read'))
+      ORDER BY l.created_at, l.id`)
+      .all(actor.userId, actor.userId) as Array<{
+      id: string;
+      name: string;
+      owner_id: string;
+      revision: number;
+      created_at: string;
+    }>;
+    return rows.map(mapLibrary);
+  }
+
   listLibraries(userId: string, isOwner: boolean): LibraryRecord[] {
     const sql = isOwner
       ? 'SELECT id, name, owner_id, revision, created_at FROM libraries WHERE deleted_at IS NULL ORDER BY created_at'
@@ -527,6 +839,16 @@ export class CatalogDatabase {
           'INSERT INTO content_roots (id, path, label, library_id, created_at) VALUES (?, ?, ?, ?, ?)',
         )
         .run(id, input.path, input.label, input.libraryId, createdAt);
+      this.insertChange(
+        'content-root',
+        id,
+        'upsert',
+        input.libraryId,
+        null,
+        false,
+        createdAt,
+        null,
+      );
       this.insertAudit(input.actorId, 'create-content-root', 'content-root', id, {
         path: input.path,
         label: input.label,
@@ -563,6 +885,16 @@ export class CatalogDatabase {
       const existing = this.getContentRoot(id);
       if (!existing) throw new DomainError('not-found', 404, 'Content root not found');
       this.db.prepare('DELETE FROM content_roots WHERE id = ?').run(id);
+      this.insertChange(
+        'content-root',
+        id,
+        'delete',
+        existing.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
       this.insertAudit(actorId, 'delete-content-root', 'content-root', id, {
         path: existing.path,
       });
@@ -790,8 +1122,10 @@ export class CatalogDatabase {
     return input.files.length;
   }
 
-  listSources(rootId: string): SourceFileRecord[] {
-    return this.sourceRows(rootId).map((row) => mapSource(row));
+  listSources(rootId: string, limit?: number): SourceFileRecord[] {
+    if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1))
+      throw new Error('Invalid source row limit');
+    return this.sourceRows(rootId, limit).map((row) => mapSource(row));
   }
 
   getSource(id: string): SourceFileRecord | null {
@@ -868,15 +1202,15 @@ export class CatalogDatabase {
     });
   }
 
-  private sourceRows(rootId: string): SourceRow[] {
+  private sourceRows(rootId: string, limit?: number): SourceRow[] {
     return this.db
       .prepare(
         `SELECT s.*, r.library_id
          FROM source_files s JOIN content_roots r ON r.id = s.root_id
          WHERE s.root_id = ?
-         ORDER BY s.relative_path`,
+         ORDER BY s.relative_path LIMIT ?`,
       )
-      .all(rootId) as SourceRow[];
+      .all(rootId, limit ?? -1) as SourceRow[];
   }
 
   private contentRootAt(path: string): ContentRootRecord | null {
@@ -1075,9 +1409,15 @@ export class CatalogDatabase {
     afterId: string | null;
     limit: number;
     itemId: string | null;
+    readableByUserId?: string;
   }): { items: ItemRecord[]; nextCursor: string | null } {
     const params: SQLInputValue[] = [input.libraryId];
     let sql = 'SELECT * FROM items WHERE library_id = ? AND deleted_at IS NULL';
+    if (input.readableByUserId) {
+      sql += ` AND EXISTS (SELECT 1 FROM item_acl a
+        WHERE a.item_id = items.id AND a.user_id = ? AND a.permission = 'read')`;
+      params.push(input.readableByUserId);
+    }
     if (input.itemId) {
       sql += ' AND id = ?';
       params.push(input.itemId);
@@ -1629,6 +1969,116 @@ export class CatalogDatabase {
       revokedAt: row.revoked_at,
       createdBy: row.created_by,
     }));
+  }
+
+  createWebDavCredential(input: {
+    userId: string;
+    name: string;
+    username: string;
+    ha1Md5: string;
+    ha1Sha256: string;
+    expiresAt: string;
+  }): WebDavCredentialRecord {
+    if (
+      !input.name ||
+      input.name.trim() !== input.name ||
+      input.name.length > 80 ||
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: labels must not contain controls
+      /[\u0000-\u001f\u007f]/.test(input.name) ||
+      !/^[a-zA-Z0-9_-]{1,100}$/.test(input.username) ||
+      !/^[a-f0-9]{32}$/.test(input.ha1Md5) ||
+      !/^[a-f0-9]{64}$/.test(input.ha1Sha256) ||
+      !Number.isFinite(Date.parse(input.expiresAt)) ||
+      input.expiresAt <= nowIso()
+    ) {
+      throw new DomainError('invalid-body', 400, 'Invalid WebDAV credential');
+    }
+    return this.transaction(() => {
+      const count = this.one<{ count: number }>(
+        'SELECT COUNT(*) AS count FROM webdav_credentials WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?',
+        input.userId,
+        nowIso(),
+      );
+      if ((count?.count ?? 0) >= 32)
+        throw new DomainError('quota-exceeded', 409, 'Too many active WebDAV credentials');
+      const credential: WebDavCredentialRecord = {
+        id: randomUUID(),
+        name: input.name,
+        username: input.username,
+        expiresAt: input.expiresAt,
+        createdAt: nowIso(),
+        revokedAt: null,
+      };
+      this.db
+        .prepare(`INSERT INTO webdav_credentials
+        (id,user_id,name,username,ha1_md5,ha1_sha256,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?)`)
+        .run(
+          credential.id,
+          input.userId,
+          input.name,
+          input.username,
+          input.ha1Md5,
+          input.ha1Sha256,
+          input.expiresAt,
+          credential.createdAt,
+        );
+      this.insertAudit(
+        input.userId,
+        'create-webdav-credential',
+        'webdav-credential',
+        credential.id,
+        { name: input.name },
+      );
+      return credential;
+    });
+  }
+
+  listWebDavCredentials(userId: string): WebDavCredentialRecord[] {
+    return this.db
+      .prepare(`SELECT id,name,username,expires_at AS expiresAt,
+      created_at AS createdAt,revoked_at AS revokedAt FROM webdav_credentials
+      WHERE user_id = ? ORDER BY created_at,id`)
+      .all(userId) as unknown as WebDavCredentialRecord[];
+  }
+
+  findWebDavCredential(username: string): {
+    id: string;
+    userId: string;
+    accountUsername: string;
+    isOwner: boolean;
+    ha1Md5: string;
+    ha1Sha256: string;
+    expiresAt: string;
+    revokedAt: string | null;
+  } | null {
+    const row = this.one<{
+      id: string;
+      userId: string;
+      accountUsername: string;
+      isOwner: number;
+      ha1Md5: string;
+      ha1Sha256: string;
+      expiresAt: string;
+      revokedAt: string | null;
+    }>(
+      `SELECT d.id,d.user_id AS userId,u.username AS accountUsername,u.is_owner AS isOwner,
+       d.ha1_md5 AS ha1Md5,d.ha1_sha256 AS ha1Sha256,d.expires_at AS expiresAt,d.revoked_at AS revokedAt
+       FROM webdav_credentials d JOIN users u ON u.id = d.user_id
+       WHERE d.username = ? AND d.revoked_at IS NULL AND d.expires_at > ?`,
+      username,
+      nowIso(),
+    );
+    return row ? { ...row, isOwner: row.isOwner === 1 } : null;
+  }
+
+  revokeWebDavCredential(id: string, userId: string): boolean {
+    const result = this.db
+      .prepare(`UPDATE webdav_credentials SET revoked_at = ?
+      WHERE id = ? AND user_id = ? AND revoked_at IS NULL`)
+      .run(nowIso(), id, userId);
+    if (result.changes === 0) return false;
+    this.insertAudit(userId, 'revoke-webdav-credential', 'webdav-credential', id, {});
+    return true;
   }
 
   createDeviceToken(input: {

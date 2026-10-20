@@ -3,6 +3,7 @@ import { mkdtemp, open, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import test from 'node:test';
 import { placeBlob, writeAtOffset } from '../src/blobs.js';
 import { crc32Hex, hashFile } from '../src/hash.js';
@@ -112,12 +113,18 @@ test('sparse range reads preserve offsets across 2 GiB and 4 GiB boundaries', as
     await t.test(input.name, async () => {
       const chunks: Buffer[] = [];
       let received = 0;
-      for await (const chunk of reader.openRange(input.start, input.end)) {
-        const bytes = Buffer.from(chunk);
-        received += bytes.length;
-        // Fail before collecting a whole sparse file if range bounds regress.
-        assert.ok(received <= input.bytes.length, 'range streamed beyond its requested end');
-        chunks.push(bytes);
+      const stream = reader.openRange(input.start, input.end);
+      try {
+        for await (const chunk of stream) {
+          const bytes = Buffer.from(chunk);
+          received += bytes.length;
+          // Fail before collecting a whole sparse file if range bounds regress.
+          assert.ok(received <= input.bytes.length, 'range streamed beyond its requested end');
+          chunks.push(bytes);
+        }
+      } finally {
+        stream.destroy();
+        await finished(stream).catch(() => {});
       }
       assert.equal(received, input.bytes.length);
       assert.deepEqual(Buffer.concat(chunks), input.bytes);

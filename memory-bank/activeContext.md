@@ -2,15 +2,28 @@
 
 ## Current focus
 
-Saved folders, a web interface, a login-time daemon, and a tray widget. ZIP virtual formats landed first and are described below.
+Complete the included 1.0 work and record acceptance. Saved folders, the web/tray
+interfaces, login-service registration and tray controls (#11), owner storage UI
+(#12), and opt-in authenticated read-only WebDAV (#13) are implemented. Disc
+containers now have an opt-in CHD v5 provider for DVD ISO and supported CD CUE/BIN,
+and the browser player is implemented separately. Real browser-core compilation,
+emulation, rendering, audio, input, and save acceptance remain unverified.
 
 The catalog could not be upgraded before this work: `migrate()` applied one monolithic schema and otherwise hard-failed when the recorded version did not equal `SCHEMA_VERSION`, so adding any table would have broken every database on disk. It now applies ordered numbered migrations, which unblocks every feature that has to persist new rows.
 
 ## Recent changes
 
+- Remote-access guidance now covers Tailscale/WireGuard, `token` mode, binding to
+  a VPN interface, and a private reverse-proxy backend using
+  `--public --tls-terminated`. Forwarded headers do not grant trust. No relay or
+  CORS change was introduced. See [Remote access](../docs/operations/remote-access.md).
+- Adversarial tests now cover upload Content-Range bounds, rejected-chunk
+  integrity, guest-grant revocation escalation, idempotency body mismatch, and
+  HTTP multi-range/unsatisfiable requests in addition to prior hostile cases.
+- The tray can start/stop the local user's registered service. The owner web UI
+  can register storage locations and select a write target. WebDAV now serves
+  read-only catalog/source listings and ranges with bearer or Digest credentials.
 - The menu bar edits accounts, guest links, and who may connect. Local networks are trusted by default. This Mac can change accounts without a password. Other devices on the LAN can sync, and they cannot change accounts. `token` mode requires a login everywhere. A server started with `--public` never trusts the socket address.
-
-
 - The foundation landed as a single commit: contract, storage, access control, reference server, CLI, and generated clients.
 - This Memory Bank was seeded from `AGENTS.md`, `README.md`, `docs/architecture/`, and `docs/workstreams/`. Those documents remain authoritative; this directory is a reading aid, not a second source of truth.
 - ZIP support added `packages/storage/src/zip.ts` and `virtual-cache.ts`, two additive operations for entry content, and optional `format` and `items` fields on the entries response.
@@ -26,7 +39,11 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - Quotas are checked from central-directory metadata before any bytes are written, so an archive bomb is rejected without the cache growing. Every path that can reach an entry applies the per-entry limits, because a client may ask for an entry by id without ever listing the archive.
 - Nesting is supported because ROM sets ship as archives of per-game archives. A container is addressed by a dotted index path, recognised structurally rather than by file extension, and capped at `maxNesting`. A stored nested archive is a window into the same blob, so its entries and their CRCs are read without inflating anything.
 - Listing descends stored containers automatically but never expands a compressed one; that needs `?entry=` on the entries route, which keeps a cheap request from triggering expensive work.
-- CHD, RVZ, and the other Dolphin containers are separate providers in separate changes, and no Dolphin reader source is imported.
+- Disc support is opt-in through an explicitly configured operator-owned chdman.
+  CHD v5 DVD ISO and the bounded modern CHT2 CD CUE/BIN subset are implemented;
+  ZIP remains the default. Native macOS 0.289 generated round trips are verified.
+  Linux/Windows native and browser disc-core acceptance remain unverified. See
+  [CHD operations](../docs/operations/chd.md) for supported layouts and limits.
 - Migration 1 keeps its exact shipped SQL. The runner recognises a new database by the absence of the `schema_migrations` table, which is why migration 1 can still create that table itself.
 - A ledger holding anything other than a contiguous prefix of the known versions is a hard error. That covers a newer build's database, a gap, and an emptied ledger, because guessing which statements are missing would risk the operator's rows.
 - "Multiple folders" is two features. Content roots are read-only source directories to import from; storage locations are additional writable blob stores. They touch different packages and ship separately.
@@ -40,7 +57,9 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - `apps/cli` deliberately does not depend on `@ecs/domain`. `scripts/check-boundaries.mjs` matches the dependency list exactly, and widening the boundary for a type annotation was not worth it, so the CLI infers record types and throws plain errors.
 - Signing and JIT may live in this repository after all, because another repository costs more to maintain than the repository boundary was buying. What protects the operator is the process, database, and credential split, which the boundary check can enforce. ADR 0006 records the reversal and `SECURITY.md` now promises the narrower, true thing.
 - The echo filter derives the device from the authenticated token, never from a query parameter, so one device cannot ask the server to hide another device's changes. The device id is not returned in the feed either, because peers do not need to know which device wrote what.
-- The tray builds its menu in TypeScript rather than Rust, so the dropdown and the status window read the same client and the same component. The Rust side only provides the shell: it holds no credential, opens no database, and knows no server address.
+- The tray builds its menu in TypeScript, so the dropdown and status window read
+  the same client and component. Rust provides the shell and a restricted local
+  service-control bridge; it holds no API credential and opens no catalog.
 - A folder is chosen by browsing the server, not with a file input. The folder lives on the server, which is often not the machine holding the browser, and a file input cannot report an absolute path anyway. The listing returns directory names only, to the owner only, and typing a path still works for a server reached over a terminal.
 - The web page stores its bearer token rather than using a cookie, because a cookie would be attached to every request automatically and that is what makes CSRF possible. A content policy that forbids other origins, inline script, and outbound connections is what makes storing it acceptable.
 - Save sync keeps both writes, because discarding a save is the one failure a sync must not have. The live asset is left alone and the arriving write becomes the conflict copy. That is the opposite of promoting the newer arrival: arrival order is not play order, and rewriting a live asset would change the manifest under a device that is mid-download. ROM, BIOS, and disc assets keep strict optimistic concurrency.
@@ -52,19 +71,25 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - Choosing a save is a metadata swap. A current-revision save upload becomes the live file and the previous bytes are renamed beside it. `POST /api/v1/files/{id}/adopt` does the same for a conflict copy already on the server, so the page does not re-upload the bytes. The manifest carries `conflictOf` so a client can pair them.
 - The web page groups an item's files by kind and polls the change feed, so a save that arrived from a phone shows up. The Swift package now has the same feed, resume, and adopt calls the TypeScript engine has. App screens that render them stay in the app repositories.
 - JIT, when sideload resumes, splits by OS. iOS 26 and later blesses each 16 KB page with a debugger write, the protocol RetroArch's `lldb_jit_bless.py` and StikDebug share. Older iOS and tvOS attach `debugserver` the way SideStore and AltStore do.
-- The maintainer works on branches or worktrees and does not use pull requests here. `CONTRIBUTING.md` still describes the fork-and-pull path for outside contributors.
 
 ## Next steps
 
-Connectors, AltStore feeds, the wasm player, and JIT or signing plans are plugins in `ecs-plugins`. The content server stays the sync and REST API and does not load them. See ADR 0007 and `docs/operations/plugins.md`.
+Record acceptance for the implemented CHD provider and
+[browser player](../docs/workstreams/web-playback.md). Native CHD on Linux/Windows,
+browser disc cores, and real browser-core compilation, emulation, rendering,
+audio, input, and saves remain unverified. The browser ABI harness records only
+its tested integration behavior. Connectors,
+AltStore feeds, and signing/JIT plans stay in `ecs-plugins`, outside the content
+server process. App adapters stay in Provenance, iCube, and iFly.
 
-Storage locations are registered directories. The data directory stays the primary store, new bytes go to the location chosen with `ecs locations use`, and an absent location is offline rather than a missing blob. Migration 7 adds them, after the access-policy and source-file migrations that already shipped.
+Keep operator references current: [Service](../docs/operations/service.md),
+[Storage locations](../docs/operations/storage-locations.md),
+[WebDAV](../docs/webdav.md), and [Remote access](../docs/operations/remote-access.md).
+The new documentation was source-checked; no real VPN, proxy, access-policy, or
+service registration was changed as part of that pass.
 
-A registered folder can be scanned in place (`POST /api/v1/roots/{id}/scan`, `GET /api/v1/sources`). The page lists those files by system and kind. In-browser play is `docs/workstreams/web-playback.md` and stays parked until a local file is worth playing. Docker for a VM or cloud host is `docs/workstreams/container-install.md` and `compose.yaml`.
-
-`ecs service install` registers a per-user login agent. The registration stores the data directory and the listen flags, and a daemon writes a rotating log under that directory. The tray still has no start or stop control.
-
-Still unstarted: the tray controls for that service, and storage locations in the web UI. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.
-The owner page lists guest grants and the audit log. `GET /api/v1/guest-grants` is owner-only and selects every grant column except `token_hash`. The token exists only in the create response and in the page state of the visit that created it. A non-owner session has the admin scope and still cannot list grants or the audit log.
-
-Still unstarted: service registration, the tray controls that need it, and storage locations in the web UI. WebDAV compatibility, adversarial validation, and the remote-access documentation pass are also open. App adapters belong to the Provenance, iCube, and iFly repositories.
+Record manual acceptance separately from implemented features: native Finder
+mounting, tray/service behavior on supported platforms, live VPN/proxy access,
+and broader end-to-end workflows. Protocol tests alone do not establish native
+Finder acceptance. Complete release/tag/package publication work explicitly;
+the included 1.0 work is still in progress and no publication is claimed.

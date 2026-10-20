@@ -148,3 +148,58 @@ test('a tampered ledger is a hard error rather than a partial upgrade', async ()
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('version 8 upgrades preserve identities while only explicit startup recovery interrupts scans', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-v8-'));
+  const filename = join(dir, 'catalog.sqlite');
+  try {
+    const prior = new DatabaseSync(filename);
+    for (const migration of MIGRATIONS.filter((entry) => entry.version <= 8)) {
+      prior.exec(migration.sql);
+      prior
+        .prepare('INSERT INTO schema_migrations VALUES (?, ?)')
+        .run(migration.version, '2026-10-20T00:00:00Z');
+    }
+    prior.exec(`INSERT INTO users VALUES ('owner','owner','fixture',1,'now');
+      INSERT INTO libraries VALUES ('library','Library','owner',1,'now',NULL);
+      INSERT INTO content_roots VALUES ('root','/never/probed','Shelf','library','now');
+      INSERT INTO source_files VALUES ('source','root','generated','Generated',1,1,'rom',NULL,'local','now');`);
+    prior.close();
+    const actor = {
+      kind: 'user',
+      userId: 'owner',
+      username: 'owner',
+      isOwner: true,
+      tokenKind: 'session',
+      deviceId: null,
+      scopes: ['read'],
+    } as const;
+    const first = new CatalogDatabase(filename);
+    assert.equal(first.getSource('source')?.rootId, 'root');
+    const summary = first.listContentRootSummaries({ actor: { ...actor, scopes: ['read'] } })[0];
+    assert.equal(summary?.scanState, 'unknown');
+    assert.equal(summary.indexedFileCount, 1);
+    first.beginRootScan('root');
+    first.close();
+    for (let open = 0; open < 2; open++) {
+      const reopened = new CatalogDatabase(filename);
+      assert.equal(
+        reopened.listContentRootSummaries({ actor: { ...actor, scopes: ['read'] } })[0]?.scanState,
+        open === 0 ? 'pending' : 'failed',
+      );
+      assert.equal(reopened.recoverInterruptedRootScans(), open === 0 ? 1 : 0);
+      const recovered = reopened.listContentRootSummaries({
+        actor: { ...actor, scopes: ['read'] },
+      })[0];
+      assert.equal(recovered?.scanState, 'failed');
+      assert.equal(recovered.scanError, 'Scan interrupted. Retry scan.');
+      assert.ok(recovered.lastScanCompletedAt);
+      assert.equal(reopened.getSource('source')?.id, 'source');
+      assert.equal(reopened.getContentRoot('root')?.libraryId, 'library');
+      assert.equal(reopened.integrity(), 'ok');
+      reopened.close();
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

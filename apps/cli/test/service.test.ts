@@ -13,6 +13,7 @@ import {
   renderRegistration,
   type ServiceSpec,
   SYSTEMD_UNIT,
+  serveArguments,
   serviceStatus,
   TASK_NAME,
   uninstallService,
@@ -222,5 +223,67 @@ test('log rotation keeps a bounded set, leaves the live file, and drops credenti
     }
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('WebDAV is opt-in and persists in each service registration', () => {
+  for (const platform of ['darwin', 'linux', 'win32'] as const) {
+    const base = spec('/fixture', '/fixture/data', platform);
+    assert.equal(renderRegistration(base).includes('--webdav'), false);
+    assert.equal(renderRegistration({ ...base, webdavEnabled: false }).includes('--webdav'), false);
+    assert.equal(renderRegistration({ ...base, webdavEnabled: true }).includes('--webdav'), true);
+  }
+});
+
+test('optional CHD executable survives each service registration without credentials', () => {
+  for (const platform of ['darwin', 'linux', 'win32'] as const) {
+    const base = spec('/fixture', '/fixture/data', platform);
+    const configured = { ...base, chdmanPath: '/opt/decoder folder/chdman' };
+    assert.doesNotMatch(renderRegistration(base), /--chdman/);
+    const text = renderRegistration(configured);
+    assert.match(text, /--chdman/);
+    assert.match(text, /decoder folder/);
+    assert.equal(text.includes(SECRET), false);
+  }
+});
+
+test('service registration persists the selected player directory on every platform', () => {
+  for (const platform of ['darwin', 'linux', 'win32'] as const) {
+    const text = renderRegistration(
+      Object.assign(spec('/home/user', '/data', platform), { playerDir: '/opt/trusted-player' }),
+    );
+    assert.match(text, /--player-dir/);
+    assert.match(text, /\/opt\/trusted-player/);
+  }
+});
+
+test('CHD decoder and player directory coexist in every service argument array', () => {
+  for (const platform of ['darwin', 'linux', 'win32'] as const) {
+    const configured = {
+      ...spec('/fixture', '/fixture/data', platform),
+      chdmanPath: '/opt/decoder folder/chdman',
+      playerDir: '/opt/player folder',
+    };
+    const args = serveArguments(configured);
+    assert.equal(args[args.indexOf('--chdman') + 1], configured.chdmanPath);
+    assert.equal(args[args.indexOf('--player-dir') + 1], configured.playerDir);
+    const registration = renderRegistration(configured);
+    assert.match(registration, /--chdman/);
+    assert.match(registration, /--player-dir/);
+  }
+});
+
+test('relative CHD decoder is rejected before any service registration is written', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'ecs-invalid-decoder-'));
+  try {
+    for (const platform of ['darwin', 'linux', 'win32'] as const) {
+      const selected = { ...spec(home, join(home, 'data'), platform), chdmanPath: 'relative-tool' };
+      const recorded = recordingRunner();
+      await assert.rejects(installService(selected, recorded.runner), /absolute executable path/);
+      assert.deepEqual(await readdir(home), []);
+      assert.deepEqual(recorded.calls, []);
+    }
+  } finally {
+    await rm(home, { recursive: true, force: true });
   }
 });

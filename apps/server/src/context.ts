@@ -2,9 +2,13 @@ import type { RateLimiter } from '@ecs/auth';
 import type { CatalogDatabase } from '@ecs/database';
 import type { VirtualProviderRegistry } from '@ecs/storage';
 
+import type { PlayerAssets } from './player-assets.js';
+
 export interface ServerContext {
+  player?: PlayerAssets;
   catalog: CatalogDatabase;
   dataDir: string;
+  webdavEnabled: boolean;
   displayName: string;
   virtual: VirtualProviderRegistry;
   limiter: RateLimiter;

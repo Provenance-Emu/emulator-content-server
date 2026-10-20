@@ -1,0 +1,31 @@
+diff --git a/save.c b/save.c
+index d760790441..d935306503 100644
+--- a/save.c
++++ b/save.c
+@@ -610,15 +610,25 @@ bool event_save_files(bool is_sram_used, bool compress_files,
+ {
+    unsigned i;
+    bool ret = true;
++   bool has_save_memory = false;
+ #ifdef HAVE_CHEATS
+    cheat_manager_save_game_specific_cheats(path_cheat_database);
+ #endif
+    if (!task_save_files || !is_sram_used)
+       return false;
+    for (i = 0; i < task_save_files->size; i++)
++   {
++      struct ram_type ram;
++      retro_ctx_memory_info_t mem_info;
++
++      /* The default list also includes RTC, which many cores do not expose. */
++      if (!content_get_memory(&mem_info, &ram, i))
++         continue;
++      has_save_memory = true;
+       if (!content_save_ram_file(i, compress_files))
+          ret = false;
+-   return ret;
++   }
++   return has_save_memory && ret;
+ }
+ 
+ bool event_load_save_files(bool is_sram_load_disabled)

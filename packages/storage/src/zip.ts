@@ -402,13 +402,15 @@ async function walk(
   quota: MaterializeQuota,
 ): Promise<Walk | null> {
   const segments = entryId.split('.');
-  // Validate the whole request before a compressed parent defers the remaining path.
-  if (segments.length > quota.maxNesting) reject('Archive nesting is deeper than the quota allows');
   let window = root;
   let path = '';
   for (let index = 0; index < segments.length; index += 1) {
     const records = await readCentralDirectory(handle, window, quota);
     if (!records) return null;
+    // Confirm ZIP ownership before applying the depth limit, but reject before
+    // returning a compressed ancestor for expansion.
+    if (segments.length > quota.maxNesting)
+      reject('Archive nesting is deeper than the quota allows');
     const record = records.find((candidate) => candidate.index === Number(segments[index]));
     if (!record) return null;
     checkEntryLimits(record, quota);

@@ -10,6 +10,7 @@
     { "path": "packages/client-ts" },
     { "path": "packages/signing" },
     { "path": "packages/plugins" },
+    { "path": "packages/webdav" },
     { "path": "apps/server" },
     { "path": "apps/cli" },
     { "path": "apps/plugins" }

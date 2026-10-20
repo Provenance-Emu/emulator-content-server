@@ -11,14 +11,15 @@ export function etagMatches(header: string | undefined, etag: string): boolean {
   if (!header) return false;
   return header.split(',').some((part) => {
     const value = part.trim().replace(/^W\//, '');
-    return value === '*' || value === etag;
+    return value === '*' || value === etag.replace(/^W\//, '');
   });
 }
 
 export function ifRangeMatches(header: string | undefined, etag: string): boolean {
   if (!header) return true;
   const value = header.trim();
-  if (value.includes(',') || value.startsWith('W/') || value.includes(':')) return false;
+  if (value.includes(',') || value.startsWith('W/') || etag.startsWith('W/') || value.includes(':'))
+    return false;
   return value === etag;
 }
 

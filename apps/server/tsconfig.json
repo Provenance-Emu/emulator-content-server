@@ -13,6 +13,7 @@
     { "path": "../../packages/discovery" },
     { "path": "../../packages/domain" },
     { "path": "../../packages/protocol" },
-    { "path": "../../packages/storage" }
+    { "path": "../../packages/storage" },
+    { "path": "../../packages/webdav" }
   ]
 }

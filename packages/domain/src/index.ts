@@ -144,10 +144,24 @@ export interface MaterializeQuota {
 
 export type VirtualResolution =
   | { kind: 'range'; entry: VirtualEntry; offset: number }
+  | { kind: 'bundle'; entry: VirtualEntry; bundleId: string }
   | { kind: 'expand'; entryId: string; remainder: string | null; path: string };
+
+export interface VirtualArtifactBundle {
+  version: string;
+  files: { entryId: string; path: string; size: number; sha256: string }[];
+}
 
 export interface VirtualContentProvider {
   readonly format: string;
+  materializeBundle?(
+    filePath: string,
+    bundleId: string,
+    destinationDirectory: string,
+    quota: MaterializeQuota,
+    signal?: AbortSignal,
+  ): Promise<VirtualArtifactBundle>;
+  close?(): Promise<void>;
   inspect(
     filePath: string,
     quota: MaterializeQuota,

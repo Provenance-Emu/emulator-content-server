@@ -7,6 +7,7 @@ const allowed = {
   '@ecs/protocol': [],
   '@ecs/domain': ['@ecs/protocol'],
   '@ecs/storage': ['@ecs/domain'],
+  '@ecs/webdav': ['@ecs/domain'],
   '@ecs/auth': ['@ecs/domain'],
   '@ecs/database': ['@ecs/domain'],
   '@ecs/discovery': [],
@@ -22,6 +23,7 @@ const allowed = {
     '@ecs/domain',
     '@ecs/protocol',
     '@ecs/storage',
+    '@ecs/webdav',
   ],
   '@ecs/plugin-host': ['@ecs/client', '@ecs/plugins', '@ecs/protocol', '@ecs/signing'],
   '@provenance-content/server': [
@@ -37,6 +39,7 @@ const locations = {
   '@ecs/protocol': 'packages/protocol',
   '@ecs/domain': 'packages/domain',
   '@ecs/storage': 'packages/storage',
+  '@ecs/webdav': 'packages/webdav',
   '@ecs/auth': 'packages/auth',
   '@ecs/database': 'packages/database',
   '@ecs/discovery': 'packages/discovery',

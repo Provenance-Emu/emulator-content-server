@@ -8,7 +8,7 @@ ecs service status --data ./content-data
 ecs service uninstall --data ./content-data
 ```
 
-The same listen flags as `ecs serve` are recorded: `--host`, `--port`, `--advertise`, `--allow-lan`, `--public`, and `--tls-terminated`. Installing with `--public` and no `--tls-terminated` is refused, so a server that starts at login cannot come up publicly exposed without TLS.
+The same listen flags as `ecs serve` are recorded: `--host`, `--port`, `--advertise`, `--allow-lan`, `--public`, `--tls-terminated`, and the optional trusted browser-static `--player-dir` ([setup](browser-playback.md)). Installing with `--public` and no `--tls-terminated` is refused, so a server that starts at login cannot come up publicly exposed without TLS.
 
 | Platform | What install writes |
 | --- | --- |
@@ -19,3 +19,7 @@ The same listen flags as `ecs serve` are recorded: `--host`, `--port`, `--advert
 `install` again overwrites that one registration. `uninstall` removes it and leaves every other agent, unit, or task alone.
 
 A daemon has no terminal. `serve` then writes `logs/ecs.log` under the data directory, redacts authorization headers and token or password values, and rotates the file by size. The live file is renamed aside when it grows; only an older archived generation is deleted. `logs/ecs.pid` is how `status` tells a running process from a loaded registration that is stopped. `status` prints whether the registration is loaded, whether that process is running, and which port it was given.
+
+Optional native CHD support is selected with `--chdman <absolute-path>` or
+`ECS_CHDMAN_PATH`. Service installation persists the selected path as an explicit
+argument. See [CHD configuration, supported layouts and limits](chd.md).

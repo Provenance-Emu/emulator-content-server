@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { canonicalCidr, hashPassword, hashToken, issueToken, verifyPassword } from '@ecs/auth';
@@ -15,7 +15,6 @@ import {
   type GuestCapability,
   ITEM_PERMISSIONS,
   type ItemPermission,
-  ifRangeMatches,
   isRestrictedAssetKind,
   LIBRARY_ROLES,
   type LibraryRole,
@@ -23,7 +22,6 @@ import {
   PROVENANCE_SYSTEMS,
   parseChangeCursor,
   parseContentRange,
-  parseSingleRange,
   strongEtag,
   validateAssetKind,
   validatePassword,
@@ -31,11 +29,8 @@ import {
   validateUsername,
 } from '@ecs/protocol';
 import {
-  blobFileSize,
-  blobPath,
   createStagingFile,
   ensureBlobStore,
-  FileContentReader,
   hashFile,
   inspectRoot,
   listFolders,
@@ -48,13 +43,20 @@ import {
   probeRoot,
   removeStaging,
   resolveContentRoot,
-  resolveInside,
   resolveStorageLocation,
   truncateStaging,
   writeAtOffset,
 } from '@ecs/storage';
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import {
+  blobRoot,
+  canSeeRoot,
+  canSeeSource,
+  sendContent,
+  sendRange,
+  sendSourceContent,
+} from './content.js';
 import type { ServerContext } from './context.js';
 import {
   assetDecision,
@@ -66,9 +68,13 @@ import {
   requireActor,
   requiredInteger,
   requiredString,
+  requireOwner,
+  requireRevision,
+  requireUser,
   stringList,
   withIdempotency,
 } from './http.js';
+import { registerLibraryBrowse } from './library-browse.js';
 import { accessView } from './local-access.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
@@ -86,6 +92,7 @@ const UI_CONTENT_POLICY = [
 
 export function registerRoutes(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
+  registerLibraryBrowse(app, context);
 
   const uploadMutations = new Set<string>();
   async function mutateUpload<T>(
@@ -129,7 +136,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.get('/health', async () => ({ ok: true }));
 
-  if (context.uiDir) {
+  const uiDir = context.uiDir;
+  if (uiDir) {
     /**
      * The interface is static files on the same origin as `/api/v1`, which is
      * what keeps CORS out of the design. It is a single page, so there is no
@@ -137,7 +145,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
      * is a missing asset rather than a route.
      */
     app.register(fastifyStatic, {
-      root: context.uiDir,
+      root: uiDir,
       prefix: '/ui/',
       // A wildcard route rather than one route per file discovered at startup,
       // so a rebuilt bundle is served without restarting. The prefix keeps it
@@ -157,6 +165,37 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       },
     });
     app.get('/ui', async (_request, reply) => reply.redirect('/ui/', 308));
+    // A second first-party document shares /ui/assets; no operator HTML is served.
+    app.get('/play', async (_request, reply) => reply.redirect('/play/', 308));
+    app.get('/play/', async (_request, reply) => {
+      reply.header(
+        'content-security-policy',
+        [
+          "default-src 'none'",
+          "script-src 'self' blob: 'wasm-unsafe-eval'",
+          "style-src 'self'",
+          "img-src 'self' data:",
+          "connect-src 'self'",
+          "base-uri 'none'",
+          "form-action 'none'",
+          "frame-ancestors 'none'",
+          "worker-src 'none'",
+        ].join('; '),
+      );
+      reply.header('cross-origin-opener-policy', 'same-origin');
+      reply.header('cross-origin-embedder-policy', 'require-corp');
+      reply.header('cross-origin-resource-policy', 'same-origin');
+      reply.header('referrer-policy', 'no-referrer');
+      reply.header('x-content-type-options', 'nosniff');
+      // reply.sendFile would apply the /ui registration's setHeaders callback.
+      // Read just the fixed first-party entry to keep the document's policy isolated.
+      try {
+        return reply.type('text/html').send(await readFile(join(uiDir, 'play', 'index.html')));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return reply.code(404).send();
+        throw error;
+      }
+    });
   }
 
   app.get('/openapi.yaml', async (_request, reply) => {
@@ -170,6 +209,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       virtualFormats: context.virtual.formats(),
       bootstrapped: catalog.server().bootstrapped,
       lanOpen: context.localTrust && policy.mode !== 'token',
+      webdavEnabled: context.webdavEnabled,
+      webPlayback: context.player !== undefined,
     });
   });
 
@@ -366,6 +407,9 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.post('/api/v1/items', async (request, reply) => {
     const actor = requireActor(request);
+    if (actor.kind === 'guest' && actor.itemId) {
+      throw new DomainError('forbidden', 403, 'This grant can only upload to its existing item');
+    }
     const body = jsonObject(request.body);
     const libraryId = requiredString(body, 'libraryId');
     libraryDecision(catalog, actor, libraryId, 'write');
@@ -650,7 +694,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.route({
     method: ['GET', 'HEAD'],
     url: '/api/v1/files/:assetId/content',
-    handler: async (request, reply) => sendContent(context, request, reply),
+    handler: async (request, reply) =>
+      sendContent(context, request, reply, (request.params as { assetId: string }).assetId),
   });
 
   app.get('/api/v1/files/:assetId/entries', async (request) => {
@@ -958,7 +1003,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.route({
     method: ['GET', 'HEAD'],
     url: '/api/v1/sources/:sourceId/content',
-    handler: async (request, reply) => sendSourceContent(context, request, reply),
+    handler: async (request, reply) =>
+      sendSourceContent(context, request, reply, (request.params as { sourceId: string }).sourceId),
   });
 
   app.get('/api/v1/audit', async (request) => {
@@ -971,14 +1017,6 @@ function limit(context: ServerContext, request: FastifyRequest, name: string): v
   if (!context.limiter.allow(`${name}:${request.ip}`)) {
     throw new DomainError('rate-limited', 429, 'Too many attempts');
   }
-}
-
-function requireUser(request: FastifyRequest, scope: ItemPermission): Actor & { kind: 'user' } {
-  const actor = requireActor(request);
-  if (actor.kind !== 'user' || !actor.scopes.includes(scope)) {
-    throw new DomainError('forbidden', 403, 'This token cannot perform that action');
-  }
-  return actor;
 }
 
 /**
@@ -1007,12 +1045,6 @@ function normalizeSubnets(value: unknown): string[] {
     return cidr;
   });
   return [...new Set(canonical)];
-}
-
-function requireOwner(request: FastifyRequest, message: string): Actor & { kind: 'user' } {
-  const actor = requireUser(request, 'admin');
-  if (!actor.isOwner) throw new DomainError('forbidden', 403, message);
-  return actor;
 }
 
 function requireItem(catalog: CatalogDatabase, id: string) {
@@ -1103,35 +1135,6 @@ async function placeUploadBytes(
 }
 
 /** The directory that holds this digest. The data directory is the primary, and it has no row. */
-async function blobRoot(context: ServerContext, sha256: string): Promise<string> {
-  const record = context.catalog.blobRecord(sha256);
-  if (!record?.locationId) return context.dataDir;
-  const location = context.catalog.getStorageLocation(record.locationId);
-  if (!location || !(await locationOnline(location.path))) {
-    throw new DomainError(
-      'location-offline',
-      503,
-      `Storage location ${location?.label ?? 'unknown'} is offline`,
-    );
-  }
-  return location.path;
-}
-
-async function storedBlob(
-  context: ServerContext,
-  sha256: string,
-): Promise<{ path: string; size: number }> {
-  const root = await blobRoot(context, sha256);
-  try {
-    return { path: blobPath(root, sha256), size: await blobFileSize(root, sha256) };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new DomainError('not-found', 404, 'Stored bytes are missing');
-    }
-    throw error;
-  }
-}
-
 function asStream(body: unknown): Readable {
   if (body instanceof Readable) return body;
   if (Buffer.isBuffer(body)) return Readable.from(body);
@@ -1155,100 +1158,26 @@ async function scanRoot(
   root: { id: string; path: string },
   actorId: string,
 ) {
-  const inspected = await inspectRoot(root.path);
-  const count = catalog.applyInspection({
-    rootId: root.id,
-    actorId,
-    online: inspected.online,
-    files: inspected.files,
-  });
-  return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
-}
-
-function canSeeRoot(actor: Actor, libraryId: string | null, catalog: CatalogDatabase): boolean {
-  if (actor.kind === 'guest') return libraryId === actor.libraryId;
-  if (actor.isOwner || actor.localTrust === true) return true;
-  if (libraryId === null) return false;
-  return catalog.visibleLibraryIds(actor).includes(libraryId);
-}
-
-function canSeeSource(actor: Actor, libraryId: string | null, kind: string): boolean {
-  if (actor.kind !== 'guest') return true;
-  if (libraryId !== actor.libraryId) return false;
-  const parsed = validateAssetKind(kind);
-  return !(
-    parsed &&
-    isRestrictedAssetKind(parsed) &&
-    !actor.capabilities.includes('share_restricted')
-  );
-}
-
-async function sendSourceContent(
-  context: ServerContext,
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<FastifyReply> {
-  const actor = requireActor(request);
-  if (actor.kind === 'user' && !actor.scopes.includes('read')) {
-    throw new DomainError('forbidden', 403, 'This token cannot read');
-  }
-  const { sourceId } = request.params as { sourceId: string };
-  const source = context.catalog.getSource(sourceId);
-  if (!source || !canSeeSource(actor, source.libraryId, source.kind)) {
-    throw new DomainError('not-found', 404, 'Source file not found');
-  }
-  if (!canSeeRoot(actor, source.libraryId, context.catalog)) {
-    throw new DomainError('not-found', 404, 'Source file not found');
-  }
-  const root = context.catalog.getContentRoot(source.rootId);
-  if (!root) throw new DomainError('not-found', 404, 'Source file not found');
-  const probe = await probeRoot(root.path);
-  if (!probe.online) {
-    context.catalog.markRootOffline(root.id);
-    throw new DomainError('source-offline', 503, 'That disk is not connected');
-  }
-  let full: string;
+  catalog.beginRootScan(root.id);
   try {
-    full = await resolveInside(root.path, source.relativePath);
-  } catch {
-    throw new DomainError('not-found', 404, 'Source file not found');
+    const inspected = await inspectRoot(root.path);
+    const count = catalog.applyInspection({
+      rootId: root.id,
+      actorId,
+      online: inspected.online,
+      files: inspected.files,
+    });
+    catalog.recordRootCheck({
+      rootId: root.id,
+      availability: inspected.online ? 'online' : 'offline',
+      medium: inspected.medium,
+    });
+    catalog.finishRootScan({ rootId: root.id, succeeded: true });
+    return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
+  } catch (error) {
+    catalog.finishRootScan({ rootId: root.id, succeeded: false });
+    throw error;
   }
-  const live = await probeFile(full, probe.medium, true);
-  context.catalog.updateSourcePresence(source.id, live);
-  if (live.availability === 'evicted') {
-    throw new DomainError('source-evicted', 409, 'That file is only a placeholder on this machine');
-  }
-  if (live.availability === 'offline') {
-    throw new DomainError('source-offline', 503, 'That disk is not connected');
-  }
-  const etag = strongEtag(`source-${source.id}-${live.size}`);
-  reply.header('accept-ranges', 'bytes');
-  reply.header('etag', etag);
-  if (etagMatches(headerString(request, 'if-none-match'), etag)) {
-    return reply.status(304).send();
-  }
-  return sendRange(request, reply, { path: full, offset: 0, size: live.size, etag });
-}
-
-async function sendContent(
-  context: ServerContext,
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<FastifyReply> {
-  const { asset } = requireVisibleAsset(context, request, 'read');
-  const stored = await storedBlob(context, asset.sha256);
-  const etag = strongEtag(asset.sha256);
-  reply.header('accept-ranges', 'bytes');
-  reply.header('etag', etag);
-  if (etagMatches(headerString(request, 'if-none-match'), etag)) {
-    return reply.status(304).send();
-  }
-  return sendRange(request, reply, {
-    path: stored.path,
-    offset: 0,
-    size: stored.size,
-    etag,
-  });
 }
 
 async function sendEntryContent(
@@ -1265,13 +1194,30 @@ async function sendEntryContent(
   if (etagMatches(headerString(request, 'if-none-match'), etag)) {
     return reply.status(304).send();
   }
-  const entry = await openVirtualEntry(
-    root,
-    asset.sha256,
-    context.virtual,
-    entryId,
-    context.dataDir,
-  );
+  const controller = new AbortController();
+  // IncomingMessage.close also fires for a normally consumed GET body. The
+  // response/socket lifetime identifies a client gone during materialization.
+  const socket = request.raw.socket;
+  const disconnected = () => {
+    if (!reply.raw.writableFinished) controller.abort();
+  };
+  reply.raw.once('close', disconnected);
+  socket.once('close', disconnected);
+  if (reply.raw.destroyed || socket.destroyed) disconnected();
+  let entry: Awaited<ReturnType<typeof openVirtualEntry>>;
+  try {
+    entry = await openVirtualEntry(
+      root,
+      asset.sha256,
+      context.virtual,
+      entryId,
+      context.dataDir,
+      controller.signal,
+    );
+  } finally {
+    reply.raw.removeListener('close', disconnected);
+    socket.removeListener('close', disconnected);
+  }
   if (!entry) throw new DomainError('not-found', 404, 'Archive entry not found');
   return sendRange(request, reply, {
     path: entry.path,
@@ -1279,37 +1225,6 @@ async function sendEntryContent(
     size: entry.size,
     etag,
   });
-}
-
-async function sendRange(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  source: { path: string; offset: number; size: number; etag: string },
-): Promise<FastifyReply> {
-  const { size } = source;
-  const rangeHeader = headerString(request, 'range');
-  let status = 200;
-  let start = 0;
-  let end = Math.max(size - 1, 0);
-  if (rangeHeader && ifRangeMatches(headerString(request, 'if-range'), source.etag)) {
-    const parsed = parseSingleRange(rangeHeader, size);
-    if (parsed.type === 'invalid') {
-      throw new DomainError('invalid-range', 400, 'Only one byte range is supported');
-    }
-    if (parsed.type === 'unsatisfiable') {
-      return reply.status(416).header('content-range', `bytes */${size}`).send();
-    }
-    status = 206;
-    start = parsed.start;
-    end = parsed.end;
-    reply.header('content-range', `bytes ${start}-${end}/${size}`);
-  }
-  const length = size === 0 ? 0 : end - start + 1;
-  reply.header('content-type', 'application/octet-stream');
-  reply.header('content-length', String(length));
-  if (request.method === 'HEAD' || length === 0) return reply.status(status).send();
-  const reader = new FileContentReader(source.path, source.offset + size);
-  return reply.status(status).send(reader.openRange(source.offset + start, source.offset + end));
 }
 
 function headerString(request: FastifyRequest, name: string): string | undefined {
@@ -1335,11 +1250,10 @@ function pageLimit(request: FastifyRequest): number {
   return limit;
 }
 
-function requireRevision(request: FastifyRequest): number {
-  const header = headerString(request, 'if-match');
-  const match = header ? /^"rev-(\d+)"$/.exec(header.trim()) : null;
-  if (!match?.[1]) throw new DomainError('precondition-required', 428, 'If-Match must be "rev-N"');
-  return Number(match[1]);
+function revisionOf(body: unknown): number {
+  if (!body || typeof body !== 'object' || !('revision' in body)) return 0;
+  const revision = (body as { revision?: unknown }).revision;
+  return typeof revision === 'number' ? revision : 0;
 }
 
 function bearer(request: FastifyRequest): string {
@@ -1347,10 +1261,4 @@ function bearer(request: FastifyRequest): string {
   const match = typeof header === 'string' ? /^Bearer\s+(\S+)$/.exec(header) : null;
   if (!match?.[1]) throw new DomainError('unauthorized', 401, 'Bearer token is required');
   return match[1];
-}
-
-function revisionOf(body: unknown): number {
-  if (!body || typeof body !== 'object' || !('revision' in body)) return 0;
-  const revision = (body as { revision?: unknown }).revision;
-  return typeof revision === 'number' ? revision : 0;
 }

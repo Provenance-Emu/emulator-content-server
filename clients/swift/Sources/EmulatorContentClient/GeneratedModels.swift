@@ -59,8 +59,9 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var virtualFormats: [String]
     public var webdav: Bool
     public var natTraversal: Bool
+    public var webPlayback: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -69,6 +70,55 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.virtualFormats = virtualFormats
         self.webdav = webdav
         self.natTraversal = natTraversal
+        self.webPlayback = webPlayback
+    }
+}
+
+public struct PlayerCoreResource: Codable, Equatable, Sendable {
+    public var url: String
+    public var sha256: String
+    public var sizeBytes: Int64
+
+    public init(url: String, sha256: String, sizeBytes: Int64) {
+        self.url = url
+        self.sha256 = sha256
+        self.sizeBytes = sizeBytes
+    }
+}
+
+public struct PlayerCoreDescriptor: Codable, Equatable, Sendable {
+    public var version: Int
+    public var id: String
+    public var name: String
+    public var systems: [String]
+    public var runtime: String
+    public var threaded: Bool
+    public var filesystem: String
+    public var saveCompletion: String
+    public var frontendCommit: String
+    public var coreCommit: String
+    public var emscriptenVersion: String
+    public var contentExtension: String
+    public var maxContentBytes: Int64
+    public var loader: PlayerCoreResource
+    public var wasm: PlayerCoreResource
+
+    public init(version: Int, id: String, name: String, systems: [String], runtime: String, threaded: Bool, filesystem: String, saveCompletion: String, frontendCommit: String, coreCommit: String, emscriptenVersion: String, contentExtension: String, maxContentBytes: Int64, loader: PlayerCoreResource, wasm: PlayerCoreResource) {
+        self.version = version
+        self.id = id
+        self.name = name
+        self.systems = systems
+        self.runtime = runtime
+        self.threaded = threaded
+        self.filesystem = filesystem
+        self.saveCompletion = saveCompletion
+        self.frontendCommit = frontendCommit
+        self.coreCommit = coreCommit
+        self.emscriptenVersion = emscriptenVersion
+        self.contentExtension = contentExtension
+        self.maxContentBytes = maxContentBytes
+        self.loader = loader
+        self.wasm = wasm
     }
 }
 
@@ -105,13 +155,15 @@ public struct SystemList: Codable, Equatable, Sendable {
 public struct Library: Codable, Equatable, Sendable {
     public var id: String
     public var name: String
+    public var canCreateItems: Bool?
     public var ownerId: String
     public var revision: Int
     public var createdAt: String
 
-    public init(id: String, name: String, ownerId: String, revision: Int, createdAt: String) {
+    public init(id: String, name: String, canCreateItems: Bool? = nil, ownerId: String, revision: Int, createdAt: String) {
         self.id = id
         self.name = name
+        self.canCreateItems = canCreateItems
         self.ownerId = ownerId
         self.revision = revision
         self.createdAt = createdAt
@@ -167,6 +219,52 @@ public struct FolderListing: Codable, Equatable, Sendable {
         self.parent = parent
         self.entries = entries
         self.places = places
+    }
+}
+
+public struct WebDavCredential: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var username: String
+    public var createdAt: String
+    public var expiresAt: String
+    public var revokedAt: String?
+
+    public init(id: String, name: String, username: String, createdAt: String, expiresAt: String, revokedAt: String? = nil) {
+        self.id = id
+        self.name = name
+        self.username = username
+        self.createdAt = createdAt
+        self.expiresAt = expiresAt
+        self.revokedAt = revokedAt
+    }
+}
+
+public struct WebDavCredentialList: Codable, Equatable, Sendable {
+    public var items: [WebDavCredential]
+
+    public init(items: [WebDavCredential]) {
+        self.items = items
+    }
+}
+
+public struct WebDavCredentialDraft: Codable, Equatable, Sendable {
+    public var name: String
+    public var expiresInSeconds: Int?
+
+    public init(name: String, expiresInSeconds: Int? = nil) {
+        self.name = name
+        self.expiresInSeconds = expiresInSeconds
+    }
+}
+
+public struct WebDavCredentialCreated: Codable, Equatable, Sendable {
+    public var credential: WebDavCredential
+    public var password: String
+
+    public init(credential: WebDavCredential, password: String) {
+        self.credential = credential
+        self.password = password
     }
 }
 
@@ -722,6 +820,82 @@ public struct GuestGrantList: Codable, Equatable, Sendable {
     public var items: [GuestGrant]
 
     public init(items: [GuestGrant]) {
+        self.items = items
+    }
+}
+
+public struct RootLibraryAssignment: Codable, Equatable, Sendable {
+    public var libraryId: String
+
+    public init(libraryId: String) {
+        self.libraryId = libraryId
+    }
+}
+
+public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
+    public var entityType: String
+    public var id: String
+    public var name: String
+    public var libraryId: String?
+    public var systemId: String?
+    public var canUpload: Bool
+    public var canAdopt: Bool
+    public var item: Item?
+    public var asset: Asset?
+    public var source: SourceFile?
+    public var parentItem: Item?
+    public var previewAsset: Asset?
+
+    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil) {
+        self.entityType = entityType
+        self.id = id
+        self.name = name
+        self.libraryId = libraryId
+        self.systemId = systemId
+        self.canUpload = canUpload
+        self.canAdopt = canAdopt
+        self.item = item
+        self.asset = asset
+        self.source = source
+        self.parentItem = parentItem
+        self.previewAsset = previewAsset
+    }
+}
+
+public struct LibraryBrowsePage: Codable, Equatable, Sendable {
+    public var items: [LibraryBrowseEntry]
+    public var nextCursor: String?
+
+    public init(items: [LibraryBrowseEntry], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct ContentRootSummary: Codable, Equatable, Sendable {
+    public var root: ContentRoot
+    public var indexedFileCount: Int
+    public var scanState: String
+    public var lastScanAt: String?
+    public var lastCheckAt: String?
+    public var online: Bool?
+    public var medium: String?
+
+    public init(root: ContentRoot, indexedFileCount: Int, scanState: String, lastScanAt: String? = nil, lastCheckAt: String? = nil, online: Bool? = nil, medium: String? = nil) {
+        self.root = root
+        self.indexedFileCount = indexedFileCount
+        self.scanState = scanState
+        self.lastScanAt = lastScanAt
+        self.lastCheckAt = lastCheckAt
+        self.online = online
+        self.medium = medium
+    }
+}
+
+public struct ContentRootSummaryList: Codable, Equatable, Sendable {
+    public var items: [ContentRootSummary]
+
+    public init(items: [ContentRootSummary]) {
         self.items = items
     }
 }

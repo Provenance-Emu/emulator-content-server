@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { issueToken } from '@ecs/auth';
+import Fastify from 'fastify';
+import { withIdempotency } from '../src/http.js';
 import { openServer } from '../src/index.js';
 
 for (const resource of ['items', 'uploads'] as const) {
@@ -56,14 +58,26 @@ for (const resource of ['items', 'uploads'] as const) {
       });
     const first = await send(original);
     assert.equal(first.statusCode, 201, first.body);
-    const otherEndpoint = await app.inject({
-      method: 'POST',
-      url: resource === 'items' ? '/api/v1/uploads' : '/api/v1/items',
-      headers: { ...auth, 'idempotency-key': 'adversarial-request-1' },
-      payload: original,
+    await t.test('a key cannot cross endpoints', async () => {
+      const otherEndpoint = await app.inject({
+        method: 'POST',
+        url: resource === 'items' ? '/api/v1/uploads' : '/api/v1/items',
+        headers: { ...auth, 'idempotency-key': 'adversarial-request-1' },
+        payload: original,
+      });
+      assert.equal(otherEndpoint.statusCode, 409);
+      assert.equal(otherEndpoint.json().type, 'urn:ecs:problem:idempotency-conflict');
     });
-    assert.equal(otherEndpoint.statusCode, 409);
-    assert.equal(otherEndpoint.json().type, 'urn:ecs:problem:idempotency-conflict');
+    await t.test('a key cannot change query strings', async () => {
+      const otherQuery = await app.inject({
+        method: 'POST',
+        url: `/api/v1/${resource}?retry=other`,
+        headers: { ...auth, 'idempotency-key': 'adversarial-request-1' },
+        payload: original,
+      });
+      assert.equal(otherQuery.statusCode, 409);
+      assert.equal(otherQuery.json().type, 'urn:ecs:problem:idempotency-conflict');
+    });
     for (let attempt = 0; attempt < 2; attempt++) {
       const conflict = await send(changed);
       assert.equal(conflict.statusCode, 409, conflict.body);
@@ -367,4 +381,85 @@ test('cached mutations still require current library permissions and token scope
       });
     }
   }
+
+  await t.test('completion rechecks a revoked item-specific write grant', async () => {
+    const completion = actions.find((action) => action.key === 'permission-complete-1');
+    assert.ok(completion);
+    assert.equal((await setRole('reader')).statusCode, 204);
+    const access = `/api/v1/items/${item.json().id}/access/${user.json().id}`;
+    const grant = await app.inject({
+      method: 'PUT',
+      url: access,
+      headers: owner,
+      payload: { permission: 'write' },
+    });
+    assert.equal(grant.statusCode, 204);
+    const replay = () =>
+      app.inject({
+        method: 'POST',
+        url: completion.url,
+        payload: completion.payload,
+        headers: { ...editor, 'idempotency-key': completion.key },
+      });
+    const allowed = await replay();
+    assert.equal(allowed.statusCode, 201);
+    assert.deepEqual(allowed.json(), completion.original);
+    assert.equal(
+      (await app.inject({ method: 'DELETE', url: access, headers: owner })).statusCode,
+      204,
+    );
+    const denied = await replay();
+    assert.equal(denied.statusCode, 403);
+    assert.equal(denied.json().type, 'urn:ecs:problem:forbidden');
+  });
+});
+
+test('receipt fingerprints distinguish HTTP methods and retain the original replay', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-idempotency-method-'));
+  const server = await openServer({ dataDir: dir, localTrust: false });
+  const app = Fastify();
+  t.after(async () => {
+    await app.close();
+    await server.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+  let executions = 0;
+  app.route({
+    method: ['POST', 'PUT'],
+    url: '/test',
+    handler: async (request, reply) => {
+      const result = await withIdempotency(
+        server.catalog,
+        {
+          kind: 'guest',
+          grantId: 'synthetic-method-actor',
+          libraryId: 'synthetic-library',
+          itemId: null,
+          capabilities: ['read', 'write'],
+        },
+        request,
+        request.body,
+        async () => {
+          executions += 1;
+          return { status: 201, body: { id: 'original-result' } };
+        },
+      );
+      return reply.status(result.status).send(result.body);
+    },
+  });
+  const send = (method: 'POST' | 'PUT') =>
+    app.inject({
+      method,
+      url: '/test',
+      headers: { 'idempotency-key': 'method-bound-key' },
+      payload: { value: 1 },
+    });
+  const first = await send('POST');
+  assert.equal(first.statusCode, 201);
+  const wrongMethod = await send('PUT');
+  assert.equal(wrongMethod.statusCode, 409);
+  const replay = await send('POST');
+  assert.equal(replay.statusCode, 201);
+  assert.deepEqual(replay.json(), first.json());
+  assert.equal(executions, 1);
 });

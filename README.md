@@ -28,6 +28,10 @@ docker compose up --build
 
 Compose publishes the server on host loopback and sets `ECS_ALLOW_LAN=1` so the container can bind `0.0.0.0` before setup finishes. The bootstrap token is still required before any library data is exposed. Read [docs/operations/install.md](docs/operations/install.md) before changing the published port.
 
+For access away from home, follow [Remote access](docs/operations/remote-access.md)
+for VPN-interface binding, bearer authentication, or an HTTPS proxy with a private
+backend.
+
 ## Interface
 
 `pnpm dev -- --data ./content-data --port 7878` compiles, serves, and stays running. A change to the server or a package restarts the process. A change to the page rebuilds it and the browser loads the new one. Add `--tray` to run the menu-bar app in the same session; `pnpm tray-dev` runs that app on its own, and it reloads when the shared client or the shared components change.
@@ -37,6 +41,10 @@ Compose publishes the server on host loopback and sets `ECS_ALLOW_LAN=1` so the 
 From the page you can sign in, read status, manage content folders, and move files: opening an item lists the files in its manifest, an upload goes in 4 MB pieces with progress, and a download that is cut short resumes from the bytes that arrived instead of starting over.
 
 `apps/tray` is a menu-bar companion for macOS, Windows, and Linux. It reports whether the server answers and opens the interface, and it is an API client with no data directory of its own. It needs a Rust toolchain: `pnpm tray-dev` to run it, `pnpm tray` to bundle it. Nothing else in the repository needs Rust.
+
+## WebDAV
+
+`ecs serve --webdav` enables authenticated, read-only browsing and ranged downloads at `/dav/`. Finder uses revocable Digest app credentials; existing bearer credentials also work. See [WebDAV setup](docs/webdav.md) for enablement, credential management, and client configuration.
 
 ## Verify
 
@@ -54,11 +62,11 @@ swift test --package-path clients/swift
 - `packages/database`, `packages/storage`, `packages/auth`, and `packages/discovery` are infrastructure.
 - `apps/server` composes Fastify routes.
 - `apps/cli` is the `ecs` command.
-- `packages/plugins` and `apps/plugins` are the plugin host (`ecs-plugins`). Connectors, AltStore feeds, the wasm player, and JIT or signing plans live there and talk to this server only through `/api/v1`. See [docs/operations/plugins.md](docs/operations/plugins.md).
+- `packages/plugins` and `apps/plugins` are the plugin host (`ecs-plugins`). Connectors, AltStore feeds, player descriptors, and JIT or signing plans live there and talk to this server only through `/api/v1`. See [docs/operations/plugins.md](docs/operations/plugins.md).
 - `packages/client-ts` and `clients/swift` are generated from the contract, with hand-written resume logic beside the generated models.
 
 Dependency direction is one-way: protocol and domain, then infrastructure, then server and CLI. App-specific Realm, Dolphin, CloudKit, and UIKit code does not belong here.
 
 ## Scope of this foundation
 
-The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs, directory scanning, WebDAV, desktop UI, and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, IPA feeds, and NAS or cloud connectors stay out of the content server process and database. They are plugins.
+The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Opt-in CHD v5 decoding is implemented for DVD ISO and the supported CD CUE/BIN subset, alongside the browser player in its separate [workstream](docs/workstreams/web-playback.md). Real browser-core compilation, emulation, rendering, audio, input, and save acceptance remain unverified; see [CHD operations](docs/operations/chd.md) for decoder configuration and limits. Remote relays remain follow-on work. Signing execution, JIT activation, IPA feeds, and NAS or cloud connectors stay out of the content server process and database. They are plugins.

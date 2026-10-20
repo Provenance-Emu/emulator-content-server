@@ -1,4 +1,11 @@
 export { authorize } from './acl.js';
+export {
+  DAV_REALM,
+  DigestAuthority,
+  type DigestResult,
+  type DigestVerifier,
+  digestVerifiers,
+} from './digest.js';
 export { assertListenPolicy, type ListenPolicy } from './listen-policy.js';
 export { type AccessMode, canonicalCidr, type TrustLevel, trustedLevel } from './network.js';
 export { hashPassword, verifyPassword } from './passwords.js';

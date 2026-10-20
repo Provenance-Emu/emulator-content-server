@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertListenPolicy } from '@ecs/auth';
 import { advertise } from '@ecs/discovery';
@@ -158,14 +158,18 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   const logging = daemon ? await captureDaemonLogs(dataDir) : null;
   const listen = listenConfig();
   const uiDir = await webAssets(value('--ui'));
+  const decoder = chdmanPath();
   let server: Awaited<ReturnType<typeof openServer>>;
   try {
     server = await openServer({
       dataDir,
+      ...(decoder === undefined ? {} : { chdmanPath: decoder }),
       displayName,
       limits: limitsFromEnv(process.env),
       logger: true,
       uiDir,
+      playerDir: playerDirectory(),
+      webdavEnabled: listen.webdavEnabled,
       // A public bind sits behind a proxy on loopback, so the socket address
       // cannot decide who is local.
       localTrust: !listen.publicInternet,
@@ -263,15 +267,19 @@ async function service(dataDir: string): Promise<void> {
 function serviceSpec(dataDir: string): ServiceSpec {
   const listen = listenConfig();
   const absolute = resolve(dataDir);
+  const decoder = chdmanPath();
   return {
     platform: process.platform,
     home: homedir(),
     dataDir: absolute,
+    playerDir: playerDirectory(),
     executable: process.execPath,
     script: process.argv[1] ?? fileURLToPath(import.meta.url),
     host: listen.host,
     port: listen.port,
     advertise: listen.advertise,
+    webdavEnabled: listen.webdavEnabled,
+    ...(decoder === undefined ? {} : { chdmanPath: decoder }),
     allowLan: listen.allowLan,
     publicInternet: listen.publicInternet,
     tlsTerminated: listen.tlsTerminated,
@@ -280,10 +288,15 @@ function serviceSpec(dataDir: string): ServiceSpec {
   };
 }
 
+function playerDirectory(): string | undefined {
+  return selectedAbsolutePath('--player-dir', 'ECS_PLAYER_DIR', 'directory');
+}
+
 function listenConfig(): {
   host: string;
   port: number;
   advertise: boolean;
+  webdavEnabled: boolean;
   allowLan: boolean;
   publicInternet: boolean;
   tlsTerminated: boolean;
@@ -295,10 +308,31 @@ function listenConfig(): {
     host,
     port,
     advertise: has('--advertise'),
+    webdavEnabled: has('--webdav') || process.env.ECS_WEBDAV === '1',
     allowLan: has('--allow-lan') || process.env.ECS_ALLOW_LAN === '1',
     publicInternet: has('--public'),
     tlsTerminated: has('--tls-terminated') || process.env.ECS_TLS_TERMINATED === '1',
   };
+}
+
+function chdmanPath(): string | undefined {
+  return selectedAbsolutePath('--chdman', 'ECS_CHDMAN_PATH', 'executable');
+}
+
+function selectedAbsolutePath(
+  flag: string,
+  environment: string,
+  kind: 'directory' | 'executable',
+): string | undefined {
+  const explicit = value(flag);
+  const selected = explicit ?? process.env[environment];
+  if (
+    (has(flag) && (!explicit || explicit.startsWith('--'))) ||
+    (selected !== undefined && !isAbsolute(selected))
+  ) {
+    throw new Error(`${flag} requires an absolute ${kind} path`);
+  }
+  return selected;
 }
 
 function value(name: string): string | undefined {
@@ -313,7 +347,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--ui <dir>|none]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
@@ -325,7 +359,7 @@ ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]
-ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--chdman <absolute-path>] [--player-dir <absolute-path>]
 ecs service uninstall --data ./content-data
 ecs service status --data ./content-data`);
 }

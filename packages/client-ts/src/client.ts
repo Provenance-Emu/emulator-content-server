@@ -8,6 +8,7 @@ import type {
   ContentRootDraft,
   ContentRootList,
   ContentRootScan,
+  ContentRootSummaryList,
   FolderListing,
   GuestGrantCreated,
   GuestGrantDraft,
@@ -15,8 +16,12 @@ import type {
   Item,
   ItemDraft,
   ItemList,
+  Library,
+  LibraryBrowsePage,
+  LibraryDraft,
   LibraryList,
   Manifest,
+  PlayerCoreDescriptor,
   Problem,
   SessionResponse,
   SourceFileList,
@@ -28,7 +33,23 @@ import type {
   UploadSession,
   User,
   UserDraft,
+  WebDavCredentialCreated,
+  WebDavCredentialDraft,
+  WebDavCredentialList,
 } from './generated.js';
+
+export type LibraryScope = { libraryId: string } | { unassigned: true };
+export type BrowseCategory = 'games' | 'saves' | 'media' | 'system_files';
+export type BrowseSort = 'name_asc' | 'name_desc';
+export type LibraryBrowseQuery = LibraryScope & {
+  category: BrowseCategory;
+  rootId?: string;
+  systemId?: string;
+  search?: string;
+  sort?: BrowseSort;
+  cursor?: string;
+  limit?: number;
+};
 
 export interface ResumePlan {
   offset: number;
@@ -90,6 +111,8 @@ export interface DownloadQuery {
 
 export interface CollectOptions {
   attempts?: number;
+  /** Maximum whole body size, checked against headers and streamed bytes before retaining them. */
+  maxBytes?: number;
   /** Called as bytes arrive, with the whole size when the server states one. */
   onProgress?: (received: number, total: number | null) => void;
 }
@@ -136,8 +159,69 @@ export class ContentClient {
     private token?: string,
   ) {}
 
+  async browse(query: LibraryBrowseQuery): Promise<LibraryBrowsePage> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query))
+      if (value !== undefined) params.set(key, String(value));
+    const page = await this.getJson<LibraryBrowsePage>(`/api/v1/browse?${params}`);
+    validateBrowsePage(page);
+    return page;
+  }
+
+  browseLibraries(): Promise<LibraryList> {
+    return this.getJson('/api/v1/browse-libraries');
+  }
+  createLibrary(draft: LibraryDraft): Promise<Library> {
+    return this.post('/api/v1/libraries', draft);
+  }
+  async renameLibrary(id: string, patch: { name: string }, baseRevision: number): Promise<Library> {
+    const response = await fetch(this.url(`/api/v1/libraries/${encodeURIComponent(id)}`), {
+      method: 'PATCH',
+      headers: {
+        ...this.headers(),
+        'content-type': 'application/json',
+        'if-match': `"rev-${baseRevision}"`,
+      },
+      body: JSON.stringify(patch),
+    });
+    if (!response.ok) throw await failure(response);
+    return (await response.json()) as Library;
+  }
+  rootSummaries(
+    filter: { libraryId?: string; unassigned?: boolean } = {},
+  ): Promise<ContentRootSummaryList> {
+    const params = new URLSearchParams();
+    if (filter.libraryId !== undefined) params.set('libraryId', filter.libraryId);
+    if (filter.unassigned === true) params.set('unassigned', 'true');
+    return this.getJson(`/api/v1/root-summaries${params.size ? `?${params}` : ''}`);
+  }
+  assignRoot(id: string, assignment: { libraryId: string }): Promise<ContentRoot> {
+    return this.putJson(`/api/v1/roots/${encodeURIComponent(id)}/library`, assignment);
+  }
+
   setToken(token: string | undefined): void {
     this.token = token;
+  }
+
+  playerCore(): Promise<PlayerCoreDescriptor> {
+    return this.getJson('/api/v1/player/core', 'error');
+  }
+
+  /** Authenticated immutable core snapshots; no descriptor URL is followed. */
+  async playerCoreAssets(id: string): Promise<{ loader: CollectedAsset; wasm: CollectedAsset }> {
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(id)) throw new Error('Invalid core identifier');
+    const loader = await this.collectPath(`/play/cores/${id}/loader.js`, {
+      maxBytes: 8 * 1024 * 1024,
+    });
+    const wasm = await this.collectPath(`/play/cores/${id}/core.wasm`, {
+      maxBytes: 64 * 1024 * 1024,
+    });
+    return { loader, wasm };
+  }
+
+  /** Reads only a typed source endpoint, with the same resume guarantees as assets. */
+  collectSource(sourceId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
+    return this.collectPath(`/api/v1/sources/${encodeURIComponent(sourceId)}/content`, options);
   }
 
   capabilities(): Promise<Capabilities> {
@@ -261,6 +345,18 @@ export class ContentClient {
   }
 
   /** Owner-only storage administration. Paths are on the server, not the client. */
+  webdavCredentials(): Promise<WebDavCredentialList> {
+    return this.getJson('/api/v1/webdav-credentials');
+  }
+
+  createWebdavCredential(draft: WebDavCredentialDraft): Promise<WebDavCredentialCreated> {
+    return this.post('/api/v1/webdav-credentials', draft);
+  }
+
+  revokeWebdavCredential(id: string): Promise<void> {
+    return this.remove(`/api/v1/webdav-credentials/${encodeURIComponent(id)}`);
+  }
+
   storageLocations(): Promise<StorageLocationList> {
     return this.getJson('/api/v1/storage-locations');
   }
@@ -350,14 +446,54 @@ export class ContentClient {
    * caller, which is what keeps this package free of a filesystem.
    */
   async download(assetId: string, query: DownloadQuery = {}): Promise<DownloadResponse> {
+    return this.downloadPath(`/api/v1/files/${encodeURIComponent(assetId)}/content`, query);
+  }
+
+  private async downloadPath(
+    path: string,
+    query: DownloadQuery,
+  ): Promise<DownloadResponse & { bodyBytes: number | null }> {
     const plan = planResume(query.localBytes ?? 0, null);
     const headers = this.headers();
     if (plan.range) {
       headers.range = plan.range;
       if (query.etag) headers['if-range'] = query.etag;
     }
-    const response = await fetch(this.url(`/api/v1/files/${assetId}/content`), { headers });
-    if (response.status >= 400 && response.status !== 416) throw await failure(response);
+    const response = await fetch(this.url(path), { headers, redirect: 'error' });
+    if (!response.ok && response.status !== 304 && response.status !== 416)
+      throw await failure(response);
+    let total: number | null;
+    let bodyBytes: number | null = null;
+    try {
+      total = totalBytes(response);
+      if (response.status === 206) {
+        const range = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(
+          response.headers.get('content-range') ?? '',
+        );
+        const start = Number(range?.[1]);
+        const end = Number(range?.[2]);
+        const length = response.headers.get('content-length');
+        if (
+          !range ||
+          !Number.isSafeInteger(start) ||
+          !Number.isSafeInteger(end) ||
+          start !== plan.offset ||
+          end < start ||
+          total === null ||
+          end >= total ||
+          (length !== null && Number(length) !== end - start + 1)
+        ) {
+          throw new RangeError('Invalid content range or length');
+        }
+        bodyBytes = end - start + 1;
+        if (query.etag && response.headers.get('etag') !== query.etag) {
+          throw new Error('Content validator changed during resumed download');
+        }
+      }
+    } catch (error) {
+      await response.body?.cancel();
+      throw error;
+    }
     const instruction = interpretDownload(response.status, plan.offset);
     const carriesContent = instruction === 'append' || instruction === 'restart';
     if (!carriesContent) await response.body?.cancel();
@@ -365,7 +501,8 @@ export class ContentClient {
       instruction,
       offset: instruction === 'append' ? plan.offset : 0,
       etag: response.headers.get('etag'),
-      totalBytes: totalBytes(response),
+      totalBytes: total,
+      bodyBytes,
       body: carriesContent ? response.body : null,
     };
   }
@@ -379,24 +516,62 @@ export class ContentClient {
    * Holding the result in memory is the caller's budget. A client with a
    * filesystem should drive `download` and write each body to disk instead.
    */
-  async collect(assetId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
+  collect(assetId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
+    return this.collectPath(`/api/v1/files/${encodeURIComponent(assetId)}/content`, options);
+  }
+
+  private async collectPath(path: string, options: CollectOptions): Promise<CollectedAsset> {
     const attempts = options.attempts ?? 3;
+    const maxBytes = options.maxBytes ?? Number.MAX_SAFE_INTEGER;
+    if (
+      !Number.isSafeInteger(maxBytes) ||
+      maxBytes <= 0 ||
+      !Number.isSafeInteger(attempts) ||
+      attempts < 1
+    ) {
+      throw new RangeError('Invalid collection byte limit or attempts');
+    }
     let held: Uint8Array[] = [];
     let received = 0;
     let etag: string | undefined;
     for (let attempt = 1; ; attempt += 1) {
       try {
-        const response = await this.download(assetId, { localBytes: received, etag });
+        // Partial bytes without a strong validator cannot safely be spliced together.
+        if (received > 0 && (!etag || !/^"[^"\r\n]*"$/.test(etag))) {
+          held = [];
+          received = 0;
+          etag = undefined;
+        }
+        const response = await this.downloadPath(path, { localBytes: received, etag });
+        if (response.instruction === 'not-modified' || response.instruction === 'unsatisfiable') {
+          throw new RangeError(
+            'Cannot collect a complete representation from a response without a body',
+          );
+        }
+        if (response.totalBytes !== null && response.totalBytes > maxBytes) {
+          await response.body?.cancel();
+          throw new RangeError('Content exceeds maximum byte limit');
+        }
         if (response.instruction !== 'append') {
           held = [];
           received = 0;
         }
         etag = response.etag ?? undefined;
         options.onProgress?.(received, response.totalBytes);
+        let bodyReceived = 0;
         for await (const chunk of chunks(response.body)) {
-          held.push(chunk);
+          if (response.bodyBytes !== null && chunk.byteLength > response.bodyBytes - bodyReceived) {
+            throw new RangeError('Content body exceeds the declared range length');
+          }
+          if (chunk.byteLength > maxBytes - received)
+            throw new RangeError('Content exceeds maximum byte limit');
+          held.push(chunk.slice());
+          bodyReceived += chunk.byteLength;
           received += chunk.byteLength;
           options.onProgress?.(received, response.totalBytes);
+        }
+        if (response.bodyBytes !== null && bodyReceived !== response.bodyBytes) {
+          throw new RangeError('Content body ended before the declared range length');
         }
         if (response.totalBytes !== null && received !== response.totalBytes) {
           throw new Error('The asset body ended before the size the server stated');
@@ -416,11 +591,25 @@ export class ContentClient {
    */
   async upload(request: UploadRequest, attempts = 3): Promise<Asset> {
     const key = request.idempotencyKey ?? crypto.randomUUID();
-    const session = request.uploadId
-      ? await this.uploadSession(request.uploadId)
-      : await this.openUpload(request.libraryId, `${key}.open`);
+    const uploadId =
+      request.uploadId ?? (await this.openUpload(request.libraryId, `${key}.open`)).id;
+    // An idempotent open replays its original receipt. Its offset may predate
+    // transferred bytes or even completion, so only the live session is authoritative.
+    const session = await this.uploadSession(uploadId);
     const total = sizeOf(request.body);
-    let received = session.received;
+    const offset = (current: UploadSession): number => {
+      if (
+        current.id !== uploadId ||
+        !Number.isSafeInteger(current.received) ||
+        current.received < 0 ||
+        current.received > total ||
+        (current.state !== 'open' && current.state !== 'completed') ||
+        (current.state === 'completed' && current.received !== total)
+      )
+        throw new RangeError('Invalid upload session offset or state');
+      return current.received;
+    };
+    let received = offset(session);
     const piece = request.chunkBytes ?? total;
     for (let attempt = 1; ; attempt += 1) {
       try {
@@ -434,7 +623,7 @@ export class ContentClient {
         return await this.commit(session.id, request, `${key}.done`);
       } catch (error) {
         if (attempt >= attempts || !isRetryable(error)) throw error;
-        received = (await this.uploadSession(session.id)).received;
+        received = offset(await this.uploadSession(session.id));
       }
     }
   }
@@ -516,8 +705,8 @@ export class ContentClient {
     if (!response.ok) throw await failure(response);
   }
 
-  private async getJson<T>(path: string): Promise<T> {
-    const response = await fetch(this.url(path), { headers: this.headers() });
+  private async getJson<T>(path: string, redirect?: RequestInit['redirect']): Promise<T> {
+    const response = await fetch(this.url(path), { headers: this.headers(), redirect });
     if (!response.ok) throw await failure(response);
     return (await response.json()) as T;
   }
@@ -539,6 +728,7 @@ export class ContentClient {
  * us. A stale revision or a rejected path fails the same way every time.
  */
 function isRetryable(error: unknown): boolean {
+  if (error instanceof RangeError) return false;
   if (!(error instanceof ContentError)) return true;
   if (error.status >= 500) return true;
   return error.status === 409 && error.problem?.type.endsWith('upload-gap') === true;
@@ -557,7 +747,12 @@ function totalBytes(response: Response): number | null {
   const total = range
     ? (/\/(\d+)$/.exec(range)?.[1] ?? null)
     : response.headers.get('content-length');
-  return total === null ? null : Number(total);
+  if (total === null) return null;
+  const parsed = Number(total);
+  if (!/^\d+$/.test(total) || !Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new RangeError('Invalid content size or length');
+  }
+  return parsed;
 }
 
 function sizeOf(body: UploadBody): number {
@@ -567,13 +762,18 @@ function sizeOf(body: UploadBody): number {
 async function* chunks(body: ReadableStream<Uint8Array> | null): AsyncGenerator<Uint8Array> {
   if (!body) return;
   const reader = body.getReader();
+  let completed = false;
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) return;
+      if (done) {
+        completed = true;
+        return;
+      }
       if (value) yield value;
     }
   } finally {
+    if (!completed) await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }
@@ -590,4 +790,123 @@ function concat(parts: Uint8Array[], size: number): Uint8Array<ArrayBuffer> {
 
 function slice(body: UploadBody, offset: number, end: number): UploadBody {
   return body instanceof Uint8Array ? body.subarray(offset, end) : body.slice(offset, end);
+}
+
+function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage {
+  const object = (v: unknown): v is Record<string, unknown> =>
+    !!v && typeof v === 'object' && !Array.isArray(v);
+  const nullableString = (v: unknown) => v === null || typeof v === 'string';
+  const fail = () => {
+    throw new TypeError('Invalid library browse response');
+  };
+  const strings = (v: Record<string, unknown>, keys: string[]) =>
+    keys.every((key) => typeof v[key] === 'string');
+  const integer = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+  const item = (v: unknown): v is Record<string, unknown> =>
+    object(v) &&
+    strings(v, ['id', 'libraryId', 'systemIdentifier', 'title', 'createdAt', 'updatedAt']) &&
+    integer(v.revision) &&
+    nullableString(v.md5) &&
+    nullableString(v.crc);
+  const asset = (v: unknown): v is Record<string, unknown> =>
+    object(v) &&
+    strings(v, [
+      'id',
+      'itemId',
+      'kind',
+      'displayName',
+      'relativePath',
+      'sha256',
+      'createdAt',
+      'updatedAt',
+    ]) &&
+    integer(v.revision) &&
+    integer(v.size) &&
+    typeof v.shareable === 'boolean' &&
+    nullableString(v.md5) &&
+    nullableString(v.crc) &&
+    (v.conflictOf === undefined || nullableString(v.conflictOf));
+  const source = (v: unknown): v is Record<string, unknown> =>
+    object(v) &&
+    strings(v, ['id', 'rootId', 'name', 'kind', 'availability', 'medium', 'contentPath']) &&
+    nullableString(v.libraryId) &&
+    nullableString(v.systemId) &&
+    integer(v.size) &&
+    v.contentPath === `/api/v1/sources/${encodeURIComponent(String(v.id))}/content`;
+
+  if (
+    !object(value) ||
+    !Array.isArray(value.items) ||
+    value.items.length > 100 ||
+    !nullableString(value.nextCursor) ||
+    (typeof value.nextCursor === 'string' && value.nextCursor.length > 4096)
+  )
+    return fail();
+  for (const entry of value.items) {
+    if (
+      !object(entry) ||
+      typeof entry.entityType !== 'string' ||
+      !['item', 'asset', 'source'].includes(entry.entityType) ||
+      typeof entry.id !== 'string' ||
+      typeof entry.name !== 'string' ||
+      !nullableString(entry.libraryId) ||
+      !nullableString(entry.systemId) ||
+      typeof entry.canUpload !== 'boolean' ||
+      typeof entry.canAdopt !== 'boolean'
+    )
+      return fail();
+    for (const key of ['item', 'asset', 'source'])
+      if (
+        key === entry.entityType
+          ? !object(entry[key]) || entry[key].id !== entry.id
+          : entry[key] !== undefined
+      )
+        return fail();
+    if (
+      entry.entityType === 'item' &&
+      (!item(entry.item) ||
+        entry.item.libraryId !== entry.libraryId ||
+        entry.item.systemIdentifier !== entry.systemId ||
+        entry.item.title !== entry.name)
+    )
+      return fail();
+    if (
+      entry.entityType === 'asset' &&
+      (!asset(entry.asset) ||
+        !item(entry.parentItem) ||
+        entry.parentItem.libraryId !== entry.libraryId ||
+        entry.parentItem.systemIdentifier !== entry.systemId ||
+        entry.asset.displayName !== entry.name ||
+        (entry.canAdopt && !entry.asset.conflictOf))
+    )
+      return fail();
+    if (
+      entry.entityType === 'source' &&
+      (!source(entry.source) ||
+        entry.source.libraryId !== entry.libraryId ||
+        entry.source.systemId !== entry.systemId ||
+        entry.source.name !== entry.name)
+    )
+      return fail();
+    if (
+      (entry.entityType === 'source' && (entry.canUpload || entry.canAdopt)) ||
+      (entry.entityType !== 'asset' && entry.parentItem !== undefined) ||
+      (entry.entityType !== 'item' && entry.previewAsset !== undefined) ||
+      (entry.entityType === 'item' && entry.canAdopt)
+    )
+      return fail();
+    if (
+      entry.entityType === 'asset' &&
+      (!object(entry.parentItem) ||
+        (entry.asset as Record<string, unknown>).itemId !== entry.parentItem.id)
+    )
+      return fail();
+    if (
+      entry.previewAsset !== undefined &&
+      (!asset(entry.previewAsset) ||
+        entry.previewAsset.kind !== 'artwork' ||
+        entry.previewAsset.itemId !== entry.id)
+    )
+      return fail();
+  }
 }

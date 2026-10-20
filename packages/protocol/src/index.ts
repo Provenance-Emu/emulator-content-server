@@ -1,3 +1,8 @@
+export {
+  type BrowseCursorPosition,
+  decodeBrowseCursor,
+  encodeBrowseCursor,
+} from './browse-cursor.js';
 export { buildCapabilities, type Capabilities } from './capabilities.js';
 export {
   ASSET_KINDS,
@@ -29,6 +34,7 @@ export {
   type OpenApiDocument,
   openApiFile,
 } from './openapi.js';
+export type { PlayerCoreDescriptor, PlayerCoreResource } from './player-core.js';
 export { type Problem, problem, problemType } from './problem.js';
 export {
   etagMatches,

@@ -1,21 +1,39 @@
 import { randomUUID } from 'node:crypto';
+import { realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hashToken, RateLimiter } from '@ecs/auth';
 import { CatalogDatabase, type CatalogLimits } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { problem } from '@ecs/protocol';
-import { ensureLayout, VirtualProviderRegistry, ZipProvider } from '@ecs/storage';
+import {
+  type ChdProviderOptions,
+  createChdProvider,
+  ensureLayout,
+  VirtualProviderRegistry,
+  ZipProvider,
+} from '@ecs/storage';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import './actor.js';
 import type { ServerContext } from './context.js';
 import { sendProblem } from './http.js';
-import { admitLocal, trayOrigin } from './local-access.js';
+import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
+import { loadPlayerAssets, registerPlayerAssets } from './player-assets.js';
 import { registerRoutes } from './routes.js';
+import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
+import { registerWebDavCredentials } from './webdav-credentials.js';
 
 export interface OpenServerOptions {
   dataDir: string;
+  /** Optional operator-owned absolute native decoder path; omitted means ZIP only. */
+  chdmanPath?: string;
+  /** Process-runner injection for portable decoder tests. */
+  chdProviderOptions?: ChdProviderOptions;
   displayName?: string;
+  webdavEnabled?: boolean;
   uiDir?: string | null;
+  /** Trusted static browser core directory; absent means no playback or filesystem probe. */
+  playerDir?: string;
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
   loginLimit?: number;
@@ -28,29 +46,64 @@ export async function openServer(options: OpenServerOptions): Promise<{
   catalog: CatalogDatabase;
   close: () => Promise<void>;
 }> {
+  const player =
+    options.playerDir === undefined ? undefined : await loadPlayerAssets(options.playerDir);
   await ensureLayout(options.dataDir);
-  const catalog = new CatalogDatabase(join(options.dataDir, 'library.sqlite'), options.limits);
+  const dataDir = await realpath(options.dataDir);
+  const virtual = new VirtualProviderRegistry([
+    new ZipProvider(),
+    ...(options.chdmanPath === undefined
+      ? []
+      : [await createChdProvider(options.chdmanPath, options.chdProviderOptions)]),
+  ]);
+  let catalog: CatalogDatabase;
+  try {
+    catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'), options.limits);
+  } catch (error) {
+    await virtual.close();
+    throw error;
+  }
   const context: ServerContext = {
     catalog,
-    dataDir: options.dataDir,
+    player,
+    dataDir,
+    webdavEnabled: options.webdavEnabled === true,
     displayName: options.displayName ?? 'Emulator Content Server',
-    virtual: new VirtualProviderRegistry([new ZipProvider()]),
+    virtual,
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
     uiDir: options.uiDir ?? null,
     localTrust: options.localTrust !== false,
   };
-  const app = buildApp(context, options.logger ?? false);
+  let app: FastifyInstance;
+  try {
+    // Startup owns this catalog under the single-server ownership assumption:
+    // pending scans belong to an abandoned run. Auxiliary catalog opens must
+    // preserve active scans and never perform this recovery.
+    catalog.recoverInterruptedRootScans();
+    app = await buildApp(context, options.logger ?? false);
+  } catch (error) {
+    await virtual.close();
+    catalog.close();
+    throw error;
+  }
+  // preClose runs before Fastify waits for active requests. Abort native work
+  // here so an active entry request cannot hold shutdown until its deadline.
+  app.addHook('preClose', async () => {
+    await virtual.close();
+  });
+  app.addHook('onClose', async () => {
+    catalog.close();
+  });
   return {
     app,
     catalog,
     close: async () => {
       await app.close();
-      catalog.close();
     },
   };
 }
 
-export function buildApp(context: ServerContext, logger = false): FastifyInstance {
+export async function buildApp(context: ServerContext, logger = false): Promise<FastifyInstance> {
   context.catalog.ensureServer(context.displayName);
   const app = Fastify({
     logger: logger
@@ -70,6 +123,16 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
     bodyLimit: 1024 * 1024,
   });
   app.decorateRequest('actor', null);
+  // A generous socket ceiling also bounds invalid bearer attempts before authentication.
+  // DAV's much smaller failed-login budget remains independent of successful reads.
+  await app.register(rateLimit, {
+    global: false,
+    max: 6000,
+    timeWindow: 60_000,
+    keyGenerator: peerAddress,
+    errorResponseBuilder: () => new DomainError('rate-limited', 429, 'Too many requests'),
+  });
+  app.addHook('onRequest', app.rateLimit());
   app.addContentTypeParser(
     'application/octet-stream',
     { bodyLimit: context.catalog.limits.maxUploadBytes },
@@ -77,8 +140,13 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
       done(null, payload);
     },
   );
+  const authenticateDav = davAuthenticator(context);
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
+    if (isDavRequest(request.raw.url ?? request.url)) {
+      if (!context.webdavEnabled) return reply.code(404).send({ status: 404, title: 'Not Found' });
+      return authenticateDav(request, reply);
+    }
     const origin = request.headers.origin;
     if (trayOrigin(typeof origin === 'string' ? origin : undefined)) {
       reply.header('access-control-allow-origin', origin);
@@ -134,6 +202,9 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
         }),
       );
   });
+  registerWebDav(app, context);
   registerRoutes(app, context);
+  registerPlayerAssets(app, context);
+  registerWebDavCredentials(app, context);
   return app;
 }
