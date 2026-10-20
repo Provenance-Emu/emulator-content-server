@@ -93,7 +93,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     uploadId: string,
     operation: (upload: UploadRecord) => Promise<T>,
   ): Promise<T> {
-    const upload = requireOwnedUpload(catalog, actor, uploadId);
+    const upload = requireOwnedUpload(catalog, actor, uploadId, 'write');
     if (upload.state !== 'open') throw new DomainError('upload-closed', 409, 'Upload is not open');
     if (uploadMutations.has(uploadId)) {
       throw new DomainError('upload-busy', 409, 'Another operation is changing this upload');
@@ -547,7 +547,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireActor(request);
     const uploadId = (request.params as { uploadId: string }).uploadId;
     const body = jsonObject(request.body);
-    requireOwnedUpload(catalog, actor, uploadId);
+    requireOwnedUpload(catalog, actor, uploadId, 'write');
     const item = requireItem(catalog, requiredString(body, 'itemId'));
     itemDecision(catalog, actor, item, 'write');
     const result = await withIdempotency(catalog, actor, request, body, async () => {
@@ -605,6 +605,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       catalog,
       actor,
       (request.params as { uploadId: string }).uploadId,
+      'read',
     );
     return { id: upload.id, received: upload.received, state: upload.state };
   });
@@ -1021,12 +1022,19 @@ function requireItem(catalog: CatalogDatabase, id: string) {
   return item;
 }
 
-function requireOwnedUpload(catalog: CatalogDatabase, actor: Actor, id: string): UploadRecord {
+function requireOwnedUpload(
+  catalog: CatalogDatabase,
+  actor: Actor,
+  id: string,
+  action: ItemPermission,
+): UploadRecord {
   const upload = catalog.getUpload(id);
   if (!upload) throw new DomainError('not-found', 404, 'Upload not found');
   const owned =
     actor.kind === 'user' ? upload.userId === actor.userId : upload.guestGrantId === actor.grantId;
   if (!owned) throw new DomainError('not-found', 404, 'Upload not found');
+  if (!upload.libraryId) throw new DomainError('not-found', 404, 'Upload not found');
+  libraryDecision(catalog, actor, upload.libraryId, action);
   return upload;
 }
 
