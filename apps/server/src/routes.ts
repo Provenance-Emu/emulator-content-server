@@ -733,6 +733,9 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.delete('/api/v1/guest-grants/:grantId', async (request, reply) => {
     const actor = requireUser(request, 'admin');
     const { grantId } = request.params as { grantId: string };
+    const libraryId = catalog.guestGrantLibraryId(grantId);
+    if (!libraryId) throw new DomainError('not-found', 404, 'Guest grant not found');
+    libraryDecision(catalog, actor, libraryId, 'admin');
     if (!catalog.revokeGuestGrant(grantId, actor.userId)) {
       throw new DomainError('not-found', 404, 'Guest grant not found');
     }

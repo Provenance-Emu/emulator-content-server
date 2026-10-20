@@ -1603,6 +1603,14 @@ export class CatalogDatabase {
     return { id };
   }
 
+  /** The library used to authorize grant management, without exposing token material. */
+  guestGrantLibraryId(id: string): string | null {
+    const row = this.db.prepare('SELECT library_id FROM guest_grants WHERE id = ?').get(id) as
+      | { library_id: string }
+      | undefined;
+    return row?.library_id ?? null;
+  }
+
   revokeGuestGrant(id: string, actorId: string): boolean {
     const result = this.db
       .prepare('UPDATE guest_grants SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL')
