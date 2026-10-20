@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Complete the remaining core workstreams, integrate existing adversarial fixes, and merge reviewed changes without modifying local main or publishing a release.
+**Goal:** Complete the core wrap-up workstreams and integrate existing adversarial fixes without modifying local main or publishing a release. The user has also included disc containers and browser playback in 1.0; those substantial features receive their own provider/player designs, plans, branches, and PRs.
 
 **Architecture:** Preserve the existing package boundaries and `/api/v1` contract. Integrate the existing regression branch onto the WebDAV merge, then finish operator documentation in a separate PR. Use focused TDD and required automated checks; broader manual acceptance remains a later activity.
 
@@ -19,7 +19,7 @@
 - Never log bootstrap tokens, bearer tokens, passwords, or authorization headers.
 - Keep the primary checkout and local main untouched. Only the controller creates PRs and merges, using merge commits after automated checks pass.
 - No release tag, package publication, relay, STUN, TURN, automatic forwarding, app adapters, or signing/JIT execution.
-- Disc-container providers and browser playback remain deferred pending the user's scope answer; do not silently claim them complete.
+- Disc-container providers and browser playback are included in 1.0 by the user's scope answer. Track their implementation separately and do not claim them shipped before they merge.
 
 ## Review Focus
 
@@ -35,10 +35,10 @@
 
 **Interfaces:** Consume existing upload, guest-grant, idempotency, and range routes. Produce no new endpoint, model, or public helper.
 
-- [ ] Integrate commits `673e00e`, `bc5b402`, `f704387`, `db45ca2`, and `9d89730` onto `69eab4e` in this worktree. Preserve WebDAV extraction, weak-source validators, source-query bounds, and credential changes when resolving conflicts.
-- [ ] Inspect each regression and reconstruct focused RED evidence for changed behavior by temporarily removing only the corresponding fix in this worktree; restore it and observe GREEN. Do not mutate the source branch or real data.
-- [ ] Add an HTTP regression completing a generated upload with a 1,025-character relative path: assert HTTP 400, `invalid-body`, unchanged upload state, and no item asset. Also exercise the existing 1,024-character boundary without changing its policy. Existing correct behavior needs no production edit merely to produce a failing test.
-- [ ] Map every adversarial brief case to a concrete test, covering traversal, symlinks, oversized paths, gap/overlap, archive bombs, revoke/expiry/ACL, idempotency, ranges, and sparse reads. Add only missing cases.
+- [x] Integrate commits `673e00e`, `bc5b402`, `f704387`, `db45ca2`, and `9d89730` onto `69eab4e` in this worktree. Preserve WebDAV extraction, weak-source validators, source-query bounds, and credential changes when resolving conflicts.
+- [x] Inspect each regression and reconstruct focused RED evidence for changed behavior by temporarily removing only the corresponding fix in this worktree; restore it and observe GREEN. Do not mutate the source branch or real data.
+- [x] Add an HTTP regression completing a generated upload with a 1,025-character relative path: assert HTTP 400, `invalid-body`, unchanged upload state, and no item asset. Also exercise the existing 1,024-character boundary without changing its policy. Existing correct behavior needs no production edit merely to produce a failing test.
+- [x] Map every adversarial brief case to a concrete test, covering traversal, symlinks, oversized paths, gap/overlap, archive bombs, revoke/expiry/ACL, idempotency, ranges, and sparse reads. Add only missing cases.
 - [ ] Run focused regressions, then `pnpm verify` once. Commit, self-review, and write a report with RED/GREEN commands and results. The controller reviews the complete integration range, pushes, opens/attaches the PR, fixes CI/review findings, and merges with a head-SHA guard.
 
 ### Task 2: Remote-access guidance and accurate core status
@@ -50,6 +50,6 @@
 - [ ] Work on a separate branch/worktree from the integrated server base. Read CLI/listen/local-access behavior before writing examples; verify current VPN instructions from official Tailscale and WireGuard documentation.
 - [ ] Document supported VPN access, CGNAT/Tailscale address handling, bearer authentication, reverse-proxy `--public --tls-terminated`, and private origin binding. Explain that forwarded headers do not confer trust. Keep public examples consistent with the threat model and never include an actual secret.
 - [ ] Preserve strict CSP and WebDAV opt-in, and link existing WebDAV/service/storage operator docs. Do not add a relay, proxy implementation, or new networking dependencies.
-- [ ] Replace stale “not started” statements for already merged work with accurate shipped status. Separate deferred follow-on work from broader manual acceptance still outstanding; do not claim Finder was natively mounted, app adapters shipped, or a 1.0 package was published.
+- [ ] Replace stale “not started” statements for already merged work with accurate shipped status. Track disc containers and browser playback as included work in progress until their separate PRs merge. Separate remaining follow-on work from broader manual acceptance still outstanding; do not claim Finder was natively mounted, app adapters shipped, or a 1.0 package was published.
 - [ ] Check commands against CLI/API source, check relative documentation links, run `git diff --check` and the appropriate repository checks. Documentation-only changes do not need artificial tests. Commit, self-review, and report evidence.
 - [ ] Controller performs task and final review, pushes/attaches a separate documentation PR, resolves feedback/CI, and merges with a merge commit. Record final PRs, check results, deferred scope, and rulings.
