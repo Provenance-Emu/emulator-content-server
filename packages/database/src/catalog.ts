@@ -15,6 +15,14 @@ import {
   type SourceAvailability,
   type SourceFileRecord,
 } from '@ecs/domain';
+import {
+  type BrowsePosition,
+  type BrowseRecord,
+  type BrowseSelection,
+  browseKeys,
+  type ContentRootSummaryRecord,
+  type RootSummaryFilter,
+} from './library-browse.js';
 import { pendingMigrations } from './schema.js';
 
 export interface CatalogLimits {
@@ -103,7 +111,17 @@ export class CatalogDatabase {
       this.db.exec('PRAGMA journal_mode = WAL');
       this.db.exec('PRAGMA synchronous = FULL');
       this.db.exec('PRAGMA busy_timeout = 5000');
+      this.db.function('ecs_browse_fold', { deterministic: true }, (value) =>
+        String(value ?? '')
+          .normalize('NFC')
+          .toLowerCase(),
+      );
       this.migrate();
+      this.db
+        .prepare(
+          "UPDATE content_roots SET scan_state = 'failed', last_scan_completed_at = ?, scan_error = 'Scan interrupted. Retry scan.' WHERE scan_state = 'pending'",
+        )
+        .run(nowIso());
     } catch (error) {
       this.db.close();
       throw error;
@@ -494,6 +512,253 @@ export class CatalogDatabase {
     return { id, name, ownerId, revision: 1, createdAt };
   }
 
+  browseLibrary(input: BrowseSelection): { items: BrowseRecord[]; next: BrowsePosition | null } {
+    return this.transaction(() => {
+      const keys = browseKeys(this.db, input);
+      const more = keys.length > input.limit;
+      const selected = keys.slice(0, input.limit);
+      const items: BrowseRecord[] = selected.map((key) => {
+        if (key.entity_type === 'item') {
+          const item = this.getItem(key.id);
+          if (!item) throw new DomainError('not-found', 404, 'Item not found');
+          return {
+            entityType: 'item',
+            item,
+            previewAsset: key.preview_id ? this.getAsset(key.preview_id) : null,
+          };
+        }
+        if (key.entity_type === 'source') {
+          const source = this.getSource(key.id);
+          if (!source) throw new DomainError('not-found', 404, 'Source not found');
+          return { entityType: 'source', source };
+        }
+        const asset = this.getAsset(key.id);
+        if (!asset) throw new DomainError('not-found', 404, 'Asset not found');
+        const item = this.getItem(asset.itemId);
+        if (!item) throw new DomainError('not-found', 404, 'Item not found');
+        return { entityType: 'asset', asset, item };
+      });
+      const last = selected.at(-1);
+      return { items, next: more && last ? { entityType: last.entity_type, id: last.id } : null };
+    });
+  }
+
+  listContentRootSummaries(filter: RootSummaryFilter): ContentRootSummaryRecord[] {
+    // These are management summaries containing server paths, never public browse DTOs.
+    if (
+      filter.actor.kind !== 'user' ||
+      !filter.actor.isOwner ||
+      !filter.actor.scopes.includes('read')
+    )
+      return [];
+    const where =
+      filter.libraryId === undefined
+        ? ''
+        : filter.libraryId === null
+          ? 'AND r.library_id IS NULL'
+          : 'AND r.library_id = ?';
+    const rows = this.db
+      .prepare(`SELECT r.*, (SELECT COUNT(*) FROM source_files s WHERE s.root_id = r.id) AS indexed_file_count
+      FROM content_roots r WHERE (r.library_id IS NULL OR EXISTS (SELECT 1 FROM libraries l WHERE l.id = r.library_id AND l.deleted_at IS NULL)) ${where}
+      ORDER BY r.created_at, r.id`)
+      .all(...(typeof filter.libraryId === 'string' ? [filter.libraryId] : [])) as Array<
+      ContentRootRow & {
+        indexed_file_count: number;
+        last_checked_at: string | null;
+        availability: ContentRootSummaryRecord['availability'];
+        medium: string | null;
+        scan_state: ContentRootSummaryRecord['scanState'];
+        last_scan_started_at: string | null;
+        last_scan_completed_at: string | null;
+        scan_error: string | null;
+      }
+    >;
+    return rows.map((row) => ({
+      ...mapContentRoot(row),
+      indexedFileCount: Number(row.indexed_file_count),
+      lastCheckedAt: row.last_checked_at,
+      availability: row.availability,
+      medium: row.medium,
+      scanState: row.scan_state,
+      lastScanStartedAt: row.last_scan_started_at,
+      lastScanCompletedAt: row.last_scan_completed_at,
+      scanError: row.scan_error,
+    }));
+  }
+
+  renameLibrary(input: {
+    id: string;
+    name: string;
+    baseRevision: number;
+    actorId: string;
+    deviceId: string | null;
+  }): LibraryRecord {
+    return this.transaction(() => {
+      const current = this.getLibrary(input.id);
+      if (!current) throw new DomainError('not-found', 404, 'Library not found');
+      const result = this.db
+        .prepare(
+          'UPDATE libraries SET name = ?, revision = revision + 1 WHERE id = ? AND revision = ? AND deleted_at IS NULL',
+        )
+        .run(input.name, input.id, input.baseRevision);
+      if (result.changes === 0)
+        throw new DomainError('conflict', 409, 'Library revision does not match');
+      this.insertChange(
+        'library',
+        input.id,
+        'upsert',
+        input.id,
+        null,
+        false,
+        nowIso(),
+        input.deviceId,
+      );
+      this.insertAudit(input.actorId, 'rename-library', 'library', input.id, { name: input.name });
+      return { ...current, name: input.name, revision: current.revision + 1 };
+    });
+  }
+
+  assignUnassignedRoot(input: {
+    rootId: string;
+    libraryId: string;
+    actorId: string;
+    deviceId: string | null;
+  }): ContentRootRecord {
+    return this.transaction(() => {
+      if (!this.getLibrary(input.libraryId))
+        throw new DomainError('not-found', 404, 'Library not found');
+      const root = this.getContentRoot(input.rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      if (root.libraryId === input.libraryId) return root;
+      if (root.libraryId !== null)
+        throw new DomainError('conflict', 409, 'That folder already belongs to a library');
+      this.db
+        .prepare('UPDATE content_roots SET library_id = ? WHERE id = ? AND library_id IS NULL')
+        .run(input.libraryId, input.rootId);
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        input.libraryId,
+        null,
+        false,
+        nowIso(),
+        input.deviceId,
+      );
+      this.insertAudit(input.actorId, 'assign-content-root', 'content-root', root.id, {
+        libraryId: input.libraryId,
+      });
+      return { ...root, libraryId: input.libraryId };
+    });
+  }
+
+  recordRootCheck(input: {
+    rootId: string;
+    availability: 'online' | 'offline';
+    medium: string | null;
+    checkedAt?: string;
+  }): void {
+    this.transaction(() => {
+      const root = this.getContentRoot(input.rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      this.db
+        .prepare(
+          'UPDATE content_roots SET last_checked_at = ?, availability = ?, medium = ? WHERE id = ?',
+        )
+        .run(input.checkedAt ?? nowIso(), input.availability, input.medium, input.rootId);
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        root.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
+    });
+  }
+
+  beginRootScan(rootId: string): void {
+    this.transaction(() => {
+      const root = this.getContentRoot(rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      if (
+        this.one<{ scan_state: string }>(
+          'SELECT scan_state FROM content_roots WHERE id = ?',
+          rootId,
+        )?.scan_state === 'pending'
+      )
+        throw new DomainError('conflict', 409, 'A scan is already pending for that folder');
+      this.db
+        .prepare(
+          "UPDATE content_roots SET scan_state = 'pending', last_scan_started_at = ?, last_scan_completed_at = NULL, scan_error = NULL WHERE id = ?",
+        )
+        .run(nowIso(), rootId);
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        root.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
+    });
+  }
+
+  finishRootScan(input: { rootId: string; succeeded: boolean }): void {
+    this.transaction(() => {
+      const root = this.getContentRoot(input.rootId);
+      if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      this.db
+        .prepare(
+          'UPDATE content_roots SET scan_state = ?, last_scan_completed_at = ?, scan_error = ? WHERE id = ?',
+        )
+        .run(
+          input.succeeded ? 'completed' : 'failed',
+          nowIso(),
+          input.succeeded ? null : 'Scan failed. Retry scan.',
+          input.rootId,
+        );
+      this.insertChange(
+        'content-root',
+        root.id,
+        'upsert',
+        root.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
+    });
+  }
+
+  listBrowseLibraries(actor: Actor): LibraryRecord[] {
+    if (actor.kind === 'guest') {
+      if (!actor.capabilities.includes('read')) return [];
+      const library = this.getLibrary(actor.libraryId);
+      return library ? [library] : [];
+    }
+    if (!actor.scopes.includes('read')) return [];
+    if (actor.isOwner || actor.localTrust === true) return this.listLibraries(actor.userId, true);
+    const rows = this.db
+      .prepare(`SELECT l.* FROM libraries l WHERE l.deleted_at IS NULL AND (
+      EXISTS (SELECT 1 FROM memberships m WHERE m.library_id = l.id AND m.user_id = ?)
+      OR EXISTS (SELECT 1 FROM items i JOIN item_acl acl ON acl.item_id = i.id
+        WHERE i.library_id = l.id AND i.deleted_at IS NULL AND acl.user_id = ? AND acl.permission = 'read'))
+      ORDER BY l.created_at, l.id`)
+      .all(actor.userId, actor.userId) as Array<{
+      id: string;
+      name: string;
+      owner_id: string;
+      revision: number;
+      created_at: string;
+    }>;
+    return rows.map(mapLibrary);
+  }
+
   listLibraries(userId: string, isOwner: boolean): LibraryRecord[] {
     const sql = isOwner
       ? 'SELECT id, name, owner_id, revision, created_at FROM libraries WHERE deleted_at IS NULL ORDER BY created_at'
@@ -541,6 +806,16 @@ export class CatalogDatabase {
           'INSERT INTO content_roots (id, path, label, library_id, created_at) VALUES (?, ?, ?, ?, ?)',
         )
         .run(id, input.path, input.label, input.libraryId, createdAt);
+      this.insertChange(
+        'content-root',
+        id,
+        'upsert',
+        input.libraryId,
+        null,
+        false,
+        createdAt,
+        null,
+      );
       this.insertAudit(input.actorId, 'create-content-root', 'content-root', id, {
         path: input.path,
         label: input.label,
@@ -577,6 +852,16 @@ export class CatalogDatabase {
       const existing = this.getContentRoot(id);
       if (!existing) throw new DomainError('not-found', 404, 'Content root not found');
       this.db.prepare('DELETE FROM content_roots WHERE id = ?').run(id);
+      this.insertChange(
+        'content-root',
+        id,
+        'delete',
+        existing.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
       this.insertAudit(actorId, 'delete-content-root', 'content-root', id, {
         path: existing.path,
       });
