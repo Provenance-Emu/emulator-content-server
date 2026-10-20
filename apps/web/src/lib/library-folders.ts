@@ -58,8 +58,10 @@ export function createLibraryFolders(
     try {
       const result = await client.rootSummaries(scope);
       if (live() && run === generation) {
-        // This controller's read started after the mutation; it can acknowledge absence too.
-        unacknowledgedRoots.clear();
+        // A fresh local read can prove absence, but seeing the root here does not
+        // order an older request in the independent parent cache bridge.
+        const present = new Set(result.items.map((summary) => summary.root.id));
+        for (const id of unacknowledgedRoots) if (!present.has(id)) unacknowledgedRoots.delete(id);
         update({ summaries: result.items, denied: false });
       }
     } catch (error) {

@@ -169,7 +169,40 @@ test('a delayed parent cache cannot erase a committed folder or disable its scan
   assert.equal(f.calls.filter((call) => call.path.endsWith('/scan')).length, 2);
   assert.equal(f.roots.length, 1);
   assert.equal(get(folders).scanFailures['root-0'], undefined);
-  // A successful controller read after the mutation has now acknowledged the root.
+  // A successful local read does not order a delayed parent cache receive.
+  folders.receive([]);
+  assert.equal(get(folders).summaries[0]?.root.id, 'root-0');
+  // A genuine post-mutation server read proving absence still removes the row.
+  f.roots.splice(0);
+  await folders.load({ libraryId: 'library' });
+  assert.equal(get(folders).summaries.length, 0);
+});
+
+test('a successful local summary cannot acknowledge an older parent cache after scan and discovery failure', async (t) => {
+  const f = folderFixture(t);
+  const folders = createLibraryFolders(f.client, {
+    ...f.context,
+    onchanged: () => {
+      throw new Error('Discovery unavailable');
+    },
+  });
+  await folders.load({ libraryId: 'library' });
+  f.override(async (path) =>
+    path.endsWith('/scan') ? Response.json({ title: 'Scan offline' }, { status: 503 }) : null,
+  );
+  assert.equal(await folders.add(selection()), true);
+  assert.equal(get(folders).summaries[0]?.root.id, 'root-0');
+  assert.match(get(folders).scanFailures['root-0'] ?? '', /Scan offline/);
+  folders.receive([]);
+  assert.equal(get(folders).summaries[0]?.root.id, 'root-0');
+  assert.match(get(folders).scanFailures['root-0'] ?? '', /Scan offline/);
+  f.override(null);
+  await folders.retryScan('root-0');
+  assert.equal(f.calls.filter((call) => call.path.endsWith('/scan')).length, 2);
+  assert.equal(f.roots.length, 1);
+  assert.equal(get(folders).scanFailures['root-0'], undefined);
+  // Seeing this committed ID in the parent's own response acknowledges its ordering.
+  folders.receive([...get(folders).summaries]);
   folders.receive([]);
   assert.equal(get(folders).summaries.length, 0);
 });
