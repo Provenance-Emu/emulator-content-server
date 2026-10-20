@@ -89,6 +89,23 @@ const UI_CONTENT_POLICY = [
 export function registerRoutes(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
 
+  // Keep staging bytes and the committed offset in one per-upload operation.
+  // The settled tail lets failures release waiters; remove it only when no
+  // later operation is queued so idle uploads do not remain in memory.
+  const uploadOperations = new Map<string, Promise<void>>();
+  function mutateUpload<T>(id: string, operation: () => Promise<T>): Promise<T> {
+    const result = (uploadOperations.get(id) ?? Promise.resolve()).then(operation);
+    const settled = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    uploadOperations.set(id, settled);
+    void settled.then(() => {
+      if (uploadOperations.get(id) === settled) uploadOperations.delete(id);
+    });
+    return result;
+  }
+
   const placements = new Map<string, number>();
   function reserveLocation(id: string): () => void {
     placements.set(id, (placements.get(id) ?? 0) + 1);
@@ -519,43 +536,45 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.put('/api/v1/uploads/:uploadId/content', async (request, reply) => {
     const actor = requireActor(request);
-    const upload = requireOwnedUpload(
-      catalog,
-      actor,
-      (request.params as { uploadId: string }).uploadId,
-    );
-    const header = request.headers['content-range'];
-    let offset = upload.received;
-    let expectedBytes: number | undefined;
-    if (typeof header === 'string') {
-      const parsed = parseContentRange(header);
-      if (!parsed) throw new DomainError('invalid-body', 400, 'Content-Range is invalid');
-      if (parsed.start !== upload.received) {
-        throw new DomainError(
-          'upload-gap',
-          409,
-          'Upload bytes must continue from the received offset',
-        );
+    const { uploadId } = request.params as { uploadId: string };
+    await mutateUpload(uploadId, async () => {
+      const upload = requireOpenUpload(catalog, actor, uploadId);
+      const header = request.headers['content-range'];
+      let offset = upload.received;
+      let expectedBytes: number | undefined;
+      if (typeof header === 'string') {
+        const parsed = parseContentRange(header);
+        if (!parsed) throw new DomainError('invalid-body', 400, 'Content-Range is invalid');
+        if (parsed.start !== upload.received) {
+          throw new DomainError(
+            'upload-gap',
+            409,
+            'Upload bytes must continue from the received offset',
+          );
+        }
+        offset = parsed.start;
+        expectedBytes = parsed.end - parsed.start + 1;
       }
-      offset = parsed.start;
-      expectedBytes = parsed.end - parsed.start + 1;
-    }
-    const declared = request.headers['content-length'];
-    if (typeof declared === 'string' && Number(declared) > catalog.limits.maxUploadBytes - offset) {
-      throw new DomainError('quota-exceeded', 413, 'Upload exceeds the configured byte quota');
-    }
-    await truncateStaging(stagingPath(context, upload.id), offset);
-    const written = await writeAtOffset(
-      stagingPath(context, upload.id),
-      offset,
-      asStream(request.body),
-      catalog.limits.maxUploadBytes,
-    );
-    if (expectedBytes !== undefined && written !== expectedBytes) {
+      const declared = request.headers['content-length'];
+      if (
+        typeof declared === 'string' &&
+        Number(declared) > catalog.limits.maxUploadBytes - offset
+      ) {
+        throw new DomainError('quota-exceeded', 413, 'Upload exceeds the configured byte quota');
+      }
       await truncateStaging(stagingPath(context, upload.id), offset);
-      throw new DomainError('invalid-body', 400, 'Body length does not match Content-Range');
-    }
-    catalog.setUploadReceived(upload.id, offset + written);
+      const written = await writeAtOffset(
+        stagingPath(context, upload.id),
+        offset,
+        asStream(request.body),
+        catalog.limits.maxUploadBytes,
+      );
+      if (expectedBytes !== undefined && written !== expectedBytes) {
+        await truncateStaging(stagingPath(context, upload.id), offset);
+        throw new DomainError('invalid-body', 400, 'Body length does not match Content-Range');
+      }
+      catalog.setUploadReceived(upload.id, offset + written);
+    });
     return reply.status(204).send();
   });
 
@@ -563,53 +582,55 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireActor(request);
     const uploadId = (request.params as { uploadId: string }).uploadId;
     const body = jsonObject(request.body);
-    const result = await withIdempotency(catalog, actor, request, body, async () => {
-      const upload = requireOwnedUpload(catalog, actor, uploadId);
-      const item = requireItem(catalog, requiredString(body, 'itemId'));
-      itemDecision(catalog, actor, item, 'write');
-      const kind = validateAssetKind(requiredString(body, 'kind'));
-      if (!kind) throw new DomainError('invalid-body', 400, 'Unknown asset kind');
-      let relativePath: string;
-      try {
-        relativePath = assertSafeRelativePath(requiredString(body, 'relativePath'));
-      } catch (error) {
-        throw new DomainError(
-          'invalid-body',
-          400,
-          error instanceof Error ? error.message : 'Invalid path',
+    const result = await mutateUpload(uploadId, () =>
+      withIdempotency(catalog, actor, request, body, async () => {
+        const upload = requireOpenUpload(catalog, actor, uploadId);
+        const item = requireItem(catalog, requiredString(body, 'itemId'));
+        itemDecision(catalog, actor, item, 'write');
+        const kind = validateAssetKind(requiredString(body, 'kind'));
+        if (!kind) throw new DomainError('invalid-body', 400, 'Unknown asset kind');
+        let relativePath: string;
+        try {
+          relativePath = assertSafeRelativePath(requiredString(body, 'relativePath'));
+        } catch (error) {
+          throw new DomainError(
+            'invalid-body',
+            400,
+            error instanceof Error ? error.message : 'Invalid path',
+          );
+        }
+        await truncateStaging(stagingPath(context, upload.id), upload.received);
+        if (upload.received === 0) throw new DomainError('invalid-body', 400, 'Upload is empty');
+        const placed = await placeUploadBytes(
+          context,
+          stagingPath(context, upload.id),
+          reserveLocation,
         );
-      }
-      await truncateStaging(stagingPath(context, upload.id), upload.received);
-      if (upload.received === 0) throw new DomainError('invalid-body', 400, 'Upload is empty');
-      const placed = await placeUploadBytes(
-        context,
-        stagingPath(context, upload.id),
-        reserveLocation,
-      );
-      let asset: ReturnType<CatalogDatabase['completeUpload']>;
-      try {
-        asset = catalog.completeUpload({
-          uploadId: upload.id,
-          itemId: item.id,
-          kind,
-          displayName: requiredString(body, 'displayName'),
-          relativePath,
-          baseRevision: requiredInteger(body, 'baseRevision'),
-          sha256: placed.sha256,
-          size: placed.size,
-          md5: placed.md5,
-          crc: placed.crc,
-          shareable: !isRestrictedAssetKind(kind),
-          actorId: actor.kind === 'user' ? actor.userId : null,
-          deviceId: deviceOf(actor),
-          locationId: placed.locationId,
-        });
-      } finally {
-        placed.release();
-      }
-      await removeStaging(context.dataDir, upload.id);
-      return { status: 201, body: asset };
-    });
+        let asset: ReturnType<CatalogDatabase['completeUpload']>;
+        try {
+          asset = catalog.completeUpload({
+            uploadId: upload.id,
+            itemId: item.id,
+            kind,
+            displayName: requiredString(body, 'displayName'),
+            relativePath,
+            baseRevision: requiredInteger(body, 'baseRevision'),
+            sha256: placed.sha256,
+            size: placed.size,
+            md5: placed.md5,
+            crc: placed.crc,
+            shareable: !isRestrictedAssetKind(kind),
+            actorId: actor.kind === 'user' ? actor.userId : null,
+            deviceId: deviceOf(actor),
+            locationId: placed.locationId,
+          });
+        } finally {
+          placed.release();
+        }
+        await removeStaging(context.dataDir, upload.id);
+        return { status: 201, body: asset };
+      }),
+    );
     return reply.status(result.status).send(result.body);
   });
 
@@ -625,15 +646,14 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.delete('/api/v1/uploads/:uploadId', async (request, reply) => {
     const actor = requireActor(request);
-    const upload = requireOwnedUpload(
-      catalog,
-      actor,
-      (request.params as { uploadId: string }).uploadId,
-    );
-    if (!catalog.abortUpload(upload.id, actor.kind === 'user' ? actor.userId : null)) {
-      throw new DomainError('upload-closed', 409, 'Upload is not open');
-    }
-    await removeStaging(context.dataDir, upload.id);
+    const { uploadId } = request.params as { uploadId: string };
+    await mutateUpload(uploadId, async () => {
+      const upload = requireOwnedUpload(catalog, actor, uploadId);
+      if (!catalog.abortUpload(upload.id, actor.kind === 'user' ? actor.userId : null)) {
+        throw new DomainError('upload-closed', 409, 'Upload is not open');
+      }
+      await removeStaging(context.dataDir, upload.id);
+    });
     return reply.status(204).send();
   });
 
@@ -1045,6 +1065,14 @@ function requireOwnedUpload(catalog: CatalogDatabase, actor: Actor, id: string):
   const owned =
     actor.kind === 'user' ? upload.userId === actor.userId : upload.guestGrantId === actor.grantId;
   if (!owned) throw new DomainError('not-found', 404, 'Upload not found');
+  return upload;
+}
+
+function requireOpenUpload(catalog: CatalogDatabase, actor: Actor, id: string): UploadRecord {
+  const upload = requireOwnedUpload(catalog, actor, id);
+  if (upload.state !== 'open') {
+    throw new DomainError('upload-closed', 409, 'Upload is not open');
+  }
   return upload;
 }
 
