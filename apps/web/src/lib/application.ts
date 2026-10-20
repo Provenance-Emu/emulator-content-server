@@ -122,7 +122,8 @@ export function createApplication(
     }
   }
   async function discover(run: number): Promise<'ok' | 'error' | 'unauthorized' | 'stale'> {
-    let owner = false;
+    // Auth changes clear current.owner; only this epoch's confirmed authority survives a transient check.
+    let owner = current.owner;
     let failure: string | null = null;
     try {
       await context.client.roots();
@@ -131,7 +132,8 @@ export function createApplication(
     } catch (error) {
       if (!live(run)) return 'stale';
       if (isUnauthorized(error)) return 'unauthorized';
-      if (!isForbidden(error)) failure = explain(error);
+      if (isForbidden(error)) owner = false;
+      else failure = explain(error);
     }
     try {
       const listing = await context.client.browseLibraries();

@@ -369,3 +369,129 @@ test('initial transient discovery failure retries stored credentials on the next
     f.restore();
   }
 });
+
+for (const scenario of [
+  { name: 'roots 503', networkFailure: false, discoveryStatus: 200 },
+  { name: 'roots network failure', networkFailure: true, discoveryStatus: 200 },
+  { name: 'roots and discovery 503', networkFailure: false, discoveryStatus: 503 },
+]) {
+  test(`established owner authority survives ${scenario.name} within its authentication epoch`, async () => {
+    const f = serverFixture();
+    const app = createApplication(f.context, f.scheduler);
+    try {
+      await app.start();
+      const initial = get(app);
+      assert.equal(initial.owner, true);
+      let unassignedWouldClear = false;
+      const unsubscribe = app.subscribe((state) => {
+        if (!state.signedIn || !state.owner || state.authEpoch !== initial.authEpoch) {
+          unassignedWouldClear = true;
+        }
+      });
+      try {
+        if (scenario.networkFailure)
+          f.roots = async () => {
+            throw new TypeError('fetch failed');
+          };
+        else f.ownerStatus = 503;
+        f.discoveryStatus = scenario.discoveryStatus;
+        await f.scheduler.tick();
+        assert.equal(get(app).owner, true);
+        assert.equal(get(app).signedIn, true);
+        assert.equal(
+          unassignedWouldClear,
+          false,
+          'transient checks must not clear the owner-only scope',
+        );
+        assert.deepEqual(get(app).libraries, initial.libraries);
+        assert.ok(get(app).failure, 'the transient failure remains visible');
+        assert.equal(f.scheduler.pending, 1);
+      } finally {
+        unsubscribe();
+      }
+    } finally {
+      app.dispose();
+      f.restore();
+    }
+  });
+}
+
+test('an explicit roots 403 demotes established owner authority while browsing remains signed in', async () => {
+  const f = serverFixture();
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    assert.equal(get(app).owner, true);
+    f.ownerStatus = 403;
+    await f.scheduler.tick();
+    assert.equal(get(app).owner, false);
+    assert.equal(get(app).signedIn, true);
+    assert.equal(get(app).libraries[0]?.id, 'library');
+    assert.equal(get(app).failure, null);
+  } finally {
+    app.dispose();
+    f.restore();
+  }
+});
+
+test('an explicit roots 401 clears established authority and private session state', async () => {
+  const f = serverFixture();
+  f.context.sessions.save(session);
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    assert.equal(get(app).owner, true);
+    f.ownerStatus = 401;
+    await f.scheduler.tick();
+    assert.equal(get(app).owner, false);
+    assert.equal(get(app).signedIn, false);
+    assert.equal(get(app).hasSession, false);
+    assert.deepEqual(get(app).libraries, []);
+    assert.equal(f.context.sessions.load(), null);
+  } finally {
+    app.dispose();
+    f.restore();
+  }
+});
+
+test('a reader stays nonowner after a transient roots 503', async () => {
+  const f = serverFixture();
+  f.ownerStatus = 403;
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    assert.equal(get(app).owner, false);
+    f.ownerStatus = 503;
+    await f.scheduler.tick();
+    assert.equal(get(app).owner, false);
+    assert.equal(get(app).signedIn, true);
+    assert.ok(get(app).failure);
+  } finally {
+    app.dispose();
+    f.restore();
+  }
+});
+
+test('a new login cannot inherit the previous owner authority after a transient roots error', async () => {
+  const f = serverFixture();
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    assert.equal(get(app).owner, true);
+    const previousEpoch = get(app).authEpoch;
+    f.ownerStatus = 503;
+    const login = app.adoptSession(
+      { ...session, token: 'generated-reader-session' },
+      previousEpoch,
+    );
+    assert.equal(get(app).owner, false);
+    assert.equal(await login, true);
+    assert.ok(get(app).authEpoch > previousEpoch);
+    assert.equal(get(app).owner, false);
+    assert.equal(get(app).signedIn, true);
+    assert.ok(get(app).failure);
+  } finally {
+    app.dispose();
+    f.restore();
+  }
+});
