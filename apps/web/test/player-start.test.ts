@@ -123,6 +123,7 @@ for (const failure of [
   'worklet',
   'relative-import',
   'dynamic-import',
+  'import-scripts',
 ]) {
   test(`unsupported ${failure} bytes fail before importer/factory invocation`, async () => {
     const f = fixture();
@@ -136,6 +137,7 @@ for (const failure of [
         worklet: 'audio.audioWorklet.addModule("audio.js")',
         'relative-import': 'import helper from "./helper.js";',
         'dynamic-import': 'const helper = import("./helper.js");',
+        'import-scripts': 'importScripts("./helper.js");',
       };
       if (text[failure]) {
         assets.loader.bytes = new TextEncoder().encode(text[failure]);
@@ -170,4 +172,17 @@ test('explicit same-library/system source target wins over similarly titled item
   assert.equal(f.uploads[0]?.itemId, explicit.id);
   assert.equal(f.uploads[0]?.libraryId, 'library');
   assert.equal(f.uploads[0]?.baseRevision, 7);
+});
+
+// The pinned single-thread SDK emits this feature detection without using workers.
+test('Emscripten importScripts feature detection does not prevent a self-contained core from starting', async () => {
+  const f = fixture();
+  const assets = await f.client.playerCoreAssets(f.core.id);
+  assets.loader.bytes = new TextEncoder().encode(
+    'var ENVIRONMENT_IS_WORKER=typeof importScripts=="function"; export default ()=>({});',
+  );
+  f.core.loader.sizeBytes = assets.loader.bytes.length;
+  f.client.playerCoreAssets = async () => assets;
+  await startPlayer(f.client, selection, { canvas, importer: f.importer });
+  assert.ok(f.events.includes('main'));
 });

@@ -65,7 +65,7 @@ export function validateCoreBytes(
     throw new Error('Invalid core artifact size or WASM header');
   const loader = new TextDecoder('utf-8', { fatal: true }).decode(assets.loader.bytes);
   if (
-    /\bimport\s*(?!\s*\.)|\b(?:Worker|SharedWorker)\s*\(|\b(?:audioWorklet|paintWorklet)\b|\bimportScripts\s*\(/.test(
+    /\bimport\b\s*(?!\s*\.)|\b(?:Worker|SharedWorker)\s*\(|\b(?:audioWorklet|paintWorklet)\b|\bimportScripts\s*\(/.test(
       loader,
     )
   )
