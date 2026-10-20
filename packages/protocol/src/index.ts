@@ -1,3 +1,8 @@
+export {
+  type BrowseCursorPosition,
+  decodeBrowseCursor,
+  encodeBrowseCursor,
+} from './browse-cursor.js';
 export { buildCapabilities, type Capabilities } from './capabilities.js';
 export {
   ASSET_KINDS,

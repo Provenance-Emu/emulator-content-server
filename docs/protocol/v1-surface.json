@@ -12,6 +12,8 @@
     "DELETE /api/v1/webdav-credentials/:id",
     "GET /api/v1/access",
     "GET /api/v1/audit",
+    "GET /api/v1/browse",
+    "GET /api/v1/browse-libraries",
     "GET /api/v1/capabilities",
     "GET /api/v1/changes",
     "GET /api/v1/files/:assetId",
@@ -25,6 +27,7 @@
     "GET /api/v1/items/:itemId/manifest",
     "GET /api/v1/libraries",
     "GET /api/v1/player/core",
+    "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
     "GET /api/v1/sources",
     "GET /api/v1/sources/:sourceId/content",
@@ -39,6 +42,7 @@
     "HEAD /api/v1/files/:assetId/entries/:entryId/content",
     "HEAD /api/v1/sources/:sourceId/content",
     "PATCH /api/v1/items/:itemId",
+    "PATCH /api/v1/libraries/:libraryId",
     "PATCH /api/v1/users/:userId",
     "POST /api/v1/auth/bootstrap",
     "POST /api/v1/auth/login",
@@ -58,6 +62,7 @@
     "PUT /api/v1/access",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
+    "PUT /api/v1/roots/:rootId/library",
     "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
   ],
@@ -209,6 +214,7 @@
     },
     "Library": {
       "properties": [
+        "canCreateItems",
         "createdAt",
         "id",
         "name",
@@ -852,6 +858,77 @@
       ]
     },
     "GuestGrantList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "RootLibraryAssignment": {
+      "properties": [
+        "libraryId"
+      ],
+      "required": [
+        "libraryId"
+      ]
+    },
+    "LibraryBrowseEntry": {
+      "properties": [
+        "asset",
+        "canAdopt",
+        "canUpload",
+        "entityType",
+        "id",
+        "item",
+        "libraryId",
+        "name",
+        "parentItem",
+        "previewAsset",
+        "source",
+        "systemId"
+      ],
+      "required": [
+        "canAdopt",
+        "canUpload",
+        "entityType",
+        "id",
+        "libraryId",
+        "name",
+        "systemId"
+      ]
+    },
+    "LibraryBrowsePage": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "ContentRootSummary": {
+      "properties": [
+        "indexedFileCount",
+        "lastCheckAt",
+        "lastScanAt",
+        "medium",
+        "online",
+        "root",
+        "scanState"
+      ],
+      "required": [
+        "indexedFileCount",
+        "lastCheckAt",
+        "lastScanAt",
+        "medium",
+        "online",
+        "root",
+        "scanState"
+      ]
+    },
+    "ContentRootSummaryList": {
       "properties": [
         "items"
       ],

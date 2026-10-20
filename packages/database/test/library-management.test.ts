@@ -212,3 +212,47 @@ test('root summaries aggregate only authorized cached rows and record explicit c
     f.db.close();
   }
 });
+
+test('identical root checks update freshness without publishing a refresh event', () => {
+  const f = fixture();
+  try {
+    const root = f.db.createContentRoot({
+      path: '/not/probed',
+      label: 'Shelf',
+      libraryId: f.library.id,
+      actorId: f.owner.id,
+    });
+    const events = () =>
+      f.db.changes({
+        after: 0,
+        limit: 100,
+        libraryIds: [f.library.id],
+        includeSensitive: true,
+        itemId: null,
+      }).changes.length;
+    f.db.recordRootCheck({
+      rootId: root.id,
+      availability: 'online',
+      medium: 'internal',
+      checkedAt: '2026-10-20T10:00:00Z',
+    });
+    const first = events();
+    f.db.recordRootCheck({
+      rootId: root.id,
+      availability: 'online',
+      medium: 'internal',
+      checkedAt: '2026-10-20T11:00:00Z',
+    });
+    assert.equal(events(), first);
+    assert.equal(
+      f.db.listContentRootSummaries({ actor: f.actor })[0]?.lastCheckedAt,
+      '2026-10-20T11:00:00Z',
+    );
+    f.db.recordRootCheck({ rootId: root.id, availability: 'offline', medium: 'internal' });
+    assert.equal(events(), first + 1);
+    f.db.recordRootCheck({ rootId: root.id, availability: 'offline', medium: 'removable' });
+    assert.equal(events(), first + 2);
+  } finally {
+    f.db.close();
+  }
+});

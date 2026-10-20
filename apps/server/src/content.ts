@@ -72,7 +72,8 @@ export function canSeeRoot(
   libraryId: string | null,
   catalog: CatalogDatabase,
 ): boolean {
-  if (actor.kind === 'guest') return libraryId === actor.libraryId;
+  if (actor.kind === 'guest')
+    return actor.capabilities.includes('read') && !actor.itemId && libraryId === actor.libraryId;
   if (actor.isOwner || actor.localTrust === true) return true;
   if (libraryId === null) return false;
   return catalog.visibleLibraryIds(actor).includes(libraryId);
@@ -80,7 +81,8 @@ export function canSeeRoot(
 
 export function canSeeSource(actor: Actor, libraryId: string | null, kind: string): boolean {
   if (actor.kind !== 'guest') return true;
-  if (libraryId !== actor.libraryId) return false;
+  if (!actor.capabilities.includes('read') || actor.itemId || libraryId !== actor.libraryId)
+    return false;
   const parsed = validateAssetKind(kind);
   return !(
     parsed &&

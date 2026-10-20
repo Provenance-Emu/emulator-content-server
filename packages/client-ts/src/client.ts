@@ -8,6 +8,7 @@ import type {
   ContentRootDraft,
   ContentRootList,
   ContentRootScan,
+  ContentRootSummaryList,
   FolderListing,
   GuestGrantCreated,
   GuestGrantDraft,
@@ -15,6 +16,9 @@ import type {
   Item,
   ItemDraft,
   ItemList,
+  Library,
+  LibraryBrowsePage,
+  LibraryDraft,
   LibraryList,
   Manifest,
   PlayerCoreDescriptor,
@@ -33,6 +37,19 @@ import type {
   WebDavCredentialDraft,
   WebDavCredentialList,
 } from './generated.js';
+
+export type LibraryScope = { libraryId: string } | { unassigned: true };
+export type BrowseCategory = 'games' | 'saves' | 'media' | 'system_files';
+export type BrowseSort = 'name_asc' | 'name_desc';
+export type LibraryBrowseQuery = LibraryScope & {
+  category: BrowseCategory;
+  rootId?: string;
+  systemId?: string;
+  search?: string;
+  sort?: BrowseSort;
+  cursor?: string;
+  limit?: number;
+};
 
 export interface ResumePlan {
   offset: number;
@@ -141,6 +158,46 @@ export class ContentClient {
     private readonly baseUrl: string,
     private token?: string,
   ) {}
+
+  async browse(query: LibraryBrowseQuery): Promise<LibraryBrowsePage> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query))
+      if (value !== undefined) params.set(key, String(value));
+    const page = await this.getJson<LibraryBrowsePage>(`/api/v1/browse?${params}`);
+    validateBrowsePage(page);
+    return page;
+  }
+
+  browseLibraries(): Promise<LibraryList> {
+    return this.getJson('/api/v1/browse-libraries');
+  }
+  createLibrary(draft: LibraryDraft): Promise<Library> {
+    return this.post('/api/v1/libraries', draft);
+  }
+  async renameLibrary(id: string, patch: { name: string }, baseRevision: number): Promise<Library> {
+    const response = await fetch(this.url(`/api/v1/libraries/${encodeURIComponent(id)}`), {
+      method: 'PATCH',
+      headers: {
+        ...this.headers(),
+        'content-type': 'application/json',
+        'if-match': `"rev-${baseRevision}"`,
+      },
+      body: JSON.stringify(patch),
+    });
+    if (!response.ok) throw await failure(response);
+    return (await response.json()) as Library;
+  }
+  rootSummaries(
+    filter: { libraryId?: string; unassigned?: boolean } = {},
+  ): Promise<ContentRootSummaryList> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filter))
+      if (value !== undefined) params.set(key, String(value));
+    return this.getJson(`/api/v1/root-summaries${params.size ? `?${params}` : ''}`);
+  }
+  assignRoot(id: string, assignment: { libraryId: string }): Promise<ContentRoot> {
+    return this.putJson(`/api/v1/roots/${encodeURIComponent(id)}/library`, assignment);
+  }
 
   setToken(token: string | undefined): void {
     this.token = token;
@@ -733,4 +790,123 @@ function concat(parts: Uint8Array[], size: number): Uint8Array<ArrayBuffer> {
 
 function slice(body: UploadBody, offset: number, end: number): UploadBody {
   return body instanceof Uint8Array ? body.subarray(offset, end) : body.slice(offset, end);
+}
+
+function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage {
+  const object = (v: unknown): v is Record<string, unknown> =>
+    !!v && typeof v === 'object' && !Array.isArray(v);
+  const nullableString = (v: unknown) => v === null || typeof v === 'string';
+  const fail = () => {
+    throw new TypeError('Invalid library browse response');
+  };
+  const strings = (v: Record<string, unknown>, keys: string[]) =>
+    keys.every((key) => typeof v[key] === 'string');
+  const integer = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+  const item = (v: unknown): v is Record<string, unknown> =>
+    object(v) &&
+    strings(v, ['id', 'libraryId', 'systemIdentifier', 'title', 'createdAt', 'updatedAt']) &&
+    integer(v.revision) &&
+    nullableString(v.md5) &&
+    nullableString(v.crc);
+  const asset = (v: unknown): v is Record<string, unknown> =>
+    object(v) &&
+    strings(v, [
+      'id',
+      'itemId',
+      'kind',
+      'displayName',
+      'relativePath',
+      'sha256',
+      'createdAt',
+      'updatedAt',
+    ]) &&
+    integer(v.revision) &&
+    integer(v.size) &&
+    typeof v.shareable === 'boolean' &&
+    nullableString(v.md5) &&
+    nullableString(v.crc) &&
+    (v.conflictOf === undefined || nullableString(v.conflictOf));
+  const source = (v: unknown): v is Record<string, unknown> =>
+    object(v) &&
+    strings(v, ['id', 'rootId', 'name', 'kind', 'availability', 'medium', 'contentPath']) &&
+    nullableString(v.libraryId) &&
+    nullableString(v.systemId) &&
+    integer(v.size) &&
+    v.contentPath === `/api/v1/sources/${encodeURIComponent(String(v.id))}/content`;
+
+  if (
+    !object(value) ||
+    !Array.isArray(value.items) ||
+    value.items.length > 100 ||
+    !nullableString(value.nextCursor) ||
+    (typeof value.nextCursor === 'string' && value.nextCursor.length > 4096)
+  )
+    return fail();
+  for (const entry of value.items) {
+    if (
+      !object(entry) ||
+      typeof entry.entityType !== 'string' ||
+      !['item', 'asset', 'source'].includes(entry.entityType) ||
+      typeof entry.id !== 'string' ||
+      typeof entry.name !== 'string' ||
+      !nullableString(entry.libraryId) ||
+      !nullableString(entry.systemId) ||
+      typeof entry.canUpload !== 'boolean' ||
+      typeof entry.canAdopt !== 'boolean'
+    )
+      return fail();
+    for (const key of ['item', 'asset', 'source'])
+      if (
+        key === entry.entityType
+          ? !object(entry[key]) || entry[key].id !== entry.id
+          : entry[key] !== undefined
+      )
+        return fail();
+    if (
+      entry.entityType === 'item' &&
+      (!item(entry.item) ||
+        entry.item.libraryId !== entry.libraryId ||
+        entry.item.systemIdentifier !== entry.systemId ||
+        entry.item.title !== entry.name)
+    )
+      return fail();
+    if (
+      entry.entityType === 'asset' &&
+      (!asset(entry.asset) ||
+        !item(entry.parentItem) ||
+        entry.parentItem.libraryId !== entry.libraryId ||
+        entry.parentItem.systemIdentifier !== entry.systemId ||
+        entry.asset.displayName !== entry.name ||
+        (entry.canAdopt && !entry.asset.conflictOf))
+    )
+      return fail();
+    if (
+      entry.entityType === 'source' &&
+      (!source(entry.source) ||
+        entry.source.libraryId !== entry.libraryId ||
+        entry.source.systemId !== entry.systemId ||
+        entry.source.name !== entry.name)
+    )
+      return fail();
+    if (
+      (entry.entityType === 'source' && (entry.canUpload || entry.canAdopt)) ||
+      (entry.entityType !== 'asset' && entry.parentItem !== undefined) ||
+      (entry.entityType !== 'item' && entry.previewAsset !== undefined) ||
+      (entry.entityType === 'item' && entry.canAdopt)
+    )
+      return fail();
+    if (
+      entry.entityType === 'asset' &&
+      (!object(entry.parentItem) ||
+        (entry.asset as Record<string, unknown>).itemId !== entry.parentItem.id)
+    )
+      return fail();
+    if (
+      entry.previewAsset !== undefined &&
+      (!asset(entry.previewAsset) ||
+        entry.previewAsset.kind !== 'artwork' ||
+        entry.previewAsset.itemId !== entry.id)
+    )
+      return fail();
+  }
 }

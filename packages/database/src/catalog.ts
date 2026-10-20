@@ -661,11 +661,16 @@ export class CatalogDatabase {
     this.transaction(() => {
       const root = this.getContentRoot(input.rootId);
       if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+      const previous = this.one<{ availability: string; medium: string | null }>(
+        'SELECT availability, medium FROM content_roots WHERE id = ?',
+        input.rootId,
+      );
       this.db
         .prepare(
           'UPDATE content_roots SET last_checked_at = ?, availability = ?, medium = ? WHERE id = ?',
         )
         .run(input.checkedAt ?? nowIso(), input.availability, input.medium, input.rootId);
+      if (previous?.availability === input.availability && previous.medium === input.medium) return;
       this.insertChange(
         'content-root',
         root.id,

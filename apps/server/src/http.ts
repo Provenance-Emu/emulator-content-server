@@ -212,3 +212,28 @@ export function assetDecision(
     'File is not available',
   );
 }
+
+export function requireUser(
+  request: FastifyRequest,
+  scope: ItemPermission,
+): Actor & { kind: 'user' } {
+  const actor = requireActor(request);
+  if (actor.kind !== 'user' || !actor.scopes.includes(scope)) {
+    throw new DomainError('forbidden', 403, 'This token cannot perform that action');
+  }
+  return actor;
+}
+
+export function requireOwner(request: FastifyRequest, message: string): Actor & { kind: 'user' } {
+  const actor = requireUser(request, 'admin');
+  if (!actor.isOwner || actor.localTrust) throw new DomainError('forbidden', 403, message);
+  return actor;
+}
+
+export function requireRevision(request: FastifyRequest): number {
+  const value = request.headers['if-match'];
+  const header = typeof value === 'string' ? value : undefined;
+  const match = header ? /^"rev-(\d+)"$/.exec(header.trim()) : null;
+  if (!match?.[1]) throw new DomainError('precondition-required', 428, 'If-Match must be "rev-N"');
+  return Number(match[1]);
+}
