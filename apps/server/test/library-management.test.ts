@@ -182,3 +182,48 @@ test('legacy library creation remains available to admin-scoped users while new 
     await f.dispose();
   }
 });
+
+test('actual server startup recovers abandoned scans without auxiliary opens changing ownership', async () => {
+  const f = await libraryFixture();
+  let active = true;
+  try {
+    const { CatalogDatabase } = await import('@ecs/database');
+    const { openServer } = await import('../src/index.js');
+    const root = f.catalog.createContentRoot({
+      path: join(f.base, 'not-probed'),
+      label: 'Abandoned',
+      libraryId: f.library.id,
+      actorId: f.owner.id,
+    });
+    f.catalog.beginRootScan(root.id);
+    await f.close();
+    active = false;
+    const filename = join(f.base, 'data', 'library.sqlite');
+    const auxiliary = new CatalogDatabase(filename);
+    try {
+      assert.equal(auxiliary.listContentRootSummaries({ actor: f.actor })[0]?.scanState, 'pending');
+      assert.throws(() => auxiliary.beginRootScan(root.id));
+    } finally {
+      auxiliary.close();
+    }
+    for (let startup = 0; startup < 2; startup++) {
+      const server = await openServer({ dataDir: join(f.base, 'data') });
+      try {
+        const summary = server.catalog.listContentRootSummaries({ actor: f.actor })[0];
+        assert.equal(summary?.scanState, 'failed');
+        assert.equal(summary?.scanError, 'Scan interrupted. Retry scan.');
+        assert.ok(summary?.lastScanCompletedAt);
+        assert.equal(server.catalog.getContentRoot(root.id)?.libraryId, f.library.id);
+        if (startup === 0) {
+          server.catalog.beginRootScan(root.id);
+        }
+      } finally {
+        await server.close();
+      }
+    }
+  } finally {
+    if (active) await f.close();
+    const { rm } = await import('node:fs/promises');
+    await rm(f.base, { recursive: true, force: true });
+  }
+});

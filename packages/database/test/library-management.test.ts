@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { type Actor, DomainError } from '@ecs/domain';
 import { CatalogDatabase } from '../src/index.js';
@@ -254,5 +257,52 @@ test('identical root checks update freshness without publishing a refresh event'
     assert.equal(events(), first + 2);
   } finally {
     f.db.close();
+  }
+});
+
+test('auxiliary catalog opens preserve a live pending scan and its duplicate guard', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-scan-owner-'));
+  const filename = join(directory, 'catalog.sqlite');
+  const active = new CatalogDatabase(filename);
+  try {
+    const owner = active.createUser({
+      username: 'owner',
+      passwordHash: 'fixture',
+      actorId: 'fixture',
+    });
+    const library = active.createLibrary(owner.id, 'Shelf');
+    const root = active.createContentRoot({
+      path: '/not/probed',
+      label: 'Root',
+      libraryId: library.id,
+      actorId: owner.id,
+    });
+    const actor: Actor = {
+      kind: 'user',
+      userId: owner.id,
+      username: 'owner',
+      isOwner: true,
+      tokenKind: 'session',
+      deviceId: null,
+      scopes: ['read'],
+    };
+    active.beginRootScan(root.id);
+    for (let i = 0; i < 2; i++) {
+      const auxiliary = new CatalogDatabase(filename);
+      try {
+        assert.equal(auxiliary.integrity(), 'ok');
+        assert.equal(auxiliary.listContentRootSummaries({ actor })[0]?.scanState, 'pending');
+        assert.throws(() => auxiliary.beginRootScan(root.id), code('conflict'));
+      } finally {
+        auxiliary.close();
+      }
+      assert.equal(active.listContentRootSummaries({ actor })[0]?.scanState, 'pending');
+      assert.throws(() => active.beginRootScan(root.id), code('conflict'));
+    }
+    active.finishRootScan({ rootId: root.id, succeeded: true });
+    assert.equal(active.listContentRootSummaries({ actor })[0]?.scanState, 'completed');
+  } finally {
+    active.close();
+    await rm(directory, { recursive: true, force: true });
   }
 });

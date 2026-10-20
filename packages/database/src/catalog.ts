@@ -117,11 +117,6 @@ export class CatalogDatabase {
           .toLowerCase(),
       );
       this.migrate();
-      this.db
-        .prepare(
-          "UPDATE content_roots SET scan_state = 'failed', last_scan_completed_at = ?, scan_error = 'Scan interrupted. Retry scan.' WHERE scan_state = 'pending'",
-        )
-        .run(nowIso());
     } catch (error) {
       this.db.close();
       throw error;
@@ -649,6 +644,39 @@ export class CatalogDatabase {
         libraryId: input.libraryId,
       });
       return { ...root, libraryId: input.libraryId };
+    });
+  }
+
+  contentRootMedium(rootId: string): string | null {
+    return (
+      this.one<{ medium: string | null }>('SELECT medium FROM content_roots WHERE id = ?', rootId)
+        ?.medium ?? null
+    );
+  }
+
+  recoverInterruptedRootScans(): number {
+    return this.transaction(() => {
+      const pending = this.db
+        .prepare("SELECT id, library_id FROM content_roots WHERE scan_state = 'pending'")
+        .all() as Array<{ id: string; library_id: string | null }>;
+      const timestamp = nowIso();
+      this.db
+        .prepare(
+          "UPDATE content_roots SET scan_state = 'failed', last_scan_completed_at = ?, scan_error = 'Scan interrupted. Retry scan.' WHERE scan_state = 'pending'",
+        )
+        .run(timestamp);
+      for (const root of pending)
+        this.insertChange(
+          'content-root',
+          root.id,
+          'upsert',
+          root.library_id,
+          null,
+          false,
+          timestamp,
+          null,
+        );
+      return pending.length;
     });
   }
 

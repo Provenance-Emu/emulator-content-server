@@ -518,3 +518,88 @@ test('save conflict adoption flags follow current asset write authorization', as
     await f.dispose();
   }
 });
+
+test('unavailable or replaced roots retain cached media without probing replacement paths', async () => {
+  let rootProbes = 0;
+  let fileProbes = 0;
+  const f = await harness({
+    root: async () => {
+      rootProbes++;
+      return { online: true, medium: 'internal' };
+    },
+    file: async () => {
+      fileProbes++;
+      return { availability: 'local', size: 1, blocks: 1 };
+    },
+  });
+  try {
+    const { rm } = await import('node:fs/promises');
+    for (const medium of ['removable', 'network', null] as const) {
+      const path = join(f.base, medium ?? 'unknown');
+      await mkdir(path);
+      const root = f.catalog.createContentRoot({
+        path,
+        label: medium ?? 'unknown',
+        libraryId: f.library.id,
+        actorId: f.owner.id,
+      });
+      f.catalog.applyInspection({
+        rootId: root.id,
+        actorId: f.owner.id,
+        online: true,
+        files: [
+          {
+            relativePath: 'generated',
+            displayName: 'Generated',
+            kind: 'rom',
+            systemId: null,
+            size: 1,
+            blocks: 1,
+            availability: 'local',
+          },
+        ],
+      });
+      if (medium) f.catalog.recordRootCheck({ rootId: root.id, availability: 'online', medium });
+      await rm(path, { recursive: true });
+      const url = `${f.url}&rootId=${root.id}`;
+      const missing = await f.app.inject({ url });
+      assert.equal(missing.statusCode, 200, missing.body);
+      assert.equal(missing.json().items[0].source.medium, medium ?? 'unknown');
+      assert.equal(missing.json().items[0].source.availability, 'offline');
+      let summary = f.catalog
+        .listContentRootSummaries({ actor: f.actor })
+        .find((row) => row.id === root.id);
+      assert.equal(summary?.medium, medium);
+      assert.equal(summary?.availability, 'offline');
+      const before = f.catalog.changes({
+        after: 0,
+        limit: 100,
+        libraryIds: [f.library.id],
+        includeSensitive: true,
+        itemId: null,
+      }).nextCursor;
+      await symlink(f.base, path);
+      const replaced = await f.app.inject({ url });
+      assert.equal(replaced.statusCode, 200, replaced.body);
+      assert.equal(replaced.json().items[0].source.medium, medium ?? 'unknown');
+      summary = f.catalog
+        .listContentRootSummaries({ actor: f.actor })
+        .find((row) => row.id === root.id);
+      assert.equal(summary?.medium, medium);
+      assert.equal(
+        f.catalog.changes({
+          after: before,
+          limit: 100,
+          libraryIds: [f.library.id],
+          includeSensitive: true,
+          itemId: null,
+        }).changes.length,
+        0,
+      );
+    }
+    assert.equal(rootProbes, 0);
+    assert.equal(fileProbes, 0);
+  } finally {
+    await f.dispose();
+  }
+});

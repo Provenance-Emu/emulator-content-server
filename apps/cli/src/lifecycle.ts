@@ -251,19 +251,31 @@ export async function scanRoots(
     if (rootId !== null && roots.length === 0) throw new Error('Content root not found');
     const results = [];
     for (const root of roots) {
-      const inspected = await inspectRoot(root.path);
-      const count = catalog.applyInspection({
-        rootId: root.id,
-        actorId: CLI_ACTOR,
-        online: inspected.online,
-        files: inspected.files,
-      });
-      results.push({
-        label: root.label,
-        medium: inspected.medium,
-        online: inspected.online,
-        count,
-      });
+      catalog.beginRootScan(root.id);
+      try {
+        const inspected = await inspectRoot(root.path);
+        const count = catalog.applyInspection({
+          rootId: root.id,
+          actorId: CLI_ACTOR,
+          online: inspected.online,
+          files: inspected.files,
+        });
+        catalog.recordRootCheck({
+          rootId: root.id,
+          availability: inspected.online ? 'online' : 'offline',
+          medium: inspected.medium,
+        });
+        catalog.finishRootScan({ rootId: root.id, succeeded: true });
+        results.push({
+          label: root.label,
+          medium: inspected.medium,
+          online: inspected.online,
+          count,
+        });
+      } catch {
+        catalog.finishRootScan({ rootId: root.id, succeeded: false });
+        throw new Error('Scan failed. Retry scan.');
+      }
     }
     return results;
   } finally {

@@ -149,7 +149,7 @@ test('a tampered ledger is a hard error rather than a partial upgrade', async ()
   }
 });
 
-test('version 8 upgrades preserve root and source identities and recover interrupted scans twice', async () => {
+test('version 8 upgrades preserve identities while only explicit startup recovery interrupts scans', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ecs-v8-'));
   const filename = join(dir, 'catalog.sqlite');
   try {
@@ -183,6 +183,11 @@ test('version 8 upgrades preserve root and source identities and recover interru
     first.close();
     for (let open = 0; open < 2; open++) {
       const reopened = new CatalogDatabase(filename);
+      assert.equal(
+        reopened.listContentRootSummaries({ actor: { ...actor, scopes: ['read'] } })[0]?.scanState,
+        open === 0 ? 'pending' : 'failed',
+      );
+      assert.equal(reopened.recoverInterruptedRootScans(), open === 0 ? 1 : 0);
       const recovered = reopened.listContentRootSummaries({
         actor: { ...actor, scopes: ['read'] },
       })[0];

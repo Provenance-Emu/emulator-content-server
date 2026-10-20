@@ -186,6 +186,7 @@ export function registerLibraryBrowse(
       sourceRows.map((row) => [row.source.rootId, catalog.getContentRoot(row.source.rootId)]),
     );
     const rootChecks = new Map<string, Awaited<ReturnType<typeof probeRoot>>>();
+    const rootMedia = new Map<string, string | null>();
     await bounded([...roots.entries()], async ([id, root]) => {
       if (!root) return;
       let pinned = true;
@@ -194,15 +195,20 @@ export function registerLibraryBrowse(
       } catch {
         pinned = false;
       }
-      const live = pinned
-        ? await probes.root(root.path)
-        : { online: false, medium: 'internal' as const };
-      rootChecks.set(id, live);
-      catalog.recordRootCheck({
-        rootId: id,
-        availability: live.online ? 'online' : 'offline',
-        medium: live.medium,
-      });
+      if (pinned) {
+        const live = await probes.root(root.path);
+        rootChecks.set(id, live);
+        rootMedia.set(id, live.medium);
+        catalog.recordRootCheck({
+          rootId: id,
+          availability: live.online ? 'online' : 'offline',
+          medium: live.medium,
+        });
+      } else {
+        const medium = catalog.contentRootMedium(id);
+        rootMedia.set(id, medium);
+        catalog.recordRootCheck({ rootId: id, availability: 'offline', medium });
+      }
     });
     const sources = new Map<string, unknown>();
     await bounded(sourceRows, async ({ source }) => {
@@ -237,7 +243,7 @@ export function registerLibraryBrowse(
         size,
         systemId: source.systemId,
         availability,
-        medium: check?.medium ?? 'local',
+        medium: rootMedia.get(source.rootId) ?? 'unknown',
         contentPath: `/api/v1/sources/${source.id}/content`,
       });
     });
