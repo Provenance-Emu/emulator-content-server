@@ -4,16 +4,19 @@ import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test, { type TestContext } from 'node:test';
-import { ContentClient, ContentError } from '@ecs/client';
-import { openServer } from '@ecs/server';
-import { startPlayer } from '../src/player/controller.js';
-import { fixture } from './player-fixture.js';
+import test from 'node:test';
+import { openServer } from '../apps/server/dist/src/index.js';
+import { startPlayer } from '../apps/web/dist-tests/src/player/controller.js';
+import { fixture } from '../apps/web/dist-tests/test/player-fixture.js';
+import { ContentClient, ContentError } from '../packages/client-ts/dist/src/index.js';
 
-const sha = (bytes: string | Uint8Array) => createHash('sha256').update(bytes).digest('hex');
-async function setup(t: TestContext) {
+/** @param {string | Uint8Array} bytes */
+const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
+/** @param {import('node:test').TestContext} t */
+async function setup(t) {
   const dir = await mkdtemp(join(tmpdir(), 'ecs-browser-api-'));
-  let server: Awaited<ReturnType<typeof openServer>> | undefined;
+  /** @type {Awaited<ReturnType<typeof openServer>> | undefined} */
+  let server;
   t.after(async () => {
     await server?.close();
     await rm(dir, { recursive: true, force: true });
@@ -41,7 +44,8 @@ async function setup(t: TestContext) {
   const session = await owner.bootstrap(bootstrap, 'owner', 'correct-horse');
   owner.setToken(session.token);
   const opened = server;
-  async function device(name: string, scopes: string[]) {
+  /** @param {string} name @param {string[]} scopes */
+  async function device(name, scopes) {
     const response = await opened.app.inject({
       method: 'POST',
       url: '/api/v1/device-tokens',
@@ -80,16 +84,16 @@ async function setup(t: TestContext) {
     baseRevision: (await phone.manifest(item.id)).revision,
     body: new Uint8Array([10, 11]),
   });
-  const importer = async (bytes: Uint8Array<ArrayBuffer>) => {
+  /** @param {Uint8Array<ArrayBuffer>} bytes */
+  const importer = async (bytes) => {
     assert.equal(
       new TextDecoder().decode(bytes),
       loader,
       'protected generated loader reached importer',
     );
     return {
-      factory: async (
-        options: Parameters<Awaited<ReturnType<typeof f.importer>>['factory']>[0],
-      ) => {
+      /** @param {Parameters<Awaited<ReturnType<typeof f.importer>>['factory']>[0]} options */
+      factory: async (options) => {
         await WebAssembly.instantiate(options.wasmBinary);
         return f.runtime;
       },
@@ -106,7 +110,7 @@ test('repeated acknowledged browser saves after a phone write retain loaded base
     f.browser,
     { kind: 'asset', itemId: f.item.id, assetId: f.rom.id },
     {
-      canvas: {} as HTMLCanvasElement,
+      canvas: {},
       importer: f.importer,
       batteryAssetId: f.battery.id,
       compatibleSaves: true,
@@ -123,7 +127,8 @@ test('repeated acknowledged browser saves after a phone write retain loaded base
     baseRevision: base,
     body: phoneBytes,
   });
-  const bases: number[] = [];
+  /** @type {number[]} */
+  const bases = [];
   const realUpload = f.browser.upload.bind(f.browser);
   f.browser.upload = (request, attempts) => {
     bases.push(request.baseRevision);
@@ -174,7 +179,7 @@ test('read-only bearer plays through protected loading and retains forbidden upl
     reader,
     { kind: 'asset', itemId: f.item.id, assetId: f.rom.id },
     {
-      canvas: {} as HTMLCanvasElement,
+      canvas: {},
       importer: f.importer,
       batteryAssetId: f.battery.id,
       compatibleSaves: true,
@@ -184,7 +189,7 @@ test('read-only bearer plays through protected loading and retains forbidden upl
   f.fs.set('/ecs/saves/game.srm', new Uint8Array([70, 71]));
   await assert.rejects(
     session.saves.capture('battery_save'),
-    (error: unknown) => error instanceof ContentError && error.status === 403,
+    (error) => error instanceof ContentError && error.status === 403,
   );
   assert.deepEqual(session.saves.exportPending(), new Uint8Array([70, 71]));
   assert.equal(session.saves.pending?.baseRevision, session.prepared.revision);
@@ -196,7 +201,7 @@ test('Retry recovers the same committed logical save after all completion respon
     f.browser,
     { kind: 'asset', itemId: f.item.id, assetId: f.rom.id },
     {
-      canvas: {} as HTMLCanvasElement,
+      canvas: {},
       importer: f.importer,
       batteryAssetId: f.battery.id,
       compatibleSaves: true,
