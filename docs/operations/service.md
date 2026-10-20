@@ -8,7 +8,7 @@ ecs service status --data ./content-data
 ecs service uninstall --data ./content-data
 ```
 
-The same listen flags as `ecs serve` are recorded: `--host`, `--port`, `--advertise`, `--allow-lan`, `--public`, and `--tls-terminated`. Installing with `--public` and no `--tls-terminated` is refused, so a server that starts at login cannot come up publicly exposed without TLS.
+The same listen flags as `ecs serve` are recorded: `--host`, `--port`, `--advertise`, `--allow-lan`, `--public`, `--tls-terminated`, and the optional trusted browser-static `--player-dir` ([setup](browser-playback.md)). Installing with `--public` and no `--tls-terminated` is refused, so a server that starts at login cannot come up publicly exposed without TLS.
 
 | Platform | What install writes |
 | --- | --- |

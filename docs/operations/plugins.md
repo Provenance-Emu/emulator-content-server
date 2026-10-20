@@ -51,7 +51,7 @@ A feed cannot list a bundle id that `apps` did not claim.
 
 ## Player
 
-A player plugin names dotted system identifiers and a `.wasm` file inside the plugin directory. `doctor` reports whether the file is there. The host does not compile it, and `ecs serve` does not mount it. The page at `/ui` stays a client of the content API.
+A player plugin names dotted system identifiers and a `.wasm` file inside the plugin directory. `doctor` reports whether the file is there. The host does not compile it, and `ecs serve` does not mount it. The pages at `/ui` and `/play` stay clients of the content API. Separately, optional [browser playback](browser-playback.md) serves one validated trusted browser-static loader/WASM pair from a dedicated `--player-dir`; that directory is independent of plugin directories and never contains `plugin.json` or `secrets.json`. This does not mount player plugins.
 
 ## Signer and JIT
 

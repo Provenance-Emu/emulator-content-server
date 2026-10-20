@@ -1,7 +1,9 @@
 <script lang="ts">
-  import type { ContentClient, ContentRoot, SourceFile } from '@ecs/client';
+  import type { ContentClient, ContentRoot, SourceFile, PlayerCoreDescriptor } from '@ecs/client';
+  import { onMount, untrack } from 'svelte';
   import FolderPicker from './FolderPicker.svelte';
   import { explain } from './lib/problems';
+  import { sourcePlayHref } from './player/links';
 
   let { client, roots }: { client: ContentClient; roots: ContentRoot[] } = $props();
 
@@ -21,7 +23,8 @@
     offline: 'Disk offline',
   };
 
-  let saved = $state(roots);
+  let saved = $state(untrack(() => roots));
+  let playerCore = $state<PlayerCoreDescriptor | null>(null);
   let files = $state<SourceFile[]>([]);
   let scanned = $state(false);
   let path = $state('');
@@ -101,8 +104,11 @@
     }
   }
 
-  void load(roots).catch((error: unknown) => {
-    failure = explain(error);
+  onMount(() => {
+    void client.capabilities().then(async (capabilities) => {
+      if (capabilities.features.webPlayback) playerCore = await client.playerCore();
+    }).catch(() => {});
+    void load(roots).catch((error: unknown) => { failure = explain(error); });
   });
 </script>
 
@@ -136,8 +142,12 @@
         <table>
           <tbody>
             {#each entries as file (file.id)}
+              {@const play = sourcePlayHref(playerCore, file)}
               <tr>
                 <td>{file.name}</td>
+                <td>
+                  {#if play}<a href={play}>Play</a>{/if}
+                </td>
                 <td class="dim">{AVAILABILITY[file.availability] ?? file.availability}</td>
               </tr>
             {/each}

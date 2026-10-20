@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { canonicalCidr, hashPassword, hashToken, issueToken, verifyPassword } from '@ecs/auth';
@@ -112,7 +112,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.get('/health', async () => ({ ok: true }));
 
-  if (context.uiDir) {
+  const uiDir = context.uiDir;
+  if (uiDir) {
     /**
      * The interface is static files on the same origin as `/api/v1`, which is
      * what keeps CORS out of the design. It is a single page, so there is no
@@ -120,7 +121,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
      * is a missing asset rather than a route.
      */
     app.register(fastifyStatic, {
-      root: context.uiDir,
+      root: uiDir,
       prefix: '/ui/',
       // A wildcard route rather than one route per file discovered at startup,
       // so a rebuilt bundle is served without restarting. The prefix keeps it
@@ -140,6 +141,37 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       },
     });
     app.get('/ui', async (_request, reply) => reply.redirect('/ui/', 308));
+    // A second first-party document shares /ui/assets; no operator HTML is served.
+    app.get('/play', async (_request, reply) => reply.redirect('/play/', 308));
+    app.get('/play/', async (_request, reply) => {
+      reply.header(
+        'content-security-policy',
+        [
+          "default-src 'none'",
+          "script-src 'self' blob: 'wasm-unsafe-eval'",
+          "style-src 'self'",
+          "img-src 'self' data:",
+          "connect-src 'self'",
+          "base-uri 'none'",
+          "form-action 'none'",
+          "frame-ancestors 'none'",
+          "worker-src 'none'",
+        ].join('; '),
+      );
+      reply.header('cross-origin-opener-policy', 'same-origin');
+      reply.header('cross-origin-embedder-policy', 'require-corp');
+      reply.header('cross-origin-resource-policy', 'same-origin');
+      reply.header('referrer-policy', 'no-referrer');
+      reply.header('x-content-type-options', 'nosniff');
+      // reply.sendFile would apply the /ui registration's setHeaders callback.
+      // Read just the fixed first-party entry to keep the document's policy isolated.
+      try {
+        return reply.type('text/html').send(await readFile(join(uiDir, 'play', 'index.html')));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return reply.code(404).send();
+        throw error;
+      }
+    });
   }
 
   app.get('/openapi.yaml', async (_request, reply) => {

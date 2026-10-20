@@ -31,13 +31,23 @@ function descriptor() {
 }
 async function fixture(t: TestContext) {
   const dir = await mkdtemp(join(tmpdir(), 'ecs-player-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  let closeServer: (() => Promise<void>) | undefined;
+  t.after(async () => {
+    await closeServer?.();
+    await rm(dir, { recursive: true, force: true });
+  });
   const playerDir = join(dir, 'player');
   await mkdir(playerDir);
   await writeFile(join(playerDir, 'core.json'), JSON.stringify(descriptor()));
   await writeFile(join(playerDir, 'fceumm_libretro.js'), loader);
   await writeFile(join(playerDir, 'fceumm_libretro.wasm'), wasm);
-  return { dir, playerDir };
+  return {
+    dir,
+    playerDir,
+    closeBeforeRemove(close: () => Promise<void>) {
+      closeServer = close;
+    },
+  };
 }
 async function setup(t: TestContext, localTrust = false, withUi = false) {
   const f = await fixture(t);
@@ -52,7 +62,7 @@ async function setup(t: TestContext, localTrust = false, withUi = false) {
     uiDir,
     playerDir: f.playerDir,
   });
-  t.after(() => server.close());
+  f.closeBeforeRemove(() => server.close());
   const token = issueToken();
   server.catalog.saveBootstrapHash(token.hash);
   const response = await server.app.inject({
@@ -75,9 +85,9 @@ const paths = [
 ];
 
 test('playback is disabled by default without affecting the public API', async (t) => {
-  const { dir } = await fixture(t);
-  const server = await openServer({ dataDir: join(dir, 'data') });
-  t.after(() => server.close());
+  const f = await fixture(t);
+  const server = await openServer({ dataDir: join(f.dir, 'data') });
+  f.closeBeforeRemove(() => server.close());
   const capabilities = await server.app.inject({ url: '/api/v1/capabilities' });
   assert.equal(capabilities.json().features.webPlayback, false);
   for (const url of paths) assert.equal((await server.app.inject({ url })).statusCode, 404);
