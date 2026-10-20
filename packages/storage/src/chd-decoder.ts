@@ -75,6 +75,7 @@ async function runProcess(
   signal: AbortSignal | undefined,
   outputLimit: number | undefined,
   options: ChdProviderOptions,
+  helpProbe = false,
 ): Promise<string> {
   checkDeadline(deadline, signal);
   let process: DecoderProcess;
@@ -134,7 +135,8 @@ async function runProcess(
     await streams;
     checkDeadline(deadline, signal);
     if (fault) throw fault;
-    if (result?.code !== 0) throw failure('CHD decoder failed');
+    if (result?.code !== 0 && !(helpProbe && result?.code === 1))
+      throw failure('CHD decoder failed');
     return Buffer.concat(output).toString('utf8');
   } catch (error) {
     if (!exited) {
@@ -180,6 +182,7 @@ export async function createChdProvider(
         undefined,
         undefined,
         options,
+        true,
       );
       if (
         !help.includes(command) ||

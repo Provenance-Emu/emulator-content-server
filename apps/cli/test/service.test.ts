@@ -233,3 +233,15 @@ test('WebDAV is opt-in and persists in each service registration', () => {
     assert.equal(renderRegistration({ ...base, webdavEnabled: true }).includes('--webdav'), true);
   }
 });
+
+test('optional CHD executable survives each service registration without credentials', () => {
+  for (const platform of ['darwin', 'linux', 'win32'] as const) {
+    const base = spec('/fixture', '/fixture/data', platform);
+    const configured = { ...base, chdmanPath: '/opt/decoder folder/chdman' };
+    assert.doesNotMatch(renderRegistration(base), /--chdman/);
+    const text = renderRegistration(configured);
+    assert.match(text, /--chdman/);
+    assert.match(text, /decoder folder/);
+    assert.equal(text.includes(SECRET), false);
+  }
+});

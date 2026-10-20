@@ -20,6 +20,7 @@ export interface ServiceSpec {
   port: number;
   advertise: boolean;
   webdavEnabled?: boolean;
+  chdmanPath?: string;
   allowLan: boolean;
   publicInternet: boolean;
   tlsTerminated: boolean;
@@ -54,6 +55,7 @@ export function serveArguments(spec: ServiceSpec): string[] {
   ];
   if (spec.advertise) args.push('--advertise');
   if (spec.webdavEnabled) args.push('--webdav');
+  if (spec.chdmanPath !== undefined) args.push('--chdman', spec.chdmanPath);
   if (spec.allowLan) args.push('--allow-lan');
   if (spec.publicInternet) args.push('--public');
   if (spec.tlsTerminated) args.push('--tls-terminated');

@@ -516,3 +516,90 @@ test('an abandoned foreign lock spends the operation deadline without being recl
     await f.cleanup();
   }
 });
+
+for (const mode of ['retry', 'cancel', 'shutdown', 'deadline']) {
+  test(`a late requester respects ${mode} after the cancelled flight finishes cleanup`, async () => {
+    const { openChdBundle } = await import('../src/chd-cache.js');
+    const f = await cacheFixture();
+    let start: () => void = () => {};
+    let aborted: () => void = () => {};
+    let release: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      start = resolve;
+    });
+    const cancelled = new Promise<void>((resolve) => {
+      aborted = resolve;
+    });
+    const cleanup = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    const provider: VirtualContentProvider = {
+      ...f.provider,
+      async materializeBundle(...args) {
+        calls++;
+        if (calls === 1) {
+          start();
+          args[4]?.addEventListener('abort', aborted, { once: true });
+          await cancelled;
+          await cleanup;
+          throw new Error('cancelled flight completed cleanup');
+        }
+        assert.ok(f.provider.materializeBundle);
+        return f.provider.materializeBundle(...args);
+      },
+    };
+    const registry = new VirtualProviderRegistry([provider], QUOTA);
+    try {
+      const layout = await registry.inspect(f.blob.path);
+      assert.ok(layout?.entries[0]);
+      assert.ok(layout.entries[1]);
+      const controller = new AbortController();
+      const first = openChdBundle(
+        f.root,
+        f.blob.sha256,
+        registry,
+        'chd',
+        f.blob.path,
+        'disc',
+        layout.entries[0],
+        controller.signal,
+      );
+      const rejected = assert.rejects(first, /cancelled/);
+      await started;
+      controller.abort();
+      await cancelled;
+      // Enter directly at the bundle join seam while the cancelled job owns cleanup.
+      const secondController = new AbortController();
+      const second = openChdBundle(
+        f.root,
+        f.blob.sha256,
+        registry,
+        'chd',
+        f.blob.path,
+        'disc',
+        layout.entries[1],
+        secondController.signal,
+        performance.now() + (mode === 'deadline' ? 20 : QUOTA.timeoutMs),
+      );
+      const outcome =
+        mode === 'retry' ? second : assert.rejects(second, /cancelled|timed out|closed/);
+      if (mode === 'cancel') secondController.abort();
+      const closing = mode === 'shutdown' ? registry.close() : Promise.resolve();
+      if (mode === 'deadline') await new Promise((resolve) => setTimeout(resolve, 40));
+      release();
+      await rejected;
+      const bin = await outcome;
+      await closing;
+      if (mode === 'retry') {
+        assert.ok(bin);
+        assert.deepEqual(await readFile(bin.path), Buffer.alloc(4400, 37));
+        assert.equal(calls, 2);
+      } else assert.equal(calls, 1);
+    } finally {
+      release();
+      await registry.close();
+      await f.cleanup();
+    }
+  });
+}

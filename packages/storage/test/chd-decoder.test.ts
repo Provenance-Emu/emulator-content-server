@@ -555,3 +555,14 @@ for (const code of ['EACCES', 'EBUSY']) {
     }
   });
 }
+
+test('valid command help with exit one enables the decoder', async () => {
+  const f = await fixture(synthetic(), () => {
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    stdout.end('extractcd extractdvd -i -o -ob');
+    stderr.end();
+    return { stdout, stderr, exited: Promise.resolve({ code: 1 }), kill() {} };
+  });
+  await f.cleanup();
+});

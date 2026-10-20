@@ -161,7 +161,27 @@ export async function openChdBundle(
     map = new Map();
     flights.set(registry, map);
   }
+  checkDeadline(deadline, signal);
+  checkDeadline(deadline, registry.signal);
   let flight = map.get(key);
+  if (flight?.controller.signal.aborted) {
+    // The last waiter already cancelled this job. Join its staging/lock cleanup
+    // before replacing it; a new caller must not inherit that cancellation.
+    await flight.promise.catch(() => {});
+    checkDeadline(deadline, signal);
+    checkDeadline(deadline, registry.signal);
+    return openChdBundle(
+      root,
+      outerSha256,
+      registry,
+      format,
+      input,
+      bundleId,
+      selected,
+      signal,
+      deadline,
+    );
+  }
   if (!flight) {
     const controller = new AbortController();
     const operationSignal = AbortSignal.any([controller.signal, registry.signal]);

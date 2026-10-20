@@ -158,10 +158,12 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   const logging = daemon ? await captureDaemonLogs(dataDir) : null;
   const listen = listenConfig();
   const uiDir = await webAssets(value('--ui'));
+  const decoder = chdmanPath();
   let server: Awaited<ReturnType<typeof openServer>>;
   try {
     server = await openServer({
       dataDir,
+      ...(decoder === undefined ? {} : { chdmanPath: decoder }),
       displayName,
       limits: limitsFromEnv(process.env),
       logger: true,
@@ -264,6 +266,7 @@ async function service(dataDir: string): Promise<void> {
 function serviceSpec(dataDir: string): ServiceSpec {
   const listen = listenConfig();
   const absolute = resolve(dataDir);
+  const decoder = chdmanPath();
   return {
     platform: process.platform,
     home: homedir(),
@@ -274,6 +277,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
     port: listen.port,
     advertise: listen.advertise,
     webdavEnabled: listen.webdavEnabled,
+    ...(decoder === undefined ? {} : { chdmanPath: decoder }),
     allowLan: listen.allowLan,
     publicInternet: listen.publicInternet,
     tlsTerminated: listen.tlsTerminated,
@@ -305,6 +309,12 @@ function listenConfig(): {
   };
 }
 
+function chdmanPath(): string | undefined {
+  if (has('--chdman') && (!value('--chdman') || value('--chdman')?.startsWith('--')))
+    throw new Error('--chdman requires an absolute executable path');
+  return value('--chdman') ?? process.env.ECS_CHDMAN_PATH;
+}
+
 function value(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   if (index === -1) return undefined;
@@ -317,7 +327,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--ui <dir>|none]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
@@ -329,7 +339,7 @@ ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]
-ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--chdman <absolute-path>]
 ecs service uninstall --data ./content-data
 ecs service status --data ./content-data`);
 }
