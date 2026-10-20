@@ -68,9 +68,13 @@ import {
   requireActor,
   requiredInteger,
   requiredString,
+  requireOwner,
+  requireRevision,
+  requireUser,
   stringList,
   withIdempotency,
 } from './http.js';
+import { registerLibraryBrowse } from './library-browse.js';
 import { accessView } from './local-access.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
@@ -88,6 +92,7 @@ const UI_CONTENT_POLICY = [
 
 export function registerRoutes(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
+  registerLibraryBrowse(app, context);
 
   // Keep staging bytes and the committed offset in one per-upload operation.
   // The settled tail lets failures release waiters; remove it only when no
@@ -400,6 +405,9 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
 
   app.post('/api/v1/items', async (request, reply) => {
     const actor = requireActor(request);
+    if (actor.kind === 'guest' && actor.itemId) {
+      throw new DomainError('forbidden', 403, 'This grant can only upload to its existing item');
+    }
     const body = jsonObject(request.body);
     const libraryId = requiredString(body, 'libraryId');
     libraryDecision(catalog, actor, libraryId, 'write');
@@ -1012,14 +1020,6 @@ function limit(context: ServerContext, request: FastifyRequest, name: string): v
   }
 }
 
-function requireUser(request: FastifyRequest, scope: ItemPermission): Actor & { kind: 'user' } {
-  const actor = requireActor(request);
-  if (actor.kind !== 'user' || !actor.scopes.includes(scope)) {
-    throw new DomainError('forbidden', 403, 'This token cannot perform that action');
-  }
-  return actor;
-}
-
 /**
  * The device behind a request, when it authenticated with a device token. The
  * feed filter derives this from the actor rather than taking an id from the
@@ -1046,12 +1046,6 @@ function normalizeSubnets(value: unknown): string[] {
     return cidr;
   });
   return [...new Set(canonical)];
-}
-
-function requireOwner(request: FastifyRequest, message: string): Actor & { kind: 'user' } {
-  const actor = requireUser(request, 'admin');
-  if (!actor.isOwner) throw new DomainError('forbidden', 403, message);
-  return actor;
 }
 
 function requireItem(catalog: CatalogDatabase, id: string) {
@@ -1173,14 +1167,26 @@ async function scanRoot(
   root: { id: string; path: string },
   actorId: string,
 ) {
-  const inspected = await inspectRoot(root.path);
-  const count = catalog.applyInspection({
-    rootId: root.id,
-    actorId,
-    online: inspected.online,
-    files: inspected.files,
-  });
-  return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
+  catalog.beginRootScan(root.id);
+  try {
+    const inspected = await inspectRoot(root.path);
+    const count = catalog.applyInspection({
+      rootId: root.id,
+      actorId,
+      online: inspected.online,
+      files: inspected.files,
+    });
+    catalog.recordRootCheck({
+      rootId: root.id,
+      availability: inspected.online ? 'online' : 'offline',
+      medium: inspected.medium,
+    });
+    catalog.finishRootScan({ rootId: root.id, succeeded: true });
+    return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
+  } catch (error) {
+    catalog.finishRootScan({ rootId: root.id, succeeded: false });
+    throw error;
+  }
 }
 
 async function sendEntryContent(
@@ -1253,11 +1259,10 @@ function pageLimit(request: FastifyRequest): number {
   return limit;
 }
 
-function requireRevision(request: FastifyRequest): number {
-  const header = headerString(request, 'if-match');
-  const match = header ? /^"rev-(\d+)"$/.exec(header.trim()) : null;
-  if (!match?.[1]) throw new DomainError('precondition-required', 428, 'If-Match must be "rev-N"');
-  return Number(match[1]);
+function revisionOf(body: unknown): number {
+  if (!body || typeof body !== 'object' || !('revision' in body)) return 0;
+  const revision = (body as { revision?: unknown }).revision;
+  return typeof revision === 'number' ? revision : 0;
 }
 
 function bearer(request: FastifyRequest): string {
@@ -1265,10 +1270,4 @@ function bearer(request: FastifyRequest): string {
   const match = typeof header === 'string' ? /^Bearer\s+(\S+)$/.exec(header) : null;
   if (!match?.[1]) throw new DomainError('unauthorized', 401, 'Bearer token is required');
   return match[1];
-}
-
-function revisionOf(body: unknown): number {
-  if (!body || typeof body !== 'object' || !('revision' in body)) return 0;
-  const revision = (body as { revision?: unknown }).revision;
-  return typeof revision === 'number' ? revision : 0;
 }

@@ -76,6 +76,10 @@ export async function openServer(options: OpenServerOptions): Promise<{
   };
   let app: FastifyInstance;
   try {
+    // Startup owns this catalog under the single-server ownership assumption:
+    // pending scans belong to an abandoned run. Auxiliary catalog opens must
+    // preserve active scans and never perform this recovery.
+    catalog.recoverInterruptedRootScans();
     app = await buildApp(context, options.logger ?? false);
   } catch (error) {
     await virtual.close();

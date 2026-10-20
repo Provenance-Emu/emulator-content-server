@@ -155,13 +155,15 @@ public struct SystemList: Codable, Equatable, Sendable {
 public struct Library: Codable, Equatable, Sendable {
     public var id: String
     public var name: String
+    public var canCreateItems: Bool?
     public var ownerId: String
     public var revision: Int
     public var createdAt: String
 
-    public init(id: String, name: String, ownerId: String, revision: Int, createdAt: String) {
+    public init(id: String, name: String, canCreateItems: Bool? = nil, ownerId: String, revision: Int, createdAt: String) {
         self.id = id
         self.name = name
+        self.canCreateItems = canCreateItems
         self.ownerId = ownerId
         self.revision = revision
         self.createdAt = createdAt
@@ -818,6 +820,82 @@ public struct GuestGrantList: Codable, Equatable, Sendable {
     public var items: [GuestGrant]
 
     public init(items: [GuestGrant]) {
+        self.items = items
+    }
+}
+
+public struct RootLibraryAssignment: Codable, Equatable, Sendable {
+    public var libraryId: String
+
+    public init(libraryId: String) {
+        self.libraryId = libraryId
+    }
+}
+
+public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
+    public var entityType: String
+    public var id: String
+    public var name: String
+    public var libraryId: String?
+    public var systemId: String?
+    public var canUpload: Bool
+    public var canAdopt: Bool
+    public var item: Item?
+    public var asset: Asset?
+    public var source: SourceFile?
+    public var parentItem: Item?
+    public var previewAsset: Asset?
+
+    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil) {
+        self.entityType = entityType
+        self.id = id
+        self.name = name
+        self.libraryId = libraryId
+        self.systemId = systemId
+        self.canUpload = canUpload
+        self.canAdopt = canAdopt
+        self.item = item
+        self.asset = asset
+        self.source = source
+        self.parentItem = parentItem
+        self.previewAsset = previewAsset
+    }
+}
+
+public struct LibraryBrowsePage: Codable, Equatable, Sendable {
+    public var items: [LibraryBrowseEntry]
+    public var nextCursor: String?
+
+    public init(items: [LibraryBrowseEntry], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct ContentRootSummary: Codable, Equatable, Sendable {
+    public var root: ContentRoot
+    public var indexedFileCount: Int
+    public var scanState: String
+    public var lastScanAt: String?
+    public var lastCheckAt: String?
+    public var online: Bool?
+    public var medium: String?
+
+    public init(root: ContentRoot, indexedFileCount: Int, scanState: String, lastScanAt: String? = nil, lastCheckAt: String? = nil, online: Bool? = nil, medium: String? = nil) {
+        self.root = root
+        self.indexedFileCount = indexedFileCount
+        self.scanState = scanState
+        self.lastScanAt = lastScanAt
+        self.lastCheckAt = lastCheckAt
+        self.online = online
+        self.medium = medium
+    }
+}
+
+public struct ContentRootSummaryList: Codable, Equatable, Sendable {
+    public var items: [ContentRootSummary]
+
+    public init(items: [ContentRootSummary]) {
         self.items = items
     }
 }

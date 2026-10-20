@@ -78,6 +78,7 @@ export interface SystemList {
 export interface Library {
   id: string;
   name: string;
+  canCreateItems?: boolean;
   ownerId: string;
   revision: number;
   createdAt: string;
@@ -408,4 +409,42 @@ export interface GuestGrant {
 
 export interface GuestGrantList {
   items: GuestGrant[];
+}
+
+export interface RootLibraryAssignment {
+  libraryId: string;
+}
+
+export interface LibraryBrowseEntry {
+  entityType: string;
+  id: string;
+  name: string;
+  libraryId: string | null;
+  systemId: string | null;
+  canUpload: boolean;
+  canAdopt: boolean;
+  item?: Item;
+  asset?: Asset;
+  source?: SourceFile;
+  parentItem?: Item;
+  previewAsset?: Asset;
+}
+
+export interface LibraryBrowsePage {
+  items: LibraryBrowseEntry[];
+  nextCursor: string | null;
+}
+
+export interface ContentRootSummary {
+  root: ContentRoot;
+  indexedFileCount: number;
+  scanState: string;
+  lastScanAt: string | null;
+  lastCheckAt: string | null;
+  online: boolean | null;
+  medium: string | null;
+}
+
+export interface ContentRootSummaryList {
+  items: ContentRootSummary[];
 }
