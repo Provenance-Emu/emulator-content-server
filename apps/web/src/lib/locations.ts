@@ -95,7 +95,14 @@ export function createStorageLocations(
           pendingPath = null;
         }
       }),
-    remove: (id: string) => run(() => client.removeStorageLocation(id)),
+    remove: (id: string) =>
+      run(async () => {
+        await client.removeStorageLocation(id);
+        if (live() && current.pendingDestination?.id === id) {
+          update({ pendingDestination: null });
+          pendingPath = null;
+        }
+      }),
     async addDestination(selection: FolderSelection, makeWriteTarget: boolean): Promise<boolean> {
       if (
         !live() ||

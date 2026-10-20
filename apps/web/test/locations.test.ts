@@ -205,3 +205,40 @@ test('a saved destination can finish target selection from its row after dismiss
   assert.equal(await locations.addDestination(selection('/different'), false), true);
   assert.equal(f.saved.items.length, 3);
 });
+
+test('removing a saved pending destination clears recovery only when removal succeeds and permits another addition', async () => {
+  const f = fixture();
+  const locations = createStorageLocations(f.client, () => {}, {
+    key: 'epoch',
+    origin: 'http://server.test',
+  });
+  await locations.load();
+  f.client.setStorageWriteTarget = async () => {
+    throw new Error('Selection unavailable');
+  };
+  assert.equal(await locations.addDestination(selection('/pending'), true), false);
+  await locations.load();
+  assert.equal(
+    get(locations).listing?.items.some((item) => item.id === 'new'),
+    true,
+  );
+  const remove = f.client.removeStorageLocation;
+  f.client.removeStorageLocation = async () => {
+    throw new ContentError(409, {
+      type: 'about:blank',
+      title: 'Destination occupied',
+      status: 409,
+    });
+  };
+  assert.equal(await locations.remove('new'), false);
+  assert.equal(get(locations).pendingDestination?.id, 'new');
+  f.client.removeStorageLocation = remove;
+  assert.equal(await locations.remove('new'), true);
+  assert.equal(
+    get(locations).listing?.items.some((item) => item.id === 'new'),
+    false,
+  );
+  assert.equal(get(locations).pendingDestination, null);
+  assert.equal(await locations.addDestination(selection('/different'), false), true);
+  assert.equal(f.saved.items.length, 2);
+});

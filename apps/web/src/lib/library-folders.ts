@@ -33,6 +33,7 @@ export function createLibraryFolders(
   let generation = 0;
   let scope = initialScope;
   const registrations = new Map<string, ContentRoot>();
+  const unacknowledgedRoots = new Set<string>();
   const live = () => !disposed && context.key === key && (context.isCurrent?.() ?? true);
   function update(patch: Partial<LibraryFoldersState>) {
     if (live()) {
@@ -56,7 +57,11 @@ export function createLibraryFolders(
     const run = ++generation;
     try {
       const result = await client.rootSummaries(scope);
-      if (live() && run === generation) update({ summaries: result.items, denied: false });
+      if (live() && run === generation) {
+        // This controller's read started after the mutation; it can acknowledge absence too.
+        unacknowledgedRoots.clear();
+        update({ summaries: result.items, denied: false });
+      }
     } catch (error) {
       if (run === generation) fail(error);
     }
@@ -95,7 +100,15 @@ export function createLibraryFolders(
     subscribe: store.subscribe,
     // Consume cached settings summaries without performing reads or scans on opening.
     receive(summaries: ContentRootSummary[]) {
-      if (!current.busy && !current.denied) update({ summaries });
+      if (current.busy || current.denied) return;
+      const received = new Set(summaries.map((summary) => summary.root.id));
+      // A parent read with no matching ID may predate the registration. Seeing the ID
+      // acknowledges the commit; until then preserve its row and retry action.
+      for (const id of received) unacknowledgedRoots.delete(id);
+      const pending = current.summaries.filter((summary) =>
+        unacknowledgedRoots.has(summary.root.id),
+      );
+      update({ summaries: [...summaries, ...pending] });
     },
     async load(nextScope?: LibraryScope) {
       if (!live() || current.busy) return;
@@ -119,6 +132,7 @@ export function createLibraryFolders(
           });
           if (!live()) return;
           registrations.set(selection.path, root);
+          unacknowledgedRoots.add(root.id);
           update({
             summaries: [
               ...current.summaries,
@@ -170,6 +184,7 @@ export function createLibraryFolders(
         await client.removeRoot(id);
         if (!live()) return;
         update({ summaries: current.summaries.filter((s) => s.root.id !== id) });
+        unacknowledgedRoots.delete(id);
         for (const [path, root] of registrations) if (root.id === id) registrations.delete(path);
         await refresh();
         if (live() && !current.denied) await context.onchanged?.();
@@ -193,6 +208,7 @@ export function createLibraryFolders(
       disposed = true;
       generation++;
       registrations.clear();
+      unacknowledgedRoots.clear();
       current = { ...current, summaries: [], scanFailures: {}, busy: false };
       store.set(current);
     },

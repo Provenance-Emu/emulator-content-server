@@ -142,3 +142,34 @@ test('an older summary read cannot erase a committed root while its scan and new
   assert.equal(get(folders).summaries[0]?.root.id, 'root-0');
   assert.equal(f.roots.length, 1);
 });
+
+test('a delayed parent cache cannot erase a committed folder or disable its scan retry after failed followups', async (t) => {
+  const f = folderFixture(t);
+  const folders = createLibraryFolders(f.client, {
+    ...f.context,
+    onchanged: () => {
+      throw new Error('Discovery unavailable');
+    },
+  });
+  await folders.load({ libraryId: 'library' });
+  f.override(async (path) =>
+    path.endsWith('/scan') || path.endsWith('/root-summaries')
+      ? Response.json({ title: 'Offline' }, { status: 503 })
+      : null,
+  );
+  assert.equal(await folders.add(selection()), true);
+  assert.equal(get(folders).summaries[0]?.root.id, 'root-0');
+  assert.match(get(folders).scanFailures['root-0'] ?? '', /Offline/);
+  // SettingsLibraries began this cached read before the registration committed.
+  folders.receive([]);
+  assert.equal(get(folders).summaries[0]?.root.id, 'root-0');
+  assert.match(get(folders).scanFailures['root-0'] ?? '', /Offline/);
+  f.override(null);
+  await folders.retryScan('root-0');
+  assert.equal(f.calls.filter((call) => call.path.endsWith('/scan')).length, 2);
+  assert.equal(f.roots.length, 1);
+  assert.equal(get(folders).scanFailures['root-0'], undefined);
+  // A successful controller read after the mutation has now acknowledged the root.
+  folders.receive([]);
+  assert.equal(get(folders).summaries.length, 0);
+});
