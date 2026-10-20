@@ -1,12 +1,4 @@
-/**
- * The signed-in session, kept across reloads.
- *
- * This stores the bearer token the API already uses rather than setting a
- * cookie. A cookie rides along with every request the browser makes, which is
- * the thing that makes CSRF possible, and the API is bearer-authenticated for
- * the native clients anyway. The cost of storing it is that injected script
- * could read it, which is what the content policy on these assets answers.
- */
+/** Credentials stay in the injected store/client, never in application view state. */
 const KEY = 'ecs.session';
 
 export interface StoredSession {
@@ -14,27 +6,87 @@ export interface StoredSession {
   expiresAt: string;
 }
 
-/** The stored session, or null when there is none or it has already expired. */
-export function loadSession(): StoredSession | null {
-  const raw = localStorage.getItem(KEY);
-  if (!raw) return null;
-  try {
-    const stored = JSON.parse(raw) as StoredSession;
-    if (!stored.token || !(Date.parse(stored.expiresAt) > Date.now())) {
-      clearSession();
-      return null;
-    }
-    return stored;
-  } catch {
-    clearSession();
-    return null;
-  }
+export interface SessionStore {
+  load(): StoredSession | null;
+  save(value: StoredSession): void;
+  clear(): void;
 }
 
-export function saveSession(session: StoredSession): void {
-  localStorage.setItem(KEY, JSON.stringify({ token: session.token, expiresAt: session.expiresAt }));
+function browserOrigin(): string | undefined {
+  return typeof window === 'undefined' ? undefined : window.location.origin;
+}
+
+function read(storage: Storage, key: string): StoredSession | null {
+  const raw = storage.getItem(key);
+  if (!raw) return null;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const stored = value as Partial<StoredSession>;
+      if (
+        typeof stored.token === 'string' &&
+        stored.token.length > 0 &&
+        typeof stored.expiresAt === 'string' &&
+        Date.parse(stored.expiresAt) > Date.now()
+      )
+        return { token: stored.token, expiresAt: stored.expiresAt };
+    }
+  } catch {
+    /* Invalid stored data is removed rather than sent as credentials. */
+  }
+  storage.removeItem(key);
+  return null;
+}
+
+/** Desktop can supply its own storage/namespace; only the current browser migrates legacy data. */
+export function createSessionStore(
+  origin: string,
+  options: { storage?: Storage; namespace?: string; browserOrigin?: string } = {},
+): SessionStore {
+  const storage = options.storage ?? localStorage;
+  const namespace = options.namespace ?? KEY;
+  const canonical = new URL(origin).origin;
+  const current = options.browserOrigin ?? browserOrigin();
+  const migrate =
+    namespace === KEY && current !== undefined && new URL(current).origin === canonical;
+  const key = `${namespace}:${encodeURIComponent(canonical)}`;
+  return {
+    load() {
+      if (migrate) {
+        if (storage.getItem(key) === null) {
+          const legacy = read(storage, KEY);
+          if (legacy) storage.setItem(key, JSON.stringify(legacy));
+        }
+        storage.removeItem(KEY);
+      }
+      return read(storage, key);
+    },
+    save(value) {
+      storage.setItem(key, JSON.stringify({ token: value.token, expiresAt: value.expiresAt }));
+      if (migrate) storage.removeItem(KEY);
+    },
+    clear() {
+      storage.removeItem(key);
+      if (migrate) storage.removeItem(KEY);
+    },
+  };
+}
+
+/** Compatibility for the existing browser shell until it receives an injected context. */
+export function loadSession(): StoredSession | null {
+  const origin = browserOrigin();
+  return origin ? createSessionStore(origin).load() : read(localStorage, KEY);
+}
+
+export function saveSession(value: StoredSession): void {
+  const origin = browserOrigin();
+  if (origin) createSessionStore(origin).save(value);
+  else
+    localStorage.setItem(KEY, JSON.stringify({ token: value.token, expiresAt: value.expiresAt }));
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(KEY);
+  const origin = browserOrigin();
+  if (origin) createSessionStore(origin).clear();
+  else localStorage.removeItem(KEY);
 }

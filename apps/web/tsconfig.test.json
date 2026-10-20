@@ -9,5 +9,6 @@
     "outDir": "dist-tests",
     "types": ["node"]
   },
-  "include": ["src/lib/locations.ts", "test/**/*.ts"]
+  "include": ["src/lib/locations.ts", "test/**/*.ts"],
+  "exclude": ["test/browser/**"]
 }
