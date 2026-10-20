@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import test from 'node:test';
 import { DomainError } from '@ecs/domain';
+import { VirtualProviderRegistry } from '../src/virtual.js';
+import { ZipProvider } from '../src/zip.js';
 import { fixture, probeRunner, QUOTA, synthetic, track } from './chd-fixture.js';
 
 test('DVD listing requires a validated marker and preserves exact logical length without decoding', async () => {
@@ -25,6 +27,19 @@ test('DVD listing requires a validated marker and preserves exact logical length
     assert.equal((await f.provider.resolve?.(f.path, '0', QUOTA))?.kind, 'bundle');
     assert.equal(await f.provider.resolve?.(f.path, '1', QUOTA), null);
     assert.equal(calls, 2, 'only the two startup command probes may spawn');
+  } finally {
+    await f.cleanup();
+  }
+});
+
+test('ZIP dispatch lets the CHD provider handle a stale deep entry id', async () => {
+  const f = await fixture(synthetic());
+  const registry = new VirtualProviderRegistry([new ZipProvider(), f.provider], QUOTA);
+  try {
+    assert.equal(await registry.resolve(f.path, '0.0.0'), null);
+    const found = await registry.resolve(f.path, '0');
+    assert.equal(found?.format, 'chd');
+    assert.equal(found?.resolution.kind, 'bundle');
   } finally {
     await f.cleanup();
   }

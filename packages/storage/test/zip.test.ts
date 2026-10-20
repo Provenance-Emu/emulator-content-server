@@ -402,6 +402,19 @@ test('an unknown entry id resolves to nothing rather than an error', async () =>
   }
 });
 
+for (const entryId of ['0', '0.0.0']) {
+  test(`ZIP resolution ignores a non-archive with entry id ${entryId}`, async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ecs-zip-'));
+    try {
+      const plain = join(root, 'plain.bin');
+      await writeFile(plain, Buffer.alloc(512, 7));
+      assert.equal(await new ZipProvider().resolve(plain, entryId, QUOTA), null);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
 test('a file that is not an archive reports no virtual format', async () => {
   const staged = await stageArchive([{ name: 'disc.bin', body: randomBytes(64) }]);
   try {
