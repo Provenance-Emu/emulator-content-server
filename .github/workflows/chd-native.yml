@@ -1,16 +1,14 @@
 name: CHD native acceptance
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # Native acceptance is opt-in during pre-release.
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: chd-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: chd-native-${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:

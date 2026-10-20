@@ -1,0 +1,20 @@
+---
+description: Pre-release iteration defaults for every session
+alwaysApply: true
+---
+
+# Pre-release iteration
+
+Read and follow the PRE-RELEASE iteration policy and scoped validation in `AGENTS.md`.
+This project has NO EXTERNAL PRODUCTION and is NOT SHIPPING until the user explicitly requests release hardening.
+
+- Run focused affected tests/typechecks and meaningful test-first bug regressions.
+- Batch related work on the existing branch/worktree; avoid a PR per chunk and automatic multiple review seats.
+- Use one proportionate review for auth, storage, protocol, or concurrency risk.
+- For ordinary UI work, avoid repeated full monorepo/browser/Swift/Rust/native/emulator/multi-OS checks.
+- Run a small relevant local test/build, then commit/push when authorized and respond to feedback.
+- Keep optional checks asynchronous and nonblocking unless the risk requires them.
+- Merge/push main directly when authorized; use PRs only when requested or required.
+- Honor actual branch protection and later explicit user instructions; queued optional checks are not merge gates.
+- Preserve user data, secrets, authentication guarantees, and package boundaries.
+- Full CI and native CHD acceptance remain available by manual workflow dispatch.
