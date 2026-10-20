@@ -20,6 +20,7 @@ export interface ServiceSpec {
   port: number;
   advertise: boolean;
   webdavEnabled?: boolean;
+  chdmanPath?: string;
   playerDir?: string;
   allowLan: boolean;
   publicInternet: boolean;
@@ -55,6 +56,11 @@ export function serveArguments(spec: ServiceSpec): string[] {
   ];
   if (spec.advertise) args.push('--advertise');
   if (spec.webdavEnabled) args.push('--webdav');
+  if (spec.chdmanPath !== undefined) {
+    if (!isAbsolute(spec.chdmanPath))
+      throw new Error('CHD decoder requires an absolute executable path');
+    args.push('--chdman', spec.chdmanPath);
+  }
   if (spec.playerDir !== undefined) {
     if (!isAbsolute(spec.playerDir)) throw new Error('Player directory must be absolute');
     args.push('--player-dir', spec.playerDir);

@@ -5,8 +5,9 @@
 Complete the included 1.0 work and record acceptance. Saved folders, the web/tray
 interfaces, login-service registration and tray controls (#11), owner storage UI
 (#12), and opt-in authenticated read-only WebDAV (#13) are implemented. Disc
-containers and browser playback are included in 1.0 and in progress in separate
-design/implementation changes; neither is claimed shipped here.
+containers now have an opt-in CHD v5 provider for DVD ISO and supported CD CUE/BIN,
+and the browser player is implemented separately. Real browser-core compilation,
+emulation, rendering, audio, input, and save acceptance remain unverified.
 
 The catalog could not be upgraded before this work: `migrate()` applied one monolithic schema and otherwise hard-failed when the recorded version did not equal `SCHEMA_VERSION`, so adding any table would have broken every database on disk. It now applies ordered numbered migrations, which unblocks every feature that has to persist new rows.
 
@@ -38,10 +39,11 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 - Quotas are checked from central-directory metadata before any bytes are written, so an archive bomb is rejected without the cache growing. Every path that can reach an entry applies the per-entry limits, because a client may ask for an entry by id without ever listing the archive.
 - Nesting is supported because ROM sets ship as archives of per-game archives. A container is addressed by a dotted index path, recognised structurally rather than by file extension, and capped at `maxNesting`. A stored nested archive is a window into the same blob, so its entries and their CRCs are read without inflating anything.
 - Listing descends stored containers automatically but never expands a compressed one; that needs `?entry=` on the entries route, which keeps a cheap request from triggering expensive work.
-- Disc containers are included in 1.0, with provider scope and licensing being
-  handled in their separate design/implementation changes. ZIP is implemented;
-  no disc-provider availability is claimed here and no Dolphin reader source is
-  imported by the existing ZIP implementation.
+- Disc support is opt-in through an explicitly configured operator-owned chdman.
+  CHD v5 DVD ISO and the bounded modern CHT2 CD CUE/BIN subset are implemented;
+  ZIP remains the default. Native macOS 0.289 generated round trips are verified.
+  Linux/Windows native and browser disc-core acceptance remain unverified. See
+  [CHD operations](../docs/operations/chd.md) for supported layouts and limits.
 - Migration 1 keeps its exact shipped SQL. The runner recognises a new database by the absence of the `schema_migrations` table, which is why migration 1 can still create that table itself.
 - A ledger holding anything other than a contiguous prefix of the known versions is a hard error. That covers a newer build's database, a gap, and an emptied ledger, because guessing which statements are missing would risk the operator's rows.
 - "Multiple folders" is two features. Content roots are read-only source directories to import from; storage locations are additional writable blob stores. They touch different packages and ship separately.
@@ -72,9 +74,11 @@ The catalog could not be upgraded before this work: `migrate()` applied one mono
 
 ## Next steps
 
-Land and validate disc containers and [browser playback](../docs/workstreams/web-playback.md)
-under their separate scopes. The existing plugin host has player descriptors and
-plans; that alone does not establish working browser playback. Connectors,
+Record acceptance for the implemented CHD provider and
+[browser player](../docs/workstreams/web-playback.md). Native CHD on Linux/Windows,
+browser disc cores, and real browser-core compilation, emulation, rendering,
+audio, input, and saves remain unverified. The browser ABI harness records only
+its tested integration behavior. Connectors,
 AltStore feeds, and signing/JIT plans stay in `ecs-plugins`, outside the content
 server process. App adapters stay in Provenance, iCube, and iFly.
 

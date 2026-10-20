@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertListenPolicy } from '@ecs/auth';
 import { advertise } from '@ecs/discovery';
@@ -158,10 +158,12 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   const logging = daemon ? await captureDaemonLogs(dataDir) : null;
   const listen = listenConfig();
   const uiDir = await webAssets(value('--ui'));
+  const decoder = chdmanPath();
   let server: Awaited<ReturnType<typeof openServer>>;
   try {
     server = await openServer({
       dataDir,
+      ...(decoder === undefined ? {} : { chdmanPath: decoder }),
       displayName,
       limits: limitsFromEnv(process.env),
       logger: true,
@@ -265,6 +267,7 @@ async function service(dataDir: string): Promise<void> {
 function serviceSpec(dataDir: string): ServiceSpec {
   const listen = listenConfig();
   const absolute = resolve(dataDir);
+  const decoder = chdmanPath();
   return {
     platform: process.platform,
     home: homedir(),
@@ -276,6 +279,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
     port: listen.port,
     advertise: listen.advertise,
     webdavEnabled: listen.webdavEnabled,
+    ...(decoder === undefined ? {} : { chdmanPath: decoder }),
     allowLan: listen.allowLan,
     publicInternet: listen.publicInternet,
     tlsTerminated: listen.tlsTerminated,
@@ -285,11 +289,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
 }
 
 function playerDirectory(): string | undefined {
-  const selected = value('--player-dir');
-  if (has('--player-dir') && (!selected || selected.startsWith('--'))) {
-    throw new Error('--player-dir requires an absolute directory path');
-  }
-  return selected ?? process.env.ECS_PLAYER_DIR;
+  return selectedAbsolutePath('--player-dir', 'ECS_PLAYER_DIR', 'directory');
 }
 
 function listenConfig(): {
@@ -315,6 +315,26 @@ function listenConfig(): {
   };
 }
 
+function chdmanPath(): string | undefined {
+  return selectedAbsolutePath('--chdman', 'ECS_CHDMAN_PATH', 'executable');
+}
+
+function selectedAbsolutePath(
+  flag: string,
+  environment: string,
+  kind: 'directory' | 'executable',
+): string | undefined {
+  const explicit = value(flag);
+  const selected = explicit ?? process.env[environment];
+  if (
+    (has(flag) && (!explicit || explicit.startsWith('--'))) ||
+    (selected !== undefined && !isAbsolute(selected))
+  ) {
+    throw new Error(`${flag} requires an absolute ${kind} path`);
+  }
+  return selected;
+}
+
 function value(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   if (index === -1) return undefined;
@@ -327,7 +347,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--ui <dir>|none] [--player-dir <absolute-path>]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
@@ -339,7 +359,7 @@ ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]
-ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--player-dir <absolute-path>]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--chdman <absolute-path>] [--player-dir <absolute-path>]
 ecs service uninstall --data ./content-data
 ecs service status --data ./content-data`);
 }

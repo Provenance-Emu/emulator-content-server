@@ -41,8 +41,9 @@ guards allow it. See [Storage locations](../operations/storage-locations.md).
 The tray holds signed-in session state; a library list in the dropdown remains a
 follow-on UI improvement.
 
-Browser playback is included in 1.0 and is in progress under its
-[separate workstream](web-playback.md); it is not shipped by the current UI status.
+The browser player is implemented under its
+[separate workstream](web-playback.md). Real-core compilation, emulation,
+rendering, audio, input, and save acceptance remain unverified.
 Cross-platform native UI and service acceptance is distinct from automated tests.
 
 A download is held whole in memory before it is saved, which suits a save file and not a disc image. Writing as it arrives needs the File System Access API, which is Chromium only, so a large transfer belongs in a native client for now.

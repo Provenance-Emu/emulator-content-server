@@ -1,0 +1,49 @@
+name: CHD native acceptance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chd-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generated-native:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Native build dependencies
+        id: dependencies
+        run: |
+          brew install asio pkgconf flac sdl3 utf8proc zstd
+          echo "key=$({ brew list --versions asio pkgconf flac libogg sdl3 utf8proc zstd; xcrun clang --version; xcrun --show-sdk-version; } | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: decoder-cache
+        with:
+          path: ${{ runner.temp }}/ecs-chdman
+          key: chdman-0289-macos15-${{ runner.arch }}-${{ steps.dependencies.outputs.key }}-${{ hashFiles('scripts/chdman/build-pinned.sh', '.github/workflows/chd-native.yml') }}
+      - if: steps.decoder-cache.outputs.cache-hit != 'true'
+        run: sh scripts/chdman/build-pinned.sh
+      - name: Configure required cached decoder
+        run: echo "ECS_CHDMAN_PATH=$RUNNER_TEMP/ecs-chdman/chdman" >> "$GITHUB_ENV"
+      - run: pnpm build
+      - name: Require configured decoder and run generated fixtures
+        shell: bash
+        run: |
+          test -n "$ECS_CHDMAN_PATH" && test -x "$ECS_CHDMAN_PATH"
+          node --test packages/storage/dist/test/chd-integration.test.js

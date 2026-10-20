@@ -5,7 +5,13 @@ import { hashToken, RateLimiter } from '@ecs/auth';
 import { CatalogDatabase, type CatalogLimits } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { problem } from '@ecs/protocol';
-import { ensureLayout, VirtualProviderRegistry, ZipProvider } from '@ecs/storage';
+import {
+  type ChdProviderOptions,
+  createChdProvider,
+  ensureLayout,
+  VirtualProviderRegistry,
+  ZipProvider,
+} from '@ecs/storage';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import './actor.js';
@@ -19,6 +25,10 @@ import { registerWebDavCredentials } from './webdav-credentials.js';
 
 export interface OpenServerOptions {
   dataDir: string;
+  /** Optional operator-owned absolute native decoder path; omitted means ZIP only. */
+  chdmanPath?: string;
+  /** Process-runner injection for portable decoder tests. */
+  chdProviderOptions?: ChdProviderOptions;
   displayName?: string;
   webdavEnabled?: boolean;
   uiDir?: string | null;
@@ -40,14 +50,26 @@ export async function openServer(options: OpenServerOptions): Promise<{
     options.playerDir === undefined ? undefined : await loadPlayerAssets(options.playerDir);
   await ensureLayout(options.dataDir);
   const dataDir = await realpath(options.dataDir);
-  const catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'), options.limits);
+  const virtual = new VirtualProviderRegistry([
+    new ZipProvider(),
+    ...(options.chdmanPath === undefined
+      ? []
+      : [await createChdProvider(options.chdmanPath, options.chdProviderOptions)]),
+  ]);
+  let catalog: CatalogDatabase;
+  try {
+    catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'), options.limits);
+  } catch (error) {
+    await virtual.close();
+    throw error;
+  }
   const context: ServerContext = {
     catalog,
     player,
     dataDir,
     webdavEnabled: options.webdavEnabled === true,
     displayName: options.displayName ?? 'Emulator Content Server',
-    virtual: new VirtualProviderRegistry([new ZipProvider()]),
+    virtual,
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
     uiDir: options.uiDir ?? null,
     localTrust: options.localTrust !== false,
@@ -56,15 +78,23 @@ export async function openServer(options: OpenServerOptions): Promise<{
   try {
     app = await buildApp(context, options.logger ?? false);
   } catch (error) {
+    await virtual.close();
     catalog.close();
     throw error;
   }
+  // preClose runs before Fastify waits for active requests. Abort native work
+  // here so an active entry request cannot hold shutdown until its deadline.
+  app.addHook('preClose', async () => {
+    await virtual.close();
+  });
+  app.addHook('onClose', async () => {
+    catalog.close();
+  });
   return {
     app,
     catalog,
     close: async () => {
       await app.close();
-      catalog.close();
     },
   };
 }

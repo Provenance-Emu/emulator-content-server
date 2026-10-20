@@ -33,8 +33,8 @@
 
 | Brief | State |
 | --- | --- |
-| Virtual formats | ZIP implemented; disc containers included in 1.0 and in progress separately |
-| Browser playback | Included in 1.0; design and implementation in progress separately |
+| Virtual formats | ZIP and opt-in CHD v5 DVD ISO/supported CD CUE/BIN implemented; native Linux/Windows and browser disc-core acceptance unverified |
+| Browser playback | Browser player implemented separately; real-core compilation, emulation, rendering, audio, input, and save acceptance unverified |
 | Scanning and metadata | A registered folder can be scanned in place. Files stay put and are local, evicted, or offline |
 | WebDAV compatibility | Merged #13 in `apps/server`, auth, database, and clients; native-client acceptance remains |
 | Adversarial validation | Expanded server/auth/storage coverage implemented; keep generated fixtures and package-owned tests |
@@ -51,8 +51,11 @@
 
 ## Remaining 1.0 work and acceptance
 
-- Disc containers and browser playback remain included work in progress. Their
-  separate changes must land and be validated before claiming the 1.0 scope is done.
+- CHD decoding and the browser player are implemented. Native CHD interoperability
+  on Linux/Windows and browser disc-core playback remain unverified.
+- Real browser-core compilation, emulation, rendering, audio, input, and save
+  acceptance remain unverified; the ABI harness records its tested integration
+  behavior separately.
 - Native Finder mounting, cross-platform tray/service behavior, live VPN/proxy
   deployment, and broad manual workflow acceptance need recorded results.
   Automated Finder-style requests do not establish a native Finder mount.
