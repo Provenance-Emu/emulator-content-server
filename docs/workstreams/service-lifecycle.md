@@ -28,7 +28,16 @@ Run `ecs serve` as a background service that starts at login on macOS, Linux, an
 
 ## Status
 
-`ecs service install|uninstall|status` writes a per-user LaunchAgent, systemd user unit, or logon task. `serve` logs to the data directory when it has no terminal. The tray does not start or stop the registration yet.
+`ecs service install|uninstall|status` writes a per-user LaunchAgent, systemd user
+unit, or logon task. `serve` logs to the data directory when it has no terminal.
+See [Service operations](../operations/service.md).
+
+Tray status and start/stop controls are merged in #11. They use a restricted native
+bridge to operate the current user's local registration, independently of the API
+address being watched. The browser has no service-control endpoint. If no
+registration exists, the tray shows the CLI install instructions. Platform command
+planning and UI states are covered by automated tests; that does not establish
+manual native service acceptance on every supported OS.
 
 ## Non-goals
 
