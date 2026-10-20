@@ -131,3 +131,102 @@ test('source snapshots exclude foreign ignored objects and untracked build input
     /pinned commit/,
   );
 });
+
+test('permitted patched source is compared canonically despite alternate Git formatting and CRLF', async (t) => {
+  const { snapshotSource, validatePatchedSource } = await import('./browser-core/source.mjs');
+  const { mkdir } = await import('node:fs/promises');
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-browser-patch-format-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const source = join(dir, 'operator');
+  const expected = join(dir, 'expected');
+  await mkdir(source);
+  function git(args) {
+    const result = spawnSync('git', args, { cwd: source, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  }
+  git(['init', '--quiet']);
+  await writeFile(join(source, 'save.c'), 'int save_result = 0;\n');
+  await writeFile(join(source, 'other.c'), 'int untouched = 1;\n');
+  git(['add', '.']);
+  git([
+    '-c',
+    'user.name=ECS fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '--quiet',
+    '-m',
+    'Generated patch fixture',
+  ]);
+  snapshotSource(source, expected, git(['rev-parse', 'HEAD']));
+  const patched = 'int save_result = 1;\n';
+  await writeFile(join(expected, 'save.c'), patched);
+  assert.doesNotThrow(() => validatePatchedSource(source, expected, 'save.c'));
+  await writeFile(join(source, 'save.c'), patched);
+  for (const [key, value] of [
+    ['core.abbrev', '7'],
+    ['color.ui', 'always'],
+    ['diff.noprefix', 'true'],
+    ['diff.context', '1'],
+  ])
+    git(['config', '--local', key, value]);
+  git(['config', '--local', 'core.autocrlf', 'true']);
+  await writeFile(join(source, 'save.c'), patched.replaceAll('\n', '\r\n'));
+  assert.doesNotThrow(() => validatePatchedSource(source, expected, 'save.c'));
+  await writeFile(join(source, 'other.c'), 'int unrelated_change = 2;\n');
+  assert.throws(
+    () => validatePatchedSource(source, expected, 'save.c'),
+    /other than the required patch/,
+  );
+  await writeFile(join(source, 'other.c'), 'int untouched = 1;\n');
+  await writeFile(join(source, 'save.c'), 'int incorrect_patch = 3;\n');
+  assert.throws(
+    () => validatePatchedSource(source, expected, 'save.c'),
+    /other than the required patch/,
+  );
+});
+
+test('source snapshots use canonical LF when user Git config requests CRLF checkouts', async (t) => {
+  const { snapshotSource } = await import('./browser-core/source.mjs');
+  const { mkdir } = await import('node:fs/promises');
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-browser-source-eol-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const source = join(dir, 'operator');
+  const destination = join(dir, 'clean-build');
+  await mkdir(source);
+  function git(args) {
+    const result = spawnSync('git', args, { cwd: source, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  }
+  git(['init', '--quiet']);
+  await writeFile(join(source, 'core.c'), 'int canonical_source = 1;\n');
+  git(['add', '.']);
+  git([
+    '-c',
+    'user.name=ECS fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '--quiet',
+    '-m',
+    'Generated LF fixture',
+  ]);
+  const commit = git(['rev-parse', 'HEAD']);
+  const config = join(dir, 'user.gitconfig');
+  await writeFile(config, '[core]\n autocrlf = true\n');
+  const originalConfig = process.env.GIT_CONFIG_GLOBAL;
+  try {
+    process.env.GIT_CONFIG_GLOBAL = config;
+    snapshotSource(source, destination, commit);
+  } finally {
+    if (originalConfig === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = originalConfig;
+  }
+  assert.equal(await readFile(join(destination, 'core.c'), 'utf8'), 'int canonical_source = 1;\n');
+});

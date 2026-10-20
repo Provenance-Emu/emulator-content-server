@@ -15,7 +15,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { snapshotSource } from './source.mjs';
+import { snapshotSource, validatePatchedSource } from './source.mjs';
 
 const frontendCommit = '4d4bfc0fbaacca30d433e5c11b0b2b5242141b66';
 const coreCommit = 'ac0d00a7fc01166f84c7bac01d1084ebfd2b865e';
@@ -70,9 +70,6 @@ for (const [checkout, commit] of [
 }
 if (run('git', ['diff', '--name-only'], core, true))
   throw new Error('FCEUmm checkout must have no tracked changes');
-const delta = run('git', ['diff', '--no-ext-diff', 'HEAD', '--'], frontend, true);
-if (delta && `${delta}\n` !== patch.toString())
-  throw new Error('RetroArch checkout contains changes other than the required patch');
 const buildRoot = mkdtempSync(join(tmpdir(), 'ecs-browser-build-'));
 try {
   const buildFrontend = join(buildRoot, 'frontend');
@@ -81,6 +78,7 @@ try {
   snapshotSource(core, buildCore, coreCommit);
   run('git', ['apply', '--check', patchPath], buildFrontend);
   run('git', ['apply', patchPath], buildFrontend);
+  validatePatchedSource(frontend, buildFrontend, 'save.c');
   run('emmake', ['make', '-j2', '-f', 'Makefile.libretro', 'platform=emscripten'], buildCore);
   copyFileSync(
     join(buildCore, 'fceumm_libretro_emscripten.bc'),
