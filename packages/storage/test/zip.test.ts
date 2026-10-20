@@ -448,11 +448,11 @@ test('a direct entry request cannot bypass the expanded-size quota by skipping i
     { ...QUOTA, maxExpandedBytes: 4096 },
   );
   try {
-    await assert.rejects(staged.registry.inspect(staged.path), { code: 'archive-rejected' });
     await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
       code: 'archive-rejected',
     });
     assert.deepEqual(await cachedFiles(staged.root), []);
+    await assert.rejects(staged.registry.inspect(staged.path), { code: 'archive-rejected' });
   } finally {
     await rm(staged.root, { recursive: true, force: true });
   }
