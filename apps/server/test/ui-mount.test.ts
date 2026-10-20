@@ -74,3 +74,43 @@ test('a server with no built interface serves no interface', async () => {
     assert.equal(health.statusCode, 200, 'the API is unaffected by the absent interface');
   });
 });
+
+test('the public isolated play document has its own policy and reuses unchanged UI assets', async () => {
+  const assets = await mkdtemp(join(tmpdir(), 'ecs-play-shell-'));
+  await mkdir(join(assets, 'play'));
+  await mkdir(join(assets, 'assets'));
+  await writeFile(join(assets, 'index.html'), '<title>Library</title>');
+  await writeFile(
+    join(assets, 'play', 'index.html'),
+    '<title>Player</title><script src="/ui/assets/player.js"></script>',
+  );
+  await writeFile(join(assets, 'assets', 'player.js'), 'export const player = true;');
+  await withServer(assets, async ({ app }) => {
+    const redirect = await app.inject({ url: '/play' });
+    assert.equal(redirect.statusCode, 308);
+    assert.equal(redirect.headers.location, '/play/');
+    const play = await app.inject({ url: '/play/' });
+    assert.equal(play.statusCode, 200, 'navigation needs no bearer header');
+    assert.match(play.body, /Player/);
+    assert.equal(
+      play.headers['content-security-policy'],
+      "default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'none'",
+    );
+    assert.equal(play.headers['cross-origin-opener-policy'], 'same-origin');
+    assert.equal(play.headers['cross-origin-embedder-policy'], 'require-corp');
+    assert.equal(play.headers['cross-origin-resource-policy'], 'same-origin');
+    assert.equal(play.headers['referrer-policy'], 'no-referrer');
+    assert.equal(play.headers['x-content-type-options'], 'nosniff');
+    const ui = await app.inject({ url: '/ui/' });
+    assert.equal(
+      ui.headers['content-security-policy'],
+      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    );
+    assert.equal(ui.headers['cross-origin-opener-policy'], undefined);
+    const script = await app.inject({ url: '/ui/assets/player.js' });
+    assert.equal(script.statusCode, 200);
+    assert.equal(script.headers['content-security-policy'], ui.headers['content-security-policy']);
+    assert.equal((await app.inject({ url: '/play/not-present.js' })).statusCode, 404);
+    assert.equal((await app.inject({ url: '/play/../index.html' })).statusCode, 404);
+  });
+});

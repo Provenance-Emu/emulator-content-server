@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { statSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { assertListenPolicy } from '@ecs/auth';
 import { CatalogDatabase } from '@ecs/database';
 
@@ -20,6 +20,7 @@ export interface ServiceSpec {
   port: number;
   advertise: boolean;
   webdavEnabled?: boolean;
+  playerDir?: string;
   allowLan: boolean;
   publicInternet: boolean;
   tlsTerminated: boolean;
@@ -54,6 +55,10 @@ export function serveArguments(spec: ServiceSpec): string[] {
   ];
   if (spec.advertise) args.push('--advertise');
   if (spec.webdavEnabled) args.push('--webdav');
+  if (spec.playerDir !== undefined) {
+    if (!isAbsolute(spec.playerDir)) throw new Error('Player directory must be absolute');
+    args.push('--player-dir', spec.playerDir);
+  }
   if (spec.allowLan) args.push('--allow-lan');
   if (spec.publicInternet) args.push('--public');
   if (spec.tlsTerminated) args.push('--tls-terminated');

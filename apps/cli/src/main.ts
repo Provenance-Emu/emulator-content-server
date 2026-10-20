@@ -166,6 +166,7 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       limits: limitsFromEnv(process.env),
       logger: true,
       uiDir,
+      playerDir: playerDirectory(),
       webdavEnabled: listen.webdavEnabled,
       // A public bind sits behind a proxy on loopback, so the socket address
       // cannot decide who is local.
@@ -268,6 +269,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
     platform: process.platform,
     home: homedir(),
     dataDir: absolute,
+    playerDir: playerDirectory(),
     executable: process.execPath,
     script: process.argv[1] ?? fileURLToPath(import.meta.url),
     host: listen.host,
@@ -280,6 +282,14 @@ function serviceSpec(dataDir: string): ServiceSpec {
     bootstrapped: readBootstrapped(absolute),
     uid: process.getuid?.() ?? 0,
   };
+}
+
+function playerDirectory(): string | undefined {
+  const selected = value('--player-dir');
+  if (has('--player-dir') && (!selected || selected.startsWith('--'))) {
+    throw new Error('--player-dir requires an absolute directory path');
+  }
+  return selected ?? process.env.ECS_PLAYER_DIR;
 }
 
 function listenConfig(): {
@@ -317,7 +327,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--ui <dir>|none]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--ui <dir>|none] [--player-dir <absolute-path>]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
@@ -329,7 +339,7 @@ ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]
-ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--player-dir <absolute-path>]
 ecs service uninstall --data ./content-data
 ecs service status --data ./content-data`);
 }

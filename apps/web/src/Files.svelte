@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { ContentClient, Item, ManifestFile } from '@ecs/client';
+  import type { ContentClient, Item, ManifestFile, PlayerCoreDescriptor } from '@ecs/client';
   import { bytes } from './lib/format';
   import { explain } from './lib/problems';
+  import { assetPlayHref } from './player/links';
 
   let { client, item }: { client: ContentClient; item: Item } = $props();
 
@@ -28,6 +29,7 @@
   const SAVE_KINDS = new Set(['battery_save', 'save_state']);
 
   let files = $state<ManifestFile[]>([]);
+  let playerCore = $state<PlayerCoreDescriptor | null>(null);
   let failure = $state<string | null>(null);
   let reading = $state<{ id: string; received: number; total: number } | null>(null);
   let choosing = $state<string | null>(null);
@@ -104,6 +106,12 @@
   }
 
   void load();
+  async function loadPlayer(): Promise<void> {
+    try {
+      if ((await client.capabilities()).features.webPlayback) playerCore = await client.playerCore();
+    } catch { /* Optional playback stays unavailable. */ }
+  }
+  void loadPlayer();
 </script>
 
 <section>
@@ -141,10 +149,12 @@
 </section>
 
 {#snippet row(file: ManifestFile, copy: boolean)}
+  {@const play = assetPlayHref(playerCore, item, file)}
   <tr>
     <td class="path" class:dim={copy}>{file.relativePath}</td>
     <td class="dim">{bytes(file.size)}</td>
     <td>
+      {#if play}<a href={play}>Play</a>{/if}
       {#if reading?.id === file.id}
         <progress max={reading.total} value={reading.received}></progress>
       {:else}
