@@ -38,6 +38,10 @@ From the page you can sign in, read status, manage content folders, and move fil
 
 `apps/tray` is a menu-bar companion for macOS, Windows, and Linux. It reports whether the server answers and opens the interface, and it is an API client with no data directory of its own. It needs a Rust toolchain: `pnpm tray-dev` to run it, `pnpm tray` to bundle it. Nothing else in the repository needs Rust.
 
+## WebDAV
+
+`ecs serve --webdav` enables authenticated, read-only browsing and ranged downloads at `/dav/`. Finder uses revocable Digest app credentials; existing bearer credentials also work. See [WebDAV setup](docs/webdav.md) for enablement, credential management, and client configuration.
+
 ## Verify
 
 ```sh
@@ -61,4 +65,4 @@ Dependency direction is one-way: protocol and domain, then infrastructure, then 
 
 ## Scope of this foundation
 
-The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs, directory scanning, WebDAV, desktop UI, and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, IPA feeds, and NAS or cloud connectors stay out of the content server process and database. They are plugins.
+The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Format-specific virtual discs and remote relays are documented as follow-on work in [docs/workstreams](docs/workstreams/README.md). Signing, JIT activation, IPA feeds, and NAS or cloud connectors stay out of the content server process and database. They are plugins.

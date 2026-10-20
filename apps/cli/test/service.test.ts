@@ -224,3 +224,12 @@ test('log rotation keeps a bounded set, leaves the live file, and drops credenti
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('WebDAV is opt-in and persists in each service registration', () => {
+  for (const platform of ['darwin', 'linux', 'win32'] as const) {
+    const base = spec('/fixture', '/fixture/data', platform);
+    assert.equal(renderRegistration(base).includes('--webdav'), false);
+    assert.equal(renderRegistration({ ...base, webdavEnabled: false }).includes('--webdav'), false);
+    assert.equal(renderRegistration({ ...base, webdavEnabled: true }).includes('--webdav'), true);
+  }
+});
