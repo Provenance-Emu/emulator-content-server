@@ -180,6 +180,35 @@ function stopChildren(children: Set<ChildProcess>) {
     }
   }
 }
+function guardCleanup(
+  t: TestContext,
+  root: string,
+  children: Set<ChildProcess>,
+  resources: () => {
+    server: Awaited<ReturnType<typeof openServer>> | undefined;
+    request?: ReturnType<typeof get>;
+  },
+) {
+  let cleaned = false;
+  const cleanup = async () => {
+    if (cleaned) return;
+    cleaned = true;
+    try {
+      resources().request?.destroy();
+      stopChildren(children);
+      await resources().server?.close();
+    } finally {
+      try {
+        t.mock.restoreAll();
+        syncBuiltinESMExports();
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    }
+  };
+  t.after(cleanup);
+  return cleanup;
+}
 async function cacheSnapshot(dataDir: string) {
   const root = join(dataDir, 'virtual-cache');
   const files = (await readdir(root, { recursive: true })).sort();
@@ -197,6 +226,9 @@ for (const cd of [false, true]) {
   }, async (t) => {
     assert.ok(executable);
     const root = await mkdtemp(join(tmpdir(), 'ecs-native-http-'));
+    const children = new Set<ChildProcess>();
+    let server: Awaited<ReturnType<typeof openServer>> | undefined;
+    const cleanup = guardCleanup(t, root, children, () => ({ server }));
     const dataDir = join(root, 'data');
     const fixture = await generated(root, cd);
     t.diagnostic(
@@ -208,11 +240,10 @@ for (const cd of [false, true]) {
     );
     const count = { decodes: 0 };
     const started = gate();
-    const children = new Set<ChildProcess>();
     const hooks = { start: started.resolve, suspend: process.platform !== 'win32', children };
     observeNative(t, hooks, count);
     const joined = gate();
-    let server = await openServer({
+    server = await openServer({
       dataDir,
       chdmanPath: executable,
       localTrust: false,
@@ -308,11 +339,7 @@ for (const cd of [false, true]) {
       assert.equal(count.decodes, 1);
       assert.deepEqual(await cacheSnapshot(dataDir), snapshot);
     } finally {
-      stopChildren(children);
-      await server.close();
-      t.mock.restoreAll();
-      syncBuiltinESMExports();
-      await rm(root, { recursive: true, force: true });
+      await cleanup();
     }
   });
 }
@@ -327,22 +354,24 @@ for (const shutdown of [false, true]) {
   }, async (t) => {
     assert.ok(executable);
     const root = await mkdtemp(join(tmpdir(), 'ecs-native-cancel-'));
+    const children = new Set<ChildProcess>();
+    let server: Awaited<ReturnType<typeof openServer>> | undefined;
+    let request: ReturnType<typeof get> | undefined;
+    const cleanup = guardCleanup(t, root, children, () => ({ server, request }));
     const dataDir = join(root, 'data');
     const fixture = await generated(root, false);
     const count = { decodes: 0 };
     const started = gate();
     const cancelled = gate();
     const childClosed = gate<string | null>();
-    const children = new Set<ChildProcess>();
     const hooks = { suspend: true, start: started.resolve, closed: childClosed.resolve, children };
     observeNative(t, hooks, count);
-    const server = await openServer({
+    server = await openServer({
       dataDir,
       chdmanPath: executable,
       localTrust: false,
       chdProviderOptions: { pollIntervalMs: 5, killGraceMs: 10 },
     });
-    let request: ReturnType<typeof get> | undefined;
     server.app.addHook('onError', async (_request, _reply, error) => {
       if (/cancelled/i.test(error.message)) cancelled.resolve();
     });
@@ -386,12 +415,7 @@ for (const shutdown of [false, true]) {
         assert.equal(count.decodes, 2);
       }
     } finally {
-      request?.destroy();
-      stopChildren(children);
-      await server.close();
-      t.mock.restoreAll();
-      syncBuiltinESMExports();
-      await rm(root, { recursive: true, force: true });
+      await cleanup();
     }
   });
 }
