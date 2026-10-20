@@ -401,9 +401,9 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.post('/api/v1/items', async (request, reply) => {
     const actor = requireActor(request);
     const body = jsonObject(request.body);
+    const libraryId = requiredString(body, 'libraryId');
+    libraryDecision(catalog, actor, libraryId, 'write');
     const result = await withIdempotency(catalog, actor, request, body, async () => {
-      const libraryId = requiredString(body, 'libraryId');
-      libraryDecision(catalog, actor, libraryId, 'write');
       const systemIdentifier = requiredString(body, 'systemIdentifier');
       const systemError = validateSystemIdentifier(systemIdentifier);
       if (systemError) throw new DomainError('invalid-body', 400, systemError);
@@ -517,9 +517,9 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.post('/api/v1/uploads', async (request, reply) => {
     const actor = requireActor(request);
     const body = jsonObject(request.body);
+    const libraryId = requiredString(body, 'libraryId');
+    libraryDecision(catalog, actor, libraryId, 'write');
     const result = await withIdempotency(catalog, actor, request, body, async () => {
-      const libraryId = requiredString(body, 'libraryId');
-      libraryDecision(catalog, actor, libraryId, 'write');
       const upload = catalog.createUpload({
         userId: actor.kind === 'user' ? actor.userId : null,
         guestGrantId: actor.kind === 'guest' ? actor.grantId : null,
@@ -582,11 +582,12 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireActor(request);
     const uploadId = (request.params as { uploadId: string }).uploadId;
     const body = jsonObject(request.body);
-    const result = await mutateUpload(uploadId, () =>
-      withIdempotency(catalog, actor, request, body, async () => {
+    const result = await mutateUpload(uploadId, () => {
+      requireOwnedUpload(catalog, actor, uploadId);
+      const item = requireItem(catalog, requiredString(body, 'itemId'));
+      itemDecision(catalog, actor, item, 'write');
+      return withIdempotency(catalog, actor, request, body, async () => {
         const upload = requireOpenUpload(catalog, actor, uploadId);
-        const item = requireItem(catalog, requiredString(body, 'itemId'));
-        itemDecision(catalog, actor, item, 'write');
         const kind = validateAssetKind(requiredString(body, 'kind'));
         if (!kind) throw new DomainError('invalid-body', 400, 'Unknown asset kind');
         let relativePath: string;
@@ -629,8 +630,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         }
         await removeStaging(context.dataDir, upload.id);
         return { status: 201, body: asset };
-      }),
-    );
+      });
+    });
     return reply.status(result.status).send(result.body);
   });
 
@@ -742,15 +743,15 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.post('/api/v1/guest-grants', async (request, reply) => {
     const actor = requireUser(request, 'admin');
     const body = jsonObject(request.body);
+    const libraryId = requiredString(body, 'libraryId');
+    libraryDecision(catalog, actor, libraryId, 'admin');
+    const itemValue = body.itemId;
+    const itemId =
+      itemValue === undefined || itemValue === null || itemValue === ''
+        ? null
+        : requiredString(body, 'itemId');
+    if (itemId) itemDecision(catalog, actor, requireItem(catalog, itemId), 'admin');
     const result = await withIdempotency(catalog, actor, request, body, async () => {
-      const libraryId = requiredString(body, 'libraryId');
-      libraryDecision(catalog, actor, libraryId, 'admin');
-      const itemValue = body.itemId;
-      const itemId =
-        itemValue === undefined || itemValue === null || itemValue === ''
-          ? null
-          : requiredString(body, 'itemId');
-      if (itemId) itemDecision(catalog, actor, requireItem(catalog, itemId), 'admin');
       const capabilities = stringList(body.capabilities).filter((item): item is GuestCapability =>
         GUEST_CAPABILITIES.includes(item as GuestCapability),
       );
