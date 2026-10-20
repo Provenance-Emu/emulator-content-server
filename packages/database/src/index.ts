@@ -4,5 +4,6 @@ export {
   type ChangeRecord,
   type StorageLocationRecord,
   type UploadRecord,
+  type WebDavCredentialRecord,
 } from './catalog.js';
 export { MIGRATIONS, type Migration, pendingMigrations, SCHEMA_VERSION } from './schema.js';

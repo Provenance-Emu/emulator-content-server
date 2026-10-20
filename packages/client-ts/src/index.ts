@@ -52,4 +52,8 @@ export type {
   UploadSession,
   User,
   UserDraft,
+  WebDavCredential,
+  WebDavCredentialCreated,
+  WebDavCredentialDraft,
+  WebDavCredentialList,
 } from './generated.js';

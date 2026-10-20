@@ -170,6 +170,52 @@ public struct FolderListing: Codable, Equatable, Sendable {
     }
 }
 
+public struct WebDavCredential: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var username: String
+    public var createdAt: String
+    public var expiresAt: String
+    public var revokedAt: String?
+
+    public init(id: String, name: String, username: String, createdAt: String, expiresAt: String, revokedAt: String? = nil) {
+        self.id = id
+        self.name = name
+        self.username = username
+        self.createdAt = createdAt
+        self.expiresAt = expiresAt
+        self.revokedAt = revokedAt
+    }
+}
+
+public struct WebDavCredentialList: Codable, Equatable, Sendable {
+    public var items: [WebDavCredential]
+
+    public init(items: [WebDavCredential]) {
+        self.items = items
+    }
+}
+
+public struct WebDavCredentialDraft: Codable, Equatable, Sendable {
+    public var name: String
+    public var expiresInSeconds: Int?
+
+    public init(name: String, expiresInSeconds: Int? = nil) {
+        self.name = name
+        self.expiresInSeconds = expiresInSeconds
+    }
+}
+
+public struct WebDavCredentialCreated: Codable, Equatable, Sendable {
+    public var credential: WebDavCredential
+    public var password: String
+
+    public init(credential: WebDavCredential, password: String) {
+        self.credential = credential
+        self.password = password
+    }
+}
+
 public struct StorageLocation: Codable, Equatable, Sendable {
     public var id: String
     public var path: String

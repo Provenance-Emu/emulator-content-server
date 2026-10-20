@@ -84,6 +84,29 @@ export interface FolderListing {
   places: FolderPlace[];
 }
 
+export interface WebDavCredential {
+  id: string;
+  name: string;
+  username: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+}
+
+export interface WebDavCredentialList {
+  items: WebDavCredential[];
+}
+
+export interface WebDavCredentialDraft {
+  name: string;
+  expiresInSeconds?: number;
+}
+
+export interface WebDavCredentialCreated {
+  credential: WebDavCredential;
+  password: string;
+}
+
 export interface StorageLocation {
   id: string;
   path: string;

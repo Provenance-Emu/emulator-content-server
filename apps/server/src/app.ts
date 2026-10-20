@@ -11,10 +11,12 @@ import type { ServerContext } from './context.js';
 import { sendProblem } from './http.js';
 import { admitLocal, trayOrigin } from './local-access.js';
 import { registerRoutes } from './routes.js';
+import { registerWebDavCredentials } from './webdav-credentials.js';
 
 export interface OpenServerOptions {
   dataDir: string;
   displayName?: string;
+  webdavEnabled?: boolean;
   uiDir?: string | null;
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
@@ -33,6 +35,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
   const context: ServerContext = {
     catalog,
     dataDir: options.dataDir,
+    webdavEnabled: options.webdavEnabled === true,
     displayName: options.displayName ?? 'Emulator Content Server',
     virtual: new VirtualProviderRegistry([new ZipProvider()]),
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
@@ -135,5 +138,6 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
       );
   });
   registerRoutes(app, context);
+  registerWebDavCredentials(app, context);
   return app;
 }
