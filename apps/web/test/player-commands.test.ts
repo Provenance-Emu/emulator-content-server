@@ -20,7 +20,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 test('delayed completion gates resolution and all commands serialize as direct JS strings', async () => {
   const f = runtime();
   f.replies.push('old startup reply');
-  const channel = new CommandChannel(f.core, { deadlineMs: 200, pollMs: 1 });
+  const channel = new CommandChannel(f.core);
   let done = false;
   const first = channel.run('SAVE_STATE_SLOT 0').then(() => {
     done = true;
@@ -56,7 +56,7 @@ for (const reply of [
 
 test('battery accepts only OK with trailing CR/LF, including unchanged SRAM', async () => {
   const f = runtime();
-  const channel = new CommandChannel(f.core, { deadlineMs: 100, pollMs: 1 });
+  const channel = new CommandChannel(f.core);
   const result = channel.run('SAVE_FILES');
   await tick();
   f.replies.push('OK\n');
