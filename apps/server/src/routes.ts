@@ -94,21 +94,23 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   const { catalog } = context;
   registerLibraryBrowse(app, context);
 
-  // Keep staging bytes and the committed offset in one per-upload operation.
-  // The settled tail lets failures release waiters; remove it only when no
-  // later operation is queued so idle uploads do not remain in memory.
-  const uploadOperations = new Map<string, Promise<void>>();
-  function mutateUpload<T>(id: string, operation: () => Promise<T>): Promise<T> {
-    const result = (uploadOperations.get(id) ?? Promise.resolve()).then(operation);
-    const settled = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    uploadOperations.set(id, settled);
-    void settled.then(() => {
-      if (uploadOperations.get(id) === settled) uploadOperations.delete(id);
-    });
-    return result;
+  const uploadMutations = new Set<string>();
+  async function mutateUpload<T>(
+    actor: Actor,
+    uploadId: string,
+    operation: (upload: UploadRecord) => Promise<T>,
+  ): Promise<T> {
+    const upload = requireOwnedUpload(catalog, actor, uploadId);
+    if (upload.state !== 'open') throw new DomainError('upload-closed', 409, 'Upload is not open');
+    if (uploadMutations.has(uploadId)) {
+      throw new DomainError('upload-busy', 409, 'Another operation is changing this upload');
+    }
+    uploadMutations.add(uploadId);
+    try {
+      return await operation(upload);
+    } finally {
+      uploadMutations.delete(uploadId);
+    }
   }
 
   const placements = new Map<string, number>();
@@ -545,8 +547,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.put('/api/v1/uploads/:uploadId/content', async (request, reply) => {
     const actor = requireActor(request);
     const { uploadId } = request.params as { uploadId: string };
-    await mutateUpload(uploadId, async () => {
-      const upload = requireOpenUpload(catalog, actor, uploadId);
+    return mutateUpload(actor, uploadId, async (upload) => {
       const header = request.headers['content-range'];
       let offset = upload.received;
       let expectedBytes: number | undefined;
@@ -582,20 +583,19 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         throw new DomainError('invalid-body', 400, 'Body length does not match Content-Range');
       }
       catalog.setUploadReceived(upload.id, offset + written);
+      return reply.status(204).send();
     });
-    return reply.status(204).send();
   });
 
   app.post('/api/v1/uploads/:uploadId/complete', async (request, reply) => {
     const actor = requireActor(request);
     const uploadId = (request.params as { uploadId: string }).uploadId;
     const body = jsonObject(request.body);
-    const result = await mutateUpload(uploadId, () => {
-      requireOwnedUpload(catalog, actor, uploadId);
-      const item = requireItem(catalog, requiredString(body, 'itemId'));
-      itemDecision(catalog, actor, item, 'write');
-      return withIdempotency(catalog, actor, request, body, async () => {
-        const upload = requireOpenUpload(catalog, actor, uploadId);
+    requireOwnedUpload(catalog, actor, uploadId);
+    const item = requireItem(catalog, requiredString(body, 'itemId'));
+    itemDecision(catalog, actor, item, 'write');
+    const result = await withIdempotency(catalog, actor, request, body, async () => {
+      return mutateUpload(actor, uploadId, async (upload) => {
         const kind = validateAssetKind(requiredString(body, 'kind'));
         if (!kind) throw new DomainError('invalid-body', 400, 'Unknown asset kind');
         let relativePath: string;
@@ -656,14 +656,13 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.delete('/api/v1/uploads/:uploadId', async (request, reply) => {
     const actor = requireActor(request);
     const { uploadId } = request.params as { uploadId: string };
-    await mutateUpload(uploadId, async () => {
-      const upload = requireOwnedUpload(catalog, actor, uploadId);
+    return mutateUpload(actor, uploadId, async (upload) => {
       if (!catalog.abortUpload(upload.id, actor.kind === 'user' ? actor.userId : null)) {
         throw new DomainError('upload-closed', 409, 'Upload is not open');
       }
       await removeStaging(context.dataDir, upload.id);
+      return reply.status(204).send();
     });
-    return reply.status(204).send();
   });
 
   app.get('/api/v1/files/:assetId', async (request) => {
@@ -1060,14 +1059,6 @@ function requireOwnedUpload(catalog: CatalogDatabase, actor: Actor, id: string):
   const owned =
     actor.kind === 'user' ? upload.userId === actor.userId : upload.guestGrantId === actor.grantId;
   if (!owned) throw new DomainError('not-found', 404, 'Upload not found');
-  return upload;
-}
-
-function requireOpenUpload(catalog: CatalogDatabase, actor: Actor, id: string): UploadRecord {
-  const upload = requireOwnedUpload(catalog, actor, id);
-  if (upload.state !== 'open') {
-    throw new DomainError('upload-closed', 409, 'Upload is not open');
-  }
   return upload;
 }
 

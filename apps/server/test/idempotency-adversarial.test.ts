@@ -106,18 +106,44 @@ for (const resource of ['items', 'uploads'] as const) {
     const independent = await send(changed, 'adversarial-request-2');
     assert.equal(independent.statusCode, 201, independent.body);
     assert.notEqual(independent.json().id, first.json().id);
-    await t.test('body-only upgrade receipts conflict', async () => {
-      server.catalog.saveIdempotency({
-        actorKey: `user:${owner.json().userId}`,
-        key: 'legacy-body-only-key',
-        requestHash: createHash('sha256').update(JSON.stringify(original)).digest('hex'),
-        statusCode: 201,
-        responseJson: JSON.stringify(first.json()),
-      });
-      const legacy = await send(original, 'legacy-body-only-key');
-      assert.equal(legacy.statusCode, 409);
-      assert.equal(legacy.json().type, 'urn:ecs:problem:idempotency-conflict');
+    server.catalog.saveIdempotency({
+      actorKey: `user:${owner.json().userId}`,
+      key: 'legacy-body-only-key',
+      requestHash: createHash('sha256').update(JSON.stringify(original)).digest('hex'),
+      statusCode: 201,
+      responseJson: JSON.stringify(first.json()),
     });
+    const legacy = await send(original, 'legacy-body-only-key');
+    assert.equal(legacy.statusCode, 409);
+    assert.equal(legacy.json().type, 'urn:ecs:problem:idempotency-conflict');
+    const simultaneous = await Promise.all(
+      Array.from({ length: 4 }, () => send(original, 'simultaneous-same-key')),
+    );
+    for (const response of simultaneous) {
+      assert.equal(response.statusCode, 201);
+      assert.deepEqual(response.json(), simultaneous[0]?.json());
+    }
+    if (resource === 'items') {
+      const list = await app.inject({ url: `/api/v1/items?libraryId=${libraryId}`, headers: auth });
+      assert.equal(list.statusCode, 200);
+      assert.equal(list.json().items.length, 3);
+    } else {
+      assert.equal((await readdir(join(dir, 'staging'))).length, 3);
+    }
+    const competing = await Promise.all([
+      send(original, 'simultaneous-conflicting-key'),
+      send(changed, 'simultaneous-conflicting-key'),
+    ]);
+    assert.deepEqual(competing.map((response) => response.statusCode).sort(), [201, 409]);
+    const denied = competing.find((response) => response.statusCode === 409);
+    assert.equal(denied?.json().type, 'urn:ecs:problem:idempotency-conflict');
+    if (resource === 'items') {
+      const list = await app.inject({ url: `/api/v1/items?libraryId=${libraryId}`, headers: auth });
+      assert.equal(list.statusCode, 200);
+      assert.equal(list.json().items.length, 4);
+    } else {
+      assert.equal((await readdir(join(dir, 'staging'))).length, 4);
+    }
   });
 }
 
@@ -261,6 +287,67 @@ test('cached mutations still require current library permissions and token scope
     assert.equal(state.statusCode, 200);
     assert.equal(state.json().state, 'open');
     assert.equal(state.json().received, 9);
+  });
+
+  await t.test('a failed operation releases its key for a successful retry', async () => {
+    const upload = await app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads',
+      headers: editor,
+      payload: { libraryId },
+    });
+    assert.equal(upload.statusCode, 201);
+    const current = await app.inject({ url: `/api/v1/items/${item.json().id}`, headers: editor });
+    assert.equal(current.statusCode, 200);
+    const url = `/api/v1/uploads/${upload.json().id}`;
+    const payload = {
+      itemId: item.json().id,
+      kind: 'rom',
+      displayName: 'retry.bin',
+      relativePath: 'retry.bin',
+      baseRevision: current.json().revision,
+    };
+    const complete = () =>
+      app.inject({
+        method: 'POST',
+        url: `${url}/complete`,
+        payload,
+        headers: { ...editor, 'idempotency-key': 'retry-after-failure' },
+      });
+    const empty = await complete();
+    assert.equal(empty.statusCode, 400);
+    assert.equal(empty.json().type, 'urn:ecs:problem:invalid-body');
+    const put = await app.inject({
+      method: 'PUT',
+      url: `${url}/content`,
+      headers: { ...editor, 'content-type': 'application/octet-stream' },
+      payload: Buffer.from('afterfail'),
+    });
+    assert.equal(put.statusCode, 204);
+    const responses = await Promise.all([complete(), complete()]);
+    for (const response of responses) assert.equal(response.statusCode, 201);
+    assert.deepEqual(responses[0]?.json(), responses[1]?.json());
+    const content = await app.inject({
+      url: `/api/v1/files/${responses[0]?.json().id}/content`,
+      headers: editor,
+    });
+    assert.equal(content.statusCode, 200);
+    assert.equal(content.body, 'afterfail');
+  });
+
+  await t.test('simultaneous keys remain isolated between users', async () => {
+    const requests = await Promise.all(
+      [owner, editor].map((auth) =>
+        app.inject({
+          method: 'POST',
+          url: '/api/v1/uploads',
+          payload: { libraryId },
+          headers: { ...auth, 'idempotency-key': 'shared-key-different-users' },
+        }),
+      ),
+    );
+    for (const response of requests) assert.equal(response.statusCode, 201);
+    assert.notEqual(requests[0]?.json().id, requests[1]?.json().id);
   });
 
   for (const phase of ['authorized', 'reduced scope', 'demoted', 'removed', 'restored'] as const) {
