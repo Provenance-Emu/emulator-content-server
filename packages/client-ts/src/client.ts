@@ -191,8 +191,8 @@ export class ContentClient {
     filter: { libraryId?: string; unassigned?: boolean } = {},
   ): Promise<ContentRootSummaryList> {
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(filter))
-      if (value !== undefined) params.set(key, String(value));
+    if (filter.libraryId !== undefined) params.set('libraryId', filter.libraryId);
+    if (filter.unassigned === true) params.set('unassigned', 'true');
     return this.getJson(`/api/v1/root-summaries${params.size ? `?${params}` : ''}`);
   }
   assignRoot(id: string, assignment: { libraryId: string }): Promise<ContentRoot> {

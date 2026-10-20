@@ -54,15 +54,21 @@ test('client management operations preserve escaped IDs and body contracts', asy
     await client.browseLibraries();
     await client.rootSummaries({ libraryId: 'a/b' });
     await client.rootSummaries({ unassigned: true });
+    await client.rootSummaries({ unassigned: false });
+    await client.rootSummaries({ libraryId: 'a/b', unassigned: false });
     await client.assignRoot('root/id', { libraryId: 'a/b' });
     assert.equal(requests[0]?.init?.method, 'POST');
     assert.deepEqual(JSON.parse(String(requests[0]?.init?.body)), { name: 'Empty' });
     assert.equal(requests[1]?.url.pathname, '/api/v1/browse-libraries');
     assert.equal(requests[2]?.url.searchParams.get('libraryId'), 'a/b');
+    assert.equal(requests[2]?.url.search, '?libraryId=a%2Fb');
     assert.equal(requests[3]?.url.searchParams.get('unassigned'), 'true');
-    assert.equal(requests[4]?.url.pathname, '/api/v1/roots/root%2Fid/library');
-    assert.equal(requests[4]?.init?.method, 'PUT');
-    assert.deepEqual(JSON.parse(String(requests[4]?.init?.body)), { libraryId: 'a/b' });
+    assert.equal(requests[4]?.url.searchParams.has('unassigned'), false);
+    assert.equal(requests[5]?.url.searchParams.has('unassigned'), false);
+    assert.equal(requests[5]?.url.search, '?libraryId=a%2Fb');
+    assert.equal(requests[6]?.url.pathname, '/api/v1/roots/root%2Fid/library');
+    assert.equal(requests[6]?.init?.method, 'PUT');
+    assert.deepEqual(JSON.parse(String(requests[6]?.init?.body)), { libraryId: 'a/b' });
   } finally {
     globalThis.fetch = old;
   }
