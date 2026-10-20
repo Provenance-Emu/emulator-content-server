@@ -10,7 +10,7 @@ import type { VirtualContentProvider } from '@ecs/domain';
 import { placeBlob } from '../src/blobs.js';
 import { ensureLayout } from '../src/layout.js';
 import { FileContentReader } from '../src/reader.js';
-import { VirtualProviderRegistry } from '../src/virtual.js';
+import { DEFAULT_MATERIALIZE_QUOTA, VirtualProviderRegistry } from '../src/virtual.js';
 import { openVirtualEntry } from '../src/virtual-cache.js';
 import { fixture, probeRunner, QUOTA, type Runner, synthetic, track } from './chd-fixture.js';
 
@@ -458,11 +458,15 @@ test('registry shutdown joins cache jobs and removes their private staging befor
       throw new Error('cancelled synthetic native work');
     },
   };
-  const registry = new VirtualProviderRegistry([provider], QUOTA);
+  const registry = new VirtualProviderRegistry([provider], {
+    ...QUOTA,
+    timeoutMs: DEFAULT_MATERIALIZE_QUOTA.timeoutMs,
+  });
   try {
     const pending = openVirtualEntry(f.root, f.blob.sha256, registry, '0');
     const rejected = assert.rejects(pending);
-    await begun;
+    // Surface an early operation failure instead of waiting forever for setup.
+    await Promise.race([begun, pending]);
     await registry.close();
     const names = await readdir(f.root, { recursive: true });
     assert.equal(
