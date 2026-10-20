@@ -15,6 +15,12 @@ export {
   listFolders,
   startingPlaces,
 } from './browse.js';
+export {
+  type ChdProviderOptions,
+  createChdProvider,
+  type DecoderProcess,
+  type ProcessRunner,
+} from './chd-decoder.js';
 export { type ContentHash, crc32Hex, hashFile } from './hash.js';
 export { ensureBlobStore, ensureLayout, locationOnline } from './layout.js';
 export {
