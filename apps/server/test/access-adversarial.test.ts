@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -31,6 +32,29 @@ async function setup(t: TestContext) {
   const libraryId = libraries.json().items[0].id as string;
   return { ...server, owner, libraryId };
 }
+
+test('deleting a nonexistent guest grant returns 404 and preserves existing grants', async (t) => {
+  const { app, owner, libraryId } = await setup(t);
+  const created = await app.inject({
+    method: 'POST',
+    url: '/api/v1/guest-grants',
+    headers: owner,
+    payload: { libraryId, capabilities: ['read'], expiresInSeconds: 3600 },
+  });
+  assert.equal(created.statusCode, 201);
+  const removed = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/guest-grants/${randomUUID()}`,
+    headers: owner,
+  });
+  assert.equal(removed.statusCode, 404, removed.body);
+  assert.equal(removed.json().type, 'urn:ecs:problem:not-found');
+  const stillValid = await app.inject({
+    url: '/api/v1/libraries',
+    headers: { authorization: `Bearer ${created.json().token}` },
+  });
+  assert.equal(stillValid.statusCode, 200);
+});
 
 for (const kind of ['guest', 'device'] as const) {
   test(`a revoked ${kind} token cannot be replayed`, async (t) => {
