@@ -13,8 +13,14 @@
     onchange: (patch: Partial<BrowseFilters>) => void;
   } = $props();
   let search = $state('');
+  let lastSearch: string | undefined;
   $effect(() => {
-    search = filters.search;
+    const committed = filters.search;
+    // A page/summary refresh must not replace a draft that the user is still typing.
+    if (committed !== lastSearch) {
+      search = committed;
+      lastSearch = committed;
+    }
   });
 </script>
 

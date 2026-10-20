@@ -495,3 +495,96 @@ test('a new login cannot inherit the previous owner authority after a transient 
     f.restore();
   }
 });
+
+test('manual revalidation queues one fresh authority cycle behind in-flight work and discovers new libraries', async () => {
+  const f = serverFixture();
+  const pending = deferred<Response>();
+  let reads = 0;
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    f.roots = () =>
+      ++reads === 1
+        ? pending.promise
+        : Promise.resolve(Response.json({ items: [] }, { status: 403 }));
+    const starting = f.scheduler.tick();
+    for (let count = 0; count < 20 && reads === 0; count++) await Promise.resolve();
+    assert.equal(reads, 1);
+    const first = app.revalidate();
+    const second = app.revalidate();
+    assert.equal(reads, 1, 'manual calls wait for the current cycle');
+    pending.resolve(Response.json({ items: [] }));
+    await Promise.all([starting, first, second]);
+    assert.equal(reads, 2, 'duplicates coalesce into one fresh authority read');
+    assert.equal(get(app).owner, false);
+    assert.equal(get(app).signedIn, true);
+    assert.equal(f.scheduler.pending, 1);
+    f.libraries = [library('created')];
+    await app.revalidate();
+    assert.equal(get(app).libraries[0]?.id, 'created');
+    assert.equal(f.scheduler.pending, 1);
+  } finally {
+    pending.resolve(Response.json({ items: [] }));
+    app.dispose();
+    f.restore();
+  }
+});
+
+for (const action of ['signOut', 'dispose'] as const)
+  test(`queued manual revalidation is inert after ${action}`, async () => {
+    const f = serverFixture();
+    const app = createApplication(f.context, f.scheduler);
+    const pending = deferred<Response>();
+    try {
+      await app.start();
+      let reads = 0;
+      f.roots = () => {
+        reads++;
+        return pending.promise;
+      };
+      const ticking = f.scheduler.tick();
+      for (let count = 0; count < 20 && reads === 0; count++) await Promise.resolve();
+      assert.equal(reads, 1);
+      const refresh = app.revalidate();
+      await app[action]();
+      pending.resolve(Response.json({ items: [] }));
+      await Promise.all([ticking, refresh]);
+      assert.equal(reads, 1, 'no queued private request crosses the lifetime');
+      assert.equal(get(app).signedIn, false);
+      assert.deepEqual(get(app).libraries, []);
+      assert.equal(f.scheduler.pending, action === 'dispose' ? 0 : 1);
+    } finally {
+      pending.resolve(Response.json({ items: [] }));
+      app.dispose();
+      f.restore();
+    }
+  });
+
+test('revalidation responses cannot overwrite a newer login authority', async () => {
+  const f = serverFixture();
+  const app = createApplication(f.context, f.scheduler);
+  const pending = deferred<Response>();
+  try {
+    await app.start();
+    let reads = 0;
+    f.roots = () => {
+      reads++;
+      return pending.promise;
+    };
+    const refresh = app.revalidate();
+    for (let count = 0; count < 20 && reads === 0; count++) await Promise.resolve();
+    assert.equal(reads, 1, 'manual revalidation started');
+    f.roots = null;
+    f.ownerStatus = 403;
+    await app.adoptSession(session, get(app).authEpoch);
+    pending.resolve(Response.json({ items: [] }));
+    await refresh;
+    assert.equal(get(app).owner, false);
+    assert.equal(get(app).signedIn, true);
+    assert.equal(f.scheduler.pending, 1);
+  } finally {
+    pending.resolve(Response.json({ items: [] }));
+    app.dispose();
+    f.restore();
+  }
+});

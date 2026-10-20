@@ -1,25 +1,30 @@
 <script lang="ts">
   import type { ContentClient, ContentRootSummary, Library } from '@ecs/client';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import FolderSummaryRows from './components/FolderSummaryRows.svelte';
-  import { explain } from './lib/problems';
+  import { explain, isForbidden, isUnauthorized } from './lib/problems';
   let {
     client,
     libraries,
     invalidation,
     onview,
+    onrejected,
   }: {
     client: ContentClient;
     libraries: Library[];
     invalidation: number;
+    onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
   } = $props();
   let summaries = $state<ContentRootSummary[]>([]);
   let failure = $state<string | null>(null);
   let generation = 0;
   let loading = $state(false);
+  let rejected = false;
+  let lastInvalidation = -1;
   async function load() {
     const run = ++generation;
+    rejected = false;
     loading = true;
     try {
       const result = await client.rootSummaries();
@@ -28,14 +33,26 @@
         failure = null;
       }
     } catch (error) {
-      if (run === generation) failure = explain(error);
+      if (run !== generation) return;
+      failure = explain(error);
+      if (isUnauthorized(error) || isForbidden(error)) {
+        generation++;
+        summaries = [];
+        loading = false;
+        rejected = true;
+        onrejected(isUnauthorized(error) ? 401 : 403);
+      }
     } finally {
       if (run === generation) loading = false;
     }
   }
   $effect(() => {
-    void invalidation;
-    void load();
+    const signal = invalidation;
+    untrack(() => {
+      if (signal === lastInvalidation) return;
+      lastInvalidation = signal;
+      if (!rejected) void load();
+    });
   });
   onDestroy(() => {
     generation++;

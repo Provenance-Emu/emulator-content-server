@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LibraryScope } from '@ecs/client';
+  import { get } from 'svelte/store';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { createApplication, type ServerContext } from './lib/application';
   import type { FolderSelectionAdapter } from './lib/folder-selection';
@@ -14,6 +15,7 @@
   const application = untrack(() => createApplication(context));
   let scope = $state<LibraryScope | null>(null);
   let rootId = $state('');
+  let rootIntent = $state(0);
   let settings = $state(false);
   let drawer = $state(false);
   const unsubscribe = application.subscribe((state) => {
@@ -36,15 +38,22 @@
     }
   });
   function choose(next: LibraryScope) {
+    rootIntent++;
     scope = next;
     rootId = '';
     settings = false;
     drawer = false;
   }
   function viewFolder(root: string, library: string | null) {
+    rootIntent++;
     scope = library ? { libraryId: library } : { unassigned: true };
     rootId = root;
     settings = false;
+  }
+  function rejectOwnerSummary(status: 401 | 403, expectedEpoch: number) {
+    if (get(application).authEpoch !== expectedEpoch) return;
+    if (status === 401) void application.signOut();
+    else void application.revalidate();
   }
   onMount(() => {
     void application.start();
@@ -74,12 +83,14 @@
           {$application.failure}
         </p>{/if}
       {#key `${context.key}:${$application.authEpoch}`}
+        {@const expectedEpoch = $application.authEpoch}
         <div hidden={settings}>
           <LibraryBrowser
             {context}
             {application}
             {scope}
             {rootId}
+            {rootIntent}
             owner={$application.owner}
             libraries={$application.libraries}
             onsettings={() => (settings = true)}
@@ -90,6 +101,7 @@
             appState={$application}
             onback={() => (settings = false)}
             onview={viewFolder}
+            onrejected={(status) => rejectOwnerSummary(status, expectedEpoch)}
           />{/if}
       {/key}
     </main>

@@ -38,6 +38,8 @@ export interface ApplicationState {
 
 export interface ApplicationController extends Readable<ApplicationState> {
   start(): Promise<void>;
+  /** Coalesce a fresh authenticated discovery cycle after any current cycle. */
+  revalidate(): Promise<void>;
   signOut(): Promise<void>;
   dispose(): void;
   adoptSession(session: StoredSession, expectedEpoch: number): Promise<boolean>;
@@ -71,6 +73,8 @@ export function createApplication(
   let acceptedToken: string | undefined;
   let feedChanged = false;
   let needsAuthentication = true;
+  let activeCycle: { run: number; promise: Promise<void> } | null = null;
+  let revalidation: { run: number; promise: Promise<void> } | null = null;
 
   const live = (run: number) => !disposed && context.key === contextKey && run === epoch;
   function update(patch: Partial<ApplicationState>) {
@@ -171,7 +175,7 @@ export function createApplication(
       await watcher.start();
     }
   }
-  async function cycle(run: number) {
+  async function performCycle(run: number) {
     try {
       await publicStatus(run);
       if (!live(run)) return;
@@ -201,6 +205,15 @@ export function createApplication(
       schedule(run);
     }
   }
+  function cycle(run: number): Promise<void> {
+    const task = { run, promise: performCycle(run) };
+    activeCycle = task;
+    const finished = () => {
+      if (activeCycle === task) activeCycle = null;
+    };
+    void task.promise.then(finished, finished);
+    return task.promise;
+  }
   return {
     subscribe: store.subscribe,
     start() {
@@ -213,6 +226,26 @@ export function createApplication(
         started = cycle(epoch);
       }
       return started;
+    },
+    revalidate() {
+      const run = epoch;
+      if (!live(run) || !current.signedIn) return Promise.resolve();
+      if (revalidation?.run === run) return revalidation.promise;
+      clearTimer();
+      const previous = activeCycle?.run === run ? activeCycle.promise : Promise.resolve();
+      const promise = previous.then(() => {
+        if (!live(run) || !current.signedIn) return;
+        // The preceding cycle may have scheduled its next timeout while we waited.
+        clearTimer();
+        return cycle(run);
+      });
+      const task = { run, promise };
+      revalidation = task;
+      const finished = () => {
+        if (revalidation === task) revalidation = null;
+      };
+      void promise.then(finished, finished);
+      return promise;
     },
     async signOut() {
       if (disposed || context.key !== contextKey) return;

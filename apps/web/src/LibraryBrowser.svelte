@@ -13,6 +13,7 @@
   import { createLibraryBrowser } from './lib/library-browser';
   import { createDetail, type DetailController } from './lib/detail';
   import { createPreviews } from './lib/previews';
+  import { explain, isForbidden, isUnauthorized } from './lib/problems';
   import { entryKey } from './lib/content-format';
   import CategoryTabs from './components/CategoryTabs.svelte';
   import CollectionToolbar from './components/CollectionToolbar.svelte';
@@ -26,6 +27,7 @@
     application,
     scope,
     rootId = '',
+    rootIntent = 0,
     owner,
     libraries,
     onsettings,
@@ -34,6 +36,7 @@
     application: ApplicationController;
     scope: LibraryScope | null;
     rootId?: string;
+    rootIntent?: number;
     owner: boolean;
     libraries: Library[];
     onsettings: () => void;
@@ -65,6 +68,7 @@
   function disposePrivate() {
     if (disposed) return;
     disposed = true;
+    folderGeneration++;
     clearDetail();
     previews.dispose();
     browser.dispose();
@@ -144,33 +148,72 @@
       }
     }),
   );
+  let lastNavigation = '';
   $effect(() => {
     const selected = scope;
     const root = rootId;
+    const intent = rootIntent;
+    const navigation = JSON.stringify([selected, root, intent]);
     untrack(() => {
+      if (navigation === lastNavigation) return;
+      lastNavigation = navigation;
       upload = false;
-      void browser.selectScope(selected).then(() => {
-        if (!disposed && JSON.stringify(get(browser).scope) === JSON.stringify(selected) && root)
-          void browser.setQuery({ rootId: root });
-      });
+      void browser.selectScope(selected);
+      void browser.setQuery({ rootId: root });
     });
   });
+  let folderGeneration = 0;
+  let folderRejected = false;
+  let folderFailure = $state<string | null>(null);
+  let folderRetry = $state(0);
+  let lastFolderRequest = '';
+  let lastFolderScope = '';
   $effect(() => {
     const selected = scope;
     const allowed = owner;
-    let cancelled = false;
-    folders = [];
-    if (selected && allowed)
+    const signal = $application.invalidation;
+    const retry = folderRetry;
+    const scopeKey = JSON.stringify(selected);
+    const requestKey = JSON.stringify([selected, allowed, signal, retry]);
+    untrack(() => {
+      if (requestKey === lastFolderRequest) return;
+      lastFolderRequest = requestKey;
+      const run = ++folderGeneration;
+      if (scopeKey !== lastFolderScope || !allowed) {
+        folders = [];
+        folderRejected = false;
+        folderFailure = null;
+        lastFolderScope = scopeKey;
+      }
+      if (!selected || !allowed || folderRejected || disposed) return;
       void context.client
         .rootSummaries(selected)
         .then((result) => {
-          if (!cancelled && !disposed) folders = result.items;
+          if (disposed || run !== folderGeneration) return;
+          folders = result.items;
+          folderFailure = null;
+          const filter = get(browser).filters.rootId;
+          if (filter && !result.items.some((summary) => summary.root.id === filter))
+            void browser.setQuery({ rootId: '' });
         })
-        .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+        .catch((error) => {
+          if (disposed || run !== folderGeneration) return;
+          folderFailure = explain(error);
+          if (isUnauthorized(error) || isForbidden(error)) {
+            folderGeneration++;
+            folders = [];
+            folderRejected = true;
+            if (isUnauthorized(error)) rejectAccess(401);
+            else void application.revalidate();
+          }
+        });
+    });
   });
+  function refreshCollection() {
+    folderRejected = false;
+    folderRetry++;
+    void browser.refresh({ restart: get(browser).requiresRefresh });
+  }
   const title = $derived(
     scope && 'libraryId' in scope
       ? (libraries.find((library) => library.id === scope.libraryId)?.name ?? 'Library')
@@ -249,7 +292,7 @@
           type="button"
           disabled={$browser.loading}
           onclick={() => {
-            void browser.refresh({ restart: $browser.requiresRefresh });
+            refreshCollection();
           }}
         >
           Refresh
@@ -262,6 +305,7 @@
         void browser.setQuery({ category });
       }}
     />
+    {#if folderFailure}<p class="problem" role="alert">{folderFailure}</p>{/if}
     <CollectionToolbar
       filters={$browser.filters}
       {systems}

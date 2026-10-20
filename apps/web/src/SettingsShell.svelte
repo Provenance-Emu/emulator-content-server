@@ -11,10 +11,12 @@
     appState,
     onback,
     onview,
+    onrejected,
   }: {
     client: ContentClient;
     appState: ApplicationState;
     onback: () => void;
+    onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
   } = $props();
   let selected = $state('Libraries');
@@ -39,6 +41,7 @@
         libraries={appState.libraries}
         invalidation={appState.invalidation}
         {onview}
+        {onrejected}
       />{:else if appState.owner && selected === 'Upload storage'}<h1>Upload storage</h1>
       <Locations
         {client}
