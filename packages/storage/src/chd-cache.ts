@@ -1,6 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { lstat, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  rmdir,
+  writeFile,
+} from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { DomainError, type VirtualArtifactBundle, type VirtualEntry } from '@ecs/domain';
@@ -94,6 +104,30 @@ async function validate(
   }
 }
 
+// mkdir is an atomic cross-process claim. The owner holds this lock from
+// revalidation through repair and publication; a stale pre-lock observation can
+// never authorize deleting a later winner. Never reclaim another owner's lock
+// on a timer: a paused writer could still resume. Crash leftovers require an
+// operator to stop all writers before removing the abandoned lock directory.
+async function acquireGroupLock(
+  directory: string,
+  deadline: number,
+  signal: AbortSignal,
+): Promise<() => Promise<void>> {
+  const lock = `${directory}.lock`;
+  for (;;) {
+    checkDeadline(deadline, signal);
+    try {
+      await mkdir(lock, { mode: 0o700 });
+      return () => rmdir(lock);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+}
+
+// Only the exclusive group-lock owner may repair an invalid final directory.
 async function discardInvalid(directory: string): Promise<void> {
   const discarded = `${directory}.${randomUUID()}.invalid`;
   try {
@@ -141,47 +175,36 @@ export async function openChdBundle(
         const cached = await validate(directory, layout.entries, deadline, operationSignal);
         if (cached) return cached;
         await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
-        const staging = await mkdtemp(`${directory}.partial-`);
+        const release = await acquireGroupLock(directory, deadline, operationSignal);
         try {
-          const bundle = await registry.materializeBundle(
-            format,
-            input,
-            bundleId,
-            staging,
-            operationSignal,
-          );
-          checkDeadline(deadline, operationSignal);
-          await writeFile(join(staging, 'manifest.json'), JSON.stringify(bundle), {
-            flag: 'wx',
-            mode: 0o600,
-          });
-          const verified = await validate(staging, layout.entries, deadline, operationSignal);
-          if (!verified)
-            throw new DomainError('archive-rejected', 422, 'Invalid CHD artifact bundle');
-          for (let attempt = 0; attempt < 3; attempt += 1) {
+          const winner = await validate(directory, layout.entries, deadline, operationSignal);
+          if (winner) return winner;
+          await discardInvalid(directory);
+          const staging = await mkdtemp(`${directory}.partial-`);
+          try {
+            const bundle = await registry.materializeBundle(
+              format,
+              input,
+              bundleId,
+              staging,
+              operationSignal,
+            );
             checkDeadline(deadline, operationSignal);
-            try {
-              await rename(staging, directory);
-              return verified;
-            } catch (error) {
-              if (
-                !['EEXIST', 'ENOTEMPTY', 'EPERM'].includes(
-                  (error as NodeJS.ErrnoException).code ?? '',
-                )
-              )
-                throw error;
-              const winner = await validate(directory, layout.entries, deadline, operationSignal);
-              if (winner) return winner;
-              await discardInvalid(directory);
-            }
+            await writeFile(join(staging, 'manifest.json'), JSON.stringify(bundle), {
+              flag: 'wx',
+              mode: 0o600,
+            });
+            const verified = await validate(staging, layout.entries, deadline, operationSignal);
+            if (!verified)
+              throw new DomainError('archive-rejected', 422, 'Invalid CHD artifact bundle');
+            checkDeadline(deadline, operationSignal);
+            await rename(staging, directory);
+            return verified;
+          } finally {
+            await rm(staging, { recursive: true, force: true });
           }
-          throw new DomainError(
-            'archive-rejected',
-            422,
-            'CHD cache publication could not complete',
-          );
         } finally {
-          await rm(staging, { recursive: true, force: true });
+          await release();
         }
       })().finally(() => {
         clearTimeout(timeout);

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
-import { mkdir, readdir, readFile, symlink, writeFile } from 'node:fs/promises';
+import fs, { mkdir, readdir, readFile, symlink, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { isAbsolute, join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
@@ -500,3 +501,57 @@ test('MODE1_RAW retains 2352-byte sectors and MODE1/2352 descriptor semantics', 
     await f.cleanup();
   }
 });
+
+for (const code of ['EACCES', 'EBUSY']) {
+  test(`staging cleanup ${code} still releases reservations, decoder permits and close joins`, async (t) => {
+    const f = await fixture(synthetic(), decoder(dvdOutput));
+    let cleanupFailed = false;
+    const originalRemove = fs.rm;
+    t.mock.method(fs, 'rm', async (...args: Parameters<typeof fs.rm>) => {
+      if (!cleanupFailed && String(args[0]).includes('.chd.partial-')) {
+        cleanupFailed = true;
+        throw Object.assign(new Error('synthetic cleanup failure'), { code });
+      }
+      return originalRemove(...args);
+    });
+    syncBuiltinESMExports();
+    try {
+      const a = join(f.root, 'a');
+      const b = join(f.root, 'b');
+      const c = join(f.root, 'c');
+      await Promise.all([a, b, c].map((path) => mkdir(path)));
+      await assert.rejects(
+        f.provider.materializeBundle?.(f.path, 'disc', a, QUOTA) ?? Promise.resolve(),
+        (error) => (error as NodeJS.ErrnoException).code === code,
+      );
+      const capacity = await f.provider
+        .materializeBundle?.(f.path, 'disc', b, { ...QUOTA, maxExpandedBytes: 4096 })
+        .then(
+          (group) => group.files[0]?.size,
+          (error) => (error as NodeJS.ErrnoException).code,
+        );
+      const permit = await f.provider
+        .materializeBundle?.(f.path, 'disc', c, {
+          ...QUOTA,
+          maxExpandedBytes: 8192,
+          timeoutMs: 2_000,
+        })
+        .then(
+          (group) => group.files[0]?.size,
+          (error) => (error as NodeJS.ErrnoException).code,
+        );
+      const closed = await Promise.race([
+        f.provider.close?.().then(() => true),
+        new Promise((resolve) => setTimeout(() => resolve(false), 100)),
+      ]);
+      assert.deepEqual(
+        { capacity, permit, closed },
+        { capacity: 4096, permit: 4096, closed: true },
+      );
+    } finally {
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+      await originalRemove(f.root, { recursive: true, force: true });
+    }
+  });
+}

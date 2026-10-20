@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { fork } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import fs, { mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import type { VirtualContentProvider } from '@ecs/domain';
@@ -109,7 +111,7 @@ test('independent registries atomically validate the winning complete group', as
     assert.deepEqual(await readFile(a.path), Buffer.alloc(4400, 37));
     const files = await readdir(join(f.root, 'virtual-cache'), { recursive: true });
     assert.equal(
-      files.some((name) => name.endsWith('.partial')),
+      files.some((name) => name.includes('.partial-') || name.endsWith('.lock')),
       false,
     );
   } finally {
@@ -209,7 +211,7 @@ test('the last cancelled waiter joins extraction before removing all private sta
     await rejected;
     const files = await readdir(f.root, { recursive: true });
     assert.equal(
-      files.some((name) => name.includes('.partial-')),
+      files.some((name) => name.includes('.partial-') || name.endsWith('.lock')),
       false,
     );
     assert.equal(
@@ -236,7 +238,10 @@ test('a failed extraction never publishes a complete manifest', async () => {
     );
     const files = await readdir(f.root, { recursive: true });
     assert.equal(
-      files.some((name) => name.includes('.partial-') || name.endsWith('manifest.json')),
+      files.some(
+        (name) =>
+          name.includes('.partial-') || name.endsWith('.lock') || name.endsWith('manifest.json'),
+      ),
       false,
     );
   } finally {
@@ -295,10 +300,218 @@ test('registry shutdown joins cache jobs and removes their private staging befor
     await registry.close();
     const names = await readdir(f.root, { recursive: true });
     assert.equal(
-      names.some((name) => name.includes('.partial-')),
+      names.some((name) => name.includes('.partial-') || name.endsWith('.lock')),
       false,
     );
     await rejected;
+  } finally {
+    await f.cleanup();
+  }
+});
+
+// Schedule the stale validation/discard race at filesystem boundaries while
+// keeping real directories, manifests, hashes and published reader paths.
+test('concurrent repair cannot discard a valid winner after observing an older invalid group', async (t) => {
+  const f = await cacheFixture();
+  const gate = () => {
+    let release: () => void = () => {};
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { wait, release };
+  };
+  const firstDiscard = gate();
+  const firstMayDiscard = gate();
+  const secondBlocked = gate();
+  const secondMayDiscard = gate();
+  const secondRemoved = gate();
+  const secondMayFinish = gate();
+  let removals = 0;
+  let secondReachedDiscard = false;
+  let first: ReturnType<typeof openVirtualEntry> | undefined;
+  let second: ReturnType<typeof openVirtualEntry> | undefined;
+  try {
+    const seeded = await openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+    assert.ok(seeded);
+    const directory = dirname(seeded.path);
+    await writeFile(join(directory, 'manifest.json'), '{}');
+    const originalRename = fs.rename;
+    const originalMkdir = fs.mkdir;
+    t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
+      const [source, destination] = args;
+      if (source === directory && String(destination).endsWith('.invalid')) {
+        removals += 1;
+        if (removals === 1) {
+          firstDiscard.release();
+          await firstMayDiscard.wait;
+        } else {
+          secondReachedDiscard = true;
+          secondBlocked.release();
+          await secondMayDiscard.wait;
+          await originalRename(...args);
+          secondRemoved.release();
+          await secondMayFinish.wait;
+          return;
+        }
+      }
+      return originalRename(...args);
+    });
+    t.mock.method(fs, 'mkdir', async (...args: Parameters<typeof fs.mkdir>) => {
+      try {
+        return await originalMkdir(...args);
+      } catch (error) {
+        if (
+          (error as NodeJS.ErrnoException).code === 'EEXIST' &&
+          String(args[0]).startsWith(`${directory}.`)
+        )
+          secondBlocked.release();
+        throw error;
+      }
+    });
+    syncBuiltinESMExports();
+    first = openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+    await Promise.race([
+      firstDiscard.wait,
+      first.then(() => {
+        throw new Error('Invalid group was accepted without repair');
+      }),
+    ]);
+    const other = new VirtualProviderRegistry([f.provider], QUOTA);
+    second = openVirtualEntry(f.root, f.blob.sha256, other, '1');
+    await Promise.race([
+      secondBlocked.wait,
+      second.then(() => {
+        throw new Error('Second repair bypassed arbitration');
+      }),
+    ]);
+    firstMayDiscard.release();
+    const winner = await first;
+    assert.ok(winner);
+    const winnerInfo = await fs.stat(winner.path);
+    assert.deepEqual(await readFile(winner.path), Buffer.alloc(4400, 37));
+    secondMayDiscard.release();
+    // The buggy writer removes the winner here before being allowed to publish
+    // another group. A coordinated writer instead completes using that winner.
+    const settled = second.then(() => 'complete' as const);
+    const event = await Promise.race([secondRemoved.wait.then(() => 'removed' as const), settled]);
+    assert.deepEqual(await readFile(winner.path), Buffer.alloc(4400, 37));
+    assert.equal((await fs.stat(winner.path)).ino, winnerInfo.ino);
+    assert.equal(event, 'complete');
+    assert.equal(secondReachedDiscard, false);
+    const otherWinner = await second;
+    assert.equal(otherWinner?.path, winner.path);
+  } finally {
+    firstMayDiscard.release();
+    secondMayDiscard.release();
+    secondMayFinish.release();
+    await Promise.allSettled([first, second]);
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    await f.cleanup();
+  }
+});
+
+test('independent processes serialize invalid-group repair and preserve every returned winner', async () => {
+  const f = await cacheFixture();
+  const children: ReturnType<typeof fork>[] = [];
+  const exits: Promise<number | null>[] = [];
+  let decodes = 0;
+  try {
+    const seed = await openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+    assert.ok(seed);
+    await writeFile(join(dirname(seed.path), 'manifest.json'), '{}');
+    const requests = Array.from({ length: 2 }, () => {
+      const child = fork(
+        new URL('./chd-cache-process.js', import.meta.url),
+        [f.root, f.blob.sha256],
+        { stdio: ['ignore', 'ignore', 'pipe', 'ipc'] },
+      );
+      children.push(child);
+      let stderr = '';
+      child.stderr?.on('data', (chunk) => {
+        stderr += String(chunk);
+      });
+      const exit = new Promise<number | null>((resolve) => child.once('exit', resolve));
+      exits.push(exit);
+      let ready: () => void = () => {};
+      const started = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const result = new Promise<{ path: string; ino: number }>((resolve, reject) => {
+        child.on('error', reject);
+        child.on('message', (message) => {
+          const value = message as { kind: string; path: string; ino: number; error: string };
+          if (value.kind === 'ready') ready();
+          if (value.kind === 'decode') decodes += 1;
+          if (value.kind === 'result') resolve(value);
+          if (value.kind === 'error') reject(new Error(value.error));
+        });
+        void exit.then((code) => {
+          if (code !== 0) reject(new Error(`Cache worker failed: ${stderr}`));
+        });
+      });
+      return { child, started, result };
+    });
+    await Promise.all(
+      requests.map((request) =>
+        Promise.race([
+          request.started,
+          request.result.then(() => {
+            throw new Error('Cache worker returned before its open request');
+          }),
+        ]),
+      ),
+    );
+    for (const request of requests) request.child.send('open');
+    const winners = await Promise.all(requests.map((request) => request.result));
+    assert.equal(decodes, 1);
+    for (const winner of winners) {
+      assert.equal(winner.path, seed.path);
+      assert.deepEqual(await readFile(winner.path), Buffer.alloc(4400, 37));
+      assert.equal((await fs.stat(winner.path)).ino, winner.ino);
+    }
+    assert.deepEqual(await Promise.all(exits), [0, 0]);
+    const names = await readdir(f.root, { recursive: true });
+    assert.equal(
+      names.some((name) => name.includes('.partial-') || name.endsWith('.lock')),
+      false,
+    );
+  } finally {
+    for (const child of children) if (child.exitCode === null) child.kill('SIGKILL');
+    await Promise.all(exits);
+    await f.cleanup();
+  }
+});
+
+test('an abandoned foreign lock spends the operation deadline without being reclaimed', async () => {
+  const f = await cacheFixture();
+  try {
+    const seed = await openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+    assert.ok(seed);
+    const directory = dirname(seed.path);
+    const lock = `${directory}.lock`;
+    await rm(directory, { recursive: true });
+    await mkdir(lock);
+    await writeFile(join(lock, 'foreign-owner'), 'paused owner');
+    const registry = new VirtualProviderRegistry([f.provider], { ...QUOTA, timeoutMs: 100 });
+    await assert.rejects(
+      openVirtualEntry(f.root, f.blob.sha256, registry, '1'),
+      /timed out|cancelled/i,
+    );
+    assert.equal(f.decodes(), 1);
+    assert.equal(await readFile(join(lock, 'foreign-owner'), 'utf8'), 'paused owner');
+    assert.equal(
+      (await readdir(dirname(directory))).some((name) => name.includes('.partial-')),
+      false,
+    );
+    // Test-owner recovery follows the same precondition as operator recovery:
+    // stop all writers before removing an abandoned foreign lock.
+    await rm(lock, { recursive: true });
+    const restored = await openVirtualEntry(f.root, f.blob.sha256, f.registry, '1');
+    assert.ok(restored);
+    assert.deepEqual(await readFile(restored.path), Buffer.alloc(4400, 37));
+    assert.equal(f.decodes(), 2);
+    await registry.close();
   } finally {
     await f.cleanup();
   }

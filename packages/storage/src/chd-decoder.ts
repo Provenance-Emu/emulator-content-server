@@ -354,16 +354,21 @@ export async function createChdProvider(
         await Promise.all(published.map((name) => rm(join(destination, name), { force: true })));
         throw error;
       } finally {
-        if (staging) await rm(staging, { recursive: true, force: true });
-        if (reservationHeld) reserved -= bytes;
-        if (acquired) {
-          const wake = queue.shift();
-          if (wake) wake();
-          else active = false;
+        try {
+          if (staging) await rm(staging, { recursive: true, force: true });
+        } finally {
+          // Filesystem cleanup may fail after the process has already exited.
+          // Bookkeeping and close joins still have to settle in every case.
+          if (reservationHeld) reserved -= bytes;
+          if (acquired) {
+            const wake = queue.shift();
+            if (wake) wake();
+            else active = false;
+          }
+          signal?.removeEventListener('abort', abort);
+          jobs.delete(job);
+          finish();
         }
-        signal?.removeEventListener('abort', abort);
-        jobs.delete(job);
-        finish();
       }
     },
     async close() {
