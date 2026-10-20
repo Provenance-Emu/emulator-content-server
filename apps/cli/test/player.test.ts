@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -85,5 +85,22 @@ test('serve enables playback only for the explicit player flag or environment', 
       if (child.exitCode === null) await once(child, 'exit');
       await rm(dir, { recursive: true, force: true });
     }
+  }
+});
+
+test('an explicitly selected player flag without its required path fails clearly', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-cli-player-missing-'));
+  try {
+    const env = { ...process.env };
+    delete env.ECS_PLAYER_DIR;
+    const result = spawnSync(
+      process.execPath,
+      [cli, 'serve', '--data', dir, '--ui', 'none', '--port', '18973', '--player-dir'],
+      { env, timeout: 5000, encoding: 'utf8' },
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /player.*(path|directory)/i);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });

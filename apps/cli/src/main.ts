@@ -166,7 +166,7 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       limits: limitsFromEnv(process.env),
       logger: true,
       uiDir,
-      playerDir: value('--player-dir') ?? process.env.ECS_PLAYER_DIR,
+      playerDir: playerDirectory(),
       webdavEnabled: listen.webdavEnabled,
       // A public bind sits behind a proxy on loopback, so the socket address
       // cannot decide who is local.
@@ -269,7 +269,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
     platform: process.platform,
     home: homedir(),
     dataDir: absolute,
-    playerDir: value('--player-dir') ?? process.env.ECS_PLAYER_DIR,
+    playerDir: playerDirectory(),
     executable: process.execPath,
     script: process.argv[1] ?? fileURLToPath(import.meta.url),
     host: listen.host,
@@ -282,6 +282,14 @@ function serviceSpec(dataDir: string): ServiceSpec {
     bootstrapped: readBootstrapped(absolute),
     uid: process.getuid?.() ?? 0,
   };
+}
+
+function playerDirectory(): string | undefined {
+  const selected = value('--player-dir');
+  if (has('--player-dir') && (!selected || selected.startsWith('--'))) {
+    throw new Error('--player-dir requires an absolute directory path');
+  }
+  return selected ?? process.env.ECS_PLAYER_DIR;
 }
 
 function listenConfig(): {
