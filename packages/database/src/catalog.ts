@@ -1649,6 +1649,7 @@ export class CatalogDatabase {
       !input.name ||
       input.name.trim() !== input.name ||
       input.name.length > 80 ||
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: labels must not contain controls
       /[\u0000-\u001f\u007f]/.test(input.name) ||
       !/^[a-zA-Z0-9_-]{1,100}$/.test(input.username) ||
       !/^[a-f0-9]{32}$/.test(input.ha1Md5) ||

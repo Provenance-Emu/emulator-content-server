@@ -74,6 +74,9 @@ importers:
       '@ecs/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@ecs/webdav':
+        specifier: workspace:*
+        version: link:../../packages/webdav
       '@fastify/static':
         specifier: ^10.1.6
         version: 10.1.6
@@ -186,6 +189,15 @@ importers:
       '@ecs/domain':
         specifier: workspace:*
         version: link:../domain
+
+  packages/webdav:
+    dependencies:
+      '@ecs/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@xmldom/xmldom':
+        specifier: 0.9.12
+        version: 0.9.12
 
 packages:
 
@@ -714,6 +726,10 @@ packages:
 
   '@types/node@22.19.11':
     resolution: {integrity: sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w==}
+
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
 
   abstract-logging@2.0.1:
     resolution: {integrity: sha512-2BjRTZxTPvheOvGbBslFSYOUkr+SjPtOnrLP33f+VIWLzezQpZcqVg7ja3L4dBXmzzgwT+a029jRx5PCi3JuiA==}
@@ -1487,6 +1503,8 @@ snapshots:
   '@types/node@22.19.11':
     dependencies:
       undici-types: 6.21.0
+
+  '@xmldom/xmldom@0.9.12': {}
 
   abstract-logging@2.0.1: {}
 

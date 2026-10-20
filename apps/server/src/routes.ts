@@ -15,7 +15,6 @@ import {
   type GuestCapability,
   ITEM_PERMISSIONS,
   type ItemPermission,
-  ifRangeMatches,
   isRestrictedAssetKind,
   LIBRARY_ROLES,
   type LibraryRole,
@@ -23,7 +22,6 @@ import {
   PROVENANCE_SYSTEMS,
   parseChangeCursor,
   parseContentRange,
-  parseSingleRange,
   strongEtag,
   validateAssetKind,
   validatePassword,
@@ -31,11 +29,8 @@ import {
   validateUsername,
 } from '@ecs/protocol';
 import {
-  blobFileSize,
-  blobPath,
   createStagingFile,
   ensureBlobStore,
-  FileContentReader,
   hashFile,
   inspectRoot,
   listFolders,
@@ -48,13 +43,20 @@ import {
   probeRoot,
   removeStaging,
   resolveContentRoot,
-  resolveInside,
   resolveStorageLocation,
   truncateStaging,
   writeAtOffset,
 } from '@ecs/storage';
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import {
+  blobRoot,
+  canSeeRoot,
+  canSeeSource,
+  sendContent,
+  sendRange,
+  sendSourceContent,
+} from './content.js';
 import type { ServerContext } from './context.js';
 import {
   assetDecision,
@@ -151,6 +153,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       virtualFormats: context.virtual.formats(),
       bootstrapped: catalog.server().bootstrapped,
       lanOpen: context.localTrust && policy.mode !== 'token',
+      webdavEnabled: context.webdavEnabled,
     });
   });
 
@@ -624,7 +627,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.route({
     method: ['GET', 'HEAD'],
     url: '/api/v1/files/:assetId/content',
-    handler: async (request, reply) => sendContent(context, request, reply),
+    handler: async (request, reply) =>
+      sendContent(context, request, reply, (request.params as { assetId: string }).assetId),
   });
 
   app.get('/api/v1/files/:assetId/entries', async (request) => {
@@ -929,7 +933,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.route({
     method: ['GET', 'HEAD'],
     url: '/api/v1/sources/:sourceId/content',
-    handler: async (request, reply) => sendSourceContent(context, request, reply),
+    handler: async (request, reply) =>
+      sendSourceContent(context, request, reply, (request.params as { sourceId: string }).sourceId),
   });
 
   app.get('/api/v1/audit', async (request) => {
@@ -1074,35 +1079,6 @@ async function placeUploadBytes(
 }
 
 /** The directory that holds this digest. The data directory is the primary, and it has no row. */
-async function blobRoot(context: ServerContext, sha256: string): Promise<string> {
-  const record = context.catalog.blobRecord(sha256);
-  if (!record?.locationId) return context.dataDir;
-  const location = context.catalog.getStorageLocation(record.locationId);
-  if (!location || !(await locationOnline(location.path))) {
-    throw new DomainError(
-      'location-offline',
-      503,
-      `Storage location ${location?.label ?? 'unknown'} is offline`,
-    );
-  }
-  return location.path;
-}
-
-async function storedBlob(
-  context: ServerContext,
-  sha256: string,
-): Promise<{ path: string; size: number }> {
-  const root = await blobRoot(context, sha256);
-  try {
-    return { path: blobPath(root, sha256), size: await blobFileSize(root, sha256) };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new DomainError('not-found', 404, 'Stored bytes are missing');
-    }
-    throw error;
-  }
-}
-
 function asStream(body: unknown): Readable {
   if (body instanceof Readable) return body;
   if (Buffer.isBuffer(body)) return Readable.from(body);
@@ -1136,92 +1112,6 @@ async function scanRoot(
   return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
 }
 
-function canSeeRoot(actor: Actor, libraryId: string | null, catalog: CatalogDatabase): boolean {
-  if (actor.kind === 'guest') return libraryId === actor.libraryId;
-  if (actor.isOwner || actor.localTrust === true) return true;
-  if (libraryId === null) return false;
-  return catalog.visibleLibraryIds(actor).includes(libraryId);
-}
-
-function canSeeSource(actor: Actor, libraryId: string | null, kind: string): boolean {
-  if (actor.kind !== 'guest') return true;
-  if (libraryId !== actor.libraryId) return false;
-  const parsed = validateAssetKind(kind);
-  return !(
-    parsed &&
-    isRestrictedAssetKind(parsed) &&
-    !actor.capabilities.includes('share_restricted')
-  );
-}
-
-async function sendSourceContent(
-  context: ServerContext,
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<FastifyReply> {
-  const actor = requireActor(request);
-  if (actor.kind === 'user' && !actor.scopes.includes('read')) {
-    throw new DomainError('forbidden', 403, 'This token cannot read');
-  }
-  const { sourceId } = request.params as { sourceId: string };
-  const source = context.catalog.getSource(sourceId);
-  if (!source || !canSeeSource(actor, source.libraryId, source.kind)) {
-    throw new DomainError('not-found', 404, 'Source file not found');
-  }
-  if (!canSeeRoot(actor, source.libraryId, context.catalog)) {
-    throw new DomainError('not-found', 404, 'Source file not found');
-  }
-  const root = context.catalog.getContentRoot(source.rootId);
-  if (!root) throw new DomainError('not-found', 404, 'Source file not found');
-  const probe = await probeRoot(root.path);
-  if (!probe.online) {
-    context.catalog.markRootOffline(root.id);
-    throw new DomainError('source-offline', 503, 'That disk is not connected');
-  }
-  let full: string;
-  try {
-    full = await resolveInside(root.path, source.relativePath);
-  } catch {
-    throw new DomainError('not-found', 404, 'Source file not found');
-  }
-  const live = await probeFile(full, probe.medium, true);
-  context.catalog.updateSourcePresence(source.id, live);
-  if (live.availability === 'evicted') {
-    throw new DomainError('source-evicted', 409, 'That file is only a placeholder on this machine');
-  }
-  if (live.availability === 'offline') {
-    throw new DomainError('source-offline', 503, 'That disk is not connected');
-  }
-  const etag = strongEtag(`source-${source.id}-${live.size}`);
-  reply.header('accept-ranges', 'bytes');
-  reply.header('etag', etag);
-  if (etagMatches(headerString(request, 'if-none-match'), etag)) {
-    return reply.status(304).send();
-  }
-  return sendRange(request, reply, { path: full, offset: 0, size: live.size, etag });
-}
-
-async function sendContent(
-  context: ServerContext,
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<FastifyReply> {
-  const { asset } = requireVisibleAsset(context, request, 'read');
-  const stored = await storedBlob(context, asset.sha256);
-  const etag = strongEtag(asset.sha256);
-  reply.header('accept-ranges', 'bytes');
-  reply.header('etag', etag);
-  if (etagMatches(headerString(request, 'if-none-match'), etag)) {
-    return reply.status(304).send();
-  }
-  return sendRange(request, reply, {
-    path: stored.path,
-    offset: 0,
-    size: stored.size,
-    etag,
-  });
-}
-
 async function sendEntryContent(
   context: ServerContext,
   request: FastifyRequest,
@@ -1250,37 +1140,6 @@ async function sendEntryContent(
     size: entry.size,
     etag,
   });
-}
-
-async function sendRange(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  source: { path: string; offset: number; size: number; etag: string },
-): Promise<FastifyReply> {
-  const { size } = source;
-  const rangeHeader = headerString(request, 'range');
-  let status = 200;
-  let start = 0;
-  let end = Math.max(size - 1, 0);
-  if (rangeHeader && ifRangeMatches(headerString(request, 'if-range'), source.etag)) {
-    const parsed = parseSingleRange(rangeHeader, size);
-    if (parsed.type === 'invalid') {
-      throw new DomainError('invalid-range', 400, 'Only one byte range is supported');
-    }
-    if (parsed.type === 'unsatisfiable') {
-      return reply.status(416).header('content-range', `bytes */${size}`).send();
-    }
-    status = 206;
-    start = parsed.start;
-    end = parsed.end;
-    reply.header('content-range', `bytes ${start}-${end}/${size}`);
-  }
-  const length = size === 0 ? 0 : end - start + 1;
-  reply.header('content-type', 'application/octet-stream');
-  reply.header('content-length', String(length));
-  if (request.method === 'HEAD' || length === 0) return reply.status(status).send();
-  const reader = new FileContentReader(source.path, source.offset + size);
-  return reply.status(status).send(reader.openRange(source.offset + start, source.offset + end));
 }
 
 function headerString(request: FastifyRequest, name: string): string | undefined {

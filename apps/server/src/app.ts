@@ -11,6 +11,7 @@ import type { ServerContext } from './context.js';
 import { sendProblem } from './http.js';
 import { admitLocal, trayOrigin } from './local-access.js';
 import { registerRoutes } from './routes.js';
+import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
 import { registerWebDavCredentials } from './webdav-credentials.js';
 
 export interface OpenServerOptions {
@@ -80,8 +81,13 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
       done(null, payload);
     },
   );
+  const authenticateDav = davAuthenticator(context);
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
+    if (isDavRequest(request.raw.url ?? request.url)) {
+      if (!context.webdavEnabled) return reply.code(404).send({ status: 404, title: 'Not Found' });
+      return authenticateDav(request, reply);
+    }
     const origin = request.headers.origin;
     if (trayOrigin(typeof origin === 'string' ? origin : undefined)) {
       reply.header('access-control-allow-origin', origin);
@@ -137,6 +143,7 @@ export function buildApp(context: ServerContext, logger = false): FastifyInstanc
         }),
       );
   });
+  registerWebDav(app, context);
   registerRoutes(app, context);
   registerWebDavCredentials(app, context);
   return app;
