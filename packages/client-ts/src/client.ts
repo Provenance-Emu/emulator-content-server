@@ -534,11 +534,25 @@ export class ContentClient {
    */
   async upload(request: UploadRequest, attempts = 3): Promise<Asset> {
     const key = request.idempotencyKey ?? crypto.randomUUID();
-    const session = request.uploadId
-      ? await this.uploadSession(request.uploadId)
-      : await this.openUpload(request.libraryId, `${key}.open`);
+    const uploadId =
+      request.uploadId ?? (await this.openUpload(request.libraryId, `${key}.open`)).id;
+    // An idempotent open replays its original receipt. Its offset may predate
+    // transferred bytes or even completion, so only the live session is authoritative.
+    const session = await this.uploadSession(uploadId);
     const total = sizeOf(request.body);
-    let received = session.received;
+    const offset = (current: UploadSession): number => {
+      if (
+        current.id !== uploadId ||
+        !Number.isSafeInteger(current.received) ||
+        current.received < 0 ||
+        current.received > total ||
+        (current.state !== 'open' && current.state !== 'completed') ||
+        (current.state === 'completed' && current.received !== total)
+      )
+        throw new RangeError('Invalid upload session offset or state');
+      return current.received;
+    };
+    let received = offset(session);
     const piece = request.chunkBytes ?? total;
     for (let attempt = 1; ; attempt += 1) {
       try {
@@ -552,7 +566,7 @@ export class ContentClient {
         return await this.commit(session.id, request, `${key}.done`);
       } catch (error) {
         if (attempt >= attempts || !isRetryable(error)) throw error;
-        received = (await this.uploadSession(session.id)).received;
+        received = offset(await this.uploadSession(session.id));
       }
     }
   }
