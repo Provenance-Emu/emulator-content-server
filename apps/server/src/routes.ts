@@ -99,8 +99,9 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     actor: Actor,
     uploadId: string,
     operation: (upload: UploadRecord) => Promise<T>,
+    item?: ReturnType<typeof requireItem>,
   ): Promise<T> {
-    const upload = requireOwnedUpload(catalog, actor, uploadId, 'write');
+    const upload = requireOwnedUpload(catalog, actor, uploadId, 'write', item);
     if (upload.state !== 'open') throw new DomainError('upload-closed', 409, 'Upload is not open');
     if (uploadMutations.has(uploadId)) {
       throw new DomainError('upload-busy', 409, 'Another operation is changing this upload');
@@ -591,54 +592,59 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireActor(request);
     const uploadId = (request.params as { uploadId: string }).uploadId;
     const body = jsonObject(request.body);
-    requireOwnedUpload(catalog, actor, uploadId, 'write');
     const item = requireItem(catalog, requiredString(body, 'itemId'));
+    requireOwnedUpload(catalog, actor, uploadId, 'write', item);
     itemDecision(catalog, actor, item, 'write');
     const result = await withIdempotency(catalog, actor, request, body, async () => {
-      return mutateUpload(actor, uploadId, async (upload) => {
-        const kind = validateAssetKind(requiredString(body, 'kind'));
-        if (!kind) throw new DomainError('invalid-body', 400, 'Unknown asset kind');
-        let relativePath: string;
-        try {
-          relativePath = assertSafeRelativePath(requiredString(body, 'relativePath'));
-        } catch (error) {
-          throw new DomainError(
-            'invalid-body',
-            400,
-            error instanceof Error ? error.message : 'Invalid path',
+      return mutateUpload(
+        actor,
+        uploadId,
+        async (upload) => {
+          const kind = validateAssetKind(requiredString(body, 'kind'));
+          if (!kind) throw new DomainError('invalid-body', 400, 'Unknown asset kind');
+          let relativePath: string;
+          try {
+            relativePath = assertSafeRelativePath(requiredString(body, 'relativePath'));
+          } catch (error) {
+            throw new DomainError(
+              'invalid-body',
+              400,
+              error instanceof Error ? error.message : 'Invalid path',
+            );
+          }
+          await truncateStaging(stagingPath(context, upload.id), upload.received);
+          if (upload.received === 0) throw new DomainError('invalid-body', 400, 'Upload is empty');
+          const placed = await placeUploadBytes(
+            context,
+            stagingPath(context, upload.id),
+            reserveLocation,
           );
-        }
-        await truncateStaging(stagingPath(context, upload.id), upload.received);
-        if (upload.received === 0) throw new DomainError('invalid-body', 400, 'Upload is empty');
-        const placed = await placeUploadBytes(
-          context,
-          stagingPath(context, upload.id),
-          reserveLocation,
-        );
-        let asset: ReturnType<CatalogDatabase['completeUpload']>;
-        try {
-          asset = catalog.completeUpload({
-            uploadId: upload.id,
-            itemId: item.id,
-            kind,
-            displayName: requiredString(body, 'displayName'),
-            relativePath,
-            baseRevision: requiredInteger(body, 'baseRevision'),
-            sha256: placed.sha256,
-            size: placed.size,
-            md5: placed.md5,
-            crc: placed.crc,
-            shareable: !isRestrictedAssetKind(kind),
-            actorId: actor.kind === 'user' ? actor.userId : null,
-            deviceId: deviceOf(actor),
-            locationId: placed.locationId,
-          });
-        } finally {
-          placed.release();
-        }
-        await removeStaging(context.dataDir, upload.id);
-        return { status: 201, body: asset };
-      });
+          let asset: ReturnType<CatalogDatabase['completeUpload']>;
+          try {
+            asset = catalog.completeUpload({
+              uploadId: upload.id,
+              itemId: item.id,
+              kind,
+              displayName: requiredString(body, 'displayName'),
+              relativePath,
+              baseRevision: requiredInteger(body, 'baseRevision'),
+              sha256: placed.sha256,
+              size: placed.size,
+              md5: placed.md5,
+              crc: placed.crc,
+              shareable: !isRestrictedAssetKind(kind),
+              actorId: actor.kind === 'user' ? actor.userId : null,
+              deviceId: deviceOf(actor),
+              locationId: placed.locationId,
+            });
+          } finally {
+            placed.release();
+          }
+          await removeStaging(context.dataDir, upload.id);
+          return { status: 201, body: asset };
+        },
+        item,
+      );
     });
     return reply.status(result.status).send(result.body);
   });
@@ -1059,6 +1065,7 @@ function requireOwnedUpload(
   actor: Actor,
   id: string,
   action: ItemPermission,
+  item?: ReturnType<typeof requireItem>,
 ): UploadRecord {
   const upload = catalog.getUpload(id);
   if (!upload) throw new DomainError('not-found', 404, 'Upload not found');
@@ -1066,7 +1073,9 @@ function requireOwnedUpload(
     actor.kind === 'user' ? upload.userId === actor.userId : upload.guestGrantId === actor.grantId;
   if (!owned) throw new DomainError('not-found', 404, 'Upload not found');
   if (!upload.libraryId) throw new DomainError('not-found', 404, 'Upload not found');
-  libraryDecision(catalog, actor, upload.libraryId, action);
+  // An item grant can authorize completion only within the upload's library.
+  if (item?.libraryId === upload.libraryId) itemDecision(catalog, actor, item, action);
+  else libraryDecision(catalog, actor, upload.libraryId, action);
   return upload;
 }
 

@@ -385,6 +385,25 @@ test('cached mutations still require current library permissions and token scope
   await t.test('completion rechecks a revoked item-specific write grant', async () => {
     const completion = actions.find((action) => action.key === 'permission-complete-1');
     assert.ok(completion);
+    const pending = await app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads',
+      headers: editor,
+      payload: { libraryId },
+    });
+    assert.equal(pending.statusCode, 201);
+    const pendingUrl = `/api/v1/uploads/${pending.json().id}`;
+    assert.equal(
+      (
+        await app.inject({
+          method: 'PUT',
+          url: `${pendingUrl}/content`,
+          headers: { ...editor, 'content-type': 'application/octet-stream' },
+          payload: Buffer.from('item-granted bytes'),
+        })
+      ).statusCode,
+      204,
+    );
     assert.equal((await setRole('reader')).statusCode, 204);
     const access = `/api/v1/items/${item.json().id}/access/${user.json().id}`;
     const grant = await app.inject({
@@ -404,6 +423,26 @@ test('cached mutations still require current library permissions and token scope
     const allowed = await replay();
     assert.equal(allowed.statusCode, 201);
     assert.deepEqual(allowed.json(), completion.original);
+    const current = await app.inject({ url: `/api/v1/items/${item.json().id}`, headers: owner });
+    assert.equal(current.statusCode, 200);
+    const fresh = (headers: Record<string, string>) =>
+      app.inject({
+        method: 'POST',
+        url: `${pendingUrl}/complete`,
+        headers,
+        payload: { ...completion.payload, baseRevision: current.json().revision },
+      });
+    const scoped = await fresh(readOnly);
+    assert.equal(scoped.statusCode, 403);
+    assert.equal(scoped.json().type, 'urn:ecs:problem:forbidden');
+    const completed = await fresh(editor);
+    assert.equal(completed.statusCode, 201, completed.body);
+    const content = await app.inject({
+      url: `/api/v1/files/${completed.json().id}/content`,
+      headers: owner,
+    });
+    assert.equal(content.statusCode, 200);
+    assert.equal(content.body, 'item-granted bytes');
     assert.equal(
       (await app.inject({ method: 'DELETE', url: access, headers: owner })).statusCode,
       204,
