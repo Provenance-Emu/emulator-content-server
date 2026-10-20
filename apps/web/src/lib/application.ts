@@ -109,7 +109,8 @@ export function createApplication(
     });
   }
   function schedule(run: number) {
-    if (!live(run) || timer) return;
+    // Queued/manual revalidation owns the next cycle, including its final timeout.
+    if (!live(run) || timer || revalidation?.run === run) return;
     timer = {
       handle: scheduler.setTimeout(async () => {
         timer = null;
@@ -175,7 +176,8 @@ export function createApplication(
       await watcher.start();
     }
   }
-  async function performCycle(run: number) {
+  async function performCycle(task: { run: number; promise: Promise<void> }) {
+    let run = task.run;
     try {
       await publicStatus(run);
       if (!live(run)) return;
@@ -186,6 +188,8 @@ export function createApplication(
           const retryWithoutToken = needsAuthentication && acceptedToken !== undefined;
           forget();
           run = epoch;
+          // The anonymous retry continues this same cycle under the new auth epoch.
+          task.run = run;
           if (retryWithoutToken) {
             needsAuthentication = true;
             result = await discover(run);
@@ -206,8 +210,9 @@ export function createApplication(
     }
   }
   function cycle(run: number): Promise<void> {
-    const task = { run, promise: performCycle(run) };
+    const task = { run, promise: Promise.resolve() };
     activeCycle = task;
+    task.promise = performCycle(task);
     const finished = () => {
       if (activeCycle === task) activeCycle = null;
     };
@@ -242,7 +247,10 @@ export function createApplication(
       const task = { run, promise };
       revalidation = task;
       const finished = () => {
-        if (revalidation === task) revalidation = null;
+        if (revalidation === task) {
+          revalidation = null;
+          schedule(run);
+        }
       };
       void promise.then(finished, finished);
       return promise;

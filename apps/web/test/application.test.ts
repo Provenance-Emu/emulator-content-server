@@ -588,3 +588,95 @@ test('revalidation responses cannot overwrite a newer login authority', async ()
     f.restore();
   }
 });
+
+test('passwordless fallback owns its continued cycle until queued revalidation completes without a competing cadence', async () => {
+  const f = serverFixture();
+  const change = deferred<Response>();
+  const oldRoots = deferred<Response>();
+  const app = createApplication(f.context, f.scheduler);
+  let unsubscribe = () => {};
+  try {
+    f.context.sessions.save(session);
+    f.discovery = async () =>
+      Response.json(
+        { items: [library()], nextCursor: null },
+        { status: f.requests.at(-1)?.token ? 401 : 200 },
+      );
+    let changeReads = 0;
+    f.changes = async (cursor) =>
+      ++changeReads === 1 ? change.promise : Response.json({ changes: [], nextCursor: cursor });
+    const starting = app.start();
+    for (let count = 0; count < 100 && changeReads === 0; count++) await Promise.resolve();
+    assert.equal(changeReads, 1, 'fallback watcher really started');
+    assert.equal(get(app).authEpoch, 1);
+    assert.equal(get(app).signedIn, true);
+    assert.equal(get(app).hasSession, false);
+    let rootsReads = 0;
+    let activeRoots = 0;
+    let maximumRoots = 0;
+    f.roots = () => {
+      activeRoots++;
+      maximumRoots = Math.max(maximumRoots, activeRoots);
+      return (
+        ++rootsReads === 1
+          ? oldRoots.promise
+          : Promise.resolve(Response.json({ items: [] }, { status: 403 }))
+      ).finally(() => {
+        activeRoots--;
+      });
+    };
+    let previousOwner = true;
+    let restoredRevokedOwner = false;
+    unsubscribe = app.subscribe((state) => {
+      if (!previousOwner && state.owner) restoredRevokedOwner = true;
+      previousOwner = state.owner;
+    });
+    const refreshing = app.revalidate();
+    const duplicate = app.revalidate();
+    for (let count = 0; count < 100; count++) await Promise.resolve();
+    const readsBeforeFallbackCompletes = rootsReads;
+    change.resolve(Response.json({ changes: [], nextCursor: '0' }));
+    await starting;
+    for (let count = 0; count < 100 && rootsReads === 0; count++) await Promise.resolve();
+    assert.equal(rootsReads, 1, 'one coalesced manual read starts after fallback');
+    const timersWhileManualHeld = f.scheduler.pending;
+    const timeoutsScheduledWhileManualHeld = f.scheduler.delays.length;
+    // The old implementation schedules this competing cadence while manual roots200 is held.
+    if (f.scheduler.pending) await f.scheduler.tick();
+    const revokedWhileManualHeld = !get(app).owner;
+    oldRoots.resolve(Response.json({ items: [] }));
+    await Promise.all([refreshing, duplicate]);
+    // With serialization, the newer403 can run only after the manual cycle has finished.
+    if (!revokedWhileManualHeld) await f.scheduler.tick();
+    assert.deepEqual(
+      {
+        readsBeforeFallbackCompletes,
+        timersWhileManualHeld,
+        timeoutsScheduledWhileManualHeld,
+        revokedWhileManualHeld,
+        maximumRoots,
+        restoredRevokedOwner,
+        owner: get(app).owner,
+        rootsReads,
+        timers: f.scheduler.pending,
+      },
+      {
+        readsBeforeFallbackCompletes: 0,
+        timersWhileManualHeld: 0,
+        timeoutsScheduledWhileManualHeld: 0,
+        revokedWhileManualHeld: false,
+        maximumRoots: 1,
+        restoredRevokedOwner: false,
+        owner: false,
+        rootsReads: 2,
+        timers: 1,
+      },
+    );
+  } finally {
+    unsubscribe();
+    change.resolve(Response.json({ changes: [], nextCursor: '0' }));
+    oldRoots.resolve(Response.json({ items: [] }));
+    app.dispose();
+    f.restore();
+  }
+});
