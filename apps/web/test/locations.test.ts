@@ -3,6 +3,7 @@ import test from 'node:test';
 import { ContentError, type StorageLocationList } from '@ecs/client';
 import { get } from 'svelte/store';
 import { createStorageLocations, type StorageClient } from '../src/lib/locations.js';
+import { selection } from './folder-fixture.js';
 
 const listing = (): StorageLocationList => ({
   items: [
@@ -139,4 +140,68 @@ test('a committed add followed by a refresh failure clears the form without allo
   assert.match(get(locations).failure ?? '', /saved/);
   assert.equal(await locations.add({ label: 'USB', path: '/server/usb' }), false);
   assert.equal(f.saved.items.length, 2);
+});
+
+test('a destination defaults to retaining the target and selection retry never registers twice', async () => {
+  const f = fixture();
+  let adds = 0;
+  let selects = 0;
+  const add = f.client.addStorageLocation;
+  f.client.addStorageLocation = async (draft) => {
+    adds++;
+    return add(draft);
+  };
+  const locations = createStorageLocations(f.client, () => {}, {
+    key: 'epoch',
+    origin: 'http://server.test',
+  });
+  await locations.load();
+  assert.equal(await locations.addDestination(selection('/new'), false), true);
+  assert.equal(f.saved.writeLocationId, 'disk');
+  f.client.setStorageWriteTarget = async (id) => {
+    selects++;
+    if (selects === 1) throw new Error('selection failed');
+    f.saved.writeLocationId = id;
+    return { id };
+  };
+  assert.equal(await locations.addDestination(selection('/another'), true), false);
+  assert.equal(get(locations).pendingDestination?.id, 'new');
+  assert.equal(await locations.addDestination(selection('/another'), true), true);
+  assert.equal(adds, 2);
+  assert.equal(selects, 2);
+  assert.equal(f.saved.writeLocationId, 'new');
+});
+
+test('disposed storage cannot apply pending reads or register a stale native selection', async () => {
+  const f = fixture();
+  const context = { key: 'epoch', origin: 'http://server.test' };
+  const locations = createStorageLocations(f.client, () => {}, context);
+  await locations.load();
+  context.key = 'other';
+  assert.equal(await locations.addDestination(selection(), false), false);
+  locations.dispose();
+  await locations.load();
+  assert.equal(get(locations).listing, null);
+});
+
+test('a saved destination can finish target selection from its row after dismissing the chooser', async () => {
+  const f = fixture();
+  const locations = createStorageLocations(f.client, () => {}, {
+    key: 'epoch',
+    origin: 'http://server.test',
+  });
+  await locations.load();
+  f.client.setStorageWriteTarget = async () => {
+    throw new Error('offline');
+  };
+  assert.equal(await locations.addDestination(selection('/saved'), true), false);
+  assert.equal(get(locations).pendingDestination?.id, 'new');
+  f.client.setStorageWriteTarget = async (id) => {
+    f.saved.writeLocationId = id;
+    return { id };
+  };
+  await locations.select('new');
+  assert.equal(get(locations).pendingDestination, null);
+  assert.equal(await locations.addDestination(selection('/different'), false), true);
+  assert.equal(f.saved.items.length, 3);
 });

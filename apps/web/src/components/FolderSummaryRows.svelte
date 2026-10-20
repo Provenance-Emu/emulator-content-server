@@ -1,11 +1,14 @@
 <script lang="ts">
-  import type { ContentRootSummary } from '@ecs/client';
+  import type { ContentRoot, ContentRootSummary } from '@ecs/client';
   let {
     summaries,
     onview,
+    scanFailures = {}, busy = false, onscan, onremove, onassign,
   }: {
     summaries: ContentRootSummary[];
     onview: (rootId: string, libraryId: string | null) => void;
+    scanFailures?: Record<string, string>; busy?: boolean;
+    onscan?: (rootId: string) => void; onremove?: (root: ContentRoot) => void; onassign?: (root: ContentRoot) => void;
   } = $props();
 </script>
 
@@ -39,7 +42,7 @@
               </small>
             </td>
             <td>
-              {summary.scanState}
+              <span>{scanFailures[summary.root.id] ? 'Scan failed' : summary.scanState}</span>
               <small class="dim">
                 {summary.lastScanAt ? new Date(summary.lastScanAt).toLocaleString() : 'Not scanned'}
               </small>
@@ -53,6 +56,9 @@
               >
                 View files
               </button>
+              {#if onscan && scanFailures[summary.root.id]}<button type="button" disabled={busy} aria-label={`Retry scan ${summary.root.label}`} onclick={() => onscan?.(summary.root.id)}>Retry scan</button>{/if}
+              {#if onremove}<button type="button" disabled={busy} aria-label={`Disconnect ${summary.root.label}`} onclick={() => onremove?.(summary.root)}>Disconnect</button>{/if}
+              {#if onassign && summary.root.libraryId === null}<button type="button" disabled={busy} aria-label={`Assign ${summary.root.label}`} onclick={() => onassign?.(summary.root)}>Assign to library</button>{/if}
             </td>
           </tr>{/each}
       </tbody>

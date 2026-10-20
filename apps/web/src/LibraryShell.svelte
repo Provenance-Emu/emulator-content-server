@@ -1,9 +1,10 @@
 <script lang="ts">
-  import type { LibraryScope } from '@ecs/client';
+  import type { Library, LibraryScope } from '@ecs/client';
   import { get } from 'svelte/store';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { createApplication, type ServerContext } from './lib/application';
-  import type { FolderSelectionAdapter } from './lib/folder-selection';
+  import type { FolderContext, FolderSelectionAdapter } from './lib/folder-selection';
+  import LibraryEditor from './LibraryEditor.svelte';
   import Login from './Login.svelte';
   import LibraryBrowser from './LibraryBrowser.svelte';
   import SettingsShell from './SettingsShell.svelte';
@@ -18,13 +19,16 @@
   let rootIntent = $state(0);
   let settings = $state(false);
   let drawer = $state(false);
+  let editing = $state<Library | null | undefined>(undefined);
   const unsubscribe = application.subscribe((state) => {
     if (!state.signedIn) {
+      editing = undefined;
       scope = null;
       rootId = '';
       settings = false;
       drawer = false;
     } else {
+      if (!state.owner) editing = undefined;
       const selected = scope;
       if (
         selected &&
@@ -54,6 +58,21 @@
     if (get(application).authEpoch !== expectedEpoch) return;
     if (status === 401) void application.signOut();
     else void application.revalidate();
+  }
+  function actionContext(expectedEpoch: number): FolderContext {
+    return {
+      key: context.key, origin: context.origin, folderSelection,
+      isCurrent: () => {
+        const state = get(application);
+        return state.authEpoch === expectedEpoch && state.signedIn && state.owner;
+      },
+      onrejected: (status) => rejectOwnerSummary(status, expectedEpoch),
+      onchanged: async () => {
+        await application.revalidate();
+        const state = get(application);
+        if (state.authEpoch === expectedEpoch && state.failure) throw new Error(`Change saved. ${state.failure}`);
+      },
+    };
   }
   onMount(() => {
     void application.start();
@@ -102,6 +121,16 @@
             onback={() => (settings = false)}
             onview={viewFolder}
             onrejected={(status) => rejectOwnerSummary(status, expectedEpoch)}
+            context={actionContext(expectedEpoch)}
+            onrename={(library) => (editing = library)}
+          />{/if}
+        {#if $application.owner && editing !== undefined}<LibraryEditor
+            client={context.client} context={actionContext(expectedEpoch)} library={editing ?? undefined}
+            onclose={() => (editing = undefined)}
+            oncomplete={(id) => {
+              editing = undefined;
+              if (get(application).libraries.some(library => library.id === id)) choose({ libraryId: id });
+            }}
           />{/if}
       {/key}
     </main>
@@ -131,6 +160,7 @@
       <span class="dim">{$application.owner ? 'Owner' : 'Library access'}</span>
     </div>
     <p class="nav-label">Libraries</p>
+    {#if $application.owner}<button type="button" onclick={() => { editing = null; drawer = false; }}>Add library</button>{/if}
     {#each $application.libraries as library (library.id)}<button
         type="button"
         aria-current={scope && 'libraryId' in scope && scope.libraryId === library.id && !settings

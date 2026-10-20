@@ -1,38 +1,50 @@
 <script lang="ts">
   import type { ContentClient } from '@ecs/client';
-  import { onMount, untrack } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
+  import { get } from 'svelte/store';
   import FolderPicker from './FolderPicker.svelte';
+  import Modal from './components/Modal.svelte';
+  import { chooseFolder, type FolderContext } from './lib/folder-selection';
+  import { explain } from './lib/problems';
   import { createStorageLocations } from './lib/locations';
 
   let {
     client,
     onchange = () => {},
+    context,
   }: {
     client: ContentClient;
     onchange?: () => void;
+    context: FolderContext;
   } = $props();
-  const locations = untrack(() => createStorageLocations(client, () => onchange()));
-  let path = $state('');
-  let label = $state('');
+  const locations = untrack(() => createStorageLocations(client, () => onchange(), context));
   let picking = $state(false);
+  let pickerBusy = $state(false);
+  let choosing = $state(false);
+  let makeWriteTarget = $state(false);
+  let failure = $state<string | null>(null);
+  let disposed = false;
+  let addButton = $state<HTMLButtonElement>();
+  async function closePicker() {
+    picking = false;
+    await tick();
+    if (!disposed) addButton?.focus();
+  }
 
   onMount(() => {
     void locations.load();
   });
 
-  function choose(chosen: string) {
-    path = chosen;
-    picking = false;
-    if (!label.trim()) label = chosen.split(/[/\\]/).filter(Boolean).at(-1) ?? chosen;
+  async function choose() {
+    failure = null;
+    if (!context.folderSelection) { picking = true; makeWriteTarget = false; return; }
+    if (choosing) return;
+    choosing = true;
+    try { const selected = await chooseFolder(context, 'upload-storage'); if (selected && !disposed) await locations.addDestination(selected, false); }
+    catch (error) { if (!disposed) failure = explain(error); }
+    finally { if (!disposed) choosing = false; }
   }
-  async function add(event: SubmitEvent) {
-    event.preventDefault();
-    if (await locations.add({ path: path.trim(), label: label.trim() })) {
-      path = '';
-      label = '';
-      picking = false;
-    }
-  }
+  onDestroy(() => { disposed = true; locations.dispose(); });
 </script>
 
 <section aria-labelledby="storage-heading">
@@ -43,8 +55,7 @@
     </button>
   </div>
   <p class="dim">
-    New uploads are stored in the selected location. Existing files stay where they are. Library
-    folders are indexed in place; upload storage holds new uploads.
+    Where new uploads are saved. Changing this does not move existing files.
   </p>
   {#if $locations.listing}
     <div class="table-scroll">
@@ -125,40 +136,22 @@
       Removing a location only forgets its registration. Locations holding stored files cannot be
       removed.
     </p>
-    {#if picking && !$locations.busy}
-      <FolderPicker {client} onchoose={choose} oncancel={() => (picking = false)} />
-    {/if}
-    <form onsubmit={add}>
-      <label>
-        Upload storage folder on the server
-        <input
-          bind:value={path}
-          placeholder="/Volumes/Storage/Content"
-          required
-          disabled={$locations.busy}
-        />
-      </label>
-      <label>
-        Destination name
-        <input
-          bind:value={label}
-          maxlength="80"
-          placeholder="External drive"
-          required
-          disabled={$locations.busy}
-        />
-      </label>
-      <button type="button" disabled={$locations.busy} onclick={() => (picking = !picking)}>
-        {picking ? 'Hide browser' : 'Browse server folders'}
-      </button>
-      <button type="submit" disabled={$locations.busy}>Add destination</button>
-    </form>
+    <button bind:this={addButton} type="button" disabled={$locations.busy || choosing || $locations.denied || !!$locations.pendingDestination} onclick={() => void choose()}>Add destination</button>
   {:else if $locations.busy}
     <p class="dim" role="status">Reading storage locations…</p>
   {/if}
-  {#if $locations.failure}
-    <p class="problem" role="alert">{$locations.failure}</p>
+  {#if $locations.failure || failure}
+    <p class="problem" role="alert">{$locations.failure || failure}</p>
   {/if}
+  {#if $locations.pendingDestination && !picking}<p>Destination {$locations.pendingDestination.label} was saved. The destination for new uploads has not changed.</p>
+    <button type="button" disabled={$locations.busy} onclick={() => void locations.select($locations.pendingDestination?.id ?? null)}>Retry destination selection</button>
+  {/if}
+  {#if picking}<Modal title="Add upload destination" busy={pickerBusy || $locations.busy} onclose={() => void closePicker()}>
+    <label><input type="checkbox" bind:checked={makeWriteTarget} disabled={$locations.busy || !!$locations.pendingDestination} />Make destination for new uploads</label>
+    <FolderPicker {client} contextKey={context.key} origin={context.origin} title="Add upload destination" submitLabel="Add destination"
+      onbusy={(busy) => (pickerBusy = busy)} oncancel={() => void closePicker()}
+      onsubmit={async (selection) => { const saved = await locations.addDestination(selection, makeWriteTarget); if (!saved) throw new Error(get(locations).failure ?? 'Destination could not be added.'); return saved; }} />
+  </Modal>{/if}
 </section>
 
 <style>

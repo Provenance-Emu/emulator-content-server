@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { ContentClient } from '@ecs/client';
+  import type { ContentClient, Library } from '@ecs/client';
+  import type { FolderContext } from './lib/folder-selection';
   import type { ApplicationState } from './lib/application';
   import SettingsLibraries from './SettingsLibraries.svelte';
   import Locations from './Locations.svelte';
@@ -12,12 +13,14 @@
     onback,
     onview,
     onrejected,
+    context, onrename,
   }: {
     client: ContentClient;
     appState: ApplicationState;
     onback: () => void;
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
+    context: FolderContext; onrename: (library: Library) => void;
   } = $props();
   let selected = $state('Libraries');
   let noted = $state(0);
@@ -42,9 +45,11 @@
         invalidation={appState.invalidation}
         {onview}
         {onrejected}
+        {context} {onrename}
       />{:else if appState.owner && selected === 'Upload storage'}<h1>Upload storage</h1>
       <Locations
         {client}
+        {context}
         onchange={() => noted++}
       />{:else if appState.owner && selected === 'Access'}<h1>Access</h1>
       <Grants
