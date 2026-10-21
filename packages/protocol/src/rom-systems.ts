@@ -37,6 +37,7 @@ const definitions = [
       'ccd',
       'chd',
       'cso',
+      'cdi',
       'elf',
       'iso',
       'isz',
@@ -482,6 +483,7 @@ const containers = new Set([
   'toc',
   'pbp',
   'cso',
+  'cdi',
 ]);
 export interface RomSystemDetection {
   systemId: string | null;
@@ -507,7 +509,13 @@ export function detectRomSystem(path: string): RomSystemDetection {
       .flatMap((s) =>
         s.names.filter(Boolean).map((alias) => ({ id: s.id, alias: normalize(alias) })),
       )
-      .filter((s) => known.has(s.id) && s.alias.length > 1 && name.includes(` ${s.alias} `))
+      .filter(
+        (s) =>
+          known.has(s.id) &&
+          s.alias.length > 1 &&
+          !containers.has(s.alias) &&
+          name.includes(` ${s.alias} `),
+      )
       .sort((a, b) => b.alias.length - a.alias.length);
     if (hints[0]) {
       hinted = hints[0].id;
