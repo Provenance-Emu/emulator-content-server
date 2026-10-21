@@ -49,7 +49,7 @@
   "bundle": {
     "active": true,
     "targets": ["app", "dmg", "msi", "deb", "appimage"],
-    "icon": ["icons/icon.png"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
     "macOS": {
       "minimumSystemVersion": "11.0"
     }

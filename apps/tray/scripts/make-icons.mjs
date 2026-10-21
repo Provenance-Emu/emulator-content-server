@@ -130,3 +130,16 @@ for (const [name, size, palette] of wanted) {
   writeFileSync(join(icons, name), bytes);
   console.log(`${name} ${size}px ${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}`);
 }
+
+// A PNG-backed ICO preserves the existing glyph and palette. Windows resource
+// compilation requires this container even when other platforms use PNGs.
+const windowsPng = png(256, render(256, wanted.at(-1)[2]));
+const icoHeader = Buffer.alloc(22);
+icoHeader.writeUInt16LE(1, 2); // icon, rather than cursor
+icoHeader.writeUInt16LE(1, 4); // one image; zero width/height encodes 256px
+icoHeader.writeUInt16LE(1, 10);
+icoHeader.writeUInt16LE(32, 12);
+icoHeader.writeUInt32LE(windowsPng.length, 14);
+icoHeader.writeUInt32LE(icoHeader.length, 18);
+writeFileSync(join(icons, 'icon.ico'), Buffer.concat([icoHeader, windowsPng]));
+console.log('icon.ico 256px (PNG container)');
