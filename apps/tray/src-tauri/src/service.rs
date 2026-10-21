@@ -327,6 +327,12 @@ mod tests {
     #[test]
     fn mac_start_bootstraps_an_unloaded_registration_without_changing_it() {
         let svc = service(Platform::Mac, true);
+        // Fixtures run on every host; PathBuf uses that host's separator even
+        // while the fixed-command runner is simulating launchctl.
+        let registration = svc
+            .home
+            .join("Library/LaunchAgents/app.emulator-content-server.plist");
+        let registration = registration.to_str().unwrap();
         assert_eq!(
             run(
                 &svc,
@@ -340,8 +346,7 @@ mod tests {
                     ),
                     (
                         "/bin/launchctl",
-                        vec!["bootstrap", "gui/501",
-                "/Users/operator/Library/LaunchAgents/app.emulator-content-server.plist"],
+                        vec!["bootstrap", "gui/501", registration],
                         0,
                         ""
                     ),
