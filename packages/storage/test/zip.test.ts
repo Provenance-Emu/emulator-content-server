@@ -515,3 +515,62 @@ test('compressed containers cannot reset the nesting budget during expansion', a
     await rm(staged.root, { recursive: true, force: true });
   }
 });
+
+for (const declaredSize of [0, 2, 4096]) {
+  test(`a stored entry cannot replace its four-byte extent with declared size ${declaredSize}`, async (t) => {
+    const staged = await stageArchive([
+      { name: 'forged.bin', body: Buffer.from('DATA'), declaredSize },
+      { name: 'neighbor.bin', body: Buffer.from('neighbor sentinel') },
+    ]);
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+      code: 'archive-rejected',
+    });
+    await assert.rejects(staged.registry.inspect(staged.path), { code: 'archive-rejected' });
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}
+
+test('a stored container cannot hide a size mismatch by descending into its children', async (t) => {
+  const inner = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
+  const staged = await stageArchive([
+    { name: 'forged.zip', body: inner, declaredSize: inner.length + 128 },
+  ]);
+  t.after(() => rm(staged.root, { recursive: true, force: true }));
+  await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0.0'), {
+    code: 'archive-rejected',
+  });
+  await assert.rejects(staged.registry.inspect(staged.path), { code: 'archive-rejected' });
+  assert.deepEqual(await cachedFiles(staged.root), []);
+});
+
+test('valid stored extents keep adjacent entries separate and allow empty files', async (t) => {
+  const staged = await stageArchive([
+    { name: 'first.bin', body: Buffer.from('DATA') },
+    { name: 'second.bin', body: Buffer.from('NEIGHBOR') },
+    { name: 'empty.bin', body: Buffer.alloc(0) },
+  ]);
+  t.after(() => rm(staged.root, { recursive: true, force: true }));
+  const inspected = await staged.registry.inspect(staged.path);
+  assert.deepEqual(
+    inspected?.entries.map((entry) => entry.uncompressedSize),
+    [4, 8, 0],
+  );
+  for (const input of [
+    { id: '0', body: 'DATA' },
+    { id: '1', body: 'NEIGHBOR' },
+  ]) {
+    const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, input.id);
+    assert.ok(entry);
+    assert.equal(entry.size, input.body.length);
+    assert.equal(entry.path, staged.path);
+    assert.deepEqual(
+      await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+      Buffer.from(input.body),
+    );
+  }
+  const empty = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '2');
+  assert.ok(empty);
+  assert.equal(empty.size, 0);
+  assert.deepEqual(await cachedFiles(staged.root), []);
+});

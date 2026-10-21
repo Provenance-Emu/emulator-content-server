@@ -322,6 +322,13 @@ async function readCentralDirectory(
     if (record.compressedSize === 0 && record.uncompressedSize > 0) {
       reject('Archive entry declares expansion from no compressed bytes');
     }
+    if (
+      record.method === METHOD_STORE &&
+      !isEncrypted(record) &&
+      record.compressedSize !== record.uncompressedSize
+    ) {
+      reject('Stored archive entry sizes do not match');
+    }
     records.push(record);
   }
   return records;
