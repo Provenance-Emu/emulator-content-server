@@ -1,15 +1,18 @@
 <script lang="ts">
-  import type { ContentRootSummary, SystemSummary } from '@ecs/client';
+  import type { ContentRootSummary, SystemSummary, SystemCount } from '@ecs/client';
+  import { systemLabel } from '../lib/content-format';
   import type { BrowseFilters } from '../lib/library-browser';
   let {
     filters,
     systems,
     folders,
+    systemCounts,
     onchange,
   }: {
     filters: BrowseFilters;
     systems: SystemSummary[];
     folders: ContentRootSummary[];
+    systemCounts: SystemCount[];
     onchange: (patch: Partial<BrowseFilters>) => void;
   } = $props();
   let search = $state('');
@@ -38,19 +41,18 @@
     </label>
     <button type="submit">Search</button>
   </form>
-  <label>
-    System filter
-    <select
-      value={filters.systemId}
-      onchange={(event) => onchange({ systemId: event.currentTarget.value })}
-    >
-      <option value="">All systems</option>
-      <option value="unknown">Unknown system</option>
-      {#each systems as system (system.identifier)}<option value={system.identifier}>
-          {system.name}
-        </option>{/each}
-    </select>
-  </label>
+  <fieldset class="system-filter">
+    <legend>Systems with games</legend>
+    <div class="system-chips">
+      <button type="button" aria-pressed={filters.systemIds.length === 0} onclick={() => onchange({systemIds:[],systemId:''})}>All systems</button>
+      {#each systemCounts as system (system.systemId)}
+        <button type="button" aria-pressed={filters.systemIds.includes(system.systemId)} onclick={() => onchange({systemIds:filters.systemIds.includes(system.systemId) ? filters.systemIds.filter(id=>id!==system.systemId) : [...filters.systemIds,system.systemId]})}>
+          {systemLabel(system.systemId,systems)} <span class="system-count">{system.count}</span>
+        </button>
+      {/each}
+      {#if filters.systemIds.length}<button type="button" class="text-button" onclick={() => onchange({systemIds:[],systemId:''})}>Clear systems</button>{/if}
+    </div>
+  </fieldset>
   {#if folders.length || filters.rootId}<label>
       Library folder
       <select
@@ -86,9 +88,9 @@
         {view === 'grid' ? 'Grid' : 'List'}
       </label>{/each}
   </fieldset>
-  {#if filters.search || filters.systemId || filters.rootId}<button
+  {#if filters.search || filters.systemId || filters.systemIds.length || filters.rootId}<button
       type="button"
-      onclick={() => onchange({ search: '', systemId: '', rootId: '' })}
+      onclick={() => onchange({ search: '', systemId: '', systemIds: [], rootId: '' })}
     >
       Clear filters
     </button>{/if}

@@ -18,3 +18,5 @@ This project has NO EXTERNAL PRODUCTION and is NOT SHIPPING until the user expli
 - Honor actual branch protection and later explicit user instructions; queued optional checks are not merge gates.
 - Preserve user data, secrets, authentication guarantees, and package boundaries.
 - Full CI and native CHD acceptance remain available by manual workflow dispatch.
+
+When the user asks to consolidate, finish the active batch before starting another feature. After publishing, switch the primary checkout to main and archive redundant worktrees and delete merged or verified-equivalent branches, preserving unique work and ignored handoff/data artifacts first. Do not leave the primary checkout on a completed feature branch.

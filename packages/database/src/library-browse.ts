@@ -19,6 +19,7 @@ export interface BrowseSelection {
   rootId?: string | null;
   /** Null/omitted selects every system; 'unknown' selects uncategorized systems. */
   systemId?: string | null;
+  systemIds?: string[];
   search?: string;
   sort: 'name_asc' | 'name_desc';
   limit: number;
@@ -45,17 +46,9 @@ export interface ContentRootSummaryRecord extends ContentRootRecord {
 
 // SQL owns selection and pagination. Only the selected page is hydrated into domain records.
 
-export function browseKeys(
-  db: DatabaseSync,
-  input: BrowseSelection,
-): Array<{
-  entity_type: BrowsePosition['entityType'];
-  id: string;
-  preview_id: string | null;
-}> {
-  if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) {
+function projectionFor(input: BrowseSelection): { projection: string; params: SQLInputValue[] } {
+  if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100)
     throw new DomainError('invalid-query', 400, 'Browse limit must be between 1 and 100');
-  }
   const actor = input.actor;
   const guest = actor.kind === 'guest';
   const read = guest ? actor.capabilities.includes('read') : actor.scopes.includes('read');
@@ -70,7 +63,9 @@ export function browseKeys(
     guest ? actor.itemId : null,
     guest && actor.capabilities.includes('share_restricted') ? 1 : 0,
     input.rootId ?? null,
-    input.systemId ?? null,
+    JSON.stringify(
+      input.systemIds !== undefined ? input.systemIds : input.systemId ? [input.systemId] : [],
+    ),
     `%${(input.search ?? '')
       .normalize('NFC')
       .toLowerCase()
@@ -92,13 +87,13 @@ export function browseKeys(
       OR EXISTS (SELECT 1 FROM item_acl acl WHERE acl.item_id = i.id AND acl.user_id = c.user_id AND acl.permission = 'read'))))`;
   const assetAccess = (alias: string) =>
     `(c.is_guest = 0 OR c.restricted = 1 OR (${alias}.shareable = 1 AND ${alias}.kind NOT IN ('bios','system_file')))`;
-  const system = (column: string) =>
-    `(c.system_id IS NULL OR (${column} = c.system_id AND c.system_id != 'unknown') OR (c.system_id = 'unknown' AND (${column} IS NULL OR ${column} = 'unknown' OR ${column} = '')))`;
+  const system = (column: string) => `(json_array_length(c.system_ids) = 0 OR EXISTS (
+    SELECT 1 FROM json_each(c.system_ids) selected WHERE selected.value = COALESCE(NULLIF(${column},''),'unknown')))`;
   const projection = `WITH c AS (SELECT ? AS library_id, ? AS is_owner, ? AS can_read,
     ? AS see_all, ? AS user_id, ? AS is_guest, ? AS guest_library, ? AS guest_item,
-    ? AS restricted, ? AS root_id, ? AS system_id, ? AS search),
+    ? AS restricted, ? AS root_id, ? AS system_ids, ? AS search),
   eligible AS (
-    SELECT 'item' AS entity_type, i.id, ecs_browse_fold(i.title) AS folded_name,
+    SELECT 'item' AS entity_type, i.id, ecs_browse_fold(i.title) AS folded_name, COALESCE(NULLIF(i.system_identifier,''),'unknown') AS system_id,
       (SELECT p.id FROM assets p WHERE p.item_id = i.id AND p.deleted_at IS NULL
        AND p.kind = 'artwork' AND ${assetAccess('p')} ORDER BY p.id LIMIT 1) AS preview_id
     FROM items i JOIN libraries l ON l.id = i.library_id CROSS JOIN c
@@ -110,14 +105,14 @@ export function browseKeys(
         AND r.kind = 'rom' AND ${assetAccess('r')})
         OR NOT EXISTS (SELECT 1 FROM assets a WHERE a.item_id = i.id AND a.deleted_at IS NULL))
     UNION ALL
-    SELECT 'asset', a.id, ecs_browse_fold(a.display_name), NULL
+    SELECT 'asset', a.id, ecs_browse_fold(a.display_name), COALESCE(NULLIF(i.system_identifier,''),'unknown'), NULL
     FROM assets a JOIN items i ON i.id = a.item_id JOIN libraries l ON l.id = i.library_id CROSS JOIN c
     WHERE ${input.category === 'games' ? '0' : '1'} = 1
       AND i.library_id = c.library_id AND l.deleted_at IS NULL AND i.deleted_at IS NULL AND a.deleted_at IS NULL
       AND c.root_id IS NULL AND ${itemAccess} AND ${assetAccess('a')} AND a.kind IN (${kinds})
       AND ${system('i.system_identifier')} AND ecs_browse_fold(a.display_name) LIKE c.search ESCAPE '\\'
     UNION ALL
-    SELECT 'source', s.id, ecs_browse_fold(s.display_name), NULL
+    SELECT 'source', s.id, ecs_browse_fold(s.display_name), COALESCE(NULLIF(s.system_id,''),'unknown'), NULL
     FROM source_files s JOIN content_roots r ON r.id = s.root_id CROSS JOIN c
     WHERE c.can_read = 1 AND (c.root_id IS NULL OR s.root_id = c.root_id)
       AND ((r.library_id = c.library_id AND EXISTS (SELECT 1 FROM libraries l WHERE l.id = r.library_id AND l.deleted_at IS NULL))
@@ -128,6 +123,30 @@ export function browseKeys(
       AND s.kind IN (${kinds}) AND ${system('s.system_id')}
       AND ecs_browse_fold(s.display_name) LIKE c.search ESCAPE '\\'
   )`;
+  return { projection, params };
+}
+export function browseSystemCounts(
+  db: DatabaseSync,
+  input: BrowseSelection,
+): { systemId: string; count: number }[] {
+  const { projection, params } = projectionFor({
+    ...input,
+    category: 'games',
+    systemId: null,
+    systemIds: [],
+  });
+  const rows = db
+    .prepare(
+      `${projection} SELECT system_id AS systemId, COUNT(*) AS count FROM eligible GROUP BY system_id ORDER BY system_id`,
+    )
+    .all(...params) as { systemId: string; count: number }[];
+  return rows.map((row) => ({ systemId: row.systemId, count: row.count }));
+}
+export function browseKeys(
+  db: DatabaseSync,
+  input: BrowseSelection,
+): { entity_type: BrowsePosition['entityType']; id: string; preview_id: string | null }[] {
+  const { projection, params } = projectionFor(input);
   // Both anchor and page use the same projection so revoked access or changed filters
   // cannot retain a formerly readable name in a keyset comparison.
   const direction = input.sort === 'name_desc' ? 'DESC' : 'ASC';

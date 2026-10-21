@@ -1,6 +1,6 @@
 import { readdir, realpath, stat } from 'node:fs/promises';
-import { relative, resolve, sep } from 'node:path';
-import type { AssetKind } from '@ecs/domain';
+import { basename, relative, resolve, sep } from 'node:path';
+import { type AssetKind, detectRomSystem, isRomExtension } from '@ecs/domain';
 import { type Availability, fileAvailability, type Medium, probeRoot } from './volume.js';
 
 export interface ScannedFile {
@@ -12,47 +12,6 @@ export interface ScannedFile {
   systemId: string | null;
   availability: Availability;
 }
-
-const SYSTEMS: Record<string, string> = {
-  nes: 'com.provenance.nes',
-  unf: 'com.provenance.nes',
-  snes: 'com.provenance.snes',
-  sfc: 'com.provenance.snes',
-  smc: 'com.provenance.snes',
-  gb: 'com.provenance.gb',
-  gbc: 'com.provenance.gbc',
-  gba: 'com.provenance.gba',
-  n64: 'com.provenance.n64',
-  z64: 'com.provenance.n64',
-  v64: 'com.provenance.n64',
-  md: 'com.provenance.genesis',
-  gen: 'com.provenance.genesis',
-  smd: 'com.provenance.genesis',
-  genesis: 'com.provenance.genesis',
-  nds: 'com.provenance.ds',
-  ds: 'com.provenance.ds',
-  psx: 'com.provenance.psx',
-  ps1: 'com.provenance.psx',
-  cue: 'com.provenance.psx',
-};
-
-const ROM_EXTENSIONS = new Set([
-  'nes',
-  'unf',
-  'sfc',
-  'smc',
-  'gb',
-  'gbc',
-  'gba',
-  'n64',
-  'z64',
-  'v64',
-  'md',
-  'gen',
-  'smd',
-  'nds',
-  'cue',
-]);
 
 /**
  * Reads a registered folder in place. Names and sizes come from `stat`.
@@ -77,9 +36,9 @@ export function inferSource(relativePath: string): { kind: AssetKind; systemId: 
   const base = parts.at(-1) ?? relativePath;
   const extension = extensionOf(base);
   const folders = parts.slice(0, -1).map((part) => part.toLowerCase());
-  const hinted = folders.map((folder) => SYSTEMS[folder]).find((id) => id !== undefined) ?? null;
+  const hinted = detectRomSystem(relativePath).systemId;
   if (folders.some((folder) => folder === 'bios' || folder === 'bioses')) {
-    return { kind: 'bios', systemId: SYSTEMS[extension] ?? hinted };
+    return { kind: 'bios', systemId: hinted };
   }
   if (extension === 'state' || extension === 'ss') {
     return { kind: 'save_state', systemId: hinted };
@@ -90,13 +49,15 @@ export function inferSource(relativePath: string): { kind: AssetKind; systemId: 
   if (folders.some((folder) => folder.includes('screenshot'))) {
     return { kind: 'screenshot', systemId: hinted };
   }
+  if (['png', 'jpg', 'jpeg', 'webp'].includes(extension))
+    return { kind: 'artwork', systemId: hinted };
   if (
     folders.some((folder) => folder === 'artwork' || folder === 'boxart' || folder === 'covers')
   ) {
     return { kind: 'artwork', systemId: hinted };
   }
-  if (ROM_EXTENSIONS.has(extension)) {
-    return { kind: 'rom', systemId: SYSTEMS[extension] ?? hinted };
+  if (isRomExtension(relativePath)) {
+    return { kind: 'rom', systemId: hinted };
   }
   if (extension === 'zip' || extension === '7z' || extension === 'iso' || extension === 'chd') {
     return { kind: 'rom', systemId: hinted };
@@ -140,7 +101,7 @@ async function describe(root: string, full: string, medium: Medium): Promise<Sca
   const file = await stat(full);
   const blocks = typeof file.blocks === 'number' ? file.blocks : 1;
   const relativePath = relative(root, full).split(sep).join('/');
-  const inferred = inferSource(relativePath);
+  const inferred = inferSource(`${basename(root)}/${relativePath}`);
   return {
     relativePath,
     displayName: relativePath.split('/').at(-1) ?? relativePath,

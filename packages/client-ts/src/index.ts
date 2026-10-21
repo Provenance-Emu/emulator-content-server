@@ -58,6 +58,7 @@ export type {
   StorageLocationDraft,
   StorageLocationList,
   StorageWriteTarget,
+  SystemCount,
   SystemList,
   SystemSummary,
   UploadSession,

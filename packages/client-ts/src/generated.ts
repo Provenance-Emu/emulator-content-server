@@ -432,7 +432,13 @@ export interface LibraryBrowseEntry {
 
 export interface LibraryBrowsePage {
   items: LibraryBrowseEntry[];
+  systemCounts?: SystemCount[];
   nextCursor: string | null;
+}
+
+export interface SystemCount {
+  systemId: string;
+  count: number;
 }
 
 export interface ContentRootSummary {

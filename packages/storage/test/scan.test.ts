@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   classifyMedium,
   fileAvailability,
+  inferSource,
   inspectRoot,
   probeFile,
   probeRoot,
@@ -93,4 +94,22 @@ test('a scan names generated files and does not change their bytes', async () =>
   } finally {
     await rm(parent, { recursive: true, force: true });
   }
+});
+
+// A disc extension identifies a container, not a console; folder hints disambiguate it.
+test('system inference recognizes common folder names and leaves ambiguous discs unresolved', () => {
+  for (const [path, kind, systemId] of [
+    ['Atari Jaguar/Game.j64', 'rom', 'com.provenance.jaguar'],
+    ['Nintendo - Game Boy Advance/Game.zip', 'rom', 'com.provenance.gba'],
+    ['Sega Saturn/Game.cue', 'rom', 'com.provenance.saturn'],
+    ['jaguar-roms-private/Game.cue', 'rom', 'com.provenance.jaguar'],
+    ['Game.cue', 'rom', null],
+    ['PlayStation 2/Game.iso', 'rom', 'com.provenance.ps2'],
+    ['Game.bin', 'rom', null],
+    ['Game.gg', 'rom', 'com.provenance.gamegear'],
+    ['nes/snes/Game.zip', 'rom', 'com.provenance.snes'],
+    ['covers/Game.png', 'artwork', null],
+    ['Game.ips', 'system_file', null],
+  ] as const)
+    assert.deepEqual(inferSource(path), { kind, systemId }, path);
 });

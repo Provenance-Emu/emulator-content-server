@@ -191,4 +191,5 @@ export interface AccessRequest {
   itemPermissions?: ItemPermission[];
 }
 
+export { detectRomSystem, isRomExtension, type RomSystemDetection } from '@ecs/protocol';
 export type { AssetKind, GuestCapability, ItemPermission, LibraryRole };

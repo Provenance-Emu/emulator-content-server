@@ -45,6 +45,7 @@ export type LibraryBrowseQuery = LibraryScope & {
   category: BrowseCategory;
   rootId?: string;
   systemId?: string;
+  systemIds?: string[];
   search?: string;
   sort?: BrowseSort;
   cursor?: string;
@@ -802,6 +803,19 @@ function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage 
   const strings = (v: Record<string, unknown>, keys: string[]) =>
     keys.every((key) => typeof v[key] === 'string');
   const integer = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+  if (
+    object(value) &&
+    value.systemCounts !== undefined &&
+    (!Array.isArray(value.systemCounts) ||
+      value.systemCounts.some(
+        (row: unknown) =>
+          !object(row) ||
+          typeof row.systemId !== 'string' ||
+          !integer(row.count) ||
+          row.count === 0,
+      ))
+  )
+    fail();
   const item = (v: unknown): v is Record<string, unknown> =>
     object(v) &&
     strings(v, ['id', 'libraryId', 'systemIdentifier', 'title', 'createdAt', 'updatedAt']) &&

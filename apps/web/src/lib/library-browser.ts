@@ -5,6 +5,7 @@ import {
   ContentError,
   type LibraryBrowseEntry,
   type LibraryScope,
+  type SystemCount,
 } from '@ecs/client';
 import { type Readable, writable } from 'svelte/store';
 import { explain } from './problems.js';
@@ -12,6 +13,7 @@ export interface BrowseFilters {
   category: BrowseCategory;
   search: string;
   systemId: string;
+  systemIds: string[];
   rootId: string;
   sort: BrowseSort;
   view: 'grid' | 'list';
@@ -24,6 +26,7 @@ export interface LibraryBrowserState {
   scope: LibraryScope | null;
   filters: BrowseFilters;
   items: LibraryBrowseEntry[];
+  systemCounts: SystemCount[];
   page: number;
   hasPrevious: boolean;
   hasNext: boolean;
@@ -47,6 +50,7 @@ const defaults = (): BrowseFilters => ({
   category: 'games',
   search: '',
   systemId: '',
+  systemIds: [],
   rootId: '',
   sort: 'name_asc',
   view: 'grid',
@@ -61,6 +65,7 @@ export function createLibraryBrowser(
     scope,
     filters: defaults(),
     items: [],
+    systemCounts: [],
     page: 1,
     hasPrevious: false,
     hasNext: false,
@@ -89,6 +94,7 @@ export function createLibraryBrowser(
     position = null;
     update({
       items: [],
+      systemCounts: [],
       active: null,
       page: 1,
       hasPrevious: false,
@@ -112,6 +118,7 @@ export function createLibraryBrowser(
           category: filters.category,
           search: filters.search || undefined,
           systemId: filters.systemId || undefined,
+          systemIds: filters.systemIds.length ? filters.systemIds : undefined,
           rootId: filters.rootId || undefined,
           sort: filters.sort,
           limit: 50,
@@ -130,6 +137,7 @@ export function createLibraryBrowser(
         if (!active) position = null;
         update({
           items: result.items,
+          systemCounts: result.systemCounts ?? [],
           page,
           hasPrevious: page > 1,
           hasNext: nextCursor !== null,
@@ -148,6 +156,7 @@ export function createLibraryBrowser(
           position = null;
           update({
             items: [],
+            systemCounts: [],
             active: null,
             hasNext: false,
             hasPrevious: false,
@@ -176,10 +185,14 @@ export function createLibraryBrowser(
     },
     setQuery(patch) {
       if (disposed) return Promise.resolve();
-      const filters = { ...current.filters, ...patch };
-      const changed = (['category', 'search', 'systemId', 'rootId', 'sort'] as const).some(
-        (key) => filters[key] !== current.filters[key],
-      );
+      const filters = {
+        ...current.filters,
+        ...patch,
+        ...(patch.systemIds ? { systemId: '' } : {}),
+      };
+      const changed = (
+        ['category', 'search', 'systemId', 'systemIds', 'rootId', 'sort'] as const
+      ).some((key) => JSON.stringify(filters[key]) !== JSON.stringify(current.filters[key]));
       update({ filters });
       if (!changed) return Promise.resolve();
       clear();

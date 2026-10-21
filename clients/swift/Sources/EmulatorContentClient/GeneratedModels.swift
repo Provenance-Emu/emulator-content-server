@@ -864,11 +864,23 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
 
 public struct LibraryBrowsePage: Codable, Equatable, Sendable {
     public var items: [LibraryBrowseEntry]
+    public var systemCounts: [SystemCount]?
     public var nextCursor: String?
 
-    public init(items: [LibraryBrowseEntry], nextCursor: String? = nil) {
+    public init(items: [LibraryBrowseEntry], systemCounts: [SystemCount]? = nil, nextCursor: String? = nil) {
         self.items = items
+        self.systemCounts = systemCounts
         self.nextCursor = nextCursor
+    }
+}
+
+public struct SystemCount: Codable, Equatable, Sendable {
+    public var systemId: String
+    public var count: Int
+
+    public init(systemId: String, count: Int) {
+        self.systemId = systemId
+        self.count = count
     }
 }
 

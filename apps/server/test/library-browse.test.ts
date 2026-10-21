@@ -13,6 +13,28 @@ test('browse defaults to 50, pages original identities and validates bound filte
     const first = await f.app.inject({ url, headers: f.auth });
     assert.equal(first.statusCode, 200, first.body);
     assert.equal(first.json().items.length, 50);
+    assert.deepEqual(first.json().systemCounts, [{ systemId: 'com.provenance.nes', count: 105 }]);
+    const selected = await f.app.inject({
+      url: `${url}&systemIds=com.provenance.nes,unknown&systemId=missing`,
+      headers: f.auth,
+    });
+    assert.equal(selected.statusCode, 200, selected.body);
+    assert.equal(selected.json().items.length, 50);
+    assert.deepEqual(selected.json().systemCounts, first.json().systemCounts);
+    const cleared = await f.app.inject({
+      url: `${url}&systemId=unknown&systemIds=`,
+      headers: f.auth,
+    });
+    assert.equal(cleared.json().items.length, 50);
+    const changedSelection = await f.app.inject({
+      url: `${url}&systemIds=unknown&cursor=${first.json().nextCursor}`,
+      headers: f.auth,
+    });
+    assert.equal(changedSelection.statusCode, 400);
+    assert.equal(
+      (await f.app.inject({ url: `${url}&systemIds=bad/identifier`, headers: f.auth })).statusCode,
+      400,
+    );
     for (const entry of first.json().items) {
       assert.equal(entry.entityType, 'item');
       assert.equal(entry.item.id, entry.id);

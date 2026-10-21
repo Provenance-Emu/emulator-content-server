@@ -20,6 +20,7 @@ import {
   type BrowseRecord,
   type BrowseSelection,
   browseKeys,
+  browseSystemCounts,
   type ContentRootSummaryRecord,
   type RootSummaryFilter,
 } from './library-browse.js';
@@ -507,7 +508,11 @@ export class CatalogDatabase {
     return { id, name, ownerId, revision: 1, createdAt };
   }
 
-  browseLibrary(input: BrowseSelection): { items: BrowseRecord[]; next: BrowsePosition | null } {
+  browseLibrary(input: BrowseSelection): {
+    items: BrowseRecord[];
+    next: BrowsePosition | null;
+    systemCounts: { systemId: string; count: number }[];
+  } {
     return this.transaction(() => {
       const keys = browseKeys(this.db, input);
       const more = keys.length > input.limit;
@@ -534,7 +539,11 @@ export class CatalogDatabase {
         return { entityType: 'asset', asset, item };
       });
       const last = selected.at(-1);
-      return { items, next: more && last ? { entityType: last.entity_type, id: last.id } : null };
+      return {
+        items,
+        systemCounts: browseSystemCounts(this.db, input),
+        next: more && last ? { entityType: last.entity_type, id: last.id } : null,
+      };
     });
   }
 

@@ -173,3 +173,32 @@ test('refresh revalidates the return page during detail, updates source metadata
   assert.equal(get(b).active, null);
   assert.deepEqual(get(b).items, []);
 });
+
+test('multi-system selection resets paging, preserves full-scope counts and clears together', async (t) => {
+  const f = transport(() =>
+    Response.json({
+      items: [],
+      nextCursor: null,
+      systemCounts: [
+        { systemId: 'com.provenance.nes', count: 101 },
+        { systemId: 'unknown', count: 2 },
+      ],
+    }),
+  );
+  t.after(f.restore);
+  const b = createLibraryBrowser(f.client, { libraryId: 'library' });
+  t.after(() => b.dispose());
+  await b.refresh();
+  await b.setQuery({ systemIds: ['com.provenance.nes', 'unknown'] } as Partial<
+    import('../src/lib/library-browser.js').BrowseFilters
+  >);
+  assert.equal(f.requests.at(-1)?.searchParams.get('systemIds'), 'com.provenance.nes,unknown');
+  assert.deepEqual((get(b) as unknown as { systemCounts: unknown }).systemCounts, [
+    { systemId: 'com.provenance.nes', count: 101 },
+    { systemId: 'unknown', count: 2 },
+  ]);
+  await b.setQuery({ systemIds: [] } as Partial<
+    import('../src/lib/library-browser.js').BrowseFilters
+  >);
+  assert.equal(f.requests.at(-1)?.searchParams.has('systemIds'), false);
+});

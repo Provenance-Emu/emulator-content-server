@@ -56,3 +56,9 @@ bytes and isolated credentials/catalogs, and clean up afterward. They do not
 connect to a running operator server. Traces, videos, and automatic screenshots
 are disabled to keep authentication traffic out of test artifacts. Chromium is
 installed only for acceptance execution; it is not a runtime dependency.
+
+## Systems and detection
+
+The Systems with games bar shows counts across all readable games in the selected library or unassigned folders, before pagination or system selection. Counts respect folder and search filters. Click multiple systems to include any of them; All systems or Clear systems clears the selection. No empty systems appear. Counts are for game entries (including scanned ROM files), not unique releases or disc sets.
+
+Scans use the Provenance system/extension catalog snapshot recorded in `packages/protocol/src/rom-systems.ts`, plus nearest folder name hints, including the registered folder's own name. Shared disc/archive extensions such as CUE, BIN, ISO and CHD do not imply PlayStation. A folder named for Jaguar therefore provides a Jaguar hint; an unhinted CUE stays unknown. These are filename/folder hints, not header or hash identification. Rescan an existing folder to update its cached classification. Source files are left in place and their bytes are not opened by scanning.

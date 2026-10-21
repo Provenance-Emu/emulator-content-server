@@ -308,6 +308,7 @@
     {#if folderFailure}<p class="problem" role="alert">{folderFailure}</p>{/if}
     <CollectionToolbar
       filters={$browser.filters}
+      systemCounts={$browser.systemCounts}
       {systems}
       {folders}
       onchange={(patch) => {

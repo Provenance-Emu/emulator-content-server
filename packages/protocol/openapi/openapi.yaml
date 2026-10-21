@@ -111,6 +111,7 @@ paths:
         - { name: category, in: query, required: true, schema: { type: string, enum: [games, saves, media, system_files] } }
         - { name: rootId, in: query, schema: { type: string } }
         - { name: systemId, in: query, schema: { type: string } }
+        - { name: systemIds, in: query, description: Comma-separated system identifiers; OR selection; takes precedence over systemId., schema: { type: string, maxLength: 12000 } }
         - { name: search, in: query, schema: { type: string, maxLength: 256 } }
         - { name: sort, in: query, schema: { type: string, enum: [name_asc, name_desc], default: name_asc } }
         - { name: cursor, in: query, schema: { type: string, maxLength: 4096 } }
@@ -1102,7 +1103,17 @@ components:
           type: array
           maxItems: 100
           items: { $ref: '#/components/schemas/LibraryBrowseEntry' }
+        systemCounts:
+          type: array
+          description: Readable game counts across the scope before system selection and pagination, respecting search and folder.
+          items: { $ref: '#/components/schemas/SystemCount' }
         nextCursor: { type: [string, 'null'], maxLength: 4096 }
+    SystemCount:
+      type: object
+      required: [systemId, count]
+      properties:
+        systemId: { type: string }
+        count: { type: integer, minimum: 1 }
     ContentRootSummary:
       type: object
       required: [root, indexedFileCount, scanState, lastScanAt, lastCheckAt, online, medium]

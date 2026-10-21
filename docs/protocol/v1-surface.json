@@ -901,11 +901,22 @@
     "LibraryBrowsePage": {
       "properties": [
         "items",
-        "nextCursor"
+        "nextCursor",
+        "systemCounts"
       ],
       "required": [
         "items",
         "nextCursor"
+      ]
+    },
+    "SystemCount": {
+      "properties": [
+        "count",
+        "systemId"
+      ],
+      "required": [
+        "count",
+        "systemId"
       ]
     },
     "ContentRootSummary": {

@@ -367,3 +367,35 @@ test('browse limits reject oversized pages and bounded reads avoid legacy manife
     f.db.close();
   }
 });
+
+test('system facets count every readable game before paging and multi-selection keeps unknown games', () => {
+  const f = fixture();
+  try {
+    f.item('Managed NES');
+    f.inspect(f.root.id, [
+      { displayName: 'Source NES', kind: 'rom', systemId: 'com.provenance.nes' },
+      { displayName: 'Source SNES', kind: 'rom', systemId: 'com.provenance.snes' },
+      { displayName: 'Unknown disc', kind: 'rom' },
+      { displayName: 'Art only', kind: 'artwork', systemId: 'com.provenance.psx' },
+    ]);
+    const query = { ...f.select, limit: 1, systemIds: ['com.provenance.nes', 'unknown'] };
+    const page = f.db.browseLibrary(query) as ReturnType<CatalogDatabase['browseLibrary']> & {
+      systemCounts?: { systemId: string; count: number }[];
+    };
+    assert.deepEqual(page.systemCounts, [
+      { systemId: 'com.provenance.nes', count: 2 },
+      { systemId: 'com.provenance.snes', count: 1 },
+      { systemId: 'unknown', count: 1 },
+    ]);
+    const rows = traverse(f.db, { ...query, limit: 50 });
+    assert.equal(rows.length, 3);
+    assert.equal(
+      rows.some((r) => r.entityType === 'source' && r.source.displayName === 'Source SNES'),
+      false,
+    );
+    const noRead = { ...query, actor: { ...f.actor, scopes: [] } as Actor };
+    assert.deepEqual((f.db.browseLibrary(noRead) as typeof page).systemCounts, []);
+  } finally {
+    f.db.close();
+  }
+});

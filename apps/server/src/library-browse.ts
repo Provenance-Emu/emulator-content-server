@@ -25,7 +25,7 @@ export interface BrowseProbes {
 function query(request: FastifyRequest, key: string): string | undefined {
   const value = (request.query as Record<string, unknown>)[key];
   if (value === undefined) return undefined;
-  if (typeof value !== 'string' || (value === '' && key !== 'search'))
+  if (typeof value !== 'string' || (value === '' && key !== 'search' && key !== 'systemIds'))
     throw new DomainError('invalid-query', 400, `Invalid ${key}`);
   return value;
 }
@@ -126,6 +126,22 @@ export function registerLibraryBrowse(
     const search = rawSearch.normalize('NFC').toLowerCase();
     const rootId = query(request, 'rootId');
     const systemId = query(request, 'systemId');
+    const rawSystems = query(request, 'systemIds');
+    const systemIds =
+      rawSystems === undefined
+        ? undefined
+        : [...new Set(rawSystems.split(',').filter(Boolean))].sort();
+    if (
+      systemIds &&
+      ((rawSystems?.length ?? 0) > 12000 ||
+        systemIds.length > 100 ||
+        systemIds.some(
+          (id) =>
+            id !== 'unknown' &&
+            (id.length > 120 || !/^[A-Za-z0-9]+(?:\.[A-Za-z0-9_-]+)+$/.test(id)),
+        ))
+    )
+      throw new DomainError('invalid-query', 400, 'Invalid system selection');
     if (rootId) {
       const root = catalog.getContentRoot(rootId);
       if (
@@ -145,6 +161,7 @@ export function registerLibraryBrowse(
       category: category as BrowseSelection['category'],
       rootId,
       systemId,
+      systemIds,
       search,
       sort,
       limit,
@@ -155,7 +172,8 @@ export function registerLibraryBrowse(
           libraryId,
           category,
           rootId: rootId ?? null,
-          systemId: systemId ?? null,
+          systemId: systemIds === undefined ? (systemId ?? null) : null,
+          systemIds: systemIds ?? null,
           search,
           sort,
           limit,
@@ -298,6 +316,7 @@ export function registerLibraryBrowse(
           canAdopt: false,
         };
       }),
+      systemCounts: page.systemCounts,
       nextCursor: page.next ? encodeBrowseCursor(fingerprint, page.next) : null,
     };
   });
