@@ -519,6 +519,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SourceMatches' }
+  /api/v1/sources/{sourceId}/matches/selections:
+    get:
+      operationId: sourceMatchSelections
+      responses:
+        '200':
+          description: Saved matches visible to the source reader. Selected metadata becomes game metadata; binary companions retain their source-kind access restrictions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceMatchSelections' }
+    put:
+      operationId: saveSourceMatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SourceMatchSelectionDraft' }
+      responses:
+        '200':
+          description: Owner-selected match and optional immutable content snapshot persisted. A repeated candidate ID is idempotent.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceMatchSelections' }
+        '409':
+          description: Revision conflict or source/companion changed since lookup.
+  /api/v1/sources/{sourceId}/matches/selections/{kind}:
+    delete:
+      operationId: removeSourceMatch
+      parameters:
+        - in: header
+          name: If-Match
+          required: true
+          schema: { type: string }
+          description: Current saved matching revision as a quoted rev-N ETag.
+      responses:
+        '200':
+          description: Owner removed a selection; original files remain unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceMatchSelections' }
+  /api/v1/sources/{sourceId}/matches/selections/{kind}/content:
+    get:
+      operationId: selectedMatchContent
+      responses:
+        '200':
+          description: Authorized immutable artwork, patch, or disabled RetroArch cheat file snapshot.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
   /api/v1/sources/{sourceId}/matches/{requestId}/artwork/{candidateId}:
     get:
       operationId: matchingArtwork
@@ -856,6 +904,8 @@ components:
         systemId: { type: [string, 'null'] }
         availability: { type: string }
         medium: { type: string }
+        title: { type: string }
+        artworkAvailable: { type: boolean }
         groupFileCount: { type: integer, minimum: 0, maximum: 512 }
         groupError: { type: [string, 'null'] }
         contentPath: { type: string }
@@ -901,6 +951,41 @@ components:
           additionalProperties: { type: string }
         fileId: { type: string }
         url: { type: string }
+    SavedSourceMatch:
+      type: object
+      required: [id, providerId, kind, title, confidence, metadata, contentAvailable, contentType, fileName, updatedAt]
+      properties:
+        id: { type: string }
+        providerId: { type: string }
+        kind: { type: string, enum: [rom, metadata, artwork, patch, cheats] }
+        title: { type: string }
+        confidence: { type: string, enum: [checksum, local, name] }
+        metadata:
+          type: object
+          additionalProperties: { type: string }
+        originFileId: { type: string }
+        originUrl: { type: string }
+        contentAvailable: { type: boolean }
+        contentType: { type: [string, 'null'] }
+        fileName: { type: [string, 'null'] }
+        updatedAt: { type: string }
+    SourceMatchSelections:
+      type: object
+      required: [sourceId, revision, matches]
+      properties:
+        sourceId: { type: string }
+        revision: { type: integer, minimum: 0 }
+        matches:
+          type: array
+          maxItems: 5
+          items: { $ref: '#/components/schemas/SavedSourceMatch' }
+    SourceMatchSelectionDraft:
+      type: object
+      required: [requestId, candidateId, expectedRevision]
+      properties:
+        requestId: { type: string }
+        candidateId: { type: string }
+        expectedRevision: { type: integer, minimum: 0 }
     MatchingProblem:
       type: object
       required: [providerId, code]

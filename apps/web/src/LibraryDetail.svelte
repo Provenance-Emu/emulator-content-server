@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ManifestFile, PlayerCoreDescriptor } from '@ecs/client';
+  import type { ManifestFile, PlayerCoreDescriptor, SourceFile } from '@ecs/client';
   import { onDestroy } from 'svelte';
   import type { ServerContext } from './lib/application';
   import type { DetailController } from './lib/detail';
@@ -16,6 +16,7 @@
     context,
     playerCore,
     owner,
+    selectedSource,
     onback,
     onchanged,
   }: {
@@ -23,6 +24,7 @@
     context: ServerContext;
     playerCore: PlayerCoreDescriptor | null;
     owner: boolean;
+    selectedSource:SourceFile|null;
     onback: () => void;
     onchanged: () => void;
   } = $props();
@@ -146,7 +148,7 @@
         This file is unavailable while its server folder is offline.
       </p>{/if}
   </section>
-  {#if owner}{#key $controller.source.id}<MatchingPanel {context} sourceId={$controller.source.id} sourceName={$controller.source.name} />{/key}{/if}
+
 {:else if $controller.item}<Files
     detailState={$controller}
     {playerCore}
@@ -174,6 +176,7 @@
     Downloading {$controller.reading.received} bytes{#if $controller.reading.total !== null}
       of {$controller.reading.total}{/if}
   </p>{/if}
+{#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} {onchanged} sourceId={selectedSource.id} sourceName={selectedSource.name} />{/key}{/if}
 {#if upload && $controller.canUpload && $controller.item}<Modal
     title="Add a file"
     busy={uploading}

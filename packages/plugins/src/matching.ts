@@ -5,6 +5,7 @@ export interface MatchCompanion {
   id: string;
   name: string;
   metadata?: Record<string, string>;
+  cheats?: { count: number };
   patch?: { format: 'ips' | 'bps' | 'ups'; sourceCrc32?: string; sourceSize?: number };
 }
 export interface MatchingInput {

@@ -2,8 +2,13 @@
 
 The owner can open a server-folder game and use **Metadata, artwork & patches**.
 Click **Find matches** for local suggestions, or enable **Include online providers**
-for Libretro. Results are previews in this first pass: they do not rename ROMs,
-apply patches, change system identifiers, or save metadata automatically.
+for Libretro. Select **Save** on a candidate to keep one choice per category. Saving metadata
+publishes its title/details to people who can read the game; it does not grant
+access to the original JSON sidecar. Saved titles participate in library search
+and sorting, selected system IDs update system filters/counts, and selected artwork
+appears on game cards. **Replace saved** changes that category; **Remove saved**
+restores the inferred title/system or removes that association. Original files are
+never renamed, rewritten, patched, or moved.
 
 Local matching finds exact filename stems beside a game, or in its `artwork`,
 `boxart`, `covers`, `patches`, and `metadata` subfolders. JSON sidecars may contain
@@ -40,7 +45,20 @@ current default manager ranks checksum matches before local associations and
 filename hints, preserves provider attribution, and reports provider failures
 without discarding healthy results. The fast scan-time system detector remains
 available before a matching job; a provider's ROM/system suggestion is a preview.
-A cheats capability is supported, but no bundled cheats service is enabled.
+Bundled `org.ecs.cheats.local` and `org.ecs.cheats.libretro` providers supply
+RetroArch `.cht` associations. Local files can sit beside the game or in its
+`cheats` subfolder, with optional known engine suffixes such as `(Game Genie)`.
+The online provider reads the public Libretro cheat-directory index and selects
+exact edition filenames within the detected system. Other regions/versions are
+not silently substituted; cheat associations are filename hints, not checksum
+verification. Anonymous GitHub API rate limits can temporarily stop this provider
+without discarding results from healthy providers.
+
+Saving a cheat selection downloads or reads the bounded file, validates its
+RetroArch structure, and forces every code disabled. Download the saved `.cht`
+for a compatible player and choose the codes there. Matching never applies cheats
+to a running core. Malformed files or files above 256 KiB are refused. Cheat
+content remains data, never an executable provider entry.
 
 Install trusted provider/manager folders on the server, then run:
 
@@ -85,5 +103,27 @@ the request cancels the worker. Preview requests expire in fifteen minutes.
 **This is process isolation, not an OS sandbox.** Installed JavaScript is trusted
 operator code with that OS user's filesystem/network permissions. A manifest's
 network declaration controls normal invocation, not a hostile module's syscalls.
-Do not put secrets in manifests. Provider-specific credential configuration and
-persistent acceptance of selected matches are follow-up work.
+Do not put secrets in manifests. Provider-specific credential configuration remains follow-up work.
+
+## Persistence and access
+
+Selections and immutable content snapshots are saved in additive SQLite migration
+11. They survive server restarts and catalog backups. Artwork is capped at 2 MiB;
+patches and cheats at 256 KiB. Saved binary companions keep their original source
+kind's access rules, so an ordinary guest cannot acquire a restricted sidecar by
+following its association with a public ROM. Saved metadata is deliberately game
+metadata, as described above. Content is served only through authenticated,
+source-authorized endpoints with private cache headers.
+
+Each source has a matching revision across its selected categories. Writes use
+that revision to reject stale edits; retrying the same selected candidate is
+idempotent. Source and companion filesystem validators are checked before and
+after materializing a selection. If either changes after lookup, run Find matches
+again. Candidate proposals expire after fifteen minutes; saved selections do not.
+Snapshots remain readable when a folder goes offline. Explicitly removing a
+source/root removes its associated selections along with the catalog entry.
+
+Owner-only PUT at `/api/v1/sources/{sourceId}/matches/selections` selects a match;
+DELETE at that path plus `/{kind}` clears the choice. Authorized readers GET the saved state and the
+`/{kind}/content` snapshot without rerunning online matching. Clearing a selection
+does not remove or modify any original companion file.

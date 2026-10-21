@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { open } from 'node:fs/promises';
 import { posix } from 'node:path';
-import { DomainError } from '@ecs/domain';
+import { type Actor, DomainError } from '@ecs/domain';
+import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
   type MatchCandidate,
   type MatchCompanion,
@@ -10,54 +10,14 @@ import {
 } from '@ecs/plugins/matching';
 import { type MatchingPluginDescription, matchingJob } from '@ecs/plugins/matching-host';
 import { crc32Hex } from '@ecs/storage';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
+import { boundedFile, imageType } from './matching-files.js';
 import { localSource, visibleSource } from './source-groups.js';
+import { sourceMetadata } from './source-metadata.js';
+import { registerSourceSelections } from './source-selections.js';
 
-const MAX_ART = 2 * 1024 * 1024;
-async function boundedFile(path: string, max: number): Promise<Buffer> {
-  const handle = await open(path, 'r');
-  try {
-    const before = await handle.stat();
-    if (!before.isFile() || before.size > max)
-      throw new DomainError(
-        'matching-file-too-large',
-        413,
-        'This file exceeds the matching read limit',
-      );
-    const buffer = Buffer.alloc(before.size);
-    let offset = 0;
-    while (offset < buffer.length) {
-      const read = await handle.read(buffer, offset, buffer.length - offset, offset);
-      if (!read.bytesRead) break;
-      offset += read.bytesRead;
-    }
-    const after = await handle.stat();
-    if (offset !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs)
-      throw new DomainError(
-        'matching-file-changed',
-        409,
-        'File changed; scan its folder and try again',
-      );
-    return buffer;
-  } finally {
-    await handle.close();
-  }
-}
-function imageType(bytes: Buffer): string | null {
-  if (bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
-    return 'image/png';
-  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return 'image/jpeg';
-  if (
-    bytes.length >= 16 &&
-    bytes.toString('ascii', 0, 4) === 'RIFF' &&
-    bytes.toString('ascii', 8, 12) === 'WEBP' &&
-    bytes.readUInt32LE(4) + 8 === bytes.length
-  )
-    return 'image/webp';
-  return null;
-}
 function matchBody(value: unknown): {
   online: boolean;
   checksum: boolean;
@@ -102,6 +62,7 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
     ownerId: string;
     expires: number;
     candidates: (MatchCandidate & { providerId: string })[];
+    stamps: Map<string, string>;
   };
   const jobs = new Map<string, Job>();
   const abort = new AbortController();
@@ -163,6 +124,12 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
           !available.some((p) => p.id === options.managerId && p.kind === 'manager'))
       )
         throw new DomainError('invalid-request', 400, 'Unknown matching plugin');
+      const stamps = new Map<string, string>();
+      try {
+        stamps.set(source.id, await stamp(actor, source.id));
+      } catch {
+        /* Offline lookups can show filename hints, but cannot be saved as current. */
+      }
       const input: MatchingInput = {
         name: source.displayName,
         systemId: source.systemId,
@@ -189,7 +156,7 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
             file.id !== source.id &&
             [
               directory,
-              ...['artwork', 'boxart', 'covers', 'patches', 'metadata'].map((name) =>
+              ...['artwork', 'boxart', 'covers', 'patches', 'metadata', 'cheats'].map((name) =>
                 posix.join(directory, name),
               ),
             ].includes(parent) &&
@@ -197,6 +164,10 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
               file.displayName
                 .replace(/\.[^.]+$/, '')
                 .replace(/(?:[ ._-](?:cover|boxart|front))$/i, '')
+                .replace(
+                  /\s+\((?:Game Genie|Action Replay|Pro Action Replay|GameShark|CodeBreaker)\)$/i,
+                  '',
+                )
                 .normalize('NFC')
                 .toLowerCase() === stem)
           );
@@ -207,7 +178,13 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
         const companion: MatchCompanion = { id: file.id, name: file.displayName };
         if (file.availability !== 'local') continue;
         try {
-          if (/\.json$/i.test(file.displayName)) {
+          stamps.set(file.id, await stamp(actor, file.id));
+          if (/\.cht$/i.test(file.displayName)) {
+            const local = await localSource(context, actor, file.id);
+            companion.cheats = {
+              count: normalizeCheats(await boundedFile(local.path, 256 * 1024)).count,
+            };
+          } else if (/\.json$/i.test(file.displayName)) {
             const local = await localSource(context, actor, file.id);
             const data: unknown = JSON.parse(
               (await boundedFile(local.path, 64 * 1024)).toString('utf8'),
@@ -294,6 +271,7 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
         ownerId: actor.userId,
         expires: Date.now() + 15 * 60000,
         candidates,
+        stamps,
       });
       reply.header('cache-control', 'private, no-store');
       return { sourceId: source.id, requestId, plugins: result.plugins, candidates, problems };
@@ -309,84 +287,149 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
       reply.raw.removeListener('close', disconnect);
     }
   });
+
+  async function stamp(actor: Actor, id: string): Promise<string> {
+    const file = await localSource(context, actor, id);
+    return (await sourceMetadata(file.path, id)).etag;
+  }
+  function proposal(sourceId: string, ownerId: string, requestId: string, candidateId: string) {
+    const job = jobs.get(requestId);
+    const candidate = job?.candidates.find((c) => c.id === candidateId);
+    if (
+      !job ||
+      job.sourceId !== sourceId ||
+      job.ownerId !== ownerId ||
+      job.expires < Date.now() ||
+      !candidate
+    )
+      throw new DomainError('not-found', 404, 'Matching request expired; find matches again');
+    return {
+      candidate,
+      async validate(actor: Actor) {
+        for (const id of [sourceId, ...(candidate.fileId ? [candidate.fileId] : [])]) {
+          if (!job.stamps.has(id) || job.stamps.get(id) !== (await stamp(actor, id)))
+            throw new DomainError(
+              'matching-source-changed',
+              409,
+              'Source or companion changed. Find matches again before saving.',
+            );
+        }
+      },
+    };
+  }
+  async function resource(
+    candidate: MatchCandidate & { providerId: string },
+    sourceId: string,
+    actor: Actor,
+    _request: FastifyRequest,
+    reply: FastifyReply,
+  ) {
+    if (active >= 2)
+      throw new DomainError(
+        'matching-busy',
+        429,
+        'Two matching jobs are already running. Try again shortly.',
+      );
+    active++;
+    const cancelled = new AbortController();
+    const disconnect = () => {
+      if (!reply.raw.writableEnded) cancelled.abort();
+    };
+    reply.raw.once('close', disconnect);
+    try {
+      let bytes: Buffer;
+      let fileName: string;
+      let originKind: import('@ecs/domain').AssetKind | null = null;
+      if (candidate.fileId) {
+        const file = await localSource(context, actor, candidate.fileId);
+        if (file.source.rootId !== visibleSource(context, actor, sourceId).rootId)
+          throw new DomainError('not-found', 404, 'Selected companion unavailable');
+        bytes = await boundedFile(
+          file.path,
+          candidate.kind === 'artwork' ? 2 * 1024 * 1024 : 256 * 1024,
+        );
+        fileName = file.source.displayName;
+        originKind = file.source.kind;
+      } else {
+        const artwork =
+          candidate.kind === 'artwork' &&
+          candidate.providerId === 'org.ecs.libretro' &&
+          candidate.url?.startsWith('https://raw.githubusercontent.com/libretro-thumbnails/');
+        const cheats =
+          candidate.kind === 'cheats' &&
+          candidate.providerId === 'org.ecs.cheats.libretro' &&
+          candidate.url?.startsWith(
+            'https://raw.githubusercontent.com/libretro/libretro-database/master/cht/',
+          );
+        if (!candidate.url || (!artwork && !cheats))
+          throw new DomainError(
+            'matching-resource-unavailable',
+            404,
+            'This provider does not supply downloadable content',
+          );
+        try {
+          const fetched = await matchingJob(
+            { operation: artwork ? 'artwork' : 'cheats', artworkUrl: candidate.url },
+            { signal: AbortSignal.any([abort.signal, cancelled.signal]) },
+          );
+          const encoded = artwork ? fetched.artwork : fetched.file;
+          if (!encoded) throw new Error('Missing content');
+          bytes = Buffer.from(encoded, 'base64');
+          fileName = decodeURIComponent(
+            new URL(candidate.url).pathname.split('/').at(-1) ?? 'selected',
+          );
+        } catch {
+          throw new DomainError(
+            artwork ? 'artwork-unavailable' : 'cheats-unavailable',
+            404,
+            'Selected content is unavailable from this provider',
+          );
+        }
+      }
+      let contentType = 'application/octet-stream';
+      if (candidate.kind === 'artwork') {
+        const type = imageType(bytes);
+        if (!type)
+          throw new DomainError(
+            'unsupported-artwork',
+            415,
+            'Artwork is not a supported raster image',
+          );
+        contentType = type;
+      } else if (candidate.kind === 'cheats') {
+        try {
+          bytes = Buffer.from(normalizeCheats(bytes).text);
+        } catch {
+          throw new DomainError('unsupported-cheats', 415, 'Cheat file is invalid or unsupported');
+        }
+        contentType = 'text/plain; charset=utf-8';
+      } else if (candidate.kind === 'patch' && !patchFingerprint(bytes))
+        throw new DomainError('unsupported-patch', 415, 'Patch file is invalid or changed');
+      return { bytes, contentType, fileName, originKind };
+    } finally {
+      active--;
+      reply.raw.removeListener('close', disconnect);
+    }
+  }
+  registerSourceSelections(app, context, { proposal, resource });
   app.get(
     '/api/v1/sources/:sourceId/matches/:requestId/artwork/:candidateId',
     async (request, reply) => {
       const actor = requireOwner(request, 'Only the server owner can preview matching artwork');
       const params = request.params as { sourceId: string; requestId: string; candidateId: string };
       visibleSource(context, actor, params.sourceId);
-      const job = jobs.get(params.requestId);
-      const candidate = job?.candidates.find(
-        (c) => c.id === params.candidateId && c.kind === 'artwork',
+      const selected = proposal(
+        params.sourceId,
+        actor.userId,
+        params.requestId,
+        params.candidateId,
       );
-      if (
-        !job ||
-        job.sourceId !== params.sourceId ||
-        job.ownerId !== actor.userId ||
-        job.expires < Date.now() ||
-        !candidate
-      )
-        throw new DomainError('not-found', 404, 'Matching preview expired; find matches again');
-      let bytes: Buffer;
-      if (candidate.fileId) {
-        const file = await localSource(context, actor, candidate.fileId);
-        const source = visibleSource(context, actor, params.sourceId);
-        if (file.source.rootId !== source.rootId)
-          throw new DomainError('not-found', 404, 'Artwork unavailable');
-        bytes = await boundedFile(file.path, MAX_ART);
-      } else {
-        // Fetch only the built-in provider's known public origin, without credentials or redirects.
-        if (
-          candidate.providerId !== 'org.ecs.libretro' ||
-          !candidate.url?.startsWith('https://raw.githubusercontent.com/libretro-thumbnails/')
-        )
-          throw new DomainError(
-            'artwork-unavailable',
-            404,
-            'This provider does not offer an artwork preview',
-          );
-        if (active >= 2)
-          throw new DomainError(
-            'matching-busy',
-            429,
-            'Two matching jobs are already running. Try again shortly.',
-          );
-        active++;
-        const cancelled = new AbortController();
-        const disconnect = () => {
-          if (!reply.raw.writableEnded) cancelled.abort();
-        };
-        reply.raw.once('close', disconnect);
-        try {
-          const fetched = await matchingJob(
-            { operation: 'artwork', artworkUrl: candidate.url },
-            { signal: AbortSignal.any([abort.signal, cancelled.signal]) },
-          );
-          if (!fetched.artwork)
-            throw new DomainError('artwork-unavailable', 404, 'Artwork unavailable');
-          bytes = Buffer.from(fetched.artwork, 'base64');
-        } catch (error) {
-          if (error instanceof DomainError) throw error;
-          throw new DomainError(
-            'artwork-unavailable',
-            404,
-            'Artwork is unavailable from this provider',
-          );
-        } finally {
-          active--;
-          reply.raw.removeListener('close', disconnect);
-        }
-      }
-      const mediaType = imageType(bytes);
-      if (!mediaType)
-        throw new DomainError(
-          'unsupported-artwork',
-          415,
-          'Artwork is not a supported raster image',
-        );
+      if (selected.candidate.kind !== 'artwork')
+        throw new DomainError('not-found', 404, 'Artwork not found');
+      const content = await resource(selected.candidate, params.sourceId, actor, request, reply);
       reply.header('cache-control', 'private, no-store');
       reply.header('x-content-type-options', 'nosniff');
-      return reply.type(mediaType).send(bytes);
+      return reply.type(content.contentType).send(content.bytes);
     },
   );
 }

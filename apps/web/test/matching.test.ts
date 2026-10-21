@@ -115,3 +115,94 @@ test('missing provider artwork preserves the successful metadata lookup', async 
   await controller.preview('art');
   assert.equal(get(controller).result?.requestId, 'request');
 });
+
+test('selected matches load without lookup, save known candidates at the current revision and survive result clearing', async (t) => {
+  let saved = { sourceId: 'source', revision: 0, matches: [] as unknown[] };
+  let writes = 0;
+  const f = transport((url, init) => {
+    if (url.pathname.endsWith('/selections')) {
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body));
+        assert.equal(body.expectedRevision, 0);
+        assert.equal(body.candidateId, 'art');
+        writes++;
+        saved = {
+          sourceId: 'source',
+          revision: 1,
+          matches: [
+            {
+              ...reply.candidates[0],
+              contentAvailable: false,
+              contentType: null,
+              fileName: null,
+              updatedAt: '',
+            },
+          ],
+        };
+      }
+      return Response.json(saved);
+    }
+    if (url.pathname.endsWith('/matches')) return Response.json(reply);
+    throw new Error('Unexpected request');
+  });
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.load();
+  assert.equal(get(controller).saved?.revision, 0);
+  await controller.find({});
+  assert.equal(await controller.save('unknown'), false);
+  assert.equal(writes, 0);
+  assert.equal(await controller.save('art'), true);
+  assert.equal(get(controller).saved?.revision, 1);
+  controller.clear();
+  assert.equal(get(controller).saved?.matches.length, 1);
+  assert.equal(get(controller).result, null);
+});
+
+test('authorization loss invalidates saved matches and prevents a late preview from restoring private content', async (t) => {
+  const preview = deferred<Response>();
+  const f = transport((url, init) => {
+    if (url.pathname.endsWith('/selections'))
+      return init?.method === 'PUT'
+        ? Response.json(
+            { type: 'urn:ecs:problem:forbidden', status: 403, title: 'Access revoked' },
+            { status: 403 },
+          )
+        : Response.json({
+            sourceId: 'source',
+            revision: 0,
+            matches: [
+              {
+                ...reply.candidates[0],
+                kind: 'metadata',
+                contentAvailable: false,
+                contentType: null,
+                fileName: null,
+                updatedAt: '',
+              },
+            ],
+          });
+    if (url.pathname.endsWith('/matches')) return Response.json(reply);
+    return preview.promise;
+  });
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.load();
+  await controller.find({});
+  const pending = controller.preview('art');
+  assert.equal(await controller.save('art'), false);
+  preview.resolve(
+    new Response(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), {
+      headers: { 'content-type': 'image/png' },
+    }),
+  );
+  await pending;
+  assert.equal(get(controller).saved, null);
+  assert.deepEqual(get(controller).artwork, {});
+  assert.equal(get(controller).result, null);
+  const before = f.requests.length;
+  await controller.find({});
+  assert.equal(f.requests.length, before);
+});

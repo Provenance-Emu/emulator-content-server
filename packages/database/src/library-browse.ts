@@ -7,6 +7,7 @@ import type {
   SourceFileRecord,
 } from '@ecs/domain';
 import { DomainError } from '@ecs/domain';
+import { sourceSystemSql, sourceTitleSql } from './source-matches.js';
 
 export interface BrowsePosition {
   entityType: 'item' | 'asset' | 'source';
@@ -112,7 +113,7 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
       AND c.root_id IS NULL AND ${itemAccess} AND ${assetAccess('a')} AND a.kind IN (${kinds})
       AND ${system('i.system_identifier')} AND ecs_browse_fold(a.display_name) LIKE c.search ESCAPE '\\'
     UNION ALL
-    SELECT 'source', s.id, ecs_browse_fold(s.display_name), COALESCE(NULLIF(s.system_id,''),'unknown'), NULL
+    SELECT 'source', s.id, ecs_browse_fold(${sourceTitleSql}), COALESCE(NULLIF(${sourceSystemSql},''),'unknown'), NULL
     FROM source_files s JOIN content_roots r ON r.id = s.root_id CROSS JOIN c
     WHERE c.can_read = 1 AND (c.root_id IS NULL OR s.root_id = c.root_id)
       AND ((r.library_id = c.library_id AND EXISTS (SELECT 1 FROM libraries l WHERE l.id = r.library_id AND l.deleted_at IS NULL))
@@ -121,8 +122,8 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
         OR (c.is_guest = 1 AND r.library_id = c.guest_library AND c.guest_item IS NULL))
       AND (c.is_guest = 0 OR c.restricted = 1 OR s.kind NOT IN ('bios','system_file'))
       AND ${input.category === 'games' ? 's.group_anchor IS NULL' : '1'}
-      AND s.kind IN (${kinds}) AND ${system('s.system_id')}
-      AND ecs_browse_fold(s.display_name) LIKE c.search ESCAPE '\\'
+      AND s.kind IN (${kinds}) AND ${system(sourceSystemSql)}
+      AND ecs_browse_fold(${sourceTitleSql}) LIKE c.search ESCAPE '\\'
   )`;
   return { projection, params };
 }

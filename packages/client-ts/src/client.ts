@@ -29,6 +29,7 @@ import type {
   SourceFileList,
   SourceGroup,
   SourceMatches,
+  SourceMatchSelections,
   StorageLocation,
   StorageLocationDraft,
   StorageLocationList,
@@ -398,6 +399,108 @@ export class ContentClient {
   /** Files found by a scan. The response names them and does not include a filesystem path. */
   sources(): Promise<SourceFileList> {
     return this.getJson('/api/v1/sources');
+  }
+
+  async sourceSelections(id: string, signal?: AbortSignal): Promise<SourceMatchSelections> {
+    return this.selectionRequest(id, { method: 'GET', signal });
+  }
+  async saveSourceMatch(
+    id: string,
+    requestId: string,
+    candidateId: string,
+    expectedRevision: number,
+    signal?: AbortSignal,
+  ): Promise<SourceMatchSelections> {
+    return this.selectionRequest(id, {
+      method: 'PUT',
+      body: JSON.stringify({ requestId, candidateId, expectedRevision }),
+      signal,
+    });
+  }
+  async removeSourceMatch(
+    id: string,
+    kind: string,
+    revision: number,
+    signal?: AbortSignal,
+  ): Promise<SourceMatchSelections> {
+    return this.selectionRequest(
+      id,
+      { method: 'DELETE', headers: { 'if-match': `"rev-${revision}"` }, signal },
+      `/${encodeURIComponent(kind)}`,
+    );
+  }
+  private async selectionRequest(
+    id: string,
+    init: RequestInit,
+    suffix = '',
+  ): Promise<SourceMatchSelections> {
+    const response = await fetch(
+      this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches/selections${suffix}`),
+      {
+        ...init,
+        headers: { ...this.headers(), 'content-type': 'application/json', ...init.headers },
+      },
+    );
+    if (!response.ok) throw await failure(response);
+    const result = (await response.json()) as SourceMatchSelections;
+    if (
+      result.sourceId !== id ||
+      !Number.isSafeInteger(result.revision) ||
+      result.revision < 0 ||
+      !Array.isArray(result.matches) ||
+      result.matches.length > 5
+    )
+      throw new Error('Invalid saved matches');
+    const kinds = new Set<string>();
+    for (const match of result.matches) {
+      if (
+        !match ||
+        typeof match.id !== 'string' ||
+        typeof match.providerId !== 'string' ||
+        !['rom', 'metadata', 'artwork', 'patch', 'cheats'].includes(match.kind) ||
+        kinds.has(match.kind) ||
+        typeof match.title !== 'string' ||
+        match.title.length > 512 ||
+        !match.metadata ||
+        typeof match.metadata !== 'object' ||
+        Array.isArray(match.metadata) ||
+        Object.keys(match.metadata).length > 24 ||
+        Object.values(match.metadata).some((v) => typeof v !== 'string' || v.length > 4096) ||
+        typeof match.contentAvailable !== 'boolean' ||
+        (match.fileName !== null && typeof match.fileName !== 'string') ||
+        (match.contentType !== null && typeof match.contentType !== 'string')
+      )
+        throw new Error('Invalid saved match');
+      kinds.add(match.kind);
+    }
+    return result;
+  }
+  async selectedMatchContent(id: string, kind: string, signal?: AbortSignal): Promise<Blob> {
+    const response = await fetch(
+      this.url(
+        `/api/v1/sources/${encodeURIComponent(id)}/matches/selections/${encodeURIComponent(kind)}/content`,
+      ),
+      { headers: this.headers(), signal },
+    );
+    if (!response.ok) throw await failure(response);
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Selected file unavailable');
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const part = await reader.read();
+        if (part.done) break;
+        size += part.value.byteLength;
+        if (size > 2 * 1024 * 1024) throw new Error('Selected file too large');
+        chunks.push(new Uint8Array(part.value));
+      }
+    } finally {
+      await reader.cancel().catch(() => undefined);
+    }
+    return new Blob(chunks, {
+      type: response.headers.get('content-type') ?? 'application/octet-stream',
+    });
   }
 
   async matchingPlugins(): Promise<MatchingPluginList> {
@@ -969,6 +1072,8 @@ function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage 
     nullableString(v.libraryId) &&
     nullableString(v.systemId) &&
     integer(v.size) &&
+    (v.title === undefined || (typeof v.title === 'string' && v.title.length <= 512)) &&
+    (v.artworkAvailable === undefined || typeof v.artworkAvailable === 'boolean') &&
     v.contentPath === `/api/v1/sources/${encodeURIComponent(String(v.id))}/content`;
 
   if (
@@ -1022,7 +1127,7 @@ function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage 
       (!source(entry.source) ||
         entry.source.libraryId !== entry.libraryId ||
         entry.source.systemId !== entry.systemId ||
-        entry.source.name !== entry.name)
+        (entry.source.title ?? entry.source.name) !== entry.name)
     )
       return fail();
     if (

@@ -1,6 +1,7 @@
 import { realpath } from 'node:fs/promises';
 import { isAbsolute, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createLibretroCheatsProvider, localCheatsProvider, normalizeCheats } from './cheats.js';
 import { createLibretroProvider } from './libretro-matching.js';
 import { localMatchingProvider, type MatchingProvider, runMatching } from './matching.js';
 import type { MatchingJob, MatchingPluginDescription, MatchingReply } from './matching-host.js';
@@ -21,11 +22,14 @@ async function entry(plugin: LoadedPlugin): Promise<Record<string, unknown>> {
 }
 
 export async function executeMatchingJob(job: MatchingJob): Promise<MatchingReply> {
-  if (job.operation === 'artwork') {
+  if (job.operation === 'artwork' || job.operation === 'cheats') {
     const url = new URL(job.artworkUrl ?? '');
     if (
       url.origin !== 'https://raw.githubusercontent.com' ||
-      !url.pathname.startsWith('/libretro-thumbnails/') ||
+      !(job.operation === 'artwork'
+        ? url.pathname.startsWith('/libretro-thumbnails/')
+        : url.pathname.startsWith('/libretro/libretro-database/master/cht/') &&
+          url.pathname.endsWith('.cht')) ||
       url.username ||
       url.password ||
       url.search ||
@@ -42,15 +46,24 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
         const read = await reader.read();
         if (read.done) break;
         size += read.value.byteLength;
-        if (size > 2 * 1024 * 1024) throw new Error('Artwork too large');
+        if (size > (job.operation === 'artwork' ? 2 * 1024 * 1024 : 256 * 1024))
+          throw new Error('Artwork too large');
         chunks.push(read.value);
       }
     } finally {
       await reader.cancel().catch(() => undefined);
     }
-    return { plugins: [], artwork: Buffer.concat(chunks).toString('base64') };
+    const bytes = Buffer.concat(chunks);
+    if (job.operation === 'cheats')
+      return { plugins: [], file: Buffer.from(normalizeCheats(bytes).text).toString('base64') };
+    return { plugins: [], artwork: bytes.toString('base64') };
   }
-  const providers: MatchingProvider[] = [localMatchingProvider, createLibretroProvider()];
+  const providers: MatchingProvider[] = [
+    localMatchingProvider,
+    createLibretroProvider(),
+    localCheatsProvider,
+    createLibretroCheatsProvider(),
+  ];
   const installed = job.directory
     ? await loadPluginDirectory(job.directory)
     : { plugins: [], problems: [] };

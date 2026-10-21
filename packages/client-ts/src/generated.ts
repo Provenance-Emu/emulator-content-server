@@ -191,6 +191,8 @@ export interface SourceFile {
   systemId: string | null;
   availability: string;
   medium: string;
+  title?: string;
+  artworkAvailable?: boolean;
   groupFileCount?: number;
   groupError?: string | null;
   contentPath: string;
@@ -224,6 +226,33 @@ export interface MatchingCandidate {
   metadata: Record<string, unknown>;
   fileId?: string;
   url?: string;
+}
+
+export interface SavedSourceMatch {
+  id: string;
+  providerId: string;
+  kind: string;
+  title: string;
+  confidence: string;
+  metadata: Record<string, unknown>;
+  originFileId?: string;
+  originUrl?: string;
+  contentAvailable: boolean;
+  contentType: string | null;
+  fileName: string | null;
+  updatedAt: string;
+}
+
+export interface SourceMatchSelections {
+  sourceId: string;
+  revision: number;
+  matches: SavedSourceMatch[];
+}
+
+export interface SourceMatchSelectionDraft {
+  requestId: string;
+  candidateId: string;
+  expectedRevision: number;
 }
 
 export interface MatchingProblem {

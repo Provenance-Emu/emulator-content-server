@@ -374,11 +374,13 @@ public struct SourceFile: Codable, Equatable, Sendable {
     public var systemId: String?
     public var availability: String
     public var medium: String
+    public var title: String?
+    public var artworkAvailable: Bool?
     public var groupFileCount: Int?
     public var groupError: String?
     public var contentPath: String
 
-    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, groupFileCount: Int? = nil, groupError: String? = nil, contentPath: String) {
+    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, title: String? = nil, artworkAvailable: Bool? = nil, groupFileCount: Int? = nil, groupError: String? = nil, contentPath: String) {
         self.id = id
         self.rootId = rootId
         self.libraryId = libraryId
@@ -388,6 +390,8 @@ public struct SourceFile: Codable, Equatable, Sendable {
         self.systemId = systemId
         self.availability = availability
         self.medium = medium
+        self.title = title
+        self.artworkAvailable = artworkAvailable
         self.groupFileCount = groupFileCount
         self.groupError = groupError
         self.contentPath = contentPath
@@ -451,6 +455,60 @@ public struct MatchingCandidate: Codable, Equatable, Sendable {
         self.metadata = metadata
         self.fileId = fileId
         self.url = url
+    }
+}
+
+public struct SavedSourceMatch: Codable, Equatable, Sendable {
+    public var id: String
+    public var providerId: String
+    public var kind: String
+    public var title: String
+    public var confidence: String
+    public var metadata: [String: String]
+    public var originFileId: String?
+    public var originUrl: String?
+    public var contentAvailable: Bool
+    public var contentType: String?
+    public var fileName: String?
+    public var updatedAt: String
+
+    public init(id: String, providerId: String, kind: String, title: String, confidence: String, metadata: [String: String], originFileId: String? = nil, originUrl: String? = nil, contentAvailable: Bool, contentType: String? = nil, fileName: String? = nil, updatedAt: String) {
+        self.id = id
+        self.providerId = providerId
+        self.kind = kind
+        self.title = title
+        self.confidence = confidence
+        self.metadata = metadata
+        self.originFileId = originFileId
+        self.originUrl = originUrl
+        self.contentAvailable = contentAvailable
+        self.contentType = contentType
+        self.fileName = fileName
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct SourceMatchSelections: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var revision: Int
+    public var matches: [SavedSourceMatch]
+
+    public init(sourceId: String, revision: Int, matches: [SavedSourceMatch]) {
+        self.sourceId = sourceId
+        self.revision = revision
+        self.matches = matches
+    }
+}
+
+public struct SourceMatchSelectionDraft: Codable, Equatable, Sendable {
+    public var requestId: String
+    public var candidateId: String
+    public var expectedRevision: Int
+
+    public init(requestId: String, candidateId: String, expectedRevision: Int) {
+        self.requestId = requestId
+        self.candidateId = candidateId
+        self.expectedRevision = expectedRevision
     }
 }
 

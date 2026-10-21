@@ -442,3 +442,52 @@ test('disc groups are one counted game and a later scan can release former membe
     f.db.close();
   }
 });
+
+test('saved systems fall back past empty provider fields and metadata survives rescanning', () => {
+  const f = fixture();
+  try {
+    f.inspect(f.root.id, [
+      { displayName: 'Game.j64', kind: 'rom', systemId: 'com.provenance.jaguar' },
+    ]);
+    const source = f.db.listSources(f.root.id)[0];
+    assert.ok(source);
+    const base = {
+      providerId: 'test.provider',
+      title: 'Saved title',
+      confidence: 'name' as const,
+      originKind: null,
+      contentAvailable: false,
+      contentType: null,
+      fileName: null,
+      updatedAt: '',
+    };
+    f.db.saveSourceMatch(
+      source.id,
+      0,
+      'metadata',
+      { ...base, id: 'metadata', kind: 'metadata', metadata: { systemId: 'com.provenance.nes' } },
+      null,
+      f.owner.id,
+    );
+    f.db.saveSourceMatch(
+      source.id,
+      1,
+      'rom',
+      { ...base, id: 'rom', kind: 'rom', metadata: {} },
+      null,
+      f.owner.id,
+    );
+    assert.equal(f.db.getSource(source.id)?.systemId, 'com.provenance.nes');
+    assert.deepEqual(f.db.browseLibrary({ ...f.select, search: 'Saved title' }).systemCounts, [
+      { systemId: 'com.provenance.nes', count: 1 },
+    ]);
+    f.inspect(f.root.id, [
+      { displayName: 'Game.j64', kind: 'rom', systemId: 'com.provenance.jaguar' },
+    ]);
+    assert.equal(f.db.getSource(source.id)?.title, 'Saved title');
+    f.db.saveSourceMatch(source.id, 2, 'metadata', null, null, f.owner.id);
+    assert.equal(f.db.getSource(source.id)?.systemId, 'com.provenance.jaguar');
+  } finally {
+    f.db.close();
+  }
+});

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
+import type { SourceMatchRecord, SourceMatchState } from '@ecs/domain';
 import {
   type Actor,
   type AssetKind,
@@ -25,6 +26,12 @@ import {
   type RootSummaryFilter,
 } from './library-browse.js';
 import { pendingMigrations } from './schema.js';
+import {
+  sourceMatchColumns,
+  sourceMatchContent,
+  sourceMatches,
+  writeSourceMatch,
+} from './source-matches.js';
 
 export interface CatalogLimits {
   maxUploadBytes: number;
@@ -1155,12 +1162,55 @@ export class CatalogDatabase {
 
   getSource(id: string): SourceFileRecord | null {
     const row = this.one<SourceRow>(
-      `SELECT s.*, r.library_id
+      `SELECT s.*, r.library_id, ${sourceMatchColumns}
        FROM source_files s JOIN content_roots r ON r.id = s.root_id
        WHERE s.id = ?`,
       id,
     );
     return row ? mapSource(row) : null;
+  }
+
+  sourceMatches(sourceId: string): SourceMatchState {
+    if (!this.getSource(sourceId)) throw new DomainError('not-found', 404, 'Source file not found');
+    return sourceMatches(this.db, sourceId);
+  }
+  saveSourceMatch(
+    sourceId: string,
+    expectedRevision: number,
+    kind: string,
+    match: SourceMatchRecord | null,
+    content: Uint8Array | null,
+    actorId: string,
+  ): SourceMatchState {
+    return this.transaction(() => {
+      const source = this.getSource(sourceId);
+      if (!source) throw new DomainError('not-found', 404, 'Source file not found');
+      const before = sourceMatches(this.db, sourceId).revision;
+      const saved = writeSourceMatch(this.db, sourceId, expectedRevision, kind, match, content);
+      if (saved.revision !== before) {
+        this.insertChange(
+          'source',
+          sourceId,
+          'upsert',
+          source.libraryId,
+          null,
+          sensitiveKind(source.kind),
+          nowIso(),
+          null,
+        );
+        this.insertAudit(
+          actorId,
+          match ? 'select-source-match' : 'clear-source-match',
+          'source',
+          sourceId,
+          { kind },
+        );
+      }
+      return saved;
+    });
+  }
+  sourceMatchContent(sourceId: string, kind: string): Uint8Array | null {
+    return sourceMatchContent(this.db, sourceId, kind);
   }
 
   sourceGroup(id: string): SourceFileRecord[] {
@@ -1246,7 +1296,7 @@ export class CatalogDatabase {
   private sourceRows(rootId: string, limit?: number): SourceRow[] {
     return this.db
       .prepare(
-        `SELECT s.*, r.library_id
+        `SELECT s.*, r.library_id, ${sourceMatchColumns}
          FROM source_files s JOIN content_roots r ON r.id = s.root_id
          WHERE s.root_id = ?
          ORDER BY s.relative_path LIMIT ?`,
@@ -2388,6 +2438,9 @@ type ContentRootRow = {
 };
 
 type SourceRow = {
+  matched_title?: string | null;
+  matched_system_id?: string | null;
+  saved_artwork?: number;
   id: string;
   root_id: string;
   library_id: string | null;
@@ -2413,7 +2466,9 @@ function mapSource(row: SourceRow): SourceFileRecord {
     size: row.size,
     blocks: row.blocks,
     kind: row.kind as SourceFileRecord['kind'],
-    systemId: row.system_id,
+    systemId: row.matched_system_id === undefined ? row.system_id : row.matched_system_id,
+    ...(row.matched_title ? { title: row.matched_title } : {}),
+    ...(row.saved_artwork ? { artworkAvailable: true } : {}),
     availability: row.availability as SourceAvailability,
     groupAnchor: row.group_anchor,
     groupMembers: JSON.parse(row.group_members_json),

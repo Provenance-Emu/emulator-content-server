@@ -5,7 +5,7 @@ import { PROVIDER_CAPABILITIES } from './manifest.js';
 import type { MatchingInput, MatchingResult } from './matching.js';
 import { validateCandidates } from './matching.js';
 export interface MatchingJob {
-  operation: 'list' | 'match' | 'artwork';
+  operation: 'list' | 'match' | 'artwork' | 'cheats';
   artworkUrl?: string;
   directory?: string;
   managerId?: string;
@@ -23,6 +23,7 @@ export interface MatchingReply {
   plugins: MatchingPluginDescription[];
   result?: MatchingResult;
   artwork?: string;
+  file?: string;
 }
 
 /** Process isolation for trusted, operator-installed JavaScript; this is not an OS sandbox. */
@@ -89,6 +90,13 @@ export async function matchingJob(
             !/^[A-Za-z0-9+/]*={0,2}$/.test(reply.artwork))
         )
           throw new Error('Invalid artwork');
+        if (
+          job.operation === 'cheats' &&
+          (typeof reply.file !== 'string' ||
+            reply.file.length > 350000 ||
+            !/^[A-Za-z0-9+/]*={0,2}$/.test(reply.file))
+        )
+          throw new Error('Invalid cheat file');
         if (job.operation === 'match') {
           if (
             !reply.result ||

@@ -274,6 +274,22 @@ export const MIGRATIONS: readonly Migration[] = [
     CREATE INDEX source_files_group ON source_files(root_id,group_anchor);
   `,
   },
+  {
+    version: 11,
+    sql: `
+    CREATE TABLE source_match_state (
+      source_id TEXT PRIMARY KEY REFERENCES source_files(id) ON DELETE CASCADE,
+      revision INTEGER NOT NULL CHECK(revision >= 0)
+    );
+    CREATE TABLE source_match_selections (
+      source_id TEXT NOT NULL REFERENCES source_files(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK(kind IN ('rom','metadata','artwork','patch','cheats')),
+      selection_json TEXT NOT NULL CHECK(json_valid(selection_json)),
+      content BLOB CHECK(content IS NULL OR length(content) <= 2097152),
+      PRIMARY KEY(source_id,kind)
+    );
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

@@ -257,6 +257,8 @@ export function registerLibraryBrowse(
         rootId: source.rootId,
         libraryId: source.libraryId,
         name: source.displayName,
+        ...(source.title ? { title: source.title } : {}),
+        ...(source.artworkAvailable ? { artworkAvailable: true } : {}),
         kind: source.kind,
         size,
         systemId: source.systemId,
@@ -310,7 +312,7 @@ export function registerLibraryBrowse(
         return {
           entityType: 'source',
           id: row.source.id,
-          name: row.source.displayName,
+          name: row.source.title ?? row.source.displayName,
           libraryId: row.source.libraryId,
           systemId: row.source.systemId,
           source: sources.get(row.source.id),

@@ -286,3 +286,18 @@ test('authorization cleanup cannot signal against a page replaced synchronously 
   assert.deepEqual(rejections, []);
   assert.deepEqual(Object.keys(get(previews).urls), ['item:new-context-page']);
 });
+
+test('source cards use saved artwork through the authenticated selected-content endpoint', async (t) => {
+  const source = entry('source', 'source');
+  assert.ok(source.source);
+  source.source.artworkAvailable = true;
+  const f = transport((url) => {
+    assert.equal(url.pathname, '/api/v1/sources/source/matches/selections/artwork/content');
+    return new Response(png, { headers: { 'content-type': 'image/png' } });
+  });
+  t.after(f.restore);
+  const controller = createPreviews(f.client);
+  t.after(() => controller.dispose());
+  await controller.setPage([source]);
+  assert.equal(Object.keys(get(controller).urls).length, 1);
+});

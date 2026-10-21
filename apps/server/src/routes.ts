@@ -999,6 +999,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
           rootId: source.rootId,
           libraryId: source.libraryId,
           name: source.displayName,
+          ...(source.title ? { title: source.title } : {}),
+          ...(source.artworkAvailable ? { artworkAvailable: true } : {}),
           kind: source.kind,
           size,
           systemId: source.systemId,

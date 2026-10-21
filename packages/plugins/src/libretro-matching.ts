@@ -5,7 +5,7 @@ import {
   parseLibretroDat,
 } from './matching.js';
 
-const SYSTEMS: Record<string, { platform: string; collection: string }> = {
+export const LIBRETRO_SYSTEMS: Record<string, { platform: string; collection: string }> = {
   'com.provenance.jaguar': { platform: 'Atari - Jaguar', collection: 'no-intro' },
   'com.provenance.jaguarcd': { platform: 'Atari - Jaguar CD', collection: 'redump' },
   'com.provenance.nes': {
@@ -40,7 +40,7 @@ export function createLibretroProvider(fetcher: typeof fetch = fetch): MatchingP
     capabilities: ['metadata', 'artwork'],
     network: true,
     async search(input, signal) {
-      const system = input.systemId ? SYSTEMS[input.systemId] : undefined;
+      const system = input.systemId ? LIBRETRO_SYSTEMS[input.systemId] : undefined;
       if (!system) return [];
       const { platform, collection } = system;
       let records = cache.get(platform)?.records;

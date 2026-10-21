@@ -7,6 +7,7 @@
     "DELETE /api/v1/items/:itemId/access/:userId",
     "DELETE /api/v1/libraries/:libraryId/members/:userId",
     "DELETE /api/v1/roots/:rootId",
+    "DELETE /api/v1/sources/:sourceId/matches/selections/:kind",
     "DELETE /api/v1/storage-locations/:locationId",
     "DELETE /api/v1/uploads/:uploadId",
     "DELETE /api/v1/webdav-credentials/:id",
@@ -35,6 +36,8 @@
     "GET /api/v1/sources/:sourceId/content",
     "GET /api/v1/sources/:sourceId/group",
     "GET /api/v1/sources/:sourceId/matches/:requestId/artwork/:candidateId",
+    "GET /api/v1/sources/:sourceId/matches/selections",
+    "GET /api/v1/sources/:sourceId/matches/selections/:kind/content",
     "GET /api/v1/storage-locations",
     "GET /api/v1/systems",
     "GET /api/v1/uploads/:uploadId",
@@ -68,6 +71,7 @@
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
     "PUT /api/v1/roots/:rootId/library",
+    "PUT /api/v1/sources/:sourceId/matches/selections",
     "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
   ],
@@ -428,6 +432,7 @@
     },
     "SourceFile": {
       "properties": [
+        "artworkAvailable",
         "availability",
         "contentPath",
         "groupError",
@@ -439,7 +444,8 @@
         "name",
         "rootId",
         "size",
-        "systemId"
+        "systemId",
+        "title"
       ],
       "required": [
         "availability",
@@ -505,6 +511,58 @@
         "metadata",
         "providerId",
         "title"
+      ]
+    },
+    "SavedSourceMatch": {
+      "properties": [
+        "confidence",
+        "contentAvailable",
+        "contentType",
+        "fileName",
+        "id",
+        "kind",
+        "metadata",
+        "originFileId",
+        "originUrl",
+        "providerId",
+        "title",
+        "updatedAt"
+      ],
+      "required": [
+        "confidence",
+        "contentAvailable",
+        "contentType",
+        "fileName",
+        "id",
+        "kind",
+        "metadata",
+        "providerId",
+        "title",
+        "updatedAt"
+      ]
+    },
+    "SourceMatchSelections": {
+      "properties": [
+        "matches",
+        "revision",
+        "sourceId"
+      ],
+      "required": [
+        "matches",
+        "revision",
+        "sourceId"
+      ]
+    },
+    "SourceMatchSelectionDraft": {
+      "properties": [
+        "candidateId",
+        "expectedRevision",
+        "requestId"
+      ],
+      "required": [
+        "candidateId",
+        "expectedRevision",
+        "requestId"
       ]
     },
     "MatchingProblem": {

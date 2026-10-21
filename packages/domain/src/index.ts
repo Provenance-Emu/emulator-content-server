@@ -44,9 +44,32 @@ export interface SourceFileRecord {
   kind: AssetKind;
   systemId: string | null;
   availability: SourceAvailability;
+  title?: string;
+  artworkAvailable?: boolean;
   groupAnchor?: string | null;
   groupMembers?: string[];
   groupError?: string | null;
+}
+
+export interface SourceMatchRecord {
+  id: string;
+  providerId: string;
+  kind: 'rom' | 'metadata' | 'artwork' | 'patch' | 'cheats';
+  title: string;
+  confidence: 'checksum' | 'local' | 'name';
+  metadata: Record<string, string>;
+  originKind: AssetKind | null;
+  originFileId?: string;
+  originUrl?: string;
+  contentAvailable: boolean;
+  contentType: string | null;
+  fileName: string | null;
+  updatedAt: string;
+}
+export interface SourceMatchState {
+  sourceId: string;
+  revision: number;
+  matches: SourceMatchRecord[];
 }
 
 export interface ItemRecord {

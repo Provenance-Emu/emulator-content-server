@@ -269,6 +269,7 @@
     {#if !libraries.length}<p>No libraries are available to this account.</p>{/if}
   {:else if detail}<LibraryDetail
       controller={detail}
+      selectedSource={$browser.active?.source??null}
       {owner}
       {context}
       {playerCore}

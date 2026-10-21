@@ -68,8 +68,19 @@ export function createPreviews(
       void (async () => {
         try {
           const id = work.entry.previewAsset?.id;
-          if (!id) return;
-          const result = await client.collect(id, { maxBytes: MAX_BYTES });
+          const result =
+            work.entry.entityType === 'source' && work.entry.source?.artworkAvailable
+              ? {
+                  bytes: new Uint8Array(
+                    await (
+                      await client.selectedMatchContent(work.entry.id, 'artwork')
+                    ).arrayBuffer(),
+                  ),
+                }
+              : id
+                ? await client.collect(id, { maxBytes: MAX_BYTES })
+                : null;
+          if (!result) return;
           if (disposed || work.run !== epoch) return;
           const type = imageType(result.bytes);
           if (!type) return;
@@ -105,6 +116,10 @@ export function createPreviews(
       const eligible = entries.filter((entry) => {
         const art = entry.previewAsset;
         const key = entryKey(entry);
+        if (entry.entityType === 'source' && entry.source?.artworkAvailable && !seen.has(key)) {
+          seen.add(key);
+          return true;
+        }
         if (
           seen.has(key) ||
           entry.entityType !== 'item' ||
