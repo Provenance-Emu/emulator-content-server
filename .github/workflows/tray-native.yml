@@ -3,13 +3,19 @@ name: Desktop native build
 # Pre-release native verification is opt-in, outside the routine Linux gate.
 on:
   workflow_dispatch:
+    inputs:
+      os:
+        description: Desktop platform to verify
+        type: choice
+        default: all
+        options: [all, macos-latest, windows-latest, ubuntu-24.04]
 
 jobs:
   native:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-24.04]
+        os: ${{ fromJSON(inputs.os == 'all' && '["macos-latest","windows-latest","ubuntu-24.04"]' || format('["{0}"]', inputs.os)) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

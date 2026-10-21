@@ -5,19 +5,25 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
+const scriptUrl = new URL('../../../src-tauri/src/service.ps1', import.meta.url);
+const fixtureUrl = new URL('../../../test/scheduler-fixture.ps1', import.meta.url);
+
+test('compiled Windows service fixtures remain available on every platform', async () => {
+  const [script, fixture] = await Promise.all([
+    readFile(scriptUrl, 'utf8'),
+    readFile(fixtureUrl, 'utf8'),
+  ]);
+  assert.ok(script.length > 0);
+  assert.ok(fixture.length > 0);
+});
+
 // pnpm verify runs this on Windows without Pester or a Rust toolchain. Never
 // create, run, or stop a real task on the developer's machine or in CI.
 test('Windows script enforces task ownership and controls only the existing task', {
   skip: process.platform !== 'win32',
 }, async () => {
-  const script = await readFile(
-    new URL('../../src-tauri/src/service.ps1', import.meta.url),
-    'utf8',
-  );
-  const fixture = await readFile(
-    new URL('../../test/scheduler-fixture.ps1', import.meta.url),
-    'utf8',
-  );
+  const script = await readFile(scriptUrl, 'utf8');
+  const fixture = await readFile(fixtureUrl, 'utf8');
   const directory = await mkdtemp(join(tmpdir(), 'ecs-tray-task-'));
   const eventFile = join(directory, 'event.txt');
   const cases = [
