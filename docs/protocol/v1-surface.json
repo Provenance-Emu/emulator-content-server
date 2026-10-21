@@ -30,7 +30,9 @@
     "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
     "GET /api/v1/sources",
+    "GET /api/v1/sources/:sourceId/bundle",
     "GET /api/v1/sources/:sourceId/content",
+    "GET /api/v1/sources/:sourceId/group",
     "GET /api/v1/storage-locations",
     "GET /api/v1/systems",
     "GET /api/v1/uploads/:uploadId",
@@ -425,6 +427,8 @@
       "properties": [
         "availability",
         "contentPath",
+        "groupError",
+        "groupFileCount",
         "id",
         "kind",
         "libraryId",
@@ -445,6 +449,32 @@
         "rootId",
         "size",
         "systemId"
+      ]
+    },
+    "SourceGroupFile": {
+      "properties": [
+        "availability",
+        "id",
+        "name",
+        "size"
+      ],
+      "required": [
+        "availability",
+        "id",
+        "name",
+        "size"
+      ]
+    },
+    "SourceGroup": {
+      "properties": [
+        "error",
+        "files",
+        "sourceId"
+      ],
+      "required": [
+        "error",
+        "files",
+        "sourceId"
       ]
     },
     "SourceFileList": {

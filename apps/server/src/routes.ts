@@ -76,6 +76,7 @@ import {
 } from './http.js';
 import { registerLibraryBrowse } from './library-browse.js';
 import { accessView } from './local-access.js';
+import { registerSourceGroups } from './source-groups.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
@@ -93,6 +94,7 @@ const UI_CONTENT_POLICY = [
 export function registerRoutes(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
   registerLibraryBrowse(app, context);
+  registerSourceGroups(app, context);
 
   const uploadMutations = new Set<string>();
   async function mutateUpload<T>(
@@ -998,6 +1000,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
           kind: source.kind,
           size,
           systemId: source.systemId,
+          groupFileCount: source.groupMembers?.length ?? 0,
+          groupError: source.groupError ?? null,
           availability,
           medium: probe.medium,
           contentPath: `/api/v1/sources/${source.id}/content`,

@@ -7,6 +7,7 @@ import {
   type Manifest,
   type ManifestFile,
   type SourceFile,
+  type SourceGroupFile,
 } from '@ecs/client';
 import { type Readable, writable } from 'svelte/store';
 import { explain } from './problems.js';
@@ -19,6 +20,8 @@ export interface DetailState {
   item: Item | null;
   asset: Asset | null;
   source: SourceFile | null;
+  sourceFiles: SourceGroupFile[];
+  groupError: string | null;
   manifest: Manifest | null;
   files: ManifestFile[];
   revision: number | null;
@@ -33,6 +36,8 @@ export interface DetailState {
 export interface DetailController extends Readable<DetailState> {
   load(): Promise<void>;
   download(file?: ManifestFile): Promise<DetailDownload | null>;
+  downloadMember(id: string): Promise<DetailDownload | null>;
+  downloadBundle(): Promise<Response | null>;
   adopt(): Promise<Asset | null>;
   dispose(): void;
 }
@@ -41,6 +46,8 @@ const empty = (): DetailState => ({
   item: null,
   asset: null,
   source: null,
+  sourceFiles: [],
+  groupError: null,
   manifest: null,
   files: [],
   revision: null,
@@ -61,6 +68,7 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
   let disposed = false;
   let sourceDenied = false;
   let pending: Promise<void> | null = null;
+  let bundleAbort: AbortController | null = null;
   const live = (run: number) => !disposed && run === epoch;
   function update(patch: Partial<DetailState>) {
     current = { ...current, ...patch };
@@ -77,7 +85,19 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
   async function read(run: number) {
     if (!live(run)) return;
     if (entry.entityType === 'source' && entry.source) {
-      if (live(run)) update({ entry, source: entry.source, failure: null, status: null });
+      const group =
+        (entry.source.groupFileCount ?? 0) > 1 || entry.source.groupError
+          ? await client.sourceGroup(entry.id)
+          : null;
+      if (live(run))
+        update({
+          entry,
+          source: entry.source,
+          sourceFiles: group?.files ?? [],
+          groupError: group?.error ?? entry.source.groupError ?? null,
+          failure: null,
+          status: null,
+        });
       return;
     }
     let selected: Asset | null = null;
@@ -120,6 +140,49 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
       status: null,
     });
   }
+  async function downloadFile(
+    file?: ManifestFile,
+    memberId?: string,
+  ): Promise<DetailDownload | null> {
+    if (disposed || !current.entry || current.loading || current.reading || current.adopting)
+      return null;
+    const source = memberId
+      ? current.sourceFiles.find((file) => file.id === memberId)
+      : current.source;
+    if (memberId && !source) return null;
+    const selected = source
+      ? null
+      : current.files.find((row) => row.id === (file?.id ?? current.asset?.id));
+    if (source ? source.availability !== 'local' : !selected) return null;
+    const id = source?.id ?? selected?.id;
+    if (!id) return null;
+    const run = epoch;
+    update({
+      reading: { id, received: 0, total: source?.size ?? selected?.size ?? null },
+      failure: null,
+      status: null,
+    });
+    try {
+      const options = {
+        onProgress(received: number, total: number | null) {
+          if (live(run)) update({ reading: { id, received, total } });
+        },
+      };
+      const result = source
+        ? await client.collectSource(id, options)
+        : await client.collect(id, options);
+      if (!live(run)) return null;
+      return {
+        bytes: result.bytes,
+        name: source?.name ?? selected?.relativePath.split('/').at(-1) ?? id,
+      };
+    } catch (error) {
+      if (live(run)) failure(error);
+      return null;
+    } finally {
+      if (live(run)) update({ reading: null });
+    }
+  }
   return {
     subscribe: store.subscribe,
     load() {
@@ -141,36 +204,27 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
         });
       return pending;
     },
-    async download(file) {
-      if (disposed || !current.entry || current.loading || current.reading || current.adopting)
+    download: downloadFile,
+    downloadMember(id) {
+      return downloadFile(undefined, id);
+    },
+    async downloadBundle() {
+      if (
+        disposed ||
+        !current.source ||
+        current.sourceFiles.length < 2 ||
+        current.groupError ||
+        current.loading ||
+        current.reading
+      )
         return null;
-      const source = current.source;
-      const selected = source
-        ? null
-        : current.files.find((row) => row.id === (file?.id ?? current.asset?.id));
-      if (source ? source.availability !== 'local' : !selected) return null;
-      const id = source?.id ?? selected?.id;
-      if (!id) return null;
       const run = epoch;
-      update({
-        reading: { id, received: 0, total: source?.size ?? selected?.size ?? null },
-        failure: null,
-        status: null,
-      });
+      bundleAbort?.abort();
+      bundleAbort = new AbortController();
+      update({ reading: { id: 'bundle', received: 0, total: null }, failure: null });
       try {
-        const options = {
-          onProgress(received: number, total: number | null) {
-            if (live(run)) update({ reading: { id, received, total } });
-          },
-        };
-        const result = source
-          ? await client.collectSource(id, options)
-          : await client.collect(id, options);
-        if (!live(run)) return null;
-        return {
-          bytes: result.bytes,
-          name: source?.name ?? selected?.relativePath.split('/').at(-1) ?? id,
-        };
+        const response = await client.sourceBundle(current.source.id, bundleAbort.signal);
+        return live(run) ? response : null;
       } catch (error) {
         if (live(run)) failure(error);
         return null;
@@ -221,6 +275,7 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
     dispose() {
       if (disposed) return;
       disposed = true;
+      bundleAbort?.abort();
       epoch++;
       pending = null;
       update(empty());

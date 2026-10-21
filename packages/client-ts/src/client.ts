@@ -25,6 +25,7 @@ import type {
   Problem,
   SessionResponse,
   SourceFileList,
+  SourceGroup,
   StorageLocation,
   StorageLocationDraft,
   StorageLocationList,
@@ -394,6 +395,38 @@ export class ContentClient {
   /** Files found by a scan. The response names them and does not include a filesystem path. */
   sources(): Promise<SourceFileList> {
     return this.getJson('/api/v1/sources');
+  }
+
+  async sourceGroup(id: string): Promise<SourceGroup> {
+    const group = await this.getJson<SourceGroup>(
+      `/api/v1/sources/${encodeURIComponent(id)}/group`,
+    );
+    if (
+      group.sourceId !== id ||
+      !Array.isArray(group.files) ||
+      group.files.length > 512 ||
+      group.files.some(
+        (file) =>
+          !file ||
+          typeof file.id !== 'string' ||
+          typeof file.name !== 'string' ||
+          typeof file.availability !== 'string' ||
+          !Number.isSafeInteger(file.size) ||
+          file.size < 0,
+      ) ||
+      new Set(group.files.map((file) => file.id)).size !== group.files.length ||
+      !(group.error === null || typeof group.error === 'string')
+    )
+      throw new TypeError('Invalid source group');
+    return group;
+  }
+  async sourceBundle(id: string, signal?: AbortSignal): Promise<Response> {
+    const response = await fetch(this.url(`/api/v1/sources/${encodeURIComponent(id)}/bundle`), {
+      headers: { ...this.headers(), accept: 'application/zip' },
+      signal,
+    });
+    if (!response.ok) throw await failure(response);
+    return response;
   }
 
   /** Owner audit. Detail JSON, which is where a secret could hide, is not returned. */

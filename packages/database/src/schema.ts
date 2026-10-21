@@ -265,6 +265,15 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 7, sql: STORAGE_LOCATIONS_SQL },
   { version: 8, sql: WEBDAV_CREDENTIALS_SQL },
   { version: 9, sql: LIBRARY_BROWSE_SQL },
+  {
+    version: 10,
+    sql: `
+    ALTER TABLE source_files ADD COLUMN group_anchor TEXT;
+    ALTER TABLE source_files ADD COLUMN group_members_json TEXT NOT NULL DEFAULT '[]';
+    ALTER TABLE source_files ADD COLUMN group_error TEXT;
+    CREATE INDEX source_files_group ON source_files(root_id,group_anchor);
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

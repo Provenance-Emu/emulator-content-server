@@ -44,6 +44,9 @@ export interface SourceFileRecord {
   kind: AssetKind;
   systemId: string | null;
   availability: SourceAvailability;
+  groupAnchor?: string | null;
+  groupMembers?: string[];
+  groupError?: string | null;
 }
 
 export interface ItemRecord {

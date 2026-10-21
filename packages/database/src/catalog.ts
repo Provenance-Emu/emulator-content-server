@@ -1023,6 +1023,9 @@ export class CatalogDatabase {
       kind: string;
       systemId: string | null;
       availability: SourceAvailability;
+      groupAnchor?: string | null;
+      groupMembers?: string[];
+      groupError?: string | null;
     }>;
   }): number {
     const root = this.getContentRoot(input.rootId);
@@ -1039,6 +1042,10 @@ export class CatalogDatabase {
       for (const file of input.files) {
         assertSourcePath(file.relativePath);
         assertSourceKind(file.kind);
+        if (file.groupAnchor) assertSourcePath(file.groupAnchor);
+        if ((file.groupMembers?.length ?? 0) > 512)
+          throw new DomainError('invalid-body', 400, 'Disc group has too many members');
+        for (const member of file.groupMembers ?? []) assertSourcePath(member);
         seen.add(file.relativePath);
         const prior = byPath.get(file.relativePath);
         if (!prior) {
@@ -1047,8 +1054,8 @@ export class CatalogDatabase {
             .prepare(
               `INSERT INTO source_files (
                 id, root_id, relative_path, display_name, size, blocks, kind, system_id,
-                availability, scanned_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                availability, scanned_at, group_anchor, group_members_json, group_error
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             )
             .run(
               id,
@@ -1061,6 +1068,9 @@ export class CatalogDatabase {
               file.systemId,
               file.availability,
               scannedAt,
+              file.groupAnchor ?? null,
+              JSON.stringify(file.groupMembers ?? []),
+              file.groupError ?? null,
             );
           this.insertChange(
             'source',
@@ -1080,13 +1090,16 @@ export class CatalogDatabase {
           prior.blocks !== file.blocks ||
           prior.kind !== file.kind ||
           prior.system_id !== file.systemId ||
-          prior.availability !== file.availability;
+          prior.availability !== file.availability ||
+          prior.group_anchor !== (file.groupAnchor ?? null) ||
+          prior.group_members_json !== JSON.stringify(file.groupMembers ?? []) ||
+          prior.group_error !== (file.groupError ?? null);
         if (!changed) continue;
         this.db
           .prepare(
             `UPDATE source_files
              SET display_name = ?, size = ?, blocks = ?, kind = ?, system_id = ?,
-                 availability = ?, scanned_at = ?
+                 availability = ?, scanned_at = ?, group_anchor = ?, group_members_json = ?, group_error = ?
              WHERE id = ?`,
           )
           .run(
@@ -1097,6 +1110,9 @@ export class CatalogDatabase {
             file.systemId,
             file.availability,
             scannedAt,
+            file.groupAnchor ?? null,
+            JSON.stringify(file.groupMembers ?? []),
+            file.groupError ?? null,
             prior.id,
           );
         this.insertChange(
@@ -1145,6 +1161,22 @@ export class CatalogDatabase {
       id,
     );
     return row ? mapSource(row) : null;
+  }
+
+  sourceGroup(id: string): SourceFileRecord[] {
+    const source = this.getSource(id);
+    if (!source) throw new DomainError('not-found', 404, 'Source file not found');
+    if (!source.groupMembers?.length) return [source];
+    const rows = this.db
+      .prepare(
+        `SELECT s.*,r.library_id FROM source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.root_id=? AND s.relative_path IN (SELECT value FROM json_each(?))`,
+      )
+      .all(source.rootId, JSON.stringify(source.groupMembers)) as SourceRow[];
+    const byPath = new Map(rows.map((row) => [row.relative_path, mapSource(row)]));
+    return source.groupMembers.flatMap((path) => {
+      const member = byPath.get(path);
+      return member ? [member] : [];
+    });
   }
 
   markRootOffline(rootId: string): void {
@@ -2366,6 +2398,9 @@ type SourceRow = {
   kind: string;
   system_id: string | null;
   availability: string;
+  group_anchor: string | null;
+  group_members_json: string;
+  group_error: string | null;
 };
 
 function mapSource(row: SourceRow): SourceFileRecord {
@@ -2380,6 +2415,9 @@ function mapSource(row: SourceRow): SourceFileRecord {
     kind: row.kind as SourceFileRecord['kind'],
     systemId: row.system_id,
     availability: row.availability as SourceAvailability,
+    groupAnchor: row.group_anchor,
+    groupMembers: JSON.parse(row.group_members_json),
+    groupError: row.group_error,
   };
 }
 

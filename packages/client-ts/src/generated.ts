@@ -191,7 +191,22 @@ export interface SourceFile {
   systemId: string | null;
   availability: string;
   medium: string;
+  groupFileCount?: number;
+  groupError?: string | null;
   contentPath: string;
+}
+
+export interface SourceGroupFile {
+  id: string;
+  name: string;
+  size: number;
+  availability: string;
+}
+
+export interface SourceGroup {
+  sourceId: string;
+  error: string | null;
+  files: SourceGroupFile[];
 }
 
 export interface SourceFileList {

@@ -306,3 +306,33 @@ test('ordinary source download failures preserve network-free source metadata re
   assert.equal(get(detail).status, null);
   assert.equal(f.requests.length, 3);
 });
+
+test('disc details load only their cached group and refuse downloads outside its members', async (t) => {
+  const e = entry('source', 'disc');
+  assert.ok(e.source);
+  e.source.groupFileCount = 2;
+  const f = transport((url) =>
+    url.pathname.endsWith('/group')
+      ? Response.json({
+          sourceId: 'disc',
+          error: null,
+          files: [
+            { id: 'disc', name: 'Game.cue', size: 2, availability: 'local' },
+            { id: 'track', name: 'Track.bin', size: 3, availability: 'local' },
+          ],
+        })
+      : new Response(new Uint8Array([1, 2, 3])),
+  );
+  t.after(f.restore);
+  const d = createDetail(f.client, e) as ReturnType<typeof createDetail> & {
+    downloadMember(id: string): Promise<{ name: string; bytes: Uint8Array } | null>;
+  };
+  t.after(() => d.dispose());
+  await d.load();
+  assert.equal((get(d) as unknown as { sourceFiles: unknown[] }).sourceFiles.length, 2);
+  assert.equal(await d.downloadMember('unrelated'), null);
+  const file = await d.downloadMember('track');
+  assert.equal(file?.name, 'Track.bin');
+  assert.deepEqual(file?.bytes, new Uint8Array([1, 2, 3]));
+  assert.equal(f.requests.length, 2);
+});

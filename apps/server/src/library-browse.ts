@@ -260,6 +260,8 @@ export function registerLibraryBrowse(
         kind: source.kind,
         size,
         systemId: source.systemId,
+        groupFileCount: source.groupMembers?.length ?? 0,
+        groupError: source.groupError ?? null,
         availability,
         medium: rootMedia.get(source.rootId) ?? 'unknown',
         contentPath: `/api/v1/sources/${source.id}/content`,

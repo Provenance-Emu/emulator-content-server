@@ -45,7 +45,7 @@
           <strong>{entry.name}</strong>
           <span class="dim">{systemLabel(entry.systemId, systems)}</span>
           {#if entry.source}<span class="availability">
-              {availabilityLabel(entry.source.availability)}
+              {availabilityLabel(entry.source.availability)}{#if (entry.source.groupFileCount ?? 0) > 1} · {entry.source.groupFileCount} files{/if}
             </span>{/if}
         </button>
       </li>{/each}

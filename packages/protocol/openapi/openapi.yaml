@@ -496,6 +496,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SourceFileList'
+  /api/v1/sources/{sourceId}/group:
+    get:
+      operationId: sourceGroup
+      responses:
+        '200':
+          description: Cached members of one disc group, authorized individually.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceGroup' }
+  /api/v1/sources/{sourceId}/bundle:
+    get:
+      operationId: sourceBundle
+      responses:
+        '200':
+          description: Streaming ZIP64 archive of a complete, current disc group. Original relative layout is preserved. No ranges.
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        '409':
+          description: Incomplete or changed disc group; rescan before retrying.
   /api/v1/sources/{sourceId}/content:
     get:
       operationId: readSourceContent
@@ -800,7 +820,27 @@ components:
         systemId: { type: [string, 'null'] }
         availability: { type: string }
         medium: { type: string }
+        groupFileCount: { type: integer, minimum: 0, maximum: 512 }
+        groupError: { type: [string, 'null'] }
         contentPath: { type: string }
+    SourceGroupFile:
+      type: object
+      required: [id, name, size, availability]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        size: { type: integer, format: int64 }
+        availability: { type: string }
+    SourceGroup:
+      type: object
+      required: [sourceId, files, error]
+      properties:
+        sourceId: { type: string }
+        error: { type: [string, 'null'] }
+        files:
+          type: array
+          maxItems: 512
+          items: { $ref: '#/components/schemas/SourceGroupFile' }
     SourceFileList:
       type: object
       required: [items]

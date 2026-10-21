@@ -54,6 +54,8 @@ export type {
   SessionResponse,
   SourceFile,
   SourceFileList,
+  SourceGroup,
+  SourceGroupFile,
   StorageLocation,
   StorageLocationDraft,
   StorageLocationList,

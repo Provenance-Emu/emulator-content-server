@@ -62,13 +62,20 @@ function fixture() {
     });
   const inspect = (
     rootId: string,
-    files: Array<{ displayName: string; kind: string; systemId?: string | null }>,
+    files: Array<{
+      displayName: string;
+      kind: string;
+      systemId?: string | null;
+      groupMembers?: string[];
+      groupAnchor?: string | null;
+    }>,
   ) =>
     db.applyInspection({
       rootId,
       actorId: owner.id,
       online: true,
       files: files.map((file, index) => ({
+        ...file,
         relativePath: `${index}`,
         displayName: file.displayName,
         kind: file.kind,
@@ -395,6 +402,42 @@ test('system facets count every readable game before paging and multi-selection 
     );
     const noRead = { ...query, actor: { ...f.actor, scopes: [] } as Actor };
     assert.deepEqual((f.db.browseLibrary(noRead) as typeof page).systemCounts, []);
+  } finally {
+    f.db.close();
+  }
+});
+
+test('disc groups are one counted game and a later scan can release former members', () => {
+  const f = fixture();
+  try {
+    f.inspect(f.root.id, [
+      {
+        displayName: 'Game.cue',
+        kind: 'rom',
+        systemId: 'com.provenance.jaguarcd',
+        groupMembers: ['0', '1'],
+      },
+      {
+        displayName: 'Track.bin',
+        kind: 'rom',
+        systemId: 'com.provenance.jaguarcd',
+        groupAnchor: '0',
+      },
+    ]);
+    const page = f.db.browseLibrary(f.select);
+    assert.equal(page.items.length, 1);
+    assert.deepEqual(page.systemCounts, [{ systemId: 'com.provenance.jaguarcd', count: 1 }]);
+    const row = page.items[0];
+    assert.ok(row?.entityType === 'source');
+    assert.deepEqual((row.source as typeof row.source & { groupMembers?: string[] }).groupMembers, [
+      '0',
+      '1',
+    ]);
+    f.inspect(f.root.id, [
+      { displayName: 'Game.cue', kind: 'rom', systemId: 'com.provenance.jaguarcd' },
+      { displayName: 'Track.bin', kind: 'rom', systemId: 'com.provenance.jaguarcd' },
+    ]);
+    assert.equal(f.db.browseLibrary(f.select).items.length, 2);
   } finally {
     f.db.close();
   }

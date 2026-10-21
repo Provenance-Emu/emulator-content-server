@@ -48,6 +48,8 @@ export const HTTP_OPERATIONS = [
   'DELETE /api/v1/roots/:rootId',
   'POST /api/v1/roots/:rootId/scan',
   'GET /api/v1/sources',
+  'GET /api/v1/sources/:sourceId/group',
+  'GET /api/v1/sources/:sourceId/bundle',
   'GET /api/v1/sources/:sourceId/content',
   'HEAD /api/v1/sources/:sourceId/content',
   'GET /api/v1/changes',

@@ -120,6 +120,7 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
       AND ((c.is_guest = 0 AND (c.see_all = 1 OR EXISTS (SELECT 1 FROM memberships m WHERE m.library_id = r.library_id AND m.user_id = c.user_id)))
         OR (c.is_guest = 1 AND r.library_id = c.guest_library AND c.guest_item IS NULL))
       AND (c.is_guest = 0 OR c.restricted = 1 OR s.kind NOT IN ('bios','system_file'))
+      AND ${input.category === 'games' ? 's.group_anchor IS NULL' : '1'}
       AND s.kind IN (${kinds}) AND ${system('s.system_id')}
       AND ecs_browse_fold(s.display_name) LIKE c.search ESCAPE '\\'
   )`;

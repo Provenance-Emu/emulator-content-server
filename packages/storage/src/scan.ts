@@ -1,6 +1,7 @@
 import { readdir, realpath, stat } from 'node:fs/promises';
 import { basename, relative, resolve, sep } from 'node:path';
 import { type AssetKind, detectRomSystem, isRomExtension } from '@ecs/domain';
+import { groupDiscs } from './disc-groups.js';
 import { type Availability, fileAvailability, type Medium, probeRoot } from './volume.js';
 
 export interface ScannedFile {
@@ -11,6 +12,9 @@ export interface ScannedFile {
   kind: AssetKind;
   systemId: string | null;
   availability: Availability;
+  groupAnchor?: string | null;
+  groupMembers?: string[];
+  groupError?: string | null;
 }
 
 /**
@@ -27,6 +31,7 @@ export async function inspectRoot(rootPath: string): Promise<{
   const root = await realpath(rootPath);
   const files: ScannedFile[] = [];
   await walk(root, root, probe.medium, files);
+  await groupDiscs(root, files);
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   return { medium: probe.medium, online: true, files };
 }

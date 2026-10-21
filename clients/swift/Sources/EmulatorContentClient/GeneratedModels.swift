@@ -374,9 +374,11 @@ public struct SourceFile: Codable, Equatable, Sendable {
     public var systemId: String?
     public var availability: String
     public var medium: String
+    public var groupFileCount: Int?
+    public var groupError: String?
     public var contentPath: String
 
-    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, contentPath: String) {
+    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, groupFileCount: Int? = nil, groupError: String? = nil, contentPath: String) {
         self.id = id
         self.rootId = rootId
         self.libraryId = libraryId
@@ -386,7 +388,35 @@ public struct SourceFile: Codable, Equatable, Sendable {
         self.systemId = systemId
         self.availability = availability
         self.medium = medium
+        self.groupFileCount = groupFileCount
+        self.groupError = groupError
         self.contentPath = contentPath
+    }
+}
+
+public struct SourceGroupFile: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var size: Int64
+    public var availability: String
+
+    public init(id: String, name: String, size: Int64, availability: String) {
+        self.id = id
+        self.name = name
+        self.size = size
+        self.availability = availability
+    }
+}
+
+public struct SourceGroup: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var error: String?
+    public var files: [SourceGroupFile]
+
+    public init(sourceId: String, error: String? = nil, files: [SourceGroupFile]) {
+        self.sourceId = sourceId
+        self.error = error
+        self.files = files
     }
 }
 

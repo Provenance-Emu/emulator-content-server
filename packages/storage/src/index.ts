@@ -21,6 +21,7 @@ export {
   type DecoderProcess,
   type ProcessRunner,
 } from './chd-decoder.js';
+export { groupDiscs } from './disc-groups.js';
 export { type ContentHash, crc32Hex, hashFile } from './hash.js';
 export { ensureBlobStore, ensureLayout, locationOnline } from './layout.js';
 export {
@@ -49,3 +50,4 @@ export {
   probeRoot,
 } from './volume.js';
 export { ZipProvider } from './zip.js';
+export { streamZip, type ZipMember } from './zip-stream.js';

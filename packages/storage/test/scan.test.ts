@@ -118,3 +118,86 @@ test('system inference recognizes common folder names and leaves ambiguous discs
   ] as const)
     assert.deepEqual(inferSource(path), { kind, systemId }, path);
 });
+
+test('a playlist and its CUE/BIN members form one playable group without changing files', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ecs-disc-group-'));
+  try {
+    await mkdir(join(root, 'disc'));
+    await writeFile(join(root, 'Game.m3u'), '#EXTM3U\ndisc/Disc 1.cue\ndisc/Disc 2.chd\n');
+    const cueBytes = 'FILE "Track 1.bin" BINARY\n TRACK 01 MODE1/2352\n INDEX 01 00:00:00\n';
+    await writeFile(join(root, 'disc', 'Disc 1.cue'), cueBytes);
+    await writeFile(join(root, 'disc', 'Track 1.bin'), Buffer.from([1, 2, 3]));
+    await writeFile(join(root, 'disc', 'Disc 2.chd'), Buffer.from([4, 5]));
+    await writeFile(join(root, 'Unrelated.bin'), Buffer.from([6]));
+    const result = await inspectRoot(root);
+    const files = result.files as ((typeof result.files)[number] & {
+      groupMembers?: string[];
+      groupAnchor?: string | null;
+    })[];
+    assert.deepEqual(files.find((f) => f.relativePath === 'Game.m3u')?.groupMembers, [
+      'Game.m3u',
+      'disc/Disc 1.cue',
+      'disc/Track 1.bin',
+      'disc/Disc 2.chd',
+    ]);
+    for (const name of ['disc/Disc 1.cue', 'disc/Track 1.bin', 'disc/Disc 2.chd'])
+      assert.equal(files.find((f) => f.relativePath === name)?.groupAnchor, 'Game.m3u');
+    assert.equal(files.find((f) => f.relativePath === 'Unrelated.bin')?.groupAnchor ?? null, null);
+    assert.equal(await readFile(join(root, 'disc', 'Disc 1.cue'), 'utf8'), cueBytes);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('unsafe, missing and cyclic disc references stay visible with a recoverable group error', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ecs-disc-bad-'));
+  try {
+    await writeFile(join(root, 'Escape.cue'), 'FILE "../outside.bin" BINARY\n');
+    await writeFile(join(root, 'Missing.cue'), 'FILE "missing.bin" BINARY\n');
+    await writeFile(join(root, 'A.m3u'), 'B.m3u\n');
+    await writeFile(join(root, 'B.m3u'), 'A.m3u\n');
+    const result = await inspectRoot(root);
+    for (const file of result.files as ((typeof result.files)[number] & {
+      groupError?: string;
+      groupAnchor?: string | null;
+    })[]) {
+      assert.ok(file.groupError, file.relativePath);
+      assert.equal(file.groupAnchor ?? null, null);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('CloneCD groups preserve uppercase IMG and SUB companions', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ecs-clonecd-'));
+  try {
+    await writeFile(join(root, 'Game.CCD'), '[CloneCD]\nVersion=3\n');
+    await writeFile(join(root, 'Game.IMG'), Buffer.from([1]));
+    await writeFile(join(root, 'Game.SUB'), Buffer.from([2]));
+    const result = await inspectRoot(root);
+    assert.deepEqual(result.files.find((file) => file.relativePath === 'Game.CCD')?.groupMembers, [
+      'Game.CCD',
+      'Game.IMG',
+      'Game.SUB',
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a partially malformed CUE never hides the files it could parse', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ecs-cue-partial-'));
+  try {
+    await writeFile(
+      join(root, 'Game.cue'),
+      'FILE "Track.bin" BINARY\nFILE "Missing.bin" INVALID\n',
+    );
+    await writeFile(join(root, 'Track.bin'), Buffer.from([1]));
+    const result = await inspectRoot(root);
+    assert.ok(result.files.find((file) => file.relativePath === 'Game.cue')?.groupError);
+    assert.equal(result.files.find((file) => file.relativePath === 'Track.bin')?.groupAnchor, null);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
