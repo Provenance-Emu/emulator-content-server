@@ -493,6 +493,12 @@ async function dataOffset(
 ): Promise<number> {
   const header = await readAt(handle, window, record.localHeaderOffset, LOCAL_FIXED_SIZE);
   if (header.readUInt32LE(0) !== LOCAL_SIGNATURE) reject('Archive local header is malformed');
+  if (
+    header.readUInt16LE(8) !== record.method ||
+    (header.readUInt16LE(6) & FLAG_ENCRYPTED) !== (record.flags & FLAG_ENCRYPTED)
+  ) {
+    reject('Archive local compression or encryption disagrees with the central directory');
+  }
   const offset =
     record.localHeaderOffset + LOCAL_FIXED_SIZE + header.readUInt16LE(26) + header.readUInt16LE(28);
   if (offset + record.compressedSize > record.dataEnd) {

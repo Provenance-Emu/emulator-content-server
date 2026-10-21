@@ -666,3 +666,22 @@ test('physical member boundaries do not depend on central-directory ordering', a
     );
   }
 });
+
+for (const compress of [false, true]) {
+  for (const mismatch of ['method', 'encryption'] as const) {
+    test(`ZIP local ${mismatch} must agree with the central directory (${compress ? 'deflated' : 'stored'})`, async (t) => {
+      const archive = buildZip([
+        { name: 'generated.bin', body: Buffer.from('generated payload'), compress },
+      ]);
+      if (mismatch === 'method') archive.writeUInt16LE(compress ? 0 : 8, 8);
+      else archive.writeUInt16LE(1, 6);
+      const staged = await stageArchive(archive);
+      t.after(() => rm(staged.root, { recursive: true, force: true }));
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      assert.deepEqual(await cachedFiles(staged.root), []);
+    });
+  }
+}
