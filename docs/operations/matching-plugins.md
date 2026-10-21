@@ -1,5 +1,37 @@
 # Matching providers and managers
 
+## Bulk library matching
+
+Open a library and choose **Match library** → **Start library matching**. The run
+collects every Games page before saving anything, then processes server-folder
+games one at a time through the same selected provider and manager plugins as
+individual matching. Library search, system and folder filters do not restrict
+the run. Managed uploads and offline source files are listed under **Skipped**.
+
+For local single ROMs up to 64 MiB, a lookup verifies the checksum. A unique
+checksum candidate per unsaved category is saved automatically. Multiple exact
+candidates, conflicting system IDs (including an existing selected system),
+provider failures, and filename-only suggestions require review. Existing saved
+categories are never replaced by a bulk run. Patch and cheat selections remain
+associations; nothing is applied to a game. Artwork without checksum evidence
+also needs review, even when its game's metadata was verified.
+
+**Needs review** opens the shared matching panel with fresh suggestions and the
+same provider options, avoiding expired proposal IDs. Save the choices you want,
+then choose **Done reviewing this game**. Results are paginated, with separate
+filters for failures, unmatched games and skipped files. **Retry failed games**
+loads current selections again; revision conflicts never trigger an automatic
+overwrite. Online cheat indexes are optional in bulk runs because anonymous
+GitHub API limits are small; local cheat matching remains selected by default.
+
+**Pause matching** cancels the active request; **Resume matching** continues
+remaining games. Closing the panel keeps the run going while you browse this
+library. Keep the app open: reloading, signing out, changing servers or leaving
+the library clears the in-memory run and review queue. All selections already
+saved remain in the catalog, and a new run preserves them. The run is limited to
+50,000 entries and uses existing authenticated, revision-checked matching APIs;
+providers never run in the browser.
+
 The owner can open a server-folder game and use **Metadata, artwork & patches**.
 Click **Find matches** for local suggestions, or enable **Include online providers**
 for Libretro. Select **Save** on a candidate to keep one choice per category. Saving metadata

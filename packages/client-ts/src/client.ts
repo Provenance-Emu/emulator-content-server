@@ -165,11 +165,15 @@ export class ContentClient {
     private token?: string,
   ) {}
 
-  async browse(query: LibraryBrowseQuery): Promise<LibraryBrowsePage> {
+  async browse(query: LibraryBrowseQuery, signal?: AbortSignal): Promise<LibraryBrowsePage> {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query))
       if (value !== undefined) params.set(key, String(value));
-    const page = await this.getJson<LibraryBrowsePage>(`/api/v1/browse?${params}`);
+    const page = await this.getJson<LibraryBrowsePage>(
+      `/api/v1/browse?${params}`,
+      undefined,
+      signal,
+    );
     validateBrowsePage(page);
     return page;
   }
@@ -932,8 +936,12 @@ export class ContentClient {
     if (!response.ok) throw await failure(response);
   }
 
-  private async getJson<T>(path: string, redirect?: RequestInit['redirect']): Promise<T> {
-    const response = await fetch(this.url(path), { headers: this.headers(), redirect });
+  private async getJson<T>(
+    path: string,
+    redirect?: RequestInit['redirect'],
+    signal?: AbortSignal,
+  ): Promise<T> {
+    const response = await fetch(this.url(path), { headers: this.headers(), redirect, signal });
     if (!response.ok) throw await failure(response);
     return (await response.json()) as T;
   }

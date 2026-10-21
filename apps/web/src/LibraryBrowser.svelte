@@ -13,6 +13,7 @@
   import { createLibraryBrowser } from './lib/library-browser';
   import { createDetail, type DetailController } from './lib/detail';
   import { createPreviews } from './lib/previews';
+  import { createBulkMatching } from './lib/bulk-matching';
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
   import { entryKey } from './lib/content-format';
   import CategoryTabs from './components/CategoryTabs.svelte';
@@ -22,6 +23,7 @@
   import Modal from './components/Modal.svelte';
   import LibraryDetail from './LibraryDetail.svelte';
   import Upload from './Upload.svelte';
+  import BulkMatching from './BulkMatching.svelte';
   let {
     context,
     application,
@@ -43,6 +45,11 @@
   } = $props();
   const browser = untrack(() => createLibraryBrowser(context.client, null));
   const authEpoch = untrack(() => get(application).authEpoch);
+  const bulk = untrack(() => createBulkMatching(context.client, {
+    changed: () => { if (!disposed) void browser.refresh(); },
+    authorizationRejected: (status) => { rejectAccess(status); if (status === 403) void application.revalidate(); },
+  }));
+  let bulkOpen = $state(false);
   let disposed = false;
   // Keep controller identity intact for stale-instance and authorization-loss guards.
   let detail = $state.raw<DetailController | null>(null);
@@ -71,6 +78,8 @@
     folderGeneration++;
     clearDetail();
     previews.dispose();
+    bulk.dispose();
+    bulkOpen = false;
     browser.dispose();
     upload = false;
     folders = [];
@@ -120,6 +129,10 @@
         disposePrivate();
         return;
       }
+      if (!state.owner && (get(bulk).phase !== 'idle' || bulkOpen)) {
+        bulk.reset();
+        bulkOpen = false;
+      }
       const selected = get(browser).scope;
       if (
         selected &&
@@ -128,6 +141,8 @@
           : !state.owner)
       ) {
         clearDetail();
+        bulk.reset();
+        bulkOpen = false;
         upload = false;
         void browser.selectScope(null);
       }
@@ -156,6 +171,10 @@
     const navigation = JSON.stringify([selected, root, intent]);
     untrack(() => {
       if (navigation === lastNavigation) return;
+      if (JSON.stringify(selected) !== JSON.stringify(get(browser).scope)) {
+        bulk.reset();
+        bulkOpen = false;
+      }
       lastNavigation = navigation;
       upload = false;
       void browser.selectScope(selected);
@@ -285,6 +304,7 @@
         <h1>{title}</h1>
       </div>
       <div class="actions">
+        {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>{['discovering','running'].includes($bulk.phase) ? 'Matching library…' : $bulk.phase==='idle' ? 'Match library' : 'Matching results'}</button>{/if}
         {#if canCreate}<button type="button" onclick={() => (upload = true)}>
             Upload files
           </button>{/if}{#if owner}<button type="button" onclick={onsettings}>
@@ -369,6 +389,9 @@
       </button>
     </nav>
   {/if}
+  {#if bulkOpen && owner && scope}<Modal title="Match library" onclose={() => { bulkOpen = false; refreshCollection(); }}>
+    <BulkMatching {context} controller={bulk} {scope} onchanged={refreshCollection} />
+  </Modal>{/if}
   {#if upload && canCreate && scope && 'libraryId' in scope}<Modal
       title="Upload files"
       busy={uploading}

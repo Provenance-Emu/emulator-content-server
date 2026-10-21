@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { ContentError, type MatchingCandidate, type MatchingPlugin } from '@ecs/client';
+  import { ContentError, type MatchingCandidate, type MatchingPlugin, type MatchingOptions } from '@ecs/client';
   import { onMount, onDestroy, untrack } from 'svelte';
+  import { get } from 'svelte/store';
   import type { ServerContext } from './lib/application';
   import { createMatching } from './lib/matching';
   import { explain } from './lib/problems';
-  let {context,sourceId,sourceName,owner,onchanged}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void}=$props();
+  import MatchingProviders from './components/MatchingProviders.svelte';
+  let {context,sourceId,sourceName,owner,onchanged,reviewOptions}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions}=$props();
   const controller=untrack(()=>createMatching(context.client,sourceId));
   let plugins=$state<MatchingPlugin[]>([]);
   let providerIds=$state<string[]>([]);
@@ -19,9 +21,10 @@
   const categories=[['metadata','Metadata'],['artwork','Artwork'],['patch','Patches'],['rom','System matching'],['cheats','Cheats']] as const;
   const candidates=$derived($controller.result?.candidates.filter((c)=>c.kind===category) ?? []);
   const container=$derived(/\.(zip|7z|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(sourceName));
-  onMount(()=>{void controller.load();if(!owner)return;void context.client.matchingPlugins().then((registry)=>{
+  onMount(()=>{const loading=controller.load();if(!owner)return;void context.client.matchingPlugins().then(async(registry)=>{
     if(disposed)return;
-    plugins=registry.plugins;providerIds=plugins.filter((p)=>p.kind==='provider').map((p)=>p.id);ready=true;
+    plugins=registry.plugins;providerIds=reviewOptions?.providerIds??plugins.filter((p)=>p.kind==='provider').map((p)=>p.id);ready=true;
+    if(reviewOptions){online=reviewOptions.online===true;checksum=reviewOptions.checksum===true;managerId=reviewOptions.managerId??'org.ecs.matches';await loading;if(!disposed)await find();}
   },(error)=>{if(!disposed)failure=explain(error);});});
   onDestroy(()=>{disposed=true;controller.dispose();});
   async function save(id:string){if(await controller.save(id))onchanged();}
@@ -30,7 +33,7 @@
     try {const blob=await context.client.selectedMatchContent(sourceId,kind);if(disposed)return;const url=URL.createObjectURL(blob);try{const link=document.createElement('a');link.href=url;link.download=name;link.click();}finally{URL.revokeObjectURL(url);}}
     catch(error){if(!disposed){if(error instanceof ContentError&&[401,403].includes(error.status))controller.invalidate();failure=explain(error);}}
   }
-  async function find(){page=0;failure=null;await controller.find({online,checksum:checksum&&!container,providerIds,managerId});}
+  async function find(){page=0;failure=null;await controller.find({online,checksum:checksum&&!container,providerIds,managerId});if(reviewOptions){const state=get(controller);category=state.result?.candidates.find((c)=>!state.saved?.matches.some((m)=>m.kind===c.kind))?.kind??'metadata';}}
   function providerName(id:string){return plugins.find((p)=>p.id===id)?.name ?? id;}
   async function download(candidate:MatchingCandidate){
     if(!candidate.fileId)return;
@@ -62,22 +65,11 @@
   <h2>Find metadata, artwork, patches & cheats</h2>
   <p class="dim">Find suggestions from files beside this game and your selected providers. Save a choice to keep it with this game. Saving metadata makes its title and details visible to people who can read the game. Your original files stay unchanged.</p>
   <div class="match-options">
-    <label><input type="checkbox" bind:checked={online} disabled={$controller.loading} /> Include online providers</label>
     <label><input type="checkbox" bind:checked={checksum} disabled={container || $controller.loading} /> Verify by checksum (local ROMs up to 64 MB)</label>
   </div>
   <p class="dim">Online providers use public Libretro catalogs and cheat indexes. Artwork loads when you choose Preview. ROM bytes and server paths stay on this machine.</p>
   {#if container}<p class="dim">Disc sets and archives use filename suggestions; a container checksum cannot identify the game inside.</p>{/if}
-  <details>
-    <summary>Providers and manager</summary>
-    <label>Match manager <select bind:value={managerId} disabled={$controller.loading}>{#each plugins.filter((p)=>p.kind==='manager') as plugin (plugin.id)}<option value={plugin.id}>{plugin.name}</option>{/each}</select></label>
-    <fieldset disabled={$controller.loading}>
-      <legend>Matching providers</legend>
-      {#each plugins.filter((p)=>p.kind==='provider') as plugin (plugin.id)}
-        <label><input type="checkbox" bind:group={providerIds} value={plugin.id} disabled={plugin.network&&!online} /> {plugin.name} · {plugin.capabilities.join(', ')} {plugin.network ? '(online)' : '(local)'}</label>
-      {/each}
-    </fieldset>
-    <p class="dim">Provider plugins find candidates. Manager plugins choose which providers run. Install JavaScript plugins on the server with <code>--matching-plugins</code>.</p>
-  </details>
+  <MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={$controller.loading||!!$controller.saving} />
   <button type="button" disabled={!ready||$controller.loading||$controller.savedLoading||!!$controller.saving||!providerIds.length} onclick={()=>void find()}>{$controller.loading ? 'Finding matches…' : 'Find matches'}</button>
   {#if $controller.result}<button type="button" disabled={!!$controller.saving} onclick={()=>controller.clear()}>Clear matches</button>{/if}
 
@@ -108,9 +100,7 @@
 
 <style>
   .matching { margin-top:2rem; border-top:1px solid var(--border, #444); padding-top:1rem; }
-  .match-options, fieldset { display:flex; flex-wrap:wrap; gap:1rem; margin:1rem 0; }
-  fieldset { flex-direction:column; }
-  details { margin:1rem 0; }
+  .match-options { display:flex; flex-wrap:wrap; gap:1rem; margin:1rem 0; }
   .match-results { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr)); gap:1rem; margin:1rem 0; }
   article { border:1px solid var(--border,#444); padding:1rem; border-radius:.6rem; overflow-wrap:anywhere; }
   h3 { margin-top:0; }
