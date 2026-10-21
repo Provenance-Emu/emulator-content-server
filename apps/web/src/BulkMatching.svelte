@@ -97,6 +97,8 @@
   progress { width:100%; }
   .results { list-style:none; padding:0; }
   .results li { display:flex; align-items:center; gap:1rem; justify-content:space-between; padding:1rem 0; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
+  .results li > div { flex:1; min-width:0; }
+  .results li > button { flex-shrink:0; }
   .results p { margin:.4rem 0 0; }
   .active { outline:2px solid currentColor; }
 </style>
