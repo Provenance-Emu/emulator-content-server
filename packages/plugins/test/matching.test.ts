@@ -221,3 +221,18 @@ test('verified BPS/UPS base identity matches a differently named patch, while mi
     [['verified', 'checksum']],
   );
 });
+
+test('artwork offers the original filename when a checksum catalog uses a different edition title', async () => {
+  const { createLibretroProvider } = await import('../src/libretro-matching.js');
+  const provider = createLibretroProvider(
+    async () =>
+      new Response(
+        'game ( name "Game (World)" rom ( name "Game (World).rom" size 4 crc 12345678 ) )',
+      ),
+  );
+  const result = await matching.runMatching({ ...input, online: true }, [provider]);
+  const art = result.candidates.filter((c) => c.kind === 'artwork');
+  assert.ok(art.some((c) => c.url?.endsWith('Game%20(USA).png')));
+  assert.ok(art.some((c) => c.url?.endsWith('Game%20(World).png')));
+  assert.ok(art.every((c) => c.confidence === 'name'));
+});

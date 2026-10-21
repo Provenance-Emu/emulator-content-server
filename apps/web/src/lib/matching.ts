@@ -54,7 +54,12 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
         if (live(run)) update({ result });
       } catch (error) {
         if (live(run)) {
-          if (error instanceof ContentError && [401, 403, 404].includes(error.status)) clear();
+          if (
+            error instanceof ContentError &&
+            ([401, 403].includes(error.status) ||
+              (error.status === 404 && !error.problem?.type.endsWith('artwork-unavailable')))
+          )
+            clear();
           update({ failure: explain(error) });
         }
       } finally {
@@ -72,7 +77,12 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
         if (live(run)) update({ artwork: { ...current.artwork, [id]: URL.createObjectURL(blob) } });
       } catch (error) {
         if (live(run)) {
-          if (error instanceof ContentError && [401, 403, 404].includes(error.status)) clear();
+          if (
+            error instanceof ContentError &&
+            ([401, 403].includes(error.status) ||
+              (error.status === 404 && !error.problem?.type.endsWith('artwork-unavailable')))
+          )
+            clear();
           update({ failure: explain(error) });
         }
       } finally {

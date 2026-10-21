@@ -68,20 +68,25 @@ export function createLibretroProvider(fetcher: typeof fetch = fetch): MatchingP
       }
       const metadata = matchLibretro(input, records);
       return metadata.flatMap((candidate) => {
-        const image = candidate.title.replace(/[&*/:`<>?\\|]/g, '_');
-        const url = `https://raw.githubusercontent.com/libretro-thumbnails/${platform.replaceAll(' ', '_')}/master/Named_Boxarts/${encodeURIComponent(image)}.png`;
+        const titles = Array.from(new Set([input.name.replace(/\.[^.]+$/, ''), candidate.title]));
         return [
           candidate,
-          {
-            ...candidate,
-            id: `${candidate.id}-art`,
-            kind: 'artwork' as const,
-            url,
-            metadata: {
-              source: 'Libretro thumbnails',
-              availability: 'Not checked; may be unavailable',
-            },
-          },
+          ...titles.map((title, index) => {
+            const image = title.replace(/[&*/:`<>?\\|]/g, '_');
+            return {
+              ...candidate,
+              id: `${candidate.id}-art-${index}`,
+              kind: 'artwork' as const,
+              title,
+              confidence: 'name' as const,
+              url: `https://raw.githubusercontent.com/libretro-thumbnails/${platform.replaceAll(' ', '_')}/master/Named_Boxarts/${encodeURIComponent(image)}.png`,
+              metadata: {
+                source: 'Libretro thumbnails',
+                matchedGame: candidate.title,
+                availability: 'Filename candidate; existence checked on preview',
+              },
+            };
+          }),
         ];
       });
     },

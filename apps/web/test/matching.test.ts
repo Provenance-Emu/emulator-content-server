@@ -94,3 +94,24 @@ test('an artwork authorization failure clears private matching results', async (
   assert.equal(get(controller).result, null);
   assert.deepEqual(get(controller).artwork, {});
 });
+
+test('missing provider artwork preserves the successful metadata lookup', async (t) => {
+  const f = transport((url) =>
+    url.pathname.endsWith('/matches')
+      ? Response.json(reply)
+      : Response.json(
+          {
+            type: 'urn:ecs:problem:artwork-unavailable',
+            title: 'Artwork unavailable',
+            status: 404,
+          },
+          { status: 404 },
+        ),
+  );
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.find({});
+  await controller.preview('art');
+  assert.equal(get(controller).result?.requestId, 'request');
+});

@@ -26,7 +26,7 @@ Genesis, Master System, Game Gear, PlayStation, Saturn, and Dreamcast. Missing
 catalogs yield no suggestions. It compares checksum plus size first, then exact
 edition filenames. Thumbnail candidates use the
 [Libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
-box-art names; existence is checked only when Preview is requested, so some art
+box-art names, offering both the original filename and matched catalog title when they differ. Artwork remains a filename suggestion even when the ROM itself matches a checksum. Existence is checked only when Preview is requested, so some art
 may be unavailable. Lookup sends no ROM bytes, local paths, or server credentials
 to Libretro. A thumbnail request reveals the selected public title to its host.
 
