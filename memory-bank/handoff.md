@@ -34,8 +34,15 @@ DELETE requests no longer advertise a JSON body, fixing Remove saved's HTTP 400.
 Provider readiness respects the online setting. Refresh details updates current
 source availability through bounded browsing without scanning folders.
 
+Single-file uploads now retain their created item, original revision and transfer
+key across retries, lock the attempt's metadata, and support ordinary LAN HTTP.
+An uncertain item-creation response blocks blind resubmission and directs the
+operator to recover through the existing game's Add a file action. Retry state
+remains in memory; device-folder selection and bulk upload queues are still open.
+
 Validation for this checkpoint: 173 web controller tests, 36 TypeScript client
-tests, Svelte check with zero errors/warnings, focused matching/filter/detail
+tests, 32 ZIP tests for the integrated corrupt-DEFLATE fix, Svelte check with zero
+errors/warnings, focused matching/filter/detail/upload
 browser regressions, TypeScript and production
 web builds, changed-file lint, and package boundaries. This does not establish
 native platform or real browser-core acceptance. Runtime notes below describe an

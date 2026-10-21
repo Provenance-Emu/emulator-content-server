@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ContentClient, Item, SystemSummary } from '@ecs/client';
+  import { ContentError, type ContentClient, type Item, type SystemSummary } from '@ecs/client';
   import { onDestroy } from 'svelte';
   import { kindLabel } from './lib/content-format';
   import { bytes } from './lib/format';
@@ -46,6 +46,10 @@
   let sent = $state(0);
   let working = $state(false);
   let failure = $state<string | null>(null);
+  let target = $state<Item | null>(null);
+  let transferKey: string | null = null;
+  let creationUncertain = $state(false);
+  const locked = $derived(working || target !== null || creationUncertain);
 
   let percent = $derived(chosen && chosen.size > 0 ? Math.round((sent / chosen.size) * 100) : 0);
 
@@ -64,10 +68,20 @@
     if (chosen && !title.trim()) title = chosen.name.replace(/\.[^.]+$/, '');
   }
 
+  function resetAttempt(): void {
+    chosen = null;
+    target = null;
+    transferKey = null;
+    title = '';
+    sent = 0;
+    failure = null;
+    if (field) field.value = '';
+  }
+
   async function send(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     const file = chosen;
-    if (!file || working || (!item && (!system || kind !== 'rom'))) return;
+    if (!file || working || creationUncertain || (!item && (!system || kind !== 'rom'))) return;
     working = true;
     onbusy(true);
     failure = null;
@@ -75,14 +89,24 @@
     try {
       // An asset belongs to an item, and a server that has never scanned a
       // folder has none, so the first upload has to create one.
-      const target =
-        item ??
-        (await client.createItem({
-          libraryId,
-          systemIdentifier: system,
-          title: title.trim(),
-        }));
+      if (!target) {
+        try {
+          target = item ?? await client.createItem({
+            libraryId,
+            systemIdentifier: system,
+            title: title.trim(),
+          });
+        } catch (error) {
+          // Item creation has no idempotency contract. Never blindly repeat an
+          // uncertain creation; the operator can recover through the existing game.
+          if (!disposed && (!(error instanceof ContentError) || error.status >= 500))
+            creationUncertain = true;
+          throw error;
+        }
+      }
       if (disposed) return;
+      // getRandomValues also works on ordinary LAN HTTP, unlike randomUUID.
+      transferKey ??= `browser-upload-${Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
       await client.upload({
         libraryId,
         itemId: target.id,
@@ -91,17 +115,16 @@
         relativePath: file.name,
         baseRevision: target.revision,
         body: file,
+        idempotencyKey: transferKey,
         chunkBytes: CHUNK_BYTES,
         onProgress: (bytesSent) => {
           if (!disposed) sent = bytesSent;
         },
       });
       if (disposed) return;
-      chosen = null;
-      title = '';
       // The input keeps showing the file it was given until it is cleared, which
       // would read as an upload still waiting to be sent.
-      if (field) field.value = '';
+      resetAttempt();
       oncomplete();
     } catch (error) {
       if (!disposed) failure = explain(error);
@@ -121,11 +144,11 @@
   <form onsubmit={send}>
     <label>
       File
-      <input bind:this={field} type="file" onchange={pick} required />
+      <input bind:this={field} type="file" onchange={pick} disabled={locked} required />
     </label>
     <label>
       Kind
-      <select bind:value={kind}>
+      <select bind:value={kind} disabled={locked}>
         {#each item ? KINDS : ['rom'] as option (option)}
           <option value={option}>{kindLabel(option)}</option>
         {/each}
@@ -134,11 +157,11 @@
     {#if !item}
       <label>
         Title
-        <input bind:value={title} placeholder="Game name" required />
+        <input bind:value={title} placeholder="Game name" disabled={locked} required />
       </label>
       <label>
         System
-        <select bind:value={system} required>
+        <select bind:value={system} disabled={locked} required>
           <option value="" disabled>Choose a system</option>
           {#each systems as entry (entry.identifier)}
             <option value={entry.identifier}>{entry.name}</option>
@@ -146,8 +169,13 @@
         </select>
       </label>
     {/if}
-    <button type="submit" disabled={working || !chosen || (!item && !system)}>Upload</button>
+    <button type="submit" disabled={working || creationUncertain || !chosen || (!item && !system)}>Upload</button>
   </form>
+  {#if target && !working && failure}
+    <p class="dim">Retry uses the same game and file. Choosing another file keeps this game in your library.</p>
+    <button type="button" onclick={resetAttempt}>Choose another file</button>
+  {/if}
+  {#if creationUncertain}<p class="problem" role="alert">The server may have created this game. Close this upload and refresh the library, then open that game and choose Add a file.</p>{/if}
   {#if chosen && (working || sent > 0)}
     <p class="dim">
       <progress max="100" value={percent}></progress>

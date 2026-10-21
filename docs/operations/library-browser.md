@@ -22,11 +22,18 @@ its context and current revision. Downloads retain original bytes, and choosing
 a preserved save copy keeps the previous live save beside it. Play appears only
 for an existing supported player profile and uses the isolated `/play/` route.
 
-The current browser release exposes single-file upload and existing upload
-storage/access controls. Library creation, renaming, folder registration/scan/
-assignment controls, and one-action destination dialogs are the next library
-management step. Device-folder selection and bulk upload review/queues follow
-that step. No placeholder actions for those flows are displayed.
+Owners can create and rename libraries, register/scan or assign server folders,
+and manage upload storage and access. Upload currently handles one file at a time;
+device-folder selection and bulk upload review/queues remain follow-on work.
+
+Retrying a failed upload in its open dialog uses the same target game and
+transfer, including when the server committed an upload but its responses were
+lost. File details stay fixed for that attempt. **Choose another file** resets
+the form while keeping any game already created in the library. If the game's
+creation response was lost, close the dialog, refresh the library, and use that
+game's **Add a file** action rather than creating it again. Keep the dialog open
+to retain retry state; it is not persisted across a reload. Uploads also work
+when the library is accessed over ordinary LAN HTTP.
 
 Authenticated discovery and change-feed checks share one application cadence:
 the next check starts 15 seconds after the previous asynchronous cycle completes.
