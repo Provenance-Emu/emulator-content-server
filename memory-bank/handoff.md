@@ -3,9 +3,8 @@
 ## Current checkpoint — 2026-10-20
 
 The sections below this checkpoint are historical. Scanning, the library browser,
-and library-folder management have since landed. The upload surface still handles
-one file at a time; the approved device-folder/bulk-queue plan is not implemented.
-Do not
+and library-folder management have since landed. Device-folder selection, bounded
+upload review, and a resumable sequential queue are now implemented. Do not
 restart those features from the old “Next” list or treat its uncommitted-work
 description as current. Consult the source and operations guides for implemented
 behavior.
@@ -34,13 +33,27 @@ DELETE requests no longer advertise a JSON body, fixing Remove saved's HTTP 400.
 Provider readiness respects the online setting. Refresh details updates current
 source availability through bounded browsing without scanning folders.
 
-Single-file uploads now retain their created item, original revision and transfer
-key across retries, lock the attempt's metadata, and support ordinary LAN HTTP.
-An uncertain item-creation response blocks blind resubmission and directs the
-operator to recover through the existing game's Add a file action. Retry state
-remains in memory; device-folder selection and bulk upload queues are still open.
+Device file/folder uploads now use a 50-entry paginated metadata review and
+sequential queue with 4 MiB chunks, visible successes, stop-after-current, and
+retry of unfinished entries. Each attempt retains its created item, original
+revision and transfer key, including after lost completion responses. Ordinary
+LAN HTTP is supported. Unknown item creation requires explicit existing-item
+reconciliation; the bounded target picker displays IDs and never guesses by name.
+Library-level associated files require a managed target; detail uploads supply
+one. Subsequent associated files refresh revisions while retries retain the
+original save baseline. Folder uploads preserve safe relative paths. Queues and
+selected files remain in memory only; they do not survive reloads. Owner-only
+Add server folder reuses the registration/scan controller and retains scan retry.
 
-Validation for this checkpoint: 173 web controller tests, 36 TypeScript client
+Device-upload validation: 11 focused controller regressions and 12 real-server
+Chromium upload cases pass, including multi-save detail queues, bounded selection,
+relative folder paths, fallback, ordinary LAN HTTP, stable retry/reconciliation,
+and authorization stopping. The full web controller suite passed 182 tests before
+the final two focused regressions were added. Svelte check, production web build,
+lint, secret scan and package boundaries pass. Existing library acceptance is
+being rerun as part of the same batch; see the Task 5 report for final results.
+
+Prior checkpoint validation: 173 web controller tests, 36 TypeScript client
 tests, 32 ZIP tests for the integrated corrupt-DEFLATE fix, Svelte check with zero
 errors/warnings, focused matching/filter/detail/upload
 browser regressions, TypeScript and production

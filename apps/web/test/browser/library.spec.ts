@@ -32,7 +32,10 @@ test('all games remain reachable in a bounded collection and detail back restore
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('Game 119');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(results).toHaveCount(1);
-  await page.getByRole('combobox', { name: 'System filter' }).selectOption('unknown');
+  await page
+    .getByRole('searchbox', { name: 'Search collection' })
+    .fill('No generated game matches');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByText('No matching files or games.')).toBeVisible();
 });
 
@@ -246,7 +249,7 @@ test('upload waits for an explicit system and keeps its dialog open while sendin
     mimeType: 'application/octet-stream',
     buffer: Buffer.from([1, 2, 3, 4]),
   });
-  await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeEnabled();
   await dialog
     .getByRole('combobox', { name: 'System', exact: true })
     .selectOption('com.provenance.nes');
@@ -271,7 +274,8 @@ test('upload waits for an explicit system and keeps its dialog open while sendin
   } finally {
     release();
   }
-  await expect(dialog).not.toBeVisible();
+  await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close Upload files', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('Uploaded game');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Uploaded game', exact: true })).toBeVisible();

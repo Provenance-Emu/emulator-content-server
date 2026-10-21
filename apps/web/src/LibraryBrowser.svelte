@@ -23,6 +23,8 @@
   import Modal from './components/Modal.svelte';
   import LibraryDetail from './LibraryDetail.svelte';
   import Upload from './Upload.svelte';
+  import FolderPicker from './FolderPicker.svelte';
+  import {createLibraryFolders} from './lib/library-folders';
   import BulkMatching from './BulkMatching.svelte';
   let {
     context,
@@ -60,7 +62,17 @@
   let playerCore = $state<PlayerCoreDescriptor | null>(null);
   let playerRequested = false;
   let upload = $state(false);
+  let uploadMode = $state<'files'|'folder'>('files');
   let uploading = $state(false);
+  let folderAdder = $state.raw<ReturnType<typeof createLibraryFolders>|null>(null);
+  let addingFolder = $state(false);
+  let addingFolderBusy = $state(false);
+  function addServerFolder() {
+    if(!scope || !('libraryId' in scope) || !owner)return;
+    folderAdder?.dispose();
+    folderAdder=createLibraryFolders(context.client,{...context,onrejected:rejectAccess,onchanged:()=>{void browser.refresh();folderRetry++;}},scope);
+    addingFolder=true;
+  }
   let region: HTMLDivElement;
   const previews = untrack(() =>
     createPreviews(context.client, { authorizationRejected: rejectAccess }),
@@ -79,6 +91,8 @@
     clearDetail();
     previews.dispose();
     bulk.dispose();
+    folderAdder?.dispose();
+    addingFolder=false;
     bulkOpen = false;
     browser.dispose();
     upload = false;
@@ -176,6 +190,9 @@
         bulkOpen = false;
       }
       lastNavigation = navigation;
+      addingFolder = false;
+      folderAdder?.dispose();
+      folderAdder = null;
       upload = false;
       void browser.selectScope(selected);
       void browser.setQuery({ rootId: root });
@@ -294,6 +311,7 @@
     {#if !libraries.length}<p>No libraries are available to this account.</p>{/if}
   {:else if detail}<LibraryDetail
       controller={detail}
+      onauthorization={rejectAccess}
       selectedSource={$browser.active?.source??null}
       {owner}
       {context}
@@ -311,11 +329,11 @@
         <p class="eyebrow">Library</p>
         <h1>{title}</h1>
       </div>
-      <div class="actions">
+      <div class="actions" role="group" aria-label="Add content and library actions">
         {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>{['discovering','running'].includes($bulk.phase) ? 'Matching library…' : $bulk.phase==='idle' ? 'Match library' : 'Matching results'}</button>{/if}
-        {#if canCreate}<button type="button" onclick={() => (upload = true)}>
+        {#if canCreate}<button type="button" onclick={() => { uploadMode='files'; upload=true; }}>
             Upload files
-          </button>{/if}{#if owner}<button type="button" onclick={onsettings}>
+          </button><button type="button" onclick={() => { uploadMode='folder'; upload=true; }}>Upload folder</button>{/if}{#if owner && scope && 'libraryId' in scope}<button type="button" onclick={addServerFolder}>Add server folder</button>{/if}{#if owner}<button type="button" onclick={onsettings}>
             Library settings
           </button>{/if}
         <button
@@ -398,6 +416,12 @@
       </button>
     </nav>
   {/if}
+  {#if folderAdder && owner && scope && 'libraryId' in scope}
+    {#each Object.entries($folderAdder?.scanFailures??{}) as [id,message]}<p class="problem" role="alert">Folder saved. Scan failed: {message} <button type="button" onclick={()=>void folderAdder?.retryScan(id)}>Retry scan</button></p>{/each}
+    {#if addingFolder && owner}<Modal title="Add server folder" busy={addingFolderBusy || $folderAdder?.busy} onclose={()=>addingFolder=false}>
+      <FolderPicker client={context.client} contextKey={context.key} origin={context.origin} title="Add server folder" submitLabel="Add folder" onbusy={busy=>addingFolderBusy=busy} oncancel={()=>addingFolder=false} onsubmit={async selection=>{if(!folderAdder)return false;const saved=await folderAdder.add(selection);if(!saved)throw new Error(get(folderAdder).failure??'Folder could not be added.');return true;}} />
+    </Modal>{/if}
+  {/if}
   {#if bulkOpen && owner && scope}<Modal title="Match library" onclose={() => { bulkOpen = false; refreshCollection(); }}>
     <BulkMatching {context} controller={bulk} {scope} onchanged={refreshCollection} />
   </Modal>{/if}
@@ -411,8 +435,10 @@
         client={context.client}
         libraryId={scope.libraryId}
         item={null}
+        mode={uploadMode}
+        category={$browser.filters.category}
+        onauthorization={rejectAccess}
         oncomplete={() => {
-          upload = false;
           void browser.refresh();
         }}
       />

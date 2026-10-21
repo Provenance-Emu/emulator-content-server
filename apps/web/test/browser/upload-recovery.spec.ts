@@ -31,7 +31,8 @@ test('uploads work on an ordinary LAN HTTP origin without randomUUID', async ({
     .getByRole('combobox', { name: 'System', exact: true })
     .selectOption('com.provenance.nes');
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
-  await expect(dialog).not.toBeVisible();
+  await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close Upload files', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open LAN game', exact: true })).toBeVisible();
 });
 
@@ -73,12 +74,11 @@ test('retrying a failed upload retains its created game and transfer key', async
     .selectOption('com.provenance.nes');
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog.getByText('Generated upload outage', { exact: true })).toBeVisible();
-  await expect(dialog.getByLabel('File', { exact: true })).toBeDisabled();
-  await expect(dialog.getByRole('combobox', { name: 'System', exact: true })).toBeDisabled();
-  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeDisabled();
+  await expect(dialog.getByLabel('File', { exact: true })).toHaveCount(0);
   fail = false;
-  await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
-  await expect(dialog).not.toBeVisible();
+  await dialog.getByRole('button', { name: 'Retry unfinished uploads', exact: true }).click();
+  await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close Upload files', exact: true }).click();
   expect(creations).toBe(1);
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBeTruthy();
@@ -110,21 +110,18 @@ test('a lost game-creation response requires checking the library rather than bl
     .getByRole('combobox', { name: 'System', exact: true })
     .selectOption('com.provenance.nes');
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
-  await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeDisabled();
+  await expect(
+    dialog.getByRole('button', { name: 'Retry unfinished uploads', exact: true }),
+  ).toHaveCount(0);
   await expect(dialog.getByText(/may have created this game/)).toBeVisible();
   expect(creations).toBe(1);
-  await dialog.getByRole('button', { name: 'Close Upload files', exact: true }).click();
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await page.getByRole('button', { name: 'Open Uncertain game', exact: true }).click();
-  await page.getByRole('button', { name: 'Add a file', exact: true }).click();
-  const existing = page.getByRole('dialog', { name: 'Add a file', exact: true });
-  await existing.getByLabel('File', { exact: true }).setInputFiles({
-    name: 'Uncertain game.nes',
-    mimeType: 'application/octet-stream',
-    buffer: Buffer.from([5, 6, 7, 8]),
-  });
-  await existing.getByRole('button', { name: 'Upload', exact: true }).click();
-  await expect(existing).not.toBeVisible();
+  await dialog.getByRole('button', { name: 'Reconcile Uncertain game.nes', exact: true }).click();
+  const result = await fixture.client.items({ libraryId: fixture.empty.id });
+  const created = result.items[0];
+  expect(created).toBeTruthy();
+  await dialog.getByRole('button', { name: new RegExp(`ID ${created?.id}$`) }).click();
+  await dialog.getByRole('button', { name: 'Retry unfinished uploads', exact: true }).click();
+  await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
   expect(creations).toBe(1);
 });
 
@@ -159,11 +156,12 @@ test('manual retry replays a committed upload after all completion responses wer
     .getByRole('combobox', { name: 'System', exact: true })
     .selectOption('com.provenance.nes');
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
-  await expect(dialog.getByText(/Retry uses the same game and file/)).toBeVisible();
+  await expect(dialog.getByText(/Retry uses the same item, file/)).toBeVisible();
   expect(completionKeys).toHaveLength(3);
   loseResponses = false;
-  await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
-  await expect(dialog).not.toBeVisible();
+  await dialog.getByRole('button', { name: 'Retry unfinished uploads', exact: true }).click();
+  await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close Upload files', exact: true }).click();
   expect(creations).toBe(1);
   expect(completionKeys).toHaveLength(4);
   expect(new Set(completionKeys).size).toBe(1);

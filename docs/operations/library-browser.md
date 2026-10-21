@@ -16,24 +16,44 @@ and Server status. Opening settings reads cached folder counts and scan/check
 state; it never scans folders. View files applies that folder's collection filter.
 Unknown availability means the catalog has no saved check yet.
 
-Upload files is available only when the server grants item creation. Choose a
-system explicitly for a new game; an existing game's Add a file action supplies
-its context and current revision. Downloads retain original bytes, and choosing
-a preserved save copy keeps the previous live save beside it. Play appears only
-for an existing supported player profile and uses the isolated `/play/` route.
+Upload files and Upload folder are available when the server grants item creation.
+Owners can also choose Add server folder in the selected library; the directory
+chooser registers and scans that folder once. A failed scan retains the saved
+folder and offers Retry scan without registering it again.
 
-Owners can create and rename libraries, register/scan or assign server folders,
-and manage upload storage and access. Upload currently handles one file at a time;
-device-folder selection and bulk upload review/queues remain follow-on work.
+Device uploads first show a review, with 50 files per page, editable titles,
+kinds and systems, and common metadata controls. Recognized unambiguous ROM
+extensions suggest a system only if the server lists it; unknown formats and BIN
+require review. An explicit Games category supplies ROM intent, but never a
+default system. Folder selection preserves safe relative paths. Browsers without
+a folder input explain how to select multiple files instead.
 
-Retrying a failed upload in its open dialog uses the same target game and
-transfer, including when the server committed an upload but its responses were
-lost. File details stay fixed for that attempt. **Choose another file** resets
-the form while keeping any game already created in the library. If the game's
-creation response was lost, close the dialog, refresh the library, and use that
-game's **Add a file** action rather than creating it again. Keep the dialog open
-to retain retry state; it is not persisted across a reload. Uploads also work
-when the library is accessed over ordinary LAN HTTP.
+Each library-level ROM creates a separate managed item. Associated files require
+an explicit managed target, chosen once for the selection or per file from a
+paginated item picker that displays IDs. Scanned server-folder sources are not
+upload targets. An existing game's Add a file action supplies its target and
+current revision. Subsequent associated files refresh that revision; retries
+retain the original save baseline, preserving keep-both conflict behavior.
+
+The visible queue sends files sequentially in 4 MiB pieces and shows progress,
+failures, and successful files separately, with 50 entries per page. Stop after
+current file lets that upload finish before scheduling stops. Retry unfinished
+uploads excludes known successes and reuses each file's target, revision, and
+transfer key; the existing upload session reconciles interrupted chunks and lost
+completion responses. Unknown game-creation responses require explicit selection
+of the correct managed item through Reconcile before retry can proceed.
+
+Keep the page open to retain the selection and retry state: queues are not saved
+across reloads. Closing a busy upload is disabled. Leaving the component stops
+scheduling later files but cannot cancel an in-flight server commit. Rejected
+upload authorization stops scheduling and clears private UI. Uploads also work
+over ordinary LAN HTTP.
+
+Downloads retain original bytes, and choosing a preserved save copy keeps the
+previous live save beside it. Play appears only for an existing supported player
+profile and uses the isolated `/play/` route. Owners can create and rename
+libraries, register/scan or assign server folders, and manage upload storage and
+access.
 
 Authenticated discovery and change-feed checks share one application cadence:
 the next check starts 15 seconds after the previous asynchronous cycle completes.

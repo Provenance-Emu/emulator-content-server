@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ManifestFile, PlayerCoreDescriptor, SourceFile } from '@ecs/client';
+  import type { Item, ManifestFile, PlayerCoreDescriptor, SourceFile } from '@ecs/client';
   import { onDestroy } from 'svelte';
   import type { ServerContext } from './lib/application';
   import type { DetailController } from './lib/detail';
@@ -21,6 +21,7 @@
     onrefresh,
     onback,
     onchanged,
+    onauthorization = () => {},
   }: {
     controller: DetailController;
     context: ServerContext;
@@ -31,8 +32,10 @@
     onrefresh: () => void;
     onback: () => void;
     onchanged: () => void;
+    onauthorization?: (status:401|403) => void;
   } = $props();
   let upload = $state(false);
+  let uploadTarget = $state.raw<Item|null>(null);
   let uploading = $state(false);
   let disposed = false;
   let groupDownloading=$state(false);
@@ -103,7 +106,7 @@
   <div class="actions">
     {#if $controller.canUpload && $controller.item}<button
         type="button"
-        onclick={() => (upload = true)}
+        onclick={() => {uploadTarget=$controller.item;upload=true;}}
       >
         Add a file
       </button>{/if}
@@ -179,18 +182,18 @@
       of {$controller.reading.total}{/if}
   </p>{/if}
 {#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} {onchanged} sourceId={selectedSource.id} sourceName={selectedSource.name} />{/key}{/if}
-{#if upload && $controller.canUpload && $controller.item}<Modal
+{#if upload && uploadTarget}<Modal
     title="Add a file"
     busy={uploading}
     onclose={() => (upload = false)}
   >
     <Upload
+      {onauthorization}
       onbusy={(busy) => (uploading = busy)}
       client={context.client}
-      libraryId={$controller.item.libraryId}
-      item={$controller.item}
+      libraryId={uploadTarget.libraryId}
+      item={uploadTarget}
       oncomplete={() => {
-        upload = false;
         void controller.load();
         onchanged();
       }}
