@@ -47,6 +47,8 @@ interface CentralRecord {
   compressedSize: number;
   uncompressedSize: number;
   localHeaderOffset: number;
+  /** Exclusive bound within this archive window. */
+  dataEnd: number;
 }
 
 interface Budget {
@@ -289,6 +291,7 @@ async function readCentralDirectory(
   }
   const directory = await readAt(handle, window, end.directoryOffset, end.directorySize);
   const records: CentralRecord[] = [];
+  const memberOffsets: number[] = [];
   let cursor = 0;
   for (let index = 0; index < end.totalEntries; index += 1) {
     if (cursor + CENTRAL_FIXED_SIZE > directory.length) reject('Archive central directory is torn');
@@ -311,14 +314,16 @@ async function readCentralDirectory(
       compressedSize: directory.readUInt32LE(cursor + 20),
       uncompressedSize: directory.readUInt32LE(cursor + 24),
       localHeaderOffset: directory.readUInt32LE(cursor + 42),
+      dataEnd: end.directoryOffset,
     };
     applyZip64Extra(record, directory.subarray(extraAt, extraAt + extraLength));
     cursor = next;
     if (isUnsafeName(record.name)) reject('Archive entry name escapes its own tree');
-    if (record.name.endsWith('/')) continue;
-    if (record.localHeaderOffset >= window.length) {
-      reject('Archive entry header falls outside the archive');
+    if (record.localHeaderOffset >= end.directoryOffset) {
+      reject('Archive entry header falls outside the member data area');
     }
+    memberOffsets.push(record.localHeaderOffset);
+    if (record.name.endsWith('/')) continue;
     if (record.compressedSize === 0 && record.uncompressedSize > 0) {
       reject('Archive entry declares expansion from no compressed bytes');
     }
@@ -330,6 +335,16 @@ async function readCentralDirectory(
       reject('Stored archive entry sizes do not match');
     }
     records.push(record);
+  }
+  const orderedOffsets = [...new Set(memberOffsets)].sort((a, b) => a - b);
+  const bounds = new Map(
+    orderedOffsets.map((offset, index) => [
+      offset,
+      orderedOffsets[index + 1] ?? end.directoryOffset,
+    ]),
+  );
+  for (const record of records) {
+    record.dataEnd = bounds.get(record.localHeaderOffset) ?? end.directoryOffset;
   }
   return records;
 }
@@ -480,8 +495,8 @@ async function dataOffset(
   if (header.readUInt32LE(0) !== LOCAL_SIGNATURE) reject('Archive local header is malformed');
   const offset =
     record.localHeaderOffset + LOCAL_FIXED_SIZE + header.readUInt16LE(26) + header.readUInt16LE(28);
-  if (offset + record.compressedSize > window.length) {
-    reject('Archive entry bytes fall outside the archive');
+  if (offset + record.compressedSize > record.dataEnd) {
+    reject('Archive entry bytes overlap another member or the central directory');
   }
   return offset;
 }

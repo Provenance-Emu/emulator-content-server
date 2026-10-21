@@ -90,11 +90,11 @@ interface Staged {
   registry: VirtualProviderRegistry;
 }
 
-async function stageArchive(members: Member[], quota = QUOTA): Promise<Staged> {
+async function stageArchive(members: Member[] | Buffer, quota = QUOTA): Promise<Staged> {
   const root = await mkdtemp(join(tmpdir(), 'ecs-zip-'));
   await ensureLayout(root);
   const source = join(root, 'archive.zip');
-  await writeFile(source, buildZip(members));
+  await writeFile(source, Buffer.isBuffer(members) ? members : buildZip(members));
   const placed = await placeBlob(root, source);
   return {
     root,
@@ -602,3 +602,67 @@ for (const corruption of ['invalid block', 'truncated stream'] as const) {
     assert.equal((await cachedFiles(staged.root)).length, 1);
   });
 }
+
+for (const neighboring of [false, true]) {
+  test(`a ZIP member cannot extend into ${neighboring ? 'the next local header' : 'the central directory'}`, async (t) => {
+    const archive = buildZip([
+      { name: 'first.bin', body: Buffer.from('DATA') },
+      ...(neighboring ? [{ name: 'second.bin', body: Buffer.from('NEIGHBOR') }] : []),
+    ]);
+    const directory = archive.readUInt32LE(archive.length - 6);
+    archive.writeUInt32LE(32, 18);
+    archive.writeUInt32LE(32, 22);
+    archive.writeUInt32LE(32, directory + 20);
+    archive.writeUInt32LE(32, directory + 24);
+    const staged = await stageArchive(archive);
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+      code: 'archive-rejected',
+      status: 422,
+    });
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}
+
+test('a forged local extra length cannot shift member data into its neighbor', async (t) => {
+  const archive = buildZip([
+    { name: 'first.bin', body: Buffer.from('DATA') },
+    { name: 'second.bin', body: Buffer.from('NEIGHBOR') },
+  ]);
+  archive.writeUInt16LE(4, 28);
+  const staged = await stageArchive(archive);
+  t.after(() => rm(staged.root, { recursive: true, force: true }));
+  await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+    code: 'archive-rejected',
+    status: 422,
+  });
+  assert.deepEqual(await cachedFiles(staged.root), []);
+});
+
+test('physical member boundaries do not depend on central-directory ordering', async (t) => {
+  const archive = buildZip([
+    { name: 'first.bin', body: Buffer.from('DATA') },
+    { name: 'second.bin', body: Buffer.from('NEIGHBOR') },
+  ]);
+  const directory = archive.readUInt32LE(archive.length - 6);
+  const firstEnd = directory + 46 + Buffer.byteLength('first.bin');
+  const reordered = Buffer.concat([
+    archive.subarray(0, directory),
+    archive.subarray(firstEnd, archive.length - 22),
+    archive.subarray(directory, firstEnd),
+    archive.subarray(archive.length - 22),
+  ]);
+  const staged = await stageArchive(reordered);
+  t.after(() => rm(staged.root, { recursive: true, force: true }));
+  for (const input of [
+    { id: '0', body: 'NEIGHBOR' },
+    { id: '1', body: 'DATA' },
+  ]) {
+    const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, input.id);
+    assert.ok(entry);
+    assert.deepEqual(
+      await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+      Buffer.from(input.body),
+    );
+  }
+});
