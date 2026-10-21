@@ -442,7 +442,11 @@ export class ContentClient {
       this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches/selections${suffix}`),
       {
         ...init,
-        headers: { ...this.headers(), 'content-type': 'application/json', ...init.headers },
+        headers: {
+          ...this.headers(),
+          ...(init.body ? { 'content-type': 'application/json' } : {}),
+          ...init.headers,
+        },
       },
     );
     if (!response.ok) throw await failure(response);

@@ -6,6 +6,10 @@ grid/list display, and Next/Previous navigation. Each collection request contain
 at most 50 entries. Opening details retains the collection page, filters, scroll,
 and focused result for Back to collection.
 
+**Refresh details** refreshes the bounded collection page before reading the
+opened game's details, so a disconnected or reconnected source folder updates
+availability and download controls without a scan.
+
 Owners also see Unassigned folders for legacy folders without a library.
 Settings separates library-folder summaries, Upload storage, Access, Activity,
 and Server status. Opening settings reads cached folder counts and scan/check

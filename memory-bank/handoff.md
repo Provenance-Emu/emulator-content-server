@@ -3,7 +3,9 @@
 ## Current checkpoint — 2026-10-20
 
 The sections below this checkpoint are historical. Scanning, the library browser,
-folder/upload flows, and the shared desktop library have since landed. Do not
+and library-folder management have since landed. The upload surface still handles
+one file at a time; the approved device-folder/bulk-queue plan is not implemented.
+Do not
 restart those features from the old “Next” list or treat its uncommitted-work
 description as current. Consult the source and operations guides for implemented
 behavior.
@@ -20,13 +22,21 @@ reviewable and also appear under Failed, where they can retry without repeating
 healthy games or replacing saved choices. Completing review clears retry status.
 See [Matching operations](../docs/operations/matching-plugins.md).
 
-The next batch adds in-panel recovery for transient saved-match loading errors,
+Completed work adds in-panel recovery for transient saved-match loading errors,
 opens populated suggestion categories while preserving a useful tab selection,
 and fixes switching between single/multiple system filters and filtered empty
 states for system chips.
 
-Validation for this checkpoint: 167 web controller tests, Svelte check with zero
-errors/warnings, focused matching/filter browser regressions, TypeScript and production
+Matching now recovers provider-list failures, reconciles uncertain save/removal
+responses, blocks writes until failed reconciliation is retried, and rechecks
+concurrent selections between bulk auto-saves. The TypeScript client's empty
+DELETE requests no longer advertise a JSON body, fixing Remove saved's HTTP 400.
+Provider readiness respects the online setting. Refresh details updates current
+source availability through bounded browsing without scanning folders.
+
+Validation for this checkpoint: 173 web controller tests, 36 TypeScript client
+tests, Svelte check with zero errors/warnings, focused matching/filter/detail
+browser regressions, TypeScript and production
 web builds, changed-file lint, and package boundaries. This does not establish
 native platform or real browser-core acceptance. Runtime notes below describe an
 earlier operator setup; verify current configuration before restarting anything.

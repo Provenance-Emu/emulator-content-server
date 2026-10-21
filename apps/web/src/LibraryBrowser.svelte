@@ -233,6 +233,12 @@
     folderRetry++;
     void browser.refresh({ restart: get(browser).requiresRefresh });
   }
+  async function refreshDetails() {
+    const opened = detail;
+    await browser.refresh({ restart: get(browser).requiresRefresh });
+    // Changed browse metadata already creates and loads a fresh detail instance.
+    if (!disposed && detail === opened) await detail?.load();
+  }
   const title = $derived(
     scope && 'libraryId' in scope
       ? (libraries.find((library) => library.id === scope.libraryId)?.name ?? 'Library')
@@ -292,6 +298,8 @@
       {owner}
       {context}
       {playerCore}
+      refreshing={$browser.loading}
+      onrefresh={() => void refreshDetails()}
       onback={() => void back()}
       onchanged={() => {
         void browser.refresh();

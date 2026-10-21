@@ -113,6 +113,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       denied ||
       current.loading ||
       current.savedLoading ||
+      current.savedLoadFailed ||
       current.saving ||
       !current.saved
     )
@@ -140,16 +141,33 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       await showSaved(saved, run);
       return live(run);
     } catch (error) {
-      if (live(run)) {
-        if (error instanceof ContentError && error.status === 409) {
-          try {
-            await showSaved(await client.sourceSelections(sourceId, lifetime.signal), run);
-          } catch (refreshError) {
+      if (!live(run)) return false;
+      // A disconnected/failed response may follow a committed write. Read current
+      // state before permitting another write; a conflict never retries itself.
+      const uncertain = !(error instanceof ContentError) || error.status >= 500;
+      if (uncertain || (error instanceof ContentError && error.status === 409)) {
+        try {
+          const saved = await client.sourceSelections(sourceId, lifetime.signal);
+          if (!live(run)) return false;
+          update({ savedLoadFailed: false });
+          await showSaved(saved, run);
+          if (!live(run)) return false;
+          if (
+            uncertain &&
+            (remove
+              ? !saved.matches.some((match) => match.kind === id)
+              : saved.matches.some((match) => match.id === id))
+          )
+            return true;
+        } catch (refreshError) {
+          if (live(run)) {
             failure(refreshError);
+            if (live(run)) update({ savedLoadFailed: true });
           }
+          return false;
         }
-        failure(error);
       }
+      if (live(run)) failure(error);
       return false;
     } finally {
       if (live(run)) update({ saving: null });

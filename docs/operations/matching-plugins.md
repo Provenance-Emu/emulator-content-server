@@ -49,6 +49,15 @@ appears on game cards. **Replace saved** changes that category; **Remove saved**
 restores the inferred title/system or removes that association. Original files are
 never renamed, rewritten, patched, or moved.
 
+Use **Retry matching providers** if the provider list is temporarily unavailable.
+Matching requires at least one selected provider that can run with the current
+online setting. After an uncertain save/removal response, the panel reads saved
+choices again before allowing another write. A confirmed commit is shown as
+saved; a conflict keeps the current server choice and requires an explicit next
+action. If that read also fails, **Retry saved matches** restores the current
+revision without discarding lookup suggestions. Bulk matching rechecks category
+and system choices after each save, preserving choices made during the run.
+
 Local matching finds exact filename stems beside a game, or in its `artwork`,
 `boxart`, `covers`, `patches`, and `metadata` subfolders. JSON sidecars may contain
 string fields `title`, `description`, `developer`, `publisher`, `year`, `genre`,

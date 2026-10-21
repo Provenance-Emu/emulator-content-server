@@ -187,6 +187,10 @@ export function createBulkMatching(
           let count = next.saved;
           for (const candidate of auto) {
             if (!live(run)) return;
+            // Each response may reveal another owner's choice. Recheck both
+            // category occupancy and system agreement before the next write.
+            if (!plan(result, saved, checksum).auto.some((choice) => choice.id === candidate.id))
+              continue;
             saved = await client.saveSourceMatch(
               id,
               result.requestId,

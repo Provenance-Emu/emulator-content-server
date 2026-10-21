@@ -16,10 +16,13 @@
   let online = $state(true);
   let failure = $state<string|null>(null);
   let ready = $state(false);
+  let registryLoading = $state(false);
+  let disposed = false;
   let reviewing = $state<BulkMatchRow|null>(null);
   let filter = $state('review');
   let page = $state(0);
   const running = $derived(['discovering','running'].includes($controller.phase));
+  const activeProviders=$derived(plugins.some((plugin)=>plugin.kind==='provider'&&providerIds.includes(plugin.id)&&(!plugin.network||online)));
   const completed = $derived($controller.rows.filter((r)=>!['pending','working'].includes(r.status)).length);
   const saved = $derived($controller.rows.reduce((total,r)=>total+r.saved,0));
   const rows = $derived($controller.rows.filter((r)=>filter==='all'||(filter==='failed'?r.retryable:r.status===filter)));
@@ -27,17 +30,23 @@
   $effect(()=>{const last=Math.max(0,Math.ceil(rows.length/12)-1);if(page>last)page=last;});
   const tabs = [['review','Needs review'],['failed','Failed'],['unmatched','No match'],['skipped','Skipped'],['all','All games']] as const;
   onMount(()=>{
-    let live=true;
-    void context.client.matchingPlugins().then((registry)=>{
-      if(!live)return;
+    void loadPlugins();
+    return ()=>{disposed=true;};
+  });
+  async function loadPlugins(){
+    if(disposed||registryLoading)return;
+    registryLoading=true;failure=null;
+    try {
+      const registry=await context.client.matchingPlugins();
+      if(disposed)return;
       plugins=registry.plugins;
       // Online cheat indexes are optional for bulk runs: anonymous GitHub API quotas are small.
       providerIds=$controller.options.providerIds??plugins.filter((p)=>p.kind==='provider'&&(!p.network||!p.capabilities.includes('cheats'))).map((p)=>p.id);
       online=$controller.phase==='idle'?true:$controller.options.online===true;
       managerId=$controller.options.managerId??'org.ecs.matches';ready=true;
-    },(error)=>{if(live)failure=explain(error);});
-    return ()=>{live=false;};
-  });
+    } catch(error){if(!disposed)failure=explain(error);}
+    finally {if(!disposed)registryLoading=false;}
+  }
   function review(row:BulkMatchRow){controller.pause();reviewing=row;}
   function done(){if(reviewing)controller.reviewed(reviewing.entry.id);reviewing=null;onchanged();}
 </script>
@@ -54,7 +63,8 @@
   {#if $controller.phase==='idle'}
     <MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={running} />
     <p class="dim">Checksums are verified for local ROMs up to 64 MB. Archives and disc sets use filename suggestions. Online cheats are optional under Providers and manager.</p>
-    <button type="button" disabled={!ready||!providerIds.length} onclick={()=>void controller.start(scope,{online,providerIds,managerId})}>Start library matching</button>
+    {#if ready&&!activeProviders}<p class="dim">Select a local provider or enable a selected online provider before matching.</p>{/if}
+    <button type="button" disabled={!ready||!activeProviders} onclick={()=>void controller.start(scope,{online,providerIds,managerId})}>Start library matching</button>
   {:else}
     <div class="summary" role="status" aria-live="polite">
       <span><strong>{completed} / {$controller.rows.length}</strong> games checked</span>
@@ -74,6 +84,7 @@
   {/if}
   <p class="dim">Keep this app open on this library while matching. You can close this panel and browse; reloading or leaving the library stops the run. Saved matches are kept.</p>
   {#if failure||$controller.failure}<p class="problem" role="alert">{failure??$controller.failure}</p>{/if}
+  {#if failure}<button type="button" disabled={registryLoading} onclick={()=>void loadPlugins()}>Retry matching providers</button>{/if}
   {#if $controller.rows.length}
     <div class="actions" aria-label="Matching results filters">
       {#each tabs as [value,label]}<button type="button" class:active={filter===value} aria-pressed={filter===value} onclick={()=>{filter=value;page=0;}}>{label} ({value==='all'?$controller.rows.length:$controller.rows.filter((r)=>value==='failed'?r.retryable:r.status===value).length})</button>{/each}

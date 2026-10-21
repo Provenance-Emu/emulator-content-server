@@ -17,6 +17,8 @@
     playerCore,
     owner,
     selectedSource,
+    refreshing = false,
+    onrefresh,
     onback,
     onchanged,
   }: {
@@ -25,6 +27,8 @@
     playerCore: PlayerCoreDescriptor | null;
     owner: boolean;
     selectedSource:SourceFile|null;
+    refreshing?: boolean;
+    onrefresh: () => void;
     onback: () => void;
     onchanged: () => void;
   } = $props();
@@ -105,10 +109,8 @@
       </button>{/if}
     <button
       type="button"
-      disabled={$controller.loading || !!$controller.reading || $controller.adopting}
-      onclick={() => {
-        void controller.load();
-      }}
+      disabled={refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
+      onclick={onrefresh}
     >
       Refresh details
     </button>

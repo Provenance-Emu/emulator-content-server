@@ -54,6 +54,108 @@ test('saved-match loading can recover from a transient failure without discardin
   assert.equal(get(controller).result?.requestId, 'request');
 });
 
+for (const remove of [false, true])
+  test(`a lost ${remove ? 'removal' : 'save'} response reconciles committed selections without another write`, async (t) => {
+    const selection = {
+      ...reply.candidates[0],
+      contentAvailable: false,
+      contentType: null,
+      fileName: null,
+      updatedAt: '',
+    };
+    let matches = remove ? [selection] : [];
+    let revision = 1;
+    let writes = 0;
+    const f = transport((url, init) => {
+      if (url.pathname.endsWith('/matches')) return Response.json(reply);
+      if (init?.method === 'PUT' || init?.method === 'DELETE') {
+        writes++;
+        matches = remove ? [] : [selection];
+        revision++;
+        throw new TypeError('Generated response loss after commit');
+      }
+      return Response.json({ sourceId: 'source', revision, matches });
+    });
+    t.after(f.restore);
+    const controller = createMatching(f.client, 'source');
+    t.after(() => controller.dispose());
+    await controller.load();
+    await controller.find({});
+    assert.equal(await (remove ? controller.remove('artwork') : controller.save('art')), true);
+    assert.equal(writes, 1);
+    assert.equal(get(controller).saved?.revision, 2);
+    assert.equal(get(controller).saved?.matches.length, remove ? 0 : 1);
+    assert.equal(get(controller).failure, null);
+  });
+
+test('an unavailable conflict refresh blocks further writes until saved choices reload', async (t) => {
+  let reads = 0;
+  let writes = 0;
+  let unavailable = true;
+  const f = transport((url, init) => {
+    if (url.pathname.endsWith('/matches')) return Response.json(reply);
+    if (init?.method === 'PUT') {
+      writes++;
+      return problem(409, 'matching-conflict');
+    }
+    if (++reads > 1 && unavailable) return problem(503);
+    return Response.json({ sourceId: 'source', revision: reads === 1 ? 1 : 4, matches: [] });
+  });
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.load();
+  await controller.find({});
+  assert.equal(await controller.save('art'), false);
+  assert.equal(get(controller).savedLoadFailed, true);
+  assert.equal(await controller.save('art'), false);
+  assert.equal(writes, 1, 'a stale revision cannot be resubmitted before recovery');
+  unavailable = false;
+  await controller.load();
+  assert.equal(get(controller).saved?.revision, 4);
+  assert.equal(get(controller).savedLoadFailed, false);
+  assert.equal(get(controller).result?.requestId, 'request');
+});
+
+test('a conflict refresh never overwrites the current selection or automatically retries the write', async (t) => {
+  let reads = 0;
+  let writes = 0;
+  const f = transport((url, init) => {
+    if (url.pathname.endsWith('/matches')) return Response.json(reply);
+    if (init?.method === 'PUT') {
+      writes++;
+      return problem(409, 'matching-conflict');
+    }
+    return Response.json({
+      sourceId: 'source',
+      revision: ++reads,
+      matches:
+        reads === 1
+          ? []
+          : [
+              {
+                ...reply.candidates[0],
+                id: 'another-choice',
+                contentAvailable: false,
+                contentType: null,
+                fileName: null,
+                updatedAt: '',
+              },
+            ],
+    });
+  });
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.load();
+  await controller.find({});
+  assert.equal(await controller.save('art'), false);
+  assert.equal(get(controller).saved?.matches[0]?.id, 'another-choice');
+  assert.equal(get(controller).saved?.revision, 2);
+  assert.ok(get(controller).failure);
+  assert.equal(writes, 1);
+});
+
 for (const status of [401, 403, 404])
   test(`saved-match rejection ${status} cannot offer or perform a transient retry`, async (t) => {
     const f = transport(() => problem(status));

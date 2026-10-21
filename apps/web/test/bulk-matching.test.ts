@@ -22,6 +22,48 @@ const selected = (c: MatchingCandidate): SavedSourceMatch => ({
   updatedAt: '',
 });
 
+for (const concurrent of ['category', 'system'])
+  test(`bulk matching preserves a concurrent ${concurrent} choice returned after its first save`, async (t) => {
+    const writes: string[] = [];
+    let choices: SavedSourceMatch[] = [];
+    const other = selected(
+      concurrent === 'category'
+        ? candidate('owner-choice', 'patch')
+        : { ...candidate('owner-system', 'rom'), metadata: { systemId: 'com.provenance.snes' } },
+    );
+    const f = transport((url, init) => {
+      if (url.pathname === '/api/v1/browse')
+        return Response.json({
+          items: [entry('source', 'game')],
+          nextCursor: null,
+        });
+      if (url.pathname.endsWith('/selections')) {
+        if (init?.method === 'PUT') {
+          const id = JSON.parse(String(init.body)).candidateId;
+          writes.push(id);
+          choices = [selected(candidate('metadata')), other];
+          if (id === 'patch')
+            choices = [selected(candidate('metadata')), selected(candidate('patch', 'patch'))];
+        }
+        return Response.json({ sourceId: 'game', revision: choices.length, matches: choices });
+      }
+      return Response.json({
+        sourceId: 'game',
+        requestId: 'r',
+        plugins: [],
+        problems: [],
+        candidates: [candidate('metadata'), candidate('patch', 'patch')],
+      });
+    });
+    t.after(f.restore);
+    const bulk = createBulkMatching(f.client);
+    t.after(() => bulk.dispose());
+    await bulk.start({ libraryId: 'library' }, {});
+    assert.deepEqual(writes, ['metadata']);
+    assert.equal(choices[1]?.id, other.id);
+    assert.equal(get(bulk).rows[0]?.status, concurrent === 'category' ? 'saved' : 'review');
+  });
+
 test('retry includes partial provider failures without rerunning healthy games or replacing saved choices', async (t) => {
   let failing = true;
   const lookups: string[] = [];
