@@ -91,6 +91,18 @@ git history.
 External ZIP fixes ea61ef0 and a31c0ba were fast-forwarded into main; 40 focused ZIP
 tests passed. Do not repeat completed desktop/upload features from historical notes.
 
+Desktop acceptance follow-on: b194f2b adds macOS reopen handling for hidden
+windows, verified in the real bundled WKWebView. Native browsing, server switch,
+unreachable-profile clearing, server-folder fallback registration/scan, close/reopen
+and browser URL handoff were exercised against disposable generated catalogs.
+11c0206/96444e5/cfb1210 fix Windows compiled-fixture paths, the missing resource ICO
+and a host-separator assumption in a simulated macOS test. Focused macOS/Linux
+native CI passed; final Windows retry is recorded in the acceptance guide. Live
+verified-local directory dialogs remain unverified because the LaunchAgent is
+absent. Native download completion and upload after file-picker selection remain
+unverified due native automation limits; do not relabel Chromium tests as native
+passes. See docs/operations/desktop-acceptance.md for exact evidence.
+
 ## Historical handoff
 
 Read `AGENTS.md` before changing code. This file is the current gap, not a second architecture.
