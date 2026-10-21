@@ -50,8 +50,9 @@ Chromium upload cases pass, including multi-save detail queues, bounded selectio
 relative folder paths, fallback, ordinary LAN HTTP, stable retry/reconciliation,
 and authorization stopping. The full web controller suite passed 182 tests before
 the final two focused regressions were added. Svelte check, production web build,
-lint, secret scan and package boundaries pass. Existing library acceptance is
-being rerun as part of the same batch; see the Task 5 report for final results.
+lint, secret scan and package boundaries pass. All 14 existing library browser
+cases also pass, including busy-modal/focus behavior, preserved save adoption,
+byte downloads, access revocation and isolated player navigation.
 
 Prior checkpoint validation: 173 web controller tests, 36 TypeScript client
 tests, 32 ZIP tests for the integrated corrupt-DEFLATE fix, Svelte check with zero
