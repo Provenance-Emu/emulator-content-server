@@ -65,3 +65,7 @@ Chromium composition/fallback checks run with generated temporary data. The
 operator's fixed LaunchAgent was absent (launchctl exit 113), so an actual native
 dialog was not exercised. Linux/Windows interactive and native build acceptance
 remain for the manual platform workflow; fixtures alone do not establish those passes.
+
+Reopening the macOS app from Finder or the Dock reveals its existing bundled
+library window when both windows are hidden. See [Desktop acceptance](../../docs/operations/desktop-acceptance.md)
+for actual platform evidence and remaining interactive checks.

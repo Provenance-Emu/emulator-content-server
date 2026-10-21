@@ -179,6 +179,23 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
-        .run(tauri::generate_context!())
-        .expect("the tray application failed to start");
+        .build(tauri::generate_context!())
+        .expect("the tray application failed to start")
+        .run(|app, event| {
+            // The tray starts hidden, but reopening it from Finder/Dock must
+            // reveal a window after both windows have been closed (hidden).
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } = event
+            {
+                if let Some(library) = app.get_webview_window("library") {
+                    let _ = library.show();
+                    let _ = library.set_focus();
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
