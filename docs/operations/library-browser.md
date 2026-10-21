@@ -102,7 +102,9 @@ library stages the selected paths until **Create library**. Native upload-storag
 registration leaves the current write target unchanged. The native bridge rechecks
 identity before and after selection, and shared controllers recheck before API
 writes. Restarted/expired identity asks for verification again, or **Connect** to
-browse server folders. Changing servers discards pending selections. Verification
+browse server folders. An unavailable re-verification replaces the managed context
+with a server-chooser context at the same address; navigation resets and pending
+native selections are discarded. Changing servers discards pending selections. Verification
 IDs expire after 30 minutes; at most 16 remain live. JavaScript receives no generic
 filesystem, process or dialog permissions.
 Downloads use the same authenticated API behavior. The server exposes only ETag

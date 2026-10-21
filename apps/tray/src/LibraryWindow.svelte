@@ -22,6 +22,11 @@
     if ($selection !== context) return;
     endpoint = result;
     if (result.available) selection.select(managedProfile(result));
+    else if (context?.profile.profileKey === 'managed-service') {
+      // Controllers capture their folder adapter for one context lifetime.
+      // Retire that lifetime and staged native paths before exposing the server chooser.
+      selection.select({ origin: context.origin, label: context.origin, profileKey: 'manual' });
+    }
   }
   $effect(() => { typed = $selection?.origin ?? ''; });
   onDestroy(() => { disposed = true; selection.dispose(); });

@@ -48,7 +48,9 @@ It rechecks identity before and after the directory-only dialog; the shared
 controllers revalidate immediately before API registration. Cancellation writes
 nothing and never opens a second chooser. Switching server discards an open dialog's
 result. Expired or changed identity shows a recovery action: verify the managed
-service again, or **Connect** to use the server chooser. IDs expire after 30 minutes
+service again, or **Connect** to use the server chooser. When explicit re-verification
+becomes unavailable, the app switches to a fresh server-chooser context at the same
+address, resetting navigation and discarding staged native selections. IDs expire after 30 minutes
 and at most 16 are retained. New library folders stage until **Create library**;
 existing-library confirmation registers and scans once. Upload destinations keep
 the current upload target until explicitly selected.

@@ -138,7 +138,9 @@ test('desktop unavailable native verification uses the actual server chooser for
     await page.getByLabel('Server address', { exact: true }).fill(fixture.origin);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('verification is unavailable');
+    await expect(
+      page.getByRole('status').filter({ hasText: 'verification is unavailable' }),
+    ).toBeVisible();
     await page.getByLabel('Username', { exact: true }).fill('browser-owner');
     await page.getByLabel('Password', { exact: true }).fill(fixture.password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -161,3 +163,156 @@ test('desktop unavailable native verification uses the actual server chooser for
     expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
   });
 });
+
+for (const action of ['library-folder', 'library-editor', 'upload-storage'] as const) {
+  test(`failed managed reverify retires ${action} actions and uses server chooser without Connect`, async ({
+    page,
+    fixture,
+  }) => {
+    const folder = join(fixture.directory, 'Recovered folder');
+    await mkdir(folder);
+    const existingUpload = join(fixture.directory, 'Existing upload target');
+    await mkdir(existingUpload);
+    const target = await fixture.client.addStorageLocation({
+      path: existingUpload,
+      label: 'Existing target',
+    });
+    await fixture.client.setStorageWriteTarget(target.id);
+    await page.addInitScript(
+      ({ origin, folder }) => {
+        const state = { available: true, commands: [] as string[] };
+        Object.assign(window, {
+          __nativeRecovery: state,
+          __TAURI_INTERNALS__: {
+            async invoke(command: string) {
+              state.commands.push(command);
+              if (command === 'managed_endpoint')
+                return state.available
+                  ? { available: true, origin, verificationId: 'generated-recovery-id' }
+                  : {
+                      available: false,
+                      reason:
+                        'Local service verification is unavailable. Use the server folder chooser.',
+                    };
+              if (command === 'validate_managed_selection') return true;
+              if (command === 'choose_managed_directory') return folder;
+              throw new Error('Unexpected privileged command');
+            },
+          },
+        });
+      },
+      { origin: fixture.origin, folder },
+    );
+    await page.route('**/api/v1/folders', async (route) =>
+      route.fulfill({
+        response: await route.fetch({
+          url: `${fixture.origin}/api/v1/folders?path=${encodeURIComponent(fixture.directory)}`,
+        }),
+      }),
+    );
+    await withDesktop(page, async (desktop) => {
+      await page.goto(`${desktop}/library.html`);
+      await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
+      await page.getByLabel('Username', { exact: true }).fill('browser-owner');
+      await page.getByLabel('Password', { exact: true }).fill(fixture.password);
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+      if (action === 'library-editor') {
+        await page.getByRole('button', { name: 'Add library', exact: true }).click();
+        const editor = page.getByRole('dialog', { name: 'Create library', exact: true });
+        await editor.getByRole('button', { name: 'Select server folder', exact: true }).click();
+        await expect(editor.getByText(folder, { exact: true })).toBeVisible();
+      } else {
+        await page.getByRole('button', { name: 'Settings', exact: true }).click();
+        if (action === 'upload-storage') {
+          await page.getByRole('button', { name: 'Upload storage', exact: true }).click();
+          await expect(
+            page.getByRole('button', { name: 'Add destination', exact: true }),
+          ).toBeVisible();
+        } else
+          await expect(
+            page.getByRole('button', { name: 'Add folder to Arcade', exact: true }),
+          ).toBeVisible();
+      }
+      fixture.requests.length = 0;
+      const nativeBefore = await page.evaluate(
+        () =>
+          (
+            window as unknown as { __nativeRecovery: { commands: string[] } }
+          ).__nativeRecovery.commands.filter((c) => c === 'choose_managed_directory').length,
+      );
+      await page.evaluate(() => {
+        (
+          window as unknown as { __nativeRecovery: { available: boolean } }
+        ).__nativeRecovery.available = false;
+      });
+      const reverify = page.getByRole('button', { name: 'Use local managed service', exact: true });
+      // Exercise the same transition with a staged modal too; modal focus normally blocks its header.
+      if (action === 'library-editor')
+        await reverify.evaluate((button: HTMLButtonElement) => button.click());
+      else await reverify.click();
+      await expect(
+        page.getByRole('status').filter({ hasText: 'verification is unavailable' }),
+      ).toBeVisible();
+      if (action === 'library-editor') {
+        // The old native-staged selection and editor lifetime must be retired.
+        await expect(page.getByRole('dialog', { name: 'Create library', exact: true })).toHaveCount(
+          0,
+        );
+        expect(fixture.requests.filter((r) => r.startsWith('POST '))).toEqual([]);
+        await page.getByRole('button', { name: 'Add library', exact: true }).click();
+        const editor = page.getByRole('dialog', { name: 'Create library', exact: true });
+        await expect(editor.getByText(folder, { exact: true })).toHaveCount(0);
+        await editor.getByRole('button', { name: 'Select server folder', exact: true }).click();
+        await editor.getByRole('textbox', { name: 'Server folder path', exact: true }).fill(folder);
+        await editor.getByRole('button', { name: 'Select folder', exact: true }).click();
+        await expect(editor.getByText(folder, { exact: true })).toBeVisible();
+        expect(fixture.requests.filter((r) => r.startsWith('POST '))).toEqual([]);
+        await editor.getByRole('button', { name: 'Create library', exact: true }).click();
+        await expect(editor).toHaveCount(0);
+      } else {
+        // If context retirement remounts the app, reopen its fresh Settings view.
+        // On the buggy code this is idempotent and leaves the captured stale controller mounted.
+        await page.getByRole('button', { name: 'Settings', exact: true }).click();
+        if (action === 'upload-storage')
+          await page.getByRole('button', { name: 'Upload storage', exact: true }).click();
+        await page
+          .getByRole('button', {
+            name: action === 'upload-storage' ? 'Add destination' : 'Add folder to Arcade',
+            exact: true,
+          })
+          .click();
+        const chooser = page.getByRole('dialog', {
+          name: action === 'upload-storage' ? 'Add upload destination' : 'Add library folder',
+          exact: true,
+        });
+        await chooser
+          .getByRole('textbox', { name: 'Server folder path', exact: true })
+          .fill(folder);
+        await chooser
+          .getByRole('button', {
+            name: action === 'upload-storage' ? 'Add destination' : 'Add folder',
+            exact: true,
+          })
+          .click();
+        await expect(chooser).toHaveCount(0);
+      }
+      expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(
+        action === 'upload-storage' ? 0 : 1,
+      );
+      expect(
+        fixture.requests.filter((r) => /^POST \/api\/v1\/roots\/[^/]+\/scan$/.test(r)),
+      ).toHaveLength(action === 'upload-storage' ? 0 : 1);
+      expect(fixture.requests.filter((r) => r === 'POST /api/v1/storage-locations')).toHaveLength(
+        action === 'upload-storage' ? 1 : 0,
+      );
+      expect((await fixture.client.storageLocations()).writeLocationId).toBe(target.id);
+      const nativeAfter = await page.evaluate(
+        () =>
+          (
+            window as unknown as { __nativeRecovery: { commands: string[] } }
+          ).__nativeRecovery.commands.filter((c) => c === 'choose_managed_directory').length,
+      );
+      expect(nativeAfter).toBe(nativeBefore);
+    });
+  });
+}
