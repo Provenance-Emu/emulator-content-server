@@ -5,6 +5,23 @@ import { createLibraryBrowser } from '../src/lib/library-browser.js';
 import { entry, problem, transport } from './library-browser-fixture.js';
 import { deferred } from './lifecycle-fixture.js';
 
+test('switching from multiple systems to a single system clears the previous selection and cursor', async (t) => {
+  const f = transport(() => Response.json({ items: [entry()], nextCursor: 'next' }));
+  t.after(f.restore);
+  const browser = createLibraryBrowser(f.client, { libraryId: 'library' });
+  t.after(() => browser.dispose());
+  await browser.setQuery({ systemIds: ['com.provenance.nes', 'unknown'] });
+  await browser.next();
+  await browser.setQuery({ systemId: 'com.provenance.snes' });
+  const query = f.requests.at(-1)?.searchParams;
+  assert.equal(query?.get('systemId'), 'com.provenance.snes');
+  assert.equal(query?.has('systemIds'), false);
+  assert.equal(query?.has('cursor'), false);
+  assert.deepEqual(get(browser).filters.systemIds, []);
+  await browser.setQuery({ systemId: '' });
+  assert.equal(f.requests.at(-1)?.searchParams.has('systemId'), false);
+});
+
 test('120 tied mixed identities are reachable in bounded pages with previous history and no manifests', async (t) => {
   const rows = Array.from({ length: 120 }, (_, i) =>
     entry(['item', 'asset', 'source'][i % 3], String(Math.floor(i / 3))),

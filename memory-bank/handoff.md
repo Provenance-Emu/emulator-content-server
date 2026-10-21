@@ -20,8 +20,13 @@ reviewable and also appear under Failed, where they can retry without repeating
 healthy games or replacing saved choices. Completing review clears retry status.
 See [Matching operations](../docs/operations/matching-plugins.md).
 
-Validation for this checkpoint: 162 web controller tests, Svelte check with zero
-errors/warnings, the focused browser retry regression, TypeScript and production
+The next batch adds in-panel recovery for transient saved-match loading errors,
+opens populated suggestion categories while preserving a useful tab selection,
+and fixes switching between single/multiple system filters and filtered empty
+states for system chips.
+
+Validation for this checkpoint: 167 web controller tests, Svelte check with zero
+errors/warnings, focused matching/filter browser regressions, TypeScript and production
 web builds, changed-file lint, and package boundaries. This does not establish
 native platform or real browser-core acceptance. Runtime notes below describe an
 earlier operator setup; verify current configuration before restarting anything.

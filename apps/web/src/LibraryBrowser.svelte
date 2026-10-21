@@ -350,6 +350,7 @@
         filtered={!!(
           $browser.filters.search ||
           $browser.filters.systemId ||
+          $browser.filters.systemIds.length ||
           $browser.filters.rootId
         )}
       />

@@ -37,7 +37,11 @@ providers never run in the browser.
 
 The owner can open a server-folder game and use **Metadata, artwork & patches**.
 Click **Find matches** for local suggestions, or enable **Include online providers**
-for Libretro. Select **Save** on a candidate to keep one choice per category. Saving metadata
+for Libretro. A lookup keeps the selected category when it has suggestions and
+otherwise opens a category containing results. If loading saved choices fails
+temporarily, use **Retry saved matches** inside the game; lookup suggestions are
+kept while saved choices reload. Select **Save** on a candidate to keep one choice
+per category. Saving metadata
 publishes its title/details to people who can read the game; it does not grant
 access to the original JSON sidecar. Saved titles participate in library search
 and sorting, selected system IDs update system filters/counts, and selected artwork

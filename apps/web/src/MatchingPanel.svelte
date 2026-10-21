@@ -33,7 +33,15 @@
     try {const blob=await context.client.selectedMatchContent(sourceId,kind);if(disposed)return;const url=URL.createObjectURL(blob);try{const link=document.createElement('a');link.href=url;link.download=name;link.click();}finally{URL.revokeObjectURL(url);}}
     catch(error){if(!disposed){if(error instanceof ContentError&&[401,403].includes(error.status))controller.invalidate();failure=explain(error);}}
   }
-  async function find(){page=0;failure=null;await controller.find({online,checksum:checksum&&!container,providerIds,managerId});if(reviewOptions){const state=get(controller);category=state.result?.candidates.find((c)=>!state.saved?.matches.some((m)=>m.kind===c.kind))?.kind??'metadata';}}
+  async function find(){
+    page=0;failure=null;
+    await controller.find({online,checksum:checksum&&!container,providerIds,managerId});
+    const state=get(controller);
+    const suggestions=state.result?.candidates??[];
+    const unsaved=reviewOptions?suggestions.find((c)=>!state.saved?.matches.some((m)=>m.kind===c.kind)):null;
+    if(unsaved)category=unsaved.kind;
+    else if(!suggestions.some((c)=>c.kind===category))category=suggestions[0]?.kind??'metadata';
+  }
   function providerName(id:string){return plugins.find((p)=>p.id===id)?.name ?? id;}
   async function download(candidate:MatchingCandidate){
     if(!candidate.fileId)return;
@@ -59,7 +67,8 @@
         {#if owner}<button type="button" disabled={!!$controller.saving||$controller.loading} onclick={()=>void remove(selected.kind)}>Remove saved {selected.kind}</button>{/if}
       </article>
     {/each}</div>
-  {:else if !$controller.savedLoading}<p class="dim">No matches have been saved for this game.</p>{/if}
+  {:else if $controller.saved && !$controller.savedLoading}<p class="dim">No matches have been saved for this game.</p>{/if}
+  {#if $controller.savedLoadFailed}<button type="button" disabled={$controller.loading||$controller.savedLoading||!!$controller.saving} onclick={()=>void controller.load()}>Retry saved matches</button>{/if}
   {#if failure||$controller.failure}<p role="alert" class="problem">{failure ?? $controller.failure}</p>{/if}
   {#if owner}
   <h2>Find metadata, artwork, patches & cheats</h2>

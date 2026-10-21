@@ -16,6 +16,7 @@ export interface MatchingState {
   saved: SourceMatchSelections | null;
   savedArtwork: string | null;
   savedLoading: boolean;
+  savedLoadFailed: boolean;
   saving: string | null;
 }
 export interface MatchingController extends Readable<MatchingState> {
@@ -38,6 +39,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     saved: null,
     savedArtwork: null,
     savedLoading: false,
+    savedLoadFailed: false,
     saving: null,
   };
   const store = writable(current);
@@ -67,7 +69,13 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     lifetime.abort();
     clearResults();
     clearSaved();
-    update({ loading: false, savedLoading: false, saving: null, previewing: null });
+    update({
+      loading: false,
+      savedLoading: false,
+      savedLoadFailed: false,
+      saving: null,
+      previewing: null,
+    });
   }
   function failure(error: unknown) {
     if (
@@ -152,11 +160,14 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     async load() {
       if (disposed || denied || current.savedLoading || current.saving || current.loading) return;
       const run = epoch;
-      update({ savedLoading: true, failure: null });
+      update({ savedLoading: true, savedLoadFailed: false, failure: null });
       try {
         await showSaved(await client.sourceSelections(sourceId, lifetime.signal), run);
       } catch (error) {
-        if (live(run)) failure(error);
+        if (live(run)) {
+          failure(error);
+          if (live(run)) update({ savedLoadFailed: true });
+        }
       } finally {
         if (live(run)) update({ savedLoading: false });
       }
@@ -219,7 +230,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       lifetime.abort();
       clearResults();
       clearSaved();
-      update({ loading: false, savedLoading: false, saving: null });
+      update({ loading: false, savedLoading: false, savedLoadFailed: false, saving: null });
     },
   };
 }

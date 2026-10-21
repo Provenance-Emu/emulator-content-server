@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { get } from 'svelte/store';
 import { createMatching } from '../src/lib/matching.js';
-import { transport } from './library-browser-fixture.js';
+import { problem, transport } from './library-browser-fixture.js';
 import { deferred } from './lifecycle-fixture.js';
 
 const reply = {
@@ -29,6 +29,43 @@ const reply = {
   ],
   problems: [],
 };
+
+test('saved-match loading can recover from a transient failure without discarding suggestions', async (t) => {
+  let fail = true;
+  const f = transport((url) =>
+    url.pathname.endsWith('/matches')
+      ? Response.json(reply)
+      : fail
+        ? problem(503)
+        : Response.json({ sourceId: 'source', revision: 3, matches: [] }),
+  );
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.load();
+  assert.equal(get(controller).savedLoadFailed, true);
+  assert.equal(get(controller).saved, null);
+  await controller.find({});
+  fail = false;
+  await controller.load();
+  assert.equal(get(controller).savedLoadFailed, false);
+  assert.equal(get(controller).saved?.revision, 3);
+  assert.equal(get(controller).failure, null);
+  assert.equal(get(controller).result?.requestId, 'request');
+});
+
+for (const status of [401, 403, 404])
+  test(`saved-match rejection ${status} cannot offer or perform a transient retry`, async (t) => {
+    const f = transport(() => problem(status));
+    t.after(f.restore);
+    const controller = createMatching(f.client, 'source');
+    t.after(() => controller.dispose());
+    await controller.load();
+    assert.equal(get(controller).savedLoadFailed, false);
+    const count = f.requests.length;
+    await controller.load();
+    assert.equal(f.requests.length, count);
+  });
 test('matching is explicit, carries provider options, and previews only returned artwork candidates', async (t) => {
   let previews = 0;
   const f = transport((url, init) => {

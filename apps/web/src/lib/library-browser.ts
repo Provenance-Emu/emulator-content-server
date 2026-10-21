@@ -188,7 +188,11 @@ export function createLibraryBrowser(
       const filters = {
         ...current.filters,
         ...patch,
-        ...(patch.systemIds ? { systemId: '' } : {}),
+        ...(patch.systemIds
+          ? { systemId: '' }
+          : patch.systemId !== undefined
+            ? { systemIds: [] }
+            : {}),
       };
       const changed = (
         ['category', 'search', 'systemId', 'systemIds', 'rootId', 'sort'] as const
