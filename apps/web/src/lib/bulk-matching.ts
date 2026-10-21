@@ -26,6 +26,7 @@ export interface BulkMatchRow {
   saved: number;
   suggestions: number;
   reason: string;
+  retryable: boolean;
 }
 export interface BulkMatchingState {
   phase: 'idle' | 'discovering' | 'running' | 'paused' | 'complete';
@@ -147,6 +148,7 @@ export function createBulkMatching(
           saved: 0,
           suggestions: 0,
           reason,
+          retryable: false,
         });
       }
       update({ rows: [...rows] });
@@ -174,7 +176,7 @@ export function createBulkMatching(
         if (!live(run)) return;
         if (next.status !== 'pending' || !next.entry.source) continue;
         const id = next.entry.id;
-        row(id, { status: 'working', reason: 'Finding matches…' });
+        row(id, { status: 'working', reason: 'Finding matches…', retryable: false });
         try {
           let saved = await client.sourceSelections(id, signal);
           if (!live(run)) return;
@@ -202,6 +204,7 @@ export function createBulkMatching(
           row(id, {
             status: review ? 'review' : saved.matches.length ? 'saved' : 'unmatched',
             suggestions: remaining.length,
+            retryable: result.problems.length > 0,
             reason: result.problems.length
               ? 'Some providers failed; review these results or retry later.'
               : review
@@ -215,7 +218,7 @@ export function createBulkMatching(
         } catch (error) {
           if (!live(run)) return;
           if (reject(error)) return;
-          row(id, { status: 'failed', reason: explain(error) });
+          row(id, { status: 'failed', reason: explain(error), retryable: true });
         }
       }
       if (live(run)) update({ phase: 'complete' });
@@ -251,13 +254,14 @@ export function createBulkMatching(
       if (disposed || denied || busy()) return;
       update({
         rows: current.rows.map((r) =>
-          r.status === 'failed' ? { ...r, status: 'pending', reason: '' } : r,
+          r.retryable ? { ...r, status: 'pending', reason: '', retryable: false } : r,
         ),
       });
       await execute();
     },
     reviewed(id) {
-      if (!disposed && !denied) row(id, { status: 'reviewed', reason: 'Review complete.' });
+      if (!disposed && !denied)
+        row(id, { status: 'reviewed', reason: 'Review complete.', retryable: false });
     },
     pause() {
       if (disposed || denied || !busy()) return;

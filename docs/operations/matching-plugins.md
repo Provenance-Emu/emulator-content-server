@@ -21,8 +21,11 @@ same provider options, avoiding expired proposal IDs. Save the choices you want,
 then choose **Done reviewing this game**. Results are paginated, with separate
 filters for failures, unmatched games and skipped files. **Retry failed games**
 loads current selections again; revision conflicts never trigger an automatic
-overwrite. Online cheat indexes are optional in bulk runs because anonymous
-GitHub API limits are small; local cheat matching remains selected by default.
+overwrite. Partial provider failures appear in both **Needs review** and **Failed**
+and can be retried without repeating healthy games. **Done reviewing this game**
+also removes that game from the retry list. Online cheat indexes are optional in
+bulk runs because anonymous GitHub API limits are small; local cheat matching
+remains selected by default.
 
 **Pause matching** cancels the active request; **Resume matching** continues
 remaining games. Closing the panel keeps the run going while you browse this

@@ -22,6 +22,86 @@ const selected = (c: MatchingCandidate): SavedSourceMatch => ({
   updatedAt: '',
 });
 
+test('retry includes partial provider failures without rerunning healthy games or replacing saved choices', async (t) => {
+  let failing = true;
+  const lookups: string[] = [];
+  const writes: string[] = [];
+  const preserved = selected(candidate('original', 'rom'));
+  const choices = [preserved];
+  const f = transport((url, init) => {
+    if (url.pathname === '/api/v1/browse')
+      return Response.json({
+        items: [entry('source', 'partial'), entry('source', 'healthy')],
+        nextCursor: null,
+      });
+    const id = url.pathname.split('/')[4] ?? '';
+    if (url.pathname.endsWith('/selections')) {
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body));
+        assert.equal(body.expectedRevision, 1);
+        writes.push(body.candidateId);
+        choices.push(selected(candidate(body.candidateId)));
+      }
+      return Response.json({ sourceId: id, revision: choices.length, matches: choices });
+    }
+    lookups.push(id);
+    return Response.json({
+      sourceId: id,
+      requestId: 'request',
+      plugins: [],
+      candidates:
+        id === 'partial' ? [candidate('new-metadata'), candidate('replacement', 'rom')] : [],
+      problems:
+        id === 'partial' && failing
+          ? [{ providerId: 'broken.provider', code: 'provider-failed' }]
+          : [],
+    });
+  });
+  t.after(f.restore);
+  const bulk = createBulkMatching(f.client);
+  t.after(() => bulk.dispose());
+  await bulk.start({ libraryId: 'library' }, {});
+  assert.equal(get(bulk).rows[0]?.status, 'review');
+  assert.equal(get(bulk).rows[0]?.retryable, true);
+  assert.deepEqual(writes, []);
+  failing = false;
+  await bulk.retryFailures();
+  assert.deepEqual(lookups, ['partial', 'healthy', 'partial']);
+  assert.deepEqual(writes, ['new-metadata']);
+  assert.equal(choices[0], preserved);
+  assert.equal(get(bulk).rows[0]?.status, 'saved');
+  assert.equal(get(bulk).rows[0]?.retryable, false);
+  await bulk.retryFailures();
+  assert.deepEqual(lookups, ['partial', 'healthy', 'partial']);
+});
+
+test('finishing review removes a partial provider failure from the retry queue', async (t) => {
+  const f = transport((url) => {
+    if (url.pathname === '/api/v1/browse')
+      return Response.json({ items: [entry('source', 'partial')], nextCursor: null });
+    if (url.pathname.endsWith('/selections'))
+      return Response.json({ sourceId: 'partial', revision: 0, matches: [] });
+    return Response.json({
+      sourceId: 'partial',
+      requestId: 'request',
+      plugins: [],
+      candidates: [],
+      problems: [{ providerId: 'broken.provider', code: 'provider-failed' }],
+    });
+  });
+  t.after(f.restore);
+  const bulk = createBulkMatching(f.client);
+  t.after(() => bulk.dispose());
+  await bulk.start({ libraryId: 'library' }, {});
+  assert.equal(get(bulk).rows[0]?.retryable, true);
+  bulk.reviewed('partial');
+  assert.equal(get(bulk).rows[0]?.retryable, false);
+  const requests = f.requests.length;
+  await bulk.retryFailures();
+  assert.equal(f.requests.length, requests);
+  assert.equal(get(bulk).rows[0]?.status, 'reviewed');
+});
+
 test('bulk matching snapshots every library page before writes, saves unique checksums, and preserves choices', async (t) => {
   let enumerated = false;
   const writes: { id: string; revision: number }[] = [];

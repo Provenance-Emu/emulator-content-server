@@ -1,5 +1,33 @@
 # Handoff
 
+## Current checkpoint — 2026-10-20
+
+The sections below this checkpoint are historical. Scanning, the library browser,
+folder/upload flows, and the shared desktop library have since landed. Do not
+restart those features from the old “Next” list or treat its uncommitted-work
+description as current. Consult the source and operations guides for implemented
+behavior.
+
+The current user direction is to continue library and matching improvements,
+batch changes directly on `main`, and commit/push completed work. The project is
+still unreleased; use focused checks and create PRs only when requested or needed
+to isolate colliding parallel work. The branch audit found only local/remote
+`main`, one checkout, and no open PRs.
+
+Recent work includes saved metadata/artwork/patch/cheat selections, library-wide
+checksum matching and its review queue. Partial provider failures now remain
+reviewable and also appear under Failed, where they can retry without repeating
+healthy games or replacing saved choices. Completing review clears retry status.
+See [Matching operations](../docs/operations/matching-plugins.md).
+
+Validation for this checkpoint: 162 web controller tests, Svelte check with zero
+errors/warnings, the focused browser retry regression, TypeScript and production
+web builds, changed-file lint, and package boundaries. This does not establish
+native platform or real browser-core acceptance. Runtime notes below describe an
+earlier operator setup; verify current configuration before restarting anything.
+
+## Historical handoff
+
 Read `AGENTS.md` before changing code. This file is the current gap, not a second architecture.
 
 The page can register a ROM folder and then shows nothing from it. Registration is done. Scanning is not. That is the next feature. A visual pass on the existing forms will not make those folders useful.

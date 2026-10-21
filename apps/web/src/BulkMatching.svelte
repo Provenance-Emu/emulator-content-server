@@ -22,7 +22,7 @@
   const running = $derived(['discovering','running'].includes($controller.phase));
   const completed = $derived($controller.rows.filter((r)=>!['pending','working'].includes(r.status)).length);
   const saved = $derived($controller.rows.reduce((total,r)=>total+r.saved,0));
-  const rows = $derived($controller.rows.filter((r)=>filter==='all'||r.status===filter));
+  const rows = $derived($controller.rows.filter((r)=>filter==='all'||(filter==='failed'?r.retryable:r.status===filter)));
   const pageRows = $derived(rows.slice(page*12,page*12+12));
   $effect(()=>{const last=Math.max(0,Math.ceil(rows.length/12)-1);if(page>last)page=last;});
   const tabs = [['review','Needs review'],['failed','Failed'],['unmatched','No match'],['skipped','Skipped'],['all','All games']] as const;
@@ -68,7 +68,7 @@
     {:else if $controller.phase==='paused'}<button type="button" onclick={()=>void controller.resume()}>Resume matching</button>
     {:else}<p role="status">Library matching complete.</p>{/if}
     {#if !running}
-      {#if $controller.rows.some((r)=>r.status==='failed')}<button type="button" onclick={()=>void controller.retryFailures()}>Retry failed games</button>{/if}
+      {#if $controller.rows.some((r)=>r.retryable)}<button type="button" onclick={()=>void controller.retryFailures()}>Retry failed games</button>{/if}
       <button type="button" onclick={()=>controller.reset()}>New matching run</button>
     {/if}
   {/if}
@@ -76,7 +76,7 @@
   {#if failure||$controller.failure}<p class="problem" role="alert">{failure??$controller.failure}</p>{/if}
   {#if $controller.rows.length}
     <div class="actions" aria-label="Matching results filters">
-      {#each tabs as [value,label]}<button type="button" class:active={filter===value} aria-pressed={filter===value} onclick={()=>{filter=value;page=0;}}>{label} ({value==='all'?$controller.rows.length:$controller.rows.filter((r)=>r.status===value).length})</button>{/each}
+      {#each tabs as [value,label]}<button type="button" class:active={filter===value} aria-pressed={filter===value} onclick={()=>{filter=value;page=0;}}>{label} ({value==='all'?$controller.rows.length:$controller.rows.filter((r)=>value==='failed'?r.retryable:r.status===value).length})</button>{/each}
     </div>
     {#if !rows.length}<p>No games in this category.</p>{/if}
     <ul class="results">
