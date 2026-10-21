@@ -107,6 +107,7 @@
           <LibraryBrowser
             {context}
             {application}
+            folderContext={actionContext(expectedEpoch)}
             {scope}
             {rootId}
             {rootIntent}

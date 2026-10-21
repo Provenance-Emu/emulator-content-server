@@ -48,19 +48,34 @@ test('desktop native adapter cancels without fallback, registers once, and recov
   fixture,
 }) => {
   const folder = join(fixture.directory, 'Desktop folder');
+  const quickFolder = join(fixture.directory, 'Desktop quick folder');
   await mkdir(folder);
+  await mkdir(quickFolder);
   await page.addInitScript(
     ({ origin }) => {
-      const state = { choice: null as string | null, valid: true, commands: [] as string[] };
+      const state = {
+        choice: null as string | null,
+        valid: true,
+        commands: [] as string[],
+        pending: false,
+      };
+      let finishChoice: ((choice: string | null) => void) | undefined;
       Object.assign(window, {
         __nativeFolders: state,
+        __finishChoice: (choice: string | null) => finishChoice?.(choice),
         __TAURI_INTERNALS__: {
           async invoke(command: string) {
             state.commands.push(command);
             if (command === 'managed_endpoint')
               return { available: true, origin, verificationId: 'generated-test-id' };
             if (command === 'validate_managed_selection') return state.valid;
-            if (command === 'choose_managed_directory') return state.choice;
+            if (command === 'choose_managed_directory') {
+              if (state.pending)
+                return new Promise<string | null>((resolve) => {
+                  finishChoice = resolve;
+                });
+              return state.choice;
+            }
             throw new Error('Unexpected privileged command');
           },
         },
@@ -73,7 +88,81 @@ test('desktop native adapter cancels without fallback, registers once, and recov
     await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
     await page.getByLabel('Username', { exact: true }).fill('browser-owner');
     await page.getByLabel('Password', { exact: true }).fill(fixture.password);
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click({ noWaitAfter: true });
+    await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+    const quickAdd = page.getByRole('button', { name: 'Add server folder', exact: true });
+    fixture.requests.length = 0;
+    await quickAdd.click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (
+              window as unknown as {
+                __nativeFolders: { commands: string[] };
+              }
+            ).__nativeFolders.commands.filter((c) => c === 'choose_managed_directory').length,
+        ),
+      )
+      .toBe(1);
+    await expect(quickAdd).toBeEnabled();
+    await expect(page.getByRole('dialog', { name: 'Add server folder', exact: true })).toHaveCount(
+      0,
+    );
+    expect(fixture.requests.filter((r) => r.startsWith('POST '))).toEqual([]);
+    await page.evaluate((choice) => {
+      (window as unknown as { __nativeFolders: { choice: string } }).__nativeFolders.choice =
+        choice;
+    }, quickFolder);
+    await quickAdd.click();
+    await expect(
+      page
+        .getByRole('combobox', { name: /^Library folder/ })
+        .locator('option')
+        .filter({ hasText: 'Desktop quick folder' }),
+    ).toHaveCount(1);
+    expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
+    expect(
+      fixture.requests.filter((r) => /^POST \/api\/v1\/roots\/[^/]+\/scan$/.test(r)),
+    ).toHaveLength(1);
+    await page.evaluate(() => {
+      (window as unknown as { __nativeFolders: { valid: boolean } }).__nativeFolders.valid = false;
+    });
+    await quickAdd.click();
+    await expect(page.getByRole('alert')).toContainText('Use local managed service');
+    expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
+    await page.evaluate(() => {
+      const state = (
+        window as unknown as {
+          __nativeFolders: { commands: string[]; valid: boolean; choice: string | null };
+        }
+      ).__nativeFolders;
+      state.commands = [];
+      state.valid = true;
+      state.choice = null;
+    });
+    await page.evaluate(() => {
+      (window as unknown as { __nativeFolders: { pending: boolean } }).__nativeFolders.pending =
+        true;
+    });
+    await quickAdd.click();
+    await expect(quickAdd).toBeDisabled();
+    await page.getByRole('button', { name: 'Library', exact: true }).click();
+    await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+    await expect(quickAdd).toBeEnabled();
+    await page.evaluate(async (choice) => {
+      const native = window as unknown as {
+        __finishChoice: (choice: string) => void;
+        __nativeFolders: { pending: boolean; commands: string[] };
+      };
+      native.__nativeFolders.pending = false;
+      native.__finishChoice(choice);
+      // Drain the resolved chooser and validation continuations before checking writes.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      native.__nativeFolders.commands = [];
+    }, folder);
+    await expect(quickAdd).toBeEnabled();
+    expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const add = page.getByRole('button', { name: 'Add folder to Arcade', exact: true });
     fixture.requests.length = 0;

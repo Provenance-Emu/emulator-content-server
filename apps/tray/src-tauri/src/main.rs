@@ -1,6 +1,7 @@
 // Prevents a console window from opening alongside the app on Windows.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod downloads;
 mod local_endpoint;
 mod navigation;
 mod service;
@@ -150,6 +151,30 @@ fn main() {
             for config in app.config().app.windows.clone() {
                 tauri::WebviewWindowBuilder::from_config(app, &config)?
                     .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
+                    .on_download(|webview, event| {
+                        if let tauri::webview::DownloadEvent::Requested { url, destination } = event
+                        {
+                            let Ok(document) = webview.url() else {
+                                return false;
+                            };
+                            let Ok(directory) = webview.app_handle().path().download_dir() else {
+                                return false;
+                            };
+                            // Wry picks a non-colliding filename. Also reject existing
+                            // directory entries such as dangling symlinks before handing
+                            // its native downloader a destination.
+                            return downloads::allowed(
+                                webview.label(),
+                                &document,
+                                &url,
+                                destination,
+                                &directory,
+                            ) && destination
+                                .symlink_metadata()
+                                .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound);
+                        }
+                        true
+                    })
                     .build()?;
             }
             Ok(())

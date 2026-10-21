@@ -25,10 +25,12 @@
   import Upload from './Upload.svelte';
   import FolderPicker from './FolderPicker.svelte';
   import {createLibraryFolders} from './lib/library-folders';
+  import { chooseFolder, type FolderContext } from './lib/folder-selection';
   import BulkMatching from './BulkMatching.svelte';
   let {
     context,
     application,
+    folderContext,
     scope,
     rootId = '',
     rootIntent = 0,
@@ -38,6 +40,7 @@
   }: {
     context: ServerContext;
     application: ApplicationController;
+    folderContext: FolderContext;
     scope: LibraryScope | null;
     rootId?: string;
     rootIntent?: number;
@@ -67,12 +70,35 @@
   let folderAdder = $state.raw<ReturnType<typeof createLibraryFolders>|null>(null);
   let addingFolder = $state(false);
   let addingFolderBusy = $state(false);
-  function addServerFolder() {
-    if(!scope || !('libraryId' in scope) || !owner)return;
+  let folderSelectionFailure = $state<string | null>(null);
+  async function addServerFolder() {
+    if (!scope || !('libraryId' in scope) || !owner || addingFolderBusy || (folderAdder && get(folderAdder).busy)) return;
+    const libraryId = scope.libraryId;
     folderAdder?.dispose();
-    folderAdder=createLibraryFolders(context.client,{...context,onrejected:rejectAccess,onchanged:()=>{void browser.refresh();folderRetry++;}},scope);
-    addingFolder=true;
+    const actionContext: FolderContext = {
+      ...folderContext,
+      isCurrent: () => !disposed && owner && !!scope && 'libraryId' in scope &&
+        scope.libraryId === libraryId && (folderContext.isCurrent?.() ?? true),
+      onchanged: async () => {
+        await folderContext.onchanged?.();
+        if (!disposed) { void browser.refresh(); folderRetry++; }
+      },
+    };
+    const adder = createLibraryFolders(context.client, actionContext, { libraryId });
+    folderAdder = adder;
+    folderSelectionFailure = null;
+    if (!actionContext.folderSelection) { addingFolder = true; return; }
+    addingFolderBusy = true;
+    try {
+      const selected = await chooseFolder(actionContext, 'library-folder');
+      if (selected && !disposed && folderAdder === adder) await adder.add(selected);
+    } catch (error) {
+      if (!disposed && folderAdder === adder) folderSelectionFailure = explain(error);
+    } finally {
+      if (!disposed && folderAdder === adder) addingFolderBusy = false;
+    }
   }
+
   let region: HTMLDivElement;
   const previews = untrack(() =>
     createPreviews(context.client, { authorizationRejected: rejectAccess }),
@@ -198,6 +224,8 @@
       }
       lastNavigation = navigation;
       addingFolder = false;
+      addingFolderBusy = false;
+      folderSelectionFailure = null;
       folderAdder?.dispose();
       folderAdder = null;
       upload = false;
@@ -340,7 +368,7 @@
         {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>{['discovering','running'].includes($bulk.phase) ? 'Matching library…' : $bulk.phase==='idle' ? 'Match library' : 'Matching results'}</button>{/if}
         {#if canCreate}<button type="button" onclick={() => { uploadMode='files'; upload=true; }}>
             Upload files
-          </button><button type="button" onclick={() => { uploadMode='folder'; upload=true; }}>Upload folder</button>{/if}{#if owner && scope && 'libraryId' in scope}<button type="button" onclick={addServerFolder}>Add server folder</button>{/if}{#if owner}<button type="button" onclick={onsettings}>
+          </button><button type="button" onclick={() => { uploadMode='folder'; upload=true; }}>Upload folder</button>{/if}{#if owner && scope && 'libraryId' in scope}<button type="button" disabled={addingFolderBusy || $folderAdder?.busy} onclick={() => void addServerFolder()}>Add server folder</button>{/if}{#if owner}<button type="button" onclick={onsettings}>
             Library settings
           </button>{/if}
         <button
@@ -425,6 +453,7 @@
   {/if}
   {#if folderAdder && owner && scope && 'libraryId' in scope}
     {#each Object.entries($folderAdder?.scanFailures??{}) as [id,message]}<p class="problem" role="alert">Folder saved. Scan failed: {message} <button type="button" onclick={()=>void folderAdder?.retryScan(id)}>Retry scan</button></p>{/each}
+    {#if owner && !addingFolder && (folderSelectionFailure || $folderAdder?.failure)}<p class="problem" role="alert">{folderSelectionFailure || $folderAdder?.failure}</p>{/if}
     {#if addingFolder && owner}<Modal title="Add server folder" busy={addingFolderBusy || $folderAdder?.busy} onclose={()=>addingFolder=false}>
       <FolderPicker client={context.client} contextKey={context.key} origin={context.origin} title="Add server folder" submitLabel="Add folder" onbusy={busy=>addingFolderBusy=busy} oncancel={()=>addingFolder=false} onsubmit={async selection=>{if(!folderAdder)return false;const saved=await folderAdder.add(selection);if(!saved)throw new Error(get(folderAdder).failure??'Folder could not be added.');return true;}} />
     </Modal>{/if}
