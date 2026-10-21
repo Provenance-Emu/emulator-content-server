@@ -48,4 +48,5 @@ service behavior. All-platform resource tests now prevent skipped Windows tests
 from hiding missing fixtures/icons. The workflow accepts an optional OS choice
 for focused retries rather than repeating successful platforms.
 
-Final Windows retry: [Windows native checks](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/39550711851).
+Final Windows retry passed tray checks, all native fixtures and release compilation:
+[Windows native checks](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/39550711851).

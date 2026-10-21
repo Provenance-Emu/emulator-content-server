@@ -97,7 +97,8 @@ unreachable-profile clearing, server-folder fallback registration/scan, close/re
 and browser URL handoff were exercised against disposable generated catalogs.
 11c0206/96444e5/cfb1210 fix Windows compiled-fixture paths, the missing resource ICO
 and a host-separator assumption in a simulated macOS test. Focused macOS/Linux
-native CI passed; final Windows retry is recorded in the acceptance guide. Live
+native CI passed, and the final Windows retry passed tray checks, all 24 native
+fixtures and release compilation. Runs are linked in the acceptance guide. Live
 verified-local directory dialogs remain unverified because the LaunchAgent is
 absent. Native download completion and upload after file-picker selection remain
 unverified due native automation limits; do not relabel Chromium tests as native
