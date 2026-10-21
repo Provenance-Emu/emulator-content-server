@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-managed-endpoint"
+description = "Enables the managed_endpoint command without any pre-configured scope."
+commands.allow = ["managed_endpoint"]
+
+[[permission]]
+identifier = "deny-managed-endpoint"
+description = "Denies the managed_endpoint command without any pre-configured scope."
+commands.deny = ["managed_endpoint"]

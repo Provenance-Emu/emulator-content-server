@@ -2,10 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Bundled status and library windows; remote documents have no native capabilities.",
-  "windows": [
-    "status",
-    "library"
-  ],
+  "windows": ["status", "library"],
   "permissions": [
     "core:default",
     "core:tray:default",
@@ -25,6 +22,9 @@
         }
       ]
     },
-    "process:allow-exit"
+    "process:allow-exit",
+    "allow-service-status",
+    "allow-service-start",
+    "allow-service-stop"
   ]
 }

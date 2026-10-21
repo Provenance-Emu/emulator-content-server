@@ -88,8 +88,23 @@ the legacy unscoped tray token is discarded because its issuing server is unknow
 Signing out in either desktop window clears the other window's private view.
 
 Both windows load bundled documents only, while their shared components access
-server data through the API. Folder registration currently uses the selected
-server's directory chooser; native verified-local selection is a separate follow-on.
+server data through the API. **Use local managed service** verifies the current
+user's fixed OS service, process owner/start identity and exact loopback listener
+before enabling native directory dialogs. **Connect** selects a manual profile;
+typed loopback, discovered and remote servers retain the selected server's folder
+chooser. Unsupported or unverifiable hosts also use that chooser. Windows currently
+uses the server chooser; macOS and Linux require visible service/process/listener
+metadata. Restored managed profiles require another explicit verification.
+
+Native cancellation writes nothing and does not open the server chooser. Native
+confirmation in an existing library registers and scans immediately; creating a
+library stages the selected paths until **Create library**. Native upload-storage
+registration leaves the current write target unchanged. The native bridge rechecks
+identity before and after selection, and shared controllers recheck before API
+writes. Restarted/expired identity asks for verification again, or **Connect** to
+browse server folders. Changing servers discards pending selections. Verification
+IDs expire after 30 minutes; at most 16 remain live. JavaScript receives no generic
+filesystem, process or dialog permissions.
 Downloads use the same authenticated API behavior. The server exposes only ETag
 and Content-Range beyond the normal CORS response-header safelist, to the fixed
 tray origins. Large transfers retain the browser/webview's existing memory limits.
@@ -103,7 +118,12 @@ the browser. The server's library and player script/frame policies are unchanged
 including generated service/process fixture tests and a native binary build.
 Automated Chromium checks exercise bundled-asset login, downloads and two-window
 sign-out at an approved development origin; those checks do not claim native
-webview or cross-platform interactive acceptance.
+webview or cross-platform interactive acceptance. Native-folder Chromium tests
+replace only IPC and use a real temporary HTTP server for writes; they cover
+cancellation, registration, failed verification and the actual server-chooser
+fallback. The local fixed macOS LaunchAgent was absent (launchctl 113), so a real
+managed-service dialog was not exercised. Linux/Windows build and interaction
+acceptance remains unclaimed until the platform workflow and operator checks run.
 
 ## Browser acceptance
 

@@ -1,8 +1,108 @@
 // Prevents a console window from opening alongside the app on Windows.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod local_endpoint;
 mod navigation;
 mod service;
+use std::sync::Mutex;
+use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
+
+type LocalState = Mutex<local_endpoint::Verifications>;
+fn require_library_window(window: &tauri::WebviewWindow) -> Result<(), String> {
+    if window
+        .url()
+        .is_ok_and(|url| navigation::trusted_library(window.label(), &url))
+    {
+        Ok(())
+    } else {
+        Err("Folder dialogs require the bundled library window.".into())
+    }
+}
+#[tauri::command]
+async fn managed_endpoint(window: tauri::WebviewWindow) -> Result<serde_json::Value, String> {
+    require_library_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        require_library_window(&window)?;
+        let state = window.state::<LocalState>();
+        let mut state = state
+            .lock()
+            .map_err(|_| "Local service verification is unavailable.")?;
+        Ok(state.endpoint())
+    })
+    .await
+    .map_err(|_| "Local service verification is unavailable.".to_string())?
+}
+#[tauri::command]
+async fn validate_managed_selection(
+    window: tauri::WebviewWindow,
+    verification_id: String,
+) -> Result<bool, String> {
+    require_library_window(&window)?;
+    if verification_id.len() > 64 {
+        return Ok(false);
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        require_library_window(&window)?;
+        let current = local_endpoint::current().ok();
+        let state = window.state::<LocalState>();
+        let mut state = state
+            .lock()
+            .map_err(|_| "Local service verification is unavailable.")?;
+        Ok(state.validate(&verification_id, current.as_ref()))
+    })
+    .await
+    .map_err(|_| "Local service verification is unavailable.".to_string())?
+}
+#[tauri::command]
+async fn choose_managed_directory(
+    window: tauri::WebviewWindow,
+    verification_id: String,
+    purpose: String,
+) -> Result<Option<String>, String> {
+    require_library_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        require_library_window(&window)?;
+        let state = window.state::<LocalState>();
+        let mut state = state
+            .lock()
+            .map_err(|_| "Local service verification is unavailable.")?;
+        let result = local_endpoint::choose_verified(
+            &mut state,
+            &verification_id,
+            &purpose,
+            || local_endpoint::current().ok(),
+            || {
+                require_library_window(&window)?;
+                let title = if purpose == "library-folder" {
+                    "Add library folder"
+                } else {
+                    "Add upload destination"
+                };
+                window
+                    .dialog()
+                    .file()
+                    .set_parent(&window)
+                    .set_title(title)
+                    .blocking_pick_folder()
+                    .map(|path| {
+                        path.into_path()
+                            .map_err(|_| "The selected folder path is unavailable.".into())
+                            .and_then(|path| {
+                                path.into_os_string()
+                                    .into_string()
+                                    .map_err(|_| "The selected folder path is unavailable.".into())
+                            })
+                    })
+                    .transpose()
+            },
+        )?;
+        require_library_window(&window)?;
+        Ok(result)
+    })
+    .await
+    .map_err(|_| "Local service verification is unavailable.".to_string())?
+}
 
 async fn service_command(action: service::Action) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || service::execute(action))
@@ -44,6 +144,16 @@ fn require_status_window(window: &tauri::WebviewWindow) -> Result<(), String> {
 // data directory, credentials, server address, or arbitrary command execution.
 fn main() {
     tauri::Builder::default()
+        .manage(LocalState::default())
+        .setup(|app| {
+            // Build only the two configured windows, with explicit denial of popup inheritance.
+            for config in app.config().app.windows.clone() {
+                tauri::WebviewWindowBuilder::from_config(app, &config)?
+                    .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
+                    .build()?;
+            }
+            Ok(())
+        })
         .plugin(
             tauri::plugin::Builder::<tauri::Wry>::new("trusted-navigation")
                 .on_navigation(|webview, url| {
@@ -61,8 +171,12 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             service_status,
             service_start,
-            service_stop
+            service_stop,
+            managed_endpoint,
+            choose_managed_directory,
+            validate_managed_selection
         ])
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .run(tauri::generate_context!())

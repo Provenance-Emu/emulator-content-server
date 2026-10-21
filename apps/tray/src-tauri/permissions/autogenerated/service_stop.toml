@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-service-stop"
+description = "Enables the service_stop command without any pre-configured scope."
+commands.allow = ["service_stop"]
+
+[[permission]]
+identifier = "deny-service-stop"
+description = "Denies the service_stop command without any pre-configured scope."
+commands.deny = ["service_stop"]

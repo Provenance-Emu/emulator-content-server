@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "managed-folders",
+  "description": "Fixed verified-local folder IPC for the bundled library document only. No generic dialog or filesystem access.",
+  "windows": ["library"],
+  "permissions": [
+    "allow-managed-endpoint",
+    "allow-choose-managed-directory",
+    "allow-validate-managed-selection"
+  ]
+}

@@ -19,7 +19,8 @@
         "resizable": true,
         "visible": false,
         "skipTaskbar": true,
-        "decorations": true
+        "decorations": true,
+        "create": false
       },
       {
         "label": "library",
@@ -31,7 +32,8 @@
         "minHeight": 480,
         "resizable": true,
         "visible": false,
-        "decorations": true
+        "decorations": true,
+        "create": false
       }
     ],
     "security": {
@@ -46,16 +48,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "app",
-      "dmg",
-      "msi",
-      "deb",
-      "appimage"
-    ],
-    "icon": [
-      "icons/icon.png"
-    ],
+    "targets": ["app", "dmg", "msi", "deb", "appimage"],
+    "icon": ["icons/icon.png"],
     "macOS": {
       "minimumSystemVersion": "11.0"
     }

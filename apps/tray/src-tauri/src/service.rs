@@ -26,8 +26,8 @@ pub struct Service {
     installed: bool,
 }
 pub struct Reply {
-    code: i32,
-    stdout: String,
+    pub(crate) code: i32,
+    pub(crate) stdout: String,
 }
 
 const MANAGER_ERROR: &str = "Could not contact or control your per-user service manager.";
@@ -242,7 +242,7 @@ fn required(reply: &Reply) -> Result<(), String> {
     }
 }
 
-fn command(program: &str, args: &[&str]) -> Result<Reply, String> {
+pub(crate) fn command(program: &str, args: &[&str]) -> Result<Reply, String> {
     let mut cmd = Command::new(program);
     cmd.args(args)
         .stdin(Stdio::null())
@@ -259,7 +259,7 @@ fn command(program: &str, args: &[&str]) -> Result<Reply, String> {
     // Bound what is retained and never return raw output as an error message.
     let reader = thread::spawn(move || {
         let mut text = String::new();
-        let _ = stdout.take(128 * 1024).read_to_string(&mut text);
+        let _ = stdout.take(128 * 1024 + 1).read_to_string(&mut text);
         text
     });
     let deadline = Instant::now() + Duration::from_secs(15);

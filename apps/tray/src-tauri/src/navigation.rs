@@ -22,9 +22,31 @@ pub fn trusted_document(url: &Url) -> bool {
         && matches!(url.path(), "/" | "/index.html" | "/library.html")
 }
 
+/// Dialog IPC belongs only to this fixed document in this fixed window.
+pub fn trusted_library(label: &str, url: &Url) -> bool {
+    label == "library" && trusted_document(url) && url.path() == "/library.html"
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn directory_commands_require_the_library_document_and_window() {
+        for (label, url) in [
+            ("status", "tauri://localhost/library.html"),
+            ("library", "tauri://localhost/index.html"),
+            ("library", "tauri://localhost/"),
+            ("library", "https://remote.example/library.html"),
+            ("library", "tauri://localhost/library.html?remote=1"),
+            ("other", "tauri://localhost/library.html"),
+        ] {
+            assert!(!trusted_library(label, &Url::parse(url).unwrap()));
+        }
+        assert!(trusted_library(
+            "library",
+            &Url::parse("tauri://localhost/library.html").unwrap()
+        ));
+    }
     #[test]
     fn privileged_documents_are_fixed_and_bundled() {
         for url in [
