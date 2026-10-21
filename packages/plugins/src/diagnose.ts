@@ -30,6 +30,14 @@ export function diagnose(manifest: PluginManifest, input: DiagnosisInput = {}): 
         : 'wasm module is absent',
     );
   }
+  if (manifest.kind === 'provider' || manifest.kind === 'manager') {
+    lines.push(input.moduleExists ? 'entry module is present' : 'entry module is absent');
+    if (manifest.provider)
+      lines.push(
+        `provides ${manifest.provider.capabilities.join(', ')}; network ${manifest.provider.network ? 'declared' : 'not declared'}`,
+      );
+    if (manifest.manager) lines.push(`coordinates ${manifest.manager.providers.length} providers`);
+  }
   if (manifest.kind === 'feed') {
     const count = manifest.feed?.apps.length ?? 0;
     lines.push(`publishes ${count} app${count === 1 ? '' : 's'}: ${manifest.apps.join(', ')}`);

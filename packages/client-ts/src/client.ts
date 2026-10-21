@@ -21,11 +21,14 @@ import type {
   LibraryDraft,
   LibraryList,
   Manifest,
+  MatchingOptions,
+  MatchingPluginList,
   PlayerCoreDescriptor,
   Problem,
   SessionResponse,
   SourceFileList,
   SourceGroup,
+  SourceMatches,
   StorageLocation,
   StorageLocationDraft,
   StorageLocationList,
@@ -395,6 +398,93 @@ export class ContentClient {
   /** Files found by a scan. The response names them and does not include a filesystem path. */
   sources(): Promise<SourceFileList> {
     return this.getJson('/api/v1/sources');
+  }
+
+  async matchingPlugins(): Promise<MatchingPluginList> {
+    const result = await this.getJson<MatchingPluginList>('/api/v1/matching/plugins');
+    if (!Array.isArray(result.plugins) || result.plugins.length > 64)
+      throw new Error('Invalid plugin registry');
+    return result;
+  }
+
+  async sourceMatches(
+    id: string,
+    options: MatchingOptions = {},
+    signal?: AbortSignal,
+  ): Promise<SourceMatches> {
+    const response = await fetch(this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches`), {
+      method: 'POST',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify(options),
+      signal,
+    });
+    if (!response.ok) throw await failure(response);
+    const result = (await response.json()) as SourceMatches;
+    if (
+      result.sourceId !== id ||
+      typeof result.requestId !== 'string' ||
+      !Array.isArray(result.candidates) ||
+      result.candidates.length > 100 ||
+      !Array.isArray(result.plugins) ||
+      result.plugins.length > 64 ||
+      !Array.isArray(result.problems)
+    )
+      throw new Error('Invalid matching response');
+    const ids = new Set<string>();
+    for (const c of result.candidates) {
+      if (
+        !c ||
+        typeof c.id !== 'string' ||
+        ids.has(c.id) ||
+        typeof c.providerId !== 'string' ||
+        !['rom', 'metadata', 'artwork', 'patch', 'cheats'].includes(c.kind) ||
+        typeof c.title !== 'string' ||
+        c.title.length > 512 ||
+        !['checksum', 'local', 'name'].includes(c.confidence) ||
+        !c.metadata ||
+        typeof c.metadata !== 'object' ||
+        Array.isArray(c.metadata) ||
+        Object.keys(c.metadata).length > 24 ||
+        Object.values(c.metadata).some((v) => typeof v !== 'string' || v.length > 4096)
+      )
+        throw new Error('Invalid matching candidate');
+      ids.add(c.id);
+    }
+    return result;
+  }
+
+  async matchingArtwork(
+    sourceId: string,
+    requestId: string,
+    candidateId: string,
+    signal?: AbortSignal,
+  ): Promise<Blob> {
+    const response = await fetch(
+      this.url(
+        `/api/v1/sources/${encodeURIComponent(sourceId)}/matches/${encodeURIComponent(requestId)}/artwork/${encodeURIComponent(candidateId)}`,
+      ),
+      { headers: this.headers(), signal },
+    );
+    if (!response.ok) throw await failure(response);
+    const type = response.headers.get('content-type')?.split(';')[0];
+    if (!type || !['image/png', 'image/jpeg', 'image/webp'].includes(type))
+      throw new Error('Unsupported artwork');
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Artwork unavailable');
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const read = await reader.read();
+        if (read.done) break;
+        size += read.value.byteLength;
+        if (size > 2 * 1024 * 1024) throw new Error('Artwork too large');
+        chunks.push(new Uint8Array(read.value));
+      }
+    } finally {
+      await reader.cancel().catch(() => undefined);
+    }
+    return new Blob(chunks, { type });
   }
 
   async sourceGroup(id: string): Promise<SourceGroup> {

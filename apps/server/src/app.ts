@@ -25,6 +25,8 @@ import { registerWebDavCredentials } from './webdav-credentials.js';
 
 export interface OpenServerOptions {
   dataDir: string;
+  /** Trusted operator-installed matching provider and manager directory. */
+  matchingPluginsDir?: string;
   /** Optional operator-owned absolute native decoder path; omitted means ZIP only. */
   chdmanPath?: string;
   /** Process-runner injection for portable decoder tests. */
@@ -65,6 +67,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
   }
   const context: ServerContext = {
     catalog,
+    ...(options.matchingPluginsDir ? { matchingPluginsDir: options.matchingPluginsDir } : {}),
     player,
     dataDir,
     webdavEnabled: options.webdavEnabled === true,

@@ -77,6 +77,7 @@ import {
 import { registerLibraryBrowse } from './library-browse.js';
 import { accessView } from './local-access.js';
 import { registerSourceGroups } from './source-groups.js';
+import { registerSourceMatching } from './source-matching.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
@@ -95,6 +96,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   const { catalog } = context;
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
+  registerSourceMatching(app, context);
 
   const uploadMutations = new Set<string>();
   async function mutateUpload<T>(

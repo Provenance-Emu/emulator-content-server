@@ -394,6 +394,92 @@ public struct SourceFile: Codable, Equatable, Sendable {
     }
 }
 
+public struct MatchingPlugin: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var kind: String
+    public var capabilities: [String]
+    public var network: Bool
+
+    public init(id: String, name: String, kind: String, capabilities: [String], network: Bool) {
+        self.id = id
+        self.name = name
+        self.kind = kind
+        self.capabilities = capabilities
+        self.network = network
+    }
+}
+
+public struct MatchingPluginList: Codable, Equatable, Sendable {
+    public var plugins: [MatchingPlugin]
+
+    public init(plugins: [MatchingPlugin]) {
+        self.plugins = plugins
+    }
+}
+
+public struct MatchingOptions: Codable, Equatable, Sendable {
+    public var online: Bool?
+    public var checksum: Bool?
+    public var providerIds: [String]?
+    public var managerId: String?
+
+    public init(online: Bool? = nil, checksum: Bool? = nil, providerIds: [String]? = nil, managerId: String? = nil) {
+        self.online = online
+        self.checksum = checksum
+        self.providerIds = providerIds
+        self.managerId = managerId
+    }
+}
+
+public struct MatchingCandidate: Codable, Equatable, Sendable {
+    public var id: String
+    public var providerId: String
+    public var kind: String
+    public var title: String
+    public var confidence: String
+    public var metadata: [String: String]
+    public var fileId: String?
+    public var url: String?
+
+    public init(id: String, providerId: String, kind: String, title: String, confidence: String, metadata: [String: String], fileId: String? = nil, url: String? = nil) {
+        self.id = id
+        self.providerId = providerId
+        self.kind = kind
+        self.title = title
+        self.confidence = confidence
+        self.metadata = metadata
+        self.fileId = fileId
+        self.url = url
+    }
+}
+
+public struct MatchingProblem: Codable, Equatable, Sendable {
+    public var providerId: String
+    public var code: String
+
+    public init(providerId: String, code: String) {
+        self.providerId = providerId
+        self.code = code
+    }
+}
+
+public struct SourceMatches: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var requestId: String
+    public var plugins: [MatchingPlugin]
+    public var candidates: [MatchingCandidate]
+    public var problems: [MatchingProblem]
+
+    public init(sourceId: String, requestId: String, plugins: [MatchingPlugin], candidates: [MatchingCandidate], problems: [MatchingProblem]) {
+        self.sourceId = sourceId
+        self.requestId = requestId
+        self.plugins = plugins
+        self.candidates = candidates
+        self.problems = problems
+    }
+}
+
 public struct SourceGroupFile: Codable, Equatable, Sendable {
     public var id: String
     public var name: String

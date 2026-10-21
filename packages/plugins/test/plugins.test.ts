@@ -449,3 +449,41 @@ test('a custom connector entry is loaded from inside its directory', async () =>
   );
   await rm(dir, { recursive: true, force: true });
 });
+
+test('provider and manager manifests use the existing plugin engine without app coupling', () => {
+  const provider = parseManifest({
+    id: 'home.metadata.test',
+    name: 'Metadata',
+    kind: 'provider',
+    version: '1.0.0',
+    engine: 'ecs.plugin/1',
+    entry: 'provider.mjs',
+    provider: { capabilities: ['metadata', 'artwork', 'patch'], network: true },
+  });
+  assert.equal(provider.kind, 'provider');
+  assert.deepEqual(
+    (provider as unknown as { provider: { capabilities: string[] } }).provider.capabilities,
+    ['metadata', 'artwork', 'patch'],
+  );
+  const manager = parseManifest({
+    id: 'home.manager.test',
+    name: 'Manager',
+    kind: 'manager',
+    version: '1.0.0',
+    engine: 'ecs.plugin/1',
+    entry: 'manager.mjs',
+    manager: { providers: ['home.metadata.test'] },
+  });
+  assert.equal(manager.kind, 'manager');
+  assert.throws(() =>
+    parseManifest({
+      id: 'home.metadata.bad',
+      name: 'Bad',
+      kind: 'provider',
+      version: '1',
+      engine: 'ecs.plugin/1',
+      entry: '../outside.mjs',
+      provider: { capabilities: ['metadata'], network: true },
+    }),
+  );
+});

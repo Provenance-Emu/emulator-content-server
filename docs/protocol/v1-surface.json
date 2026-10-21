@@ -26,6 +26,7 @@
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
     "GET /api/v1/libraries",
+    "GET /api/v1/matching/plugins",
     "GET /api/v1/player/core",
     "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
@@ -33,6 +34,7 @@
     "GET /api/v1/sources/:sourceId/bundle",
     "GET /api/v1/sources/:sourceId/content",
     "GET /api/v1/sources/:sourceId/group",
+    "GET /api/v1/sources/:sourceId/matches/:requestId/artwork/:candidateId",
     "GET /api/v1/storage-locations",
     "GET /api/v1/systems",
     "GET /api/v1/uploads/:uploadId",
@@ -56,6 +58,7 @@
     "POST /api/v1/libraries",
     "POST /api/v1/roots",
     "POST /api/v1/roots/:rootId/scan",
+    "POST /api/v1/sources/:sourceId/matches",
     "POST /api/v1/storage-locations",
     "POST /api/v1/uploads",
     "POST /api/v1/uploads/:uploadId/complete",
@@ -449,6 +452,85 @@
         "rootId",
         "size",
         "systemId"
+      ]
+    },
+    "MatchingPlugin": {
+      "properties": [
+        "capabilities",
+        "id",
+        "kind",
+        "name",
+        "network"
+      ],
+      "required": [
+        "capabilities",
+        "id",
+        "kind",
+        "name",
+        "network"
+      ]
+    },
+    "MatchingPluginList": {
+      "properties": [
+        "plugins"
+      ],
+      "required": [
+        "plugins"
+      ]
+    },
+    "MatchingOptions": {
+      "properties": [
+        "checksum",
+        "managerId",
+        "online",
+        "providerIds"
+      ],
+      "required": []
+    },
+    "MatchingCandidate": {
+      "properties": [
+        "confidence",
+        "fileId",
+        "id",
+        "kind",
+        "metadata",
+        "providerId",
+        "title",
+        "url"
+      ],
+      "required": [
+        "confidence",
+        "id",
+        "kind",
+        "metadata",
+        "providerId",
+        "title"
+      ]
+    },
+    "MatchingProblem": {
+      "properties": [
+        "code",
+        "providerId"
+      ],
+      "required": [
+        "code",
+        "providerId"
+      ]
+    },
+    "SourceMatches": {
+      "properties": [
+        "candidates",
+        "plugins",
+        "problems",
+        "requestId",
+        "sourceId"
+      ],
+      "required": [
+        "candidates",
+        "plugins",
+        "problems",
+        "requestId",
+        "sourceId"
       ]
     },
     "SourceGroupFile": {

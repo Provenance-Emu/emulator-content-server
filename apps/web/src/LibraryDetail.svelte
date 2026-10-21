@@ -8,18 +8,21 @@
   import { bytes } from './lib/format';
   import { sourcePlayHref } from './player/links';
   import Files from './Files.svelte';
+  import MatchingPanel from './MatchingPanel.svelte';
   import Upload from './Upload.svelte';
   import Modal from './components/Modal.svelte';
   let {
     controller,
     context,
     playerCore,
+    owner,
     onback,
     onchanged,
   }: {
     controller: DetailController;
     context: ServerContext;
     playerCore: PlayerCoreDescriptor | null;
+    owner: boolean;
     onback: () => void;
     onchanged: () => void;
   } = $props();
@@ -143,6 +146,7 @@
         This file is unavailable while its server folder is offline.
       </p>{/if}
   </section>
+  {#if owner}{#key $controller.source.id}<MatchingPanel {context} sourceId={$controller.source.id} sourceName={$controller.source.name} />{/key}{/if}
 {:else if $controller.item}<Files
     detailState={$controller}
     {playerCore}

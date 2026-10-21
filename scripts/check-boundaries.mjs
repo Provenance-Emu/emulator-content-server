@@ -24,6 +24,7 @@ const allowed = {
     '@ecs/protocol',
     '@ecs/storage',
     '@ecs/webdav',
+    '@ecs/plugins',
   ],
   '@ecs/plugin-host': ['@ecs/client', '@ecs/plugins', '@ecs/protocol', '@ecs/signing'],
   '@provenance-content/server': [

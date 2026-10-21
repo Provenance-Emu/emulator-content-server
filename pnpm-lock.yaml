@@ -68,6 +68,9 @@ importers:
       '@ecs/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@ecs/plugins':
+        specifier: workspace:*
+        version: link:../../packages/plugins
       '@ecs/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol

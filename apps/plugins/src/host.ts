@@ -1,5 +1,5 @@
 import { accessSync, constants, statSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, open, writeFile } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
 import { ContentClient } from '@ecs/client';
 import {
@@ -16,6 +16,8 @@ import {
   readSecrets,
   renderAltStoreSource,
 } from '@ecs/plugins';
+import type { MatchingInput } from '@ecs/plugins/matching';
+import { matchingJob } from '@ecs/plugins/matching-host';
 import { publishedFeeds, serveFeeds } from './publish.js';
 import { reviewSignerFiles } from './sign.js';
 import { syncItem } from './sync.js';
@@ -62,6 +64,36 @@ export async function run(
       return 0;
     }
     const directory = flag(argv, '--plugins') ?? env.ECS_PLUGINS ?? './plugins';
+    if (command === 'providers') {
+      const reply = await matchingJob({ operation: 'list', directory });
+      for (const plugin of reply.plugins)
+        io.log(
+          `${plugin.kind}\t${plugin.id}\t${plugin.capabilities.join(',')}\t${plugin.network ? 'online' : 'local'}`,
+        );
+      return 0;
+    }
+    if (command === 'match') {
+      const path = flag(argv, '--input');
+      if (!path) throw new PluginError('invalid-manifest', 'match requires --input <JSON file>');
+      const handle = await open(path, 'r');
+      let input: MatchingInput;
+      try {
+        if ((await handle.stat()).size > 256 * 1024) throw new Error('Matching input too large');
+        input = JSON.parse(await handle.readFile('utf8'));
+      } finally {
+        await handle.close();
+      }
+      input.online = argv.includes('--online');
+      const managerId = flag(argv, '--manager');
+      const reply = await matchingJob({
+        operation: 'match',
+        directory,
+        input,
+        ...(managerId ? { managerId } : {}),
+      });
+      io.log(JSON.stringify(reply));
+      return 0;
+    }
     if (command === 'list') return await list(directory, io);
     if (command === 'doctor') return await doctor(directory, env, io);
     if (command === 'feed') return await feed(directory, flag(argv, '--out'), io);
@@ -306,6 +338,8 @@ function flag(argv: readonly string[], name: string): string | undefined {
 
 const HELP = [
   'ecs-plugins list --plugins <dir>',
+  'ecs-plugins providers --plugins <dir>',
+  'ecs-plugins match --plugins <dir> --input <JSON file> [--online] [--manager <id>]',
   'ecs-plugins doctor --plugins <dir>',
   'ecs-plugins feed --plugins <dir> --out <dir>',
   'ecs-plugins serve --plugins <dir> [--port 8480] [--allow-lan]',

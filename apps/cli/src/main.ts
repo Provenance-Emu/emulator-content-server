@@ -159,10 +159,12 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   const listen = listenConfig();
   const uiDir = await webAssets(value('--ui'));
   const decoder = chdmanPath();
+  const matchingDirectory = value('--matching-plugins');
   let server: Awaited<ReturnType<typeof openServer>>;
   try {
     server = await openServer({
       dataDir,
+      ...(matchingDirectory ? { matchingPluginsDir: resolve(matchingDirectory) } : {}),
       ...(decoder === undefined ? {} : { chdmanPath: decoder }),
       displayName,
       limits: limitsFromEnv(process.env),
@@ -347,7 +349,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>] [--matching-plugins <dir>]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data

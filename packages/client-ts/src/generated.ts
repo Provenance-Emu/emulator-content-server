@@ -196,6 +196,49 @@ export interface SourceFile {
   contentPath: string;
 }
 
+export interface MatchingPlugin {
+  id: string;
+  name: string;
+  kind: string;
+  capabilities: string[];
+  network: boolean;
+}
+
+export interface MatchingPluginList {
+  plugins: MatchingPlugin[];
+}
+
+export interface MatchingOptions {
+  online?: boolean;
+  checksum?: boolean;
+  providerIds?: string[];
+  managerId?: string;
+}
+
+export interface MatchingCandidate {
+  id: string;
+  providerId: string;
+  kind: string;
+  title: string;
+  confidence: string;
+  metadata: Record<string, unknown>;
+  fileId?: string;
+  url?: string;
+}
+
+export interface MatchingProblem {
+  providerId: string;
+  code: string;
+}
+
+export interface SourceMatches {
+  sourceId: string;
+  requestId: string;
+  plugins: MatchingPlugin[];
+  candidates: MatchingCandidate[];
+  problems: MatchingProblem[];
+}
+
 export interface SourceGroupFile {
   id: string;
   name: string;

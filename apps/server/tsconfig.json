@@ -7,13 +7,32 @@
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "references": [
-    { "path": "../../packages/auth" },
-    { "path": "../../packages/client-ts" },
-    { "path": "../../packages/database" },
-    { "path": "../../packages/discovery" },
-    { "path": "../../packages/domain" },
-    { "path": "../../packages/protocol" },
-    { "path": "../../packages/storage" },
-    { "path": "../../packages/webdav" }
+    {
+      "path": "../../packages/auth"
+    },
+    {
+      "path": "../../packages/client-ts"
+    },
+    {
+      "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/discovery"
+    },
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/protocol"
+    },
+    {
+      "path": "../../packages/storage"
+    },
+    {
+      "path": "../../packages/webdav"
+    },
+    {
+      "path": "../../packages/plugins"
+    }
   ]
 }

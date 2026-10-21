@@ -14,11 +14,15 @@ export {
   CONNECTOR_SCHEMES,
   type ConnectorScheme,
   HTTP_SCHEMES,
+  type ManagerConfig,
   MOUNT_SCHEMES,
   PLUGIN_ENGINE,
   PLUGIN_KINDS,
   type PluginKind,
   type PluginManifest,
+  PROVIDER_CAPABILITIES,
+  type ProviderCapability,
+  type ProviderConfig,
   parseManifest,
 } from './manifest.js';
 export { openMount } from './mount.js';

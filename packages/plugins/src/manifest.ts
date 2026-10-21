@@ -9,7 +9,15 @@ export { assertClaims, claims } from './claims.js';
 
 export const PLUGIN_ENGINE = 'ecs.plugin/1';
 
-export const PLUGIN_KINDS = ['connector', 'player', 'feed', 'signer', 'jit'] as const;
+export const PLUGIN_KINDS = [
+  'connector',
+  'player',
+  'feed',
+  'signer',
+  'jit',
+  'provider',
+  'manager',
+] as const;
 export type PluginKind = (typeof PLUGIN_KINDS)[number];
 
 export const CONNECTOR_SCHEMES = [
@@ -82,6 +90,18 @@ export interface JitConfig {
   tool: 'pymobiledevice3';
 }
 
+export const PROVIDER_CAPABILITIES = ['rom', 'metadata', 'artwork', 'patch', 'cheats'] as const;
+export type ProviderCapability = (typeof PROVIDER_CAPABILITIES)[number];
+
+export interface ProviderConfig {
+  capabilities: ProviderCapability[];
+  network: boolean;
+}
+
+export interface ManagerConfig {
+  providers: string[];
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -95,6 +115,8 @@ export interface PluginManifest {
   feed?: FeedDraft;
   signer?: SignerConfig;
   jit?: JitConfig;
+  provider?: ProviderConfig;
+  manager?: ManagerConfig;
 }
 
 export function parseManifest(value: unknown): PluginManifest {
@@ -127,7 +149,31 @@ export function parseManifest(value: unknown): PluginManifest {
   if (kind === 'feed') manifest.feed = parseFeed(record.feed, apps);
   if (kind === 'signer') manifest.signer = parseSigner(record.signer);
   if (kind === 'jit') manifest.jit = parseJit(record.jit);
-  if (kind !== 'connector' && apps.length === 0) {
+  if (kind === 'provider' || kind === 'manager') {
+    if (!entry) throw new PluginError('invalid-manifest', `${kind} plugins need an entry module`);
+    if (kind === 'provider') {
+      const config = object(record.provider, 'provider');
+      rejectUnknown(config, ['capabilities', 'network'], 'provider');
+      const capabilities = stringArray(config.capabilities, 'capabilities').map((capability) =>
+        oneOf(capability, PROVIDER_CAPABILITIES, 'capability'),
+      );
+      if (capabilities.length === 0 || new Set(capabilities).size !== capabilities.length) {
+        throw new PluginError('invalid-manifest', 'A provider lists unique capabilities');
+      }
+      manifest.provider = { capabilities, network: booleanField(config, 'network') };
+    } else {
+      const config = object(record.manager, 'manager');
+      rejectUnknown(config, ['providers'], 'manager');
+      const providers = stringArray(config.providers, 'providers').map((id) =>
+        identifier(id, 'Provider id'),
+      );
+      if (providers.length > 32 || new Set(providers).size !== providers.length) {
+        throw new PluginError('invalid-manifest', 'A manager lists at most 32 unique providers');
+      }
+      manifest.manager = { providers };
+    }
+  }
+  if (!['connector', 'provider', 'manager'].includes(kind) && apps.length === 0) {
     throw new PluginError('invalid-manifest', `${kind} plugins must list the apps they serve`);
   }
   return manifest;
@@ -361,7 +407,13 @@ function shortText(value: string, label: string, max: number): string {
 }
 
 function relativeFile(value: string): string {
-  if (value.startsWith('/') || value.includes('\\') || value.split('/').includes('..')) {
+  if (
+    isAbsolute(value) ||
+    /^[A-Za-z]:/.test(value) ||
+    value.includes('\0') ||
+    value.includes('\\') ||
+    value.split('/').some((part) => part === '..' || part === '.')
+  ) {
     throw new PluginError(
       'invalid-manifest',
       'A plugin path must stay inside the plugin directory',

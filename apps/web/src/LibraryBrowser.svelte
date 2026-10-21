@@ -269,6 +269,7 @@
     {#if !libraries.length}<p>No libraries are available to this account.</p>{/if}
   {:else if detail}<LibraryDetail
       controller={detail}
+      {owner}
       {context}
       {playerCore}
       onback={() => void back()}

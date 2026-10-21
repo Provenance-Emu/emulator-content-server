@@ -496,6 +496,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SourceFileList'
+  /api/v1/matching/plugins:
+    get:
+      operationId: matchingPlugins
+      responses:
+        '200':
+          description: Owner-only provider and manager registry. Installed modules are not executed by discovery.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchingPluginList' }
+  /api/v1/sources/{sourceId}/matches:
+    post:
+      operationId: findSourceMatches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchingOptions' }
+      responses:
+        '200':
+          description: Owner-requested suggestions from local and optionally online providers. Original files and catalog metadata are unchanged. Preview expires after fifteen minutes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceMatches' }
+  /api/v1/sources/{sourceId}/matches/{requestId}/artwork/{candidateId}:
+    get:
+      operationId: matchingArtwork
+      responses:
+        '200':
+          description: Owner-authorized raster preview of a candidate in a live matching request. No remote credentials or redirects.
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
   /api/v1/sources/{sourceId}/group:
     get:
       operationId: sourceGroup
@@ -823,6 +859,69 @@ components:
         groupFileCount: { type: integer, minimum: 0, maximum: 512 }
         groupError: { type: [string, 'null'] }
         contentPath: { type: string }
+    MatchingPlugin:
+      type: object
+      required: [id, name, kind, capabilities, network]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        kind: { type: string, enum: [provider, manager] }
+        capabilities:
+          type: array
+          items: { type: string, enum: [rom, metadata, artwork, patch, cheats] }
+        network: { type: boolean }
+    MatchingPluginList:
+      type: object
+      required: [plugins]
+      properties:
+        plugins:
+          type: array
+          items: { $ref: '#/components/schemas/MatchingPlugin' }
+    MatchingOptions:
+      type: object
+      properties:
+        online: { type: boolean, default: false }
+        checksum: { type: boolean, default: false }
+        providerIds:
+          type: array
+          maxItems: 32
+          items: { type: string }
+        managerId: { type: string }
+    MatchingCandidate:
+      type: object
+      required: [id, providerId, kind, title, confidence, metadata]
+      properties:
+        id: { type: string }
+        providerId: { type: string }
+        kind: { type: string, enum: [rom, metadata, artwork, patch, cheats] }
+        title: { type: string }
+        confidence: { type: string, enum: [checksum, local, name] }
+        metadata:
+          type: object
+          additionalProperties: { type: string }
+        fileId: { type: string }
+        url: { type: string }
+    MatchingProblem:
+      type: object
+      required: [providerId, code]
+      properties:
+        providerId: { type: string }
+        code: { type: string, enum: [provider-failed] }
+    SourceMatches:
+      type: object
+      required: [sourceId, requestId, plugins, candidates, problems]
+      properties:
+        sourceId: { type: string }
+        requestId: { type: string }
+        plugins:
+          type: array
+          items: { $ref: '#/components/schemas/MatchingPlugin' }
+        candidates:
+          type: array
+          items: { $ref: '#/components/schemas/MatchingCandidate' }
+        problems:
+          type: array
+          items: { $ref: '#/components/schemas/MatchingProblem' }
     SourceGroupFile:
       type: object
       required: [id, name, size, availability]

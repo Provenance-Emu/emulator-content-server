@@ -6,6 +6,7 @@ import type { PlayerAssets } from './player-assets.js';
 
 export interface ServerContext {
   player?: PlayerAssets;
+  matchingPluginsDir?: string;
   catalog: CatalogDatabase;
   dataDir: string;
   webdavEnabled: boolean;

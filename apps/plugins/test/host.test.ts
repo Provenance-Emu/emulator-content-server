@@ -420,3 +420,31 @@ function profile(pattern: string) {
     allowsDebugging: true,
   };
 }
+
+test('matching CLI lists built-in providers and runs local matching without a server token', async () => {
+  const base = await mkdtemp(join(tmpdir(), 'ecs-cli-match-'));
+  const lines: string[] = [];
+  const io = { log: (line: string) => lines.push(line), error: (line: string) => lines.push(line) };
+  try {
+    assert.equal(await run(['node', 'ecs-plugins', 'providers', '--plugins', base], {}, io), 0);
+    assert.ok(lines.some((line) => line.includes('org.ecs.local')));
+    lines.length = 0;
+    const input = join(base, 'input.json');
+    await writeFile(
+      input,
+      JSON.stringify({
+        name: 'Game.rom',
+        systemId: null,
+        companions: [{ id: 'art', name: 'Game.png' }],
+      }),
+    );
+    assert.equal(
+      await run(['node', 'ecs-plugins', 'match', '--plugins', base, '--input', input], {}, io),
+      0,
+      lines.join('\n'),
+    );
+    assert.equal(JSON.parse(lines.join('\n')).result.candidates[0].kind, 'artwork');
+  } finally {
+    await rm(base, { recursive: true, force: true });
+  }
+});
