@@ -10,6 +10,8 @@ export interface SessionStore {
   load(): StoredSession | null;
   save(value: StoredSession): void;
   clear(): void;
+  /** Optional cross-window notification; subscribers load the current scoped value. */
+  subscribe?(listener: () => void): () => void;
 }
 
 function browserOrigin(): string | undefined {

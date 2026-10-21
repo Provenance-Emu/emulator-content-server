@@ -20,10 +20,22 @@
         "visible": false,
         "skipTaskbar": true,
         "decorations": true
+      },
+      {
+        "label": "library",
+        "title": "Content Server Library",
+        "url": "library.html",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 620,
+        "minHeight": 480,
+        "resizable": true,
+        "visible": false,
+        "decorations": true
       }
     ],
     "security": {
-      "csp": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset:; connect-src 'self' ipc: http://ipc.localhost http: https:"
+      "csp": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset:; media-src blob:; connect-src 'self' ipc: http://ipc.localhost http: https:"
     },
     "trayIcon": {
       "id": "status",
@@ -34,8 +46,16 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg", "msi", "deb", "appimage"],
-    "icon": ["icons/icon.png"],
+    "targets": [
+      "app",
+      "dmg",
+      "msi",
+      "deb",
+      "appimage"
+    ],
+    "icon": [
+      "icons/icon.png"
+    ],
     "macOS": {
       "minimumSystemVersion": "11.0"
     }

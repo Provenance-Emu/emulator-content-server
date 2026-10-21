@@ -111,6 +111,7 @@ async function createFixture() {
       client,
       session,
       readerSession,
+      password,
       library,
       empty,
       game,

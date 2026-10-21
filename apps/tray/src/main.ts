@@ -1,15 +1,18 @@
 import '@ecs/web/app.css';
 import { invoke } from '@tauri-apps/api/core';
 import { mount } from 'svelte';
+import { createDesktopSelection } from './lib/application';
 import { createServiceControl } from './lib/service';
 import { insideTauri, installTray } from './lib/tray';
 import { ServerWatch } from './lib/watch.svelte';
+import { openExternal, showLibrary } from './lib/windows';
 import Panel from './Panel.svelte';
 
 const target = document.getElementById('app');
 if (!target) throw new Error('The page is missing its mount point');
 
-const watch = new ServerWatch();
+const selection = createDesktopSelection({ openExternal });
+const watch = new ServerWatch(selection);
 const native = insideTauri();
 const service = createServiceControl(
   native ? (command) => invoke<string>(command) : null,
@@ -38,17 +41,12 @@ mount(Panel, {
     watch,
     service,
     trayFailure,
-    canOpen: (url: string) => {
-      // Inside the shell the interface belongs in the real browser, where the
-      // operator's session and password manager already are. In a plain browser
-      // this file is being developed, so a tab is the honest answer.
-      if (native) void import('@tauri-apps/plugin-opener').then((opener) => opener.openUrl(url));
-      else window.open(url, '_blank');
-    },
+    canOpen: () => void showLibrary(),
+    openBrowser: () => void openExternal(watch.interfaceUrl),
   },
 });
 
-service.subscribe(() => {
+const unsubscribeService = service.subscribe(() => {
   void refresh?.();
 });
 function check() {
@@ -57,4 +55,14 @@ function check() {
   void service.check();
 }
 check();
-setInterval(check, 10_000);
+const timer = setInterval(check, 10_000);
+window.addEventListener(
+  'pagehide',
+  () => {
+    clearInterval(timer);
+    unsubscribeService();
+    watch.dispose();
+    selection.dispose();
+  },
+  { once: true },
+);

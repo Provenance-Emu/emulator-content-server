@@ -20,10 +20,10 @@
   let guestWrite = $state(false);
   let guestDays = $state(7);
 
-  const manages = $derived(desk.policy?.manages === true || desk.session !== null);
+  const manages = $derived($desk.policy?.manages === true || $desk.session !== null);
 
   $effect(() => {
-    const policy = desk.policy;
+    const policy = $desk.policy;
     const current = origin;
     if (!policy || loadedFor === current) return;
     mode = policy.mode;
@@ -32,21 +32,21 @@
   });
 
   $effect(() => {
-    const first = desk.libraries[0]?.id;
+    const first = $desk.libraries[0]?.id;
     if (!accountLibrary && first) accountLibrary = first;
     if (!guestLibrary && first) guestLibrary = first;
   });
 
   async function copyGrant(): Promise<void> {
-    if (!desk.issuedGrant) return;
-    await navigator.clipboard.writeText(desk.issuedGrant).catch(() => undefined);
+    if (!$desk.issuedGrant) return;
+    await navigator.clipboard.writeText($desk.issuedGrant).catch(() => undefined);
   }
 </script>
 
 <section>
   <h2>Access</h2>
 
-  {#if desk.bootstrapped === false}
+  {#if $desk.bootstrapped === false}
     <p class="dim">
       This server has no owner yet. The token was printed when it started and saved as
       bootstrap.token in the data directory.
@@ -78,16 +78,16 @@
         Password
         <input type="password" bind:value={setupPassword} autocomplete="new-password" required />
       </label>
-      <button type="submit" disabled={desk.working}>Create owner</button>
+      <button type="submit" disabled={$desk.working}>Create owner</button>
     </form>
   {:else}
-    {#if desk.policy && !desk.policy.applies}
+    {#if $desk.policy && !$desk.policy.applies}
       <p class="dim">
         This server was started for the public internet, so every device needs a login.
       </p>
-    {:else if desk.policy?.mode === 'token'}
+    {:else if $desk.policy?.mode === 'token'}
       <p class="dim">Every device needs a username and password.</p>
-    {:else if desk.policy?.mode === 'subnets'}
+    {:else if $desk.policy?.mode === 'subnets'}
       <p class="dim">
         Only this Mac and the networks you list can sync without a password. This Mac can edit
         accounts.
@@ -99,7 +99,7 @@
       </p>
     {/if}
 
-    {#if desk.bootstrapped && !desk.policy?.manages && !desk.session}
+    {#if $desk.bootstrapped && !$desk.policy?.manages && !$desk.session}
       <form
         class="stack"
         onsubmit={(event) => {
@@ -118,13 +118,13 @@
           Password
           <input type="password" bind:value={password} autocomplete="current-password" required />
         </label>
-        <button type="submit" disabled={desk.working}>Sign in</button>
+        <button type="submit" disabled={$desk.working}>Sign in</button>
       </form>
     {/if}
 
-    {#if desk.session}
+    {#if $desk.session}
       <p class="row">
-        <span class="dim">Signed in on this menu bar.</span>
+        <span class="dim">Signed in to this server in the desktop app.</span>
         <button type="button" onclick={() => void desk.signOut()}>Sign out</button>
       </p>
     {/if}
@@ -150,16 +150,16 @@
           <textarea bind:value={subnets} placeholder="192.168.1.0/24"></textarea>
         </label>
       {/if}
-      <button type="submit" disabled={desk.working || !manages}>Save access</button>
+      <button type="submit" disabled={$desk.working || !manages}>Save access</button>
     </form>
 
     {#if manages}
       <h3>Accounts</h3>
-      {#if desk.accounts.length === 0}
+      {#if $desk.accounts.length === 0}
         <p class="dim">No accounts yet.</p>
       {:else}
         <ul class="people">
-          {#each desk.accounts as account (account.id)}
+          {#each $desk.accounts as account (account.id)}
             <li>
               <span>{account.username}{account.isOwner ? ' · owner' : ''}</span>
               <form
@@ -179,7 +179,7 @@
                     passwords = { ...passwords, [account.id]: event.currentTarget.value };
                   }}
                 />
-                <button type="submit" disabled={desk.working}>Set</button>
+                <button type="submit" disabled={$desk.working}>Set</button>
               </form>
             </li>
           {/each}
@@ -210,11 +210,11 @@
             required
           />
         </label>
-        {#if desk.libraries.length > 0}
+        {#if $desk.libraries.length > 0}
           <label>
             Library
             <select bind:value={accountLibrary}>
-              {#each desk.libraries as library (library.id)}
+              {#each $desk.libraries as library (library.id)}
                 <option value={library.id}>{library.name}</option>
               {/each}
             </select>
@@ -227,14 +227,14 @@
             </select>
           </label>
         {/if}
-        <button type="submit" disabled={desk.working}>Add account</button>
+        <button type="submit" disabled={$desk.working}>Add account</button>
       </form>
 
       <h3>Guest links</h3>
       <p class="dim">
         A guest link is for someone off this network. It expires, and it can be revoked.
       </p>
-      {#if desk.issuedGrant}
+      {#if $desk.issuedGrant}
         <p class="dim">Copy this token now. It will not be shown again.</p>
         <form
           onsubmit={(event) => {
@@ -242,21 +242,21 @@
             void copyGrant();
           }}
         >
-          <input readonly value={desk.issuedGrant} size="28" />
+          <input readonly value={$desk.issuedGrant} size="28" />
           <button type="submit">Copy</button>
-          <button type="button" onclick={() => (desk.issuedGrant = null)}>Hide</button>
+          <button type="button" onclick={() => desk.hideGrant()}>Hide</button>
         </form>
       {/if}
-      {#if desk.grants.length > 0}
+      {#if $desk.grants.length > 0}
         <ul class="people">
-          {#each desk.grants as grant (grant.id)}
+          {#each $desk.grants as grant (grant.id)}
             <li>
               <span>
                 {grant.capabilities.join(', ')} · until {grant.expiresAt.slice(0, 10)}
               </span>
               <button
                 type="button"
-                disabled={desk.working}
+                disabled={$desk.working}
                 onclick={() => void desk.revokeGuest(grant.id)}
               >
                 Revoke
@@ -265,7 +265,7 @@
           {/each}
         </ul>
       {/if}
-      {#if desk.libraries.length > 0}
+      {#if $desk.libraries.length > 0}
         <form
           class="stack"
           onsubmit={(event) => {
@@ -276,7 +276,7 @@
           <label>
             Library
             <select bind:value={guestLibrary}>
-              {#each desk.libraries as library (library.id)}
+              {#each $desk.libraries as library (library.id)}
                 <option value={library.id}>{library.name}</option>
               {/each}
             </select>
@@ -289,14 +289,14 @@
             <input type="checkbox" bind:checked={guestWrite} />
             Allow uploads
           </label>
-          <button type="submit" disabled={desk.working}>Create guest link</button>
+          <button type="submit" disabled={$desk.working}>Create guest link</button>
         </form>
       {/if}
     {/if}
   {/if}
 
-  {#if desk.failure}
-    <p class="problem">{desk.failure}</p>
+  {#if $desk.failure}
+    <p class="problem">{$desk.failure}</p>
   {/if}
 </section>
 

@@ -9,15 +9,19 @@
     service,
     trayFailure,
     canOpen,
+    openBrowser,
   }: {
     watch: ServerWatch;
     service: ServiceControl;
     trayFailure: string | null;
-    canOpen: (url: string) => void;
+    canOpen: () => void;
+    openBrowser: () => void;
   } = $props();
 
-  let typed = $state(watch.origin);
+  let typed = $state('');
   const desk = $derived(watch.desk);
+  let failure = $state<string | null>(null);
+  $effect(() => { typed = watch.origin; });
 </script>
 
 <main>
@@ -28,7 +32,8 @@
         {watch.checkedAt ? `Checked ${watch.checkedAt}` : 'Checking'}
       </p>
     </div>
-    <button type="button" onclick={() => canOpen(watch.interfaceUrl)}>Open interface</button>
+    <button type="button" onclick={canOpen}>Open interface</button>
+    <button type="button" disabled={!watch.origin} onclick={openBrowser}>Open in browser</button>
   </div>
 
   <!-- The same component the web interface renders, so the two cannot drift. -->
@@ -43,7 +48,8 @@
     <form
       onsubmit={(event) => {
         event.preventDefault();
-        void watch.watching(typed);
+        try { watch.watching(typed); failure = null; }
+        catch (error) { failure = error instanceof Error ? error.message : String(error); }
       }}
     >
       <label>
@@ -54,6 +60,7 @@
     </form>
   </section>
 
+  {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
   <section>
     <h2>Local login service</h2>
     <p aria-live="polite">{serviceSummary($service)}</p>
@@ -79,7 +86,7 @@
     {/if}
   </section>
 
-  <Access {desk} origin={watch.origin} />
+  {#if desk}{#key watch.context?.key}<Access {desk} origin={watch.origin} />{/key}{/if}
 </main>
 
 <style>

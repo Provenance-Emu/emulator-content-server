@@ -9,15 +9,16 @@ import type { ServerContext } from './context.js';
  * is trusted without a token.
  */
 export function trayOrigin(origin: string | undefined): boolean {
-  if (!origin) return false;
-  try {
-    const url = new URL(origin);
-    if (url.protocol === 'tauri:' || url.hostname === 'tauri.localhost') return true;
-    const dev = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
-    return dev && url.port === '5174';
-  } catch {
-    return false;
-  }
+  return (
+    origin !== undefined &&
+    new Set([
+      'tauri://localhost',
+      'http://tauri.localhost',
+      'https://tauri.localhost',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+    ]).has(origin)
+  );
 }
 
 /** The socket address. Forwarded headers are ignored so a client cannot pick its own. */

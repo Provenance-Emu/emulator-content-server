@@ -202,3 +202,62 @@ test('a public server does not treat the proxy address as the owner', async () =
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('approved tray origins expose resume validators and allow chunk/revision headers', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-tray-cors-'));
+  const server = await openServer({ dataDir: dir, localTrust: false });
+  try {
+    for (const origin of [
+      'tauri://localhost',
+      'http://tauri.localhost',
+      'https://tauri.localhost',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+    ]) {
+      const response = await server.app.inject({
+        method: 'GET',
+        url: '/api/v1/capabilities',
+        headers: { origin },
+      });
+      assert.equal(response.headers['access-control-allow-origin'], origin);
+      assert.equal(response.headers['access-control-expose-headers'], 'etag, content-range');
+      const preflight = await server.app.inject({
+        method: 'OPTIONS',
+        url: '/api/v1/uploads/test',
+        headers: {
+          origin,
+          'access-control-request-method': 'PUT',
+          'access-control-request-headers': 'authorization, content-range, if-match',
+        },
+      });
+      assert.equal(preflight.statusCode, 204);
+      assert.ok(
+        String(preflight.headers['access-control-allow-headers'])
+          .split(', ')
+          .includes('content-range'),
+      );
+      assert.ok(
+        String(preflight.headers['access-control-allow-headers']).split(', ').includes('if-match'),
+      );
+    }
+    for (const origin of [
+      'https://evil.example',
+      'https://tauri.localhost.evil.example',
+      'tauri://evil.example',
+      'https://tauri.localhost:444',
+      'ftp://tauri.localhost',
+      'http://localhost:5175',
+    ]) {
+      const response = await server.app.inject({
+        method: 'GET',
+        url: '/api/v1/capabilities',
+        headers: { origin },
+      });
+      assert.equal(response.headers['access-control-allow-origin'], undefined, origin);
+      assert.equal(response.headers['access-control-expose-headers'], undefined, origin);
+    }
+  } finally {
+    await server.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});

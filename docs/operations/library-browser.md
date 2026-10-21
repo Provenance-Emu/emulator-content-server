@@ -73,6 +73,38 @@ Preview object URLs are revoked on page/auth/context disposal. The library CSP
 permits `blob:` images; script, connection, and isolated-player policies retain
 their existing restrictions.
 
+## Desktop library
+
+The tray menu's **Open interface** opens the bundled library window. **Status and
+settings** retains the local service controls; **Open in browser** opens the
+selected server's `/ui/` in your browser. Closing a window hides it so the menu
+can reopen it. Choose a server address explicitly; a manual loopback address is
+not evidence that it belongs to the local managed service.
+
+The library and status windows share the selected profile and server-scoped
+sessions. Changing profiles discards the visible selection and outstanding UI
+results. Desktop credentials use a separate namespace from browser credentials;
+the legacy unscoped tray token is discarded because its issuing server is unknown.
+Signing out in either desktop window clears the other window's private view.
+
+Both windows load bundled documents only, while their shared components access
+server data through the API. Folder registration currently uses the selected
+server's directory chooser; native verified-local selection is a separate follow-on.
+Downloads use the same authenticated API behavior. The server exposes only ETag
+and Content-Range beyond the normal CORS response-header safelist, to the fixed
+tray origins. Large transfers retain the browser/webview's existing memory limits.
+
+Play opens the selected server's isolated `/play/` page in the external browser.
+Its URL contains only content IDs. If that browser has no session, sign in on the
+player page to continue the same selection. No desktop token is transferred to
+the browser. The server's library and player script/frame policies are unchanged.
+
+`Desktop native build` is a manual CI workflow for macOS, Windows and Linux,
+including generated service/process fixture tests and a native binary build.
+Automated Chromium checks exercise bundled-asset login, downloads and two-window
+sign-out at an approved development origin; those checks do not claim native
+webview or cross-platform interactive acceptance.
+
 ## Browser acceptance
 
 With the pinned Node and pnpm versions installed:

@@ -1,11 +1,11 @@
 import { Menu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu';
 import { TrayIcon } from '@tauri-apps/api/tray';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { exit } from '@tauri-apps/plugin-process';
 import { get } from 'svelte/store';
 import { canStart, canStop, type ServiceControl, serviceSummary } from './service';
 import type { ServerWatch } from './watch.svelte';
+import { openExternal, showLibrary } from './windows';
 
 const TRAY_ID = 'status';
 
@@ -33,7 +33,12 @@ export async function installTray(
   const status = await MenuItem.new({ text: watch.summary, enabled: false });
   const openInterface = await MenuItem.new({
     text: 'Open interface',
-    action: () => void openUrl(watch.interfaceUrl),
+    action: () => void showLibrary(),
+  });
+  const openBrowser = await MenuItem.new({
+    text: 'Open in browser',
+    enabled: !!watch.origin,
+    action: () => void openExternal(watch.interfaceUrl),
   });
   const showWindow = await MenuItem.new({
     text: 'Status and settings',
@@ -65,6 +70,7 @@ export async function installTray(
       status,
       await PredefinedMenuItem.new({ item: 'Separator' }),
       openInterface,
+      openBrowser,
       showWindow,
       await PredefinedMenuItem.new({ item: 'Separator' }),
       localStatus,
@@ -91,6 +97,6 @@ export async function installTray(
     await tray.setTooltip(
       watch.checkedAt ? `${watch.summary}, checked ${watch.checkedAt}` : watch.summary,
     );
-    await openInterface.setEnabled(watch.reachable === true);
+    await openBrowser.setEnabled(!!watch.origin);
   };
 }

@@ -680,3 +680,23 @@ test('passwordless fallback owns its continued cycle until queued revalidation c
     f.restore();
   }
 });
+
+test('context disposal clears the client bearer before it can be reused', async () => {
+  const f = serverFixture();
+  f.context.sessions.save(session);
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    app.dispose();
+    await f.context.client.capabilities();
+    assert.equal(f.requests.at(-1)?.token, null);
+    assert.equal(
+      f.context.sessions.load()?.token,
+      session.token,
+      'disposal preserves a restorable scoped session',
+    );
+  } finally {
+    app.dispose();
+    f.restore();
+  }
+});

@@ -1,8 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the status window is allowed to ask the native side for.",
-  "windows": ["status"],
+  "description": "Bundled status and library windows; remote documents have no native capabilities.",
+  "windows": [
+    "status",
+    "library"
+  ],
   "permissions": [
     "core:default",
     "core:tray:default",
@@ -11,7 +14,17 @@
     "core:window:allow-hide",
     "core:window:allow-set-focus",
     "core:app:allow-default-window-icon",
-    "opener:allow-open-url",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "http://*"
+        },
+        {
+          "url": "https://*"
+        }
+      ]
+    },
     "process:allow-exit"
   ]
 }

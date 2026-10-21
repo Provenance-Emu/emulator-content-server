@@ -1,8 +1,9 @@
 <script lang="ts">
   import { ContentClient, type Item, type ManifestFile, type PlayerCoreDescriptor, type SourceFile } from '@ecs/client';
   import { onMount } from 'svelte';
-  import { explain } from '../lib/problems';
-  import { loadSession } from '../lib/session';
+  import Login from '../Login.svelte';
+  import { explain, isUnauthorized } from '../lib/problems';
+  import { clearSession, loadSession, saveSession } from '../lib/session';
   import { startPlayer, type PlayerSelection } from './controller.js';
   import { allItems } from './preflight.js';
   import { importBrowserRuntime, validateProfile } from './runtime.js';
@@ -22,6 +23,7 @@
   let compatible = $state(false);
   let canvas: HTMLCanvasElement;
   let ready = $state(false);
+  let needsSignIn = $state(false);
   let working = $state(false);
   let attempted = $state(false);
   let failure = $state<string | null>(null);
@@ -56,7 +58,12 @@
       }
       await loadSaves();
       ready = true;
-    } catch (error) { failure = explain(error); }
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        clearSession(); client.setToken(undefined); needsSignIn = true;
+        failure = 'Sign in to this server in your browser to continue playback.';
+      } else failure = explain(error);
+    }
   }
   async function start(): Promise<void> {
     if (attempted || working || !ready) return;
@@ -84,6 +91,9 @@
   {#if core}
     <p>{core.name} · frontend {core.frontendCommit.slice(0, 8)} · core {core.coreCommit.slice(0, 8)}</p>
   {/if}
+  {#if needsSignIn}<Login {client} onsignin={(signedIn) => {
+    saveSession(signedIn); needsSignIn = false; failure = null; void boot();
+  }} />{/if}
   {#if ready && !attempted}
     <section class="player-selectors">
       <h2>Session setup</h2>

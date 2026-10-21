@@ -71,6 +71,7 @@ export function createApplication(
   let timer: { handle: unknown } | null = null;
   let watcher: ChangeWatch | null = null;
   let acceptedToken: string | undefined;
+  let unsubscribeSession: (() => void) | undefined;
   let feedChanged = false;
   let needsAuthentication = true;
   let activeCycle: { run: number; promise: Promise<void> } | null = null;
@@ -228,6 +229,31 @@ export function createApplication(
         acceptedToken = stored?.token;
         context.client.setToken(acceptedToken);
         update({ hasSession: !!stored });
+        unsubscribeSession = context.sessions.subscribe?.(() => {
+          if (disposed || context.key !== contextKey) return;
+          const next = context.sessions.load();
+          if (next?.token === acceptedToken) return;
+          // Retire the previous authentication lifetime before making any new request.
+          clearTimer();
+          stopWatch();
+          epoch++;
+          context.client.setToken(undefined);
+          acceptedToken = next?.token;
+          context.client.setToken(acceptedToken);
+          needsAuthentication = !!next;
+          update({
+            authEpoch: epoch,
+            signedIn: false,
+            hasSession: !!next,
+            owner: false,
+            libraries: [],
+            settled: true,
+            failure: null,
+            invalidation: current.invalidation + 1,
+          });
+          if (next) void cycle(epoch);
+          else schedule(epoch);
+        });
         started = cycle(epoch);
       }
       return started;
@@ -269,7 +295,9 @@ export function createApplication(
     async adoptSession(session, expectedEpoch) {
       if (!live(expectedEpoch)) {
         // A disposed context is inert. While live, undo Login's pre-callback token mutation.
-        if (!disposed && context.key === contextKey) context.client.setToken(acceptedToken);
+        context.client.setToken(
+          !disposed && context.key === contextKey ? acceptedToken : undefined,
+        );
         return false;
       }
       clearTimer();
@@ -295,6 +323,8 @@ export function createApplication(
     dispose() {
       if (disposed) return;
       disposed = true;
+      unsubscribeSession?.();
+      context.client.setToken(undefined);
       epoch++;
       clearTimer();
       stopWatch();

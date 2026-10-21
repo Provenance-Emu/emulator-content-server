@@ -21,7 +21,14 @@ export default defineConfig({
   ],
   // Tauri serves the build from a file path, so asset URLs have to be relative.
   base: './',
-  build: { outDir: 'dist', emptyOutDir: true, target: 'es2022' },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    target: 'es2022',
+    rollupOptions: {
+      input: { status: resolve(here, 'index.html'), library: resolve(here, 'library.html') },
+    },
+  },
   optimizeDeps: { exclude: ['@ecs/client', '@ecs/web'] },
   server: {
     port: 5174,

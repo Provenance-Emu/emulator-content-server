@@ -9,7 +9,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json && pnpm test",
     "icons": "node scripts/make-icons.mjs",
     "tauri": "tauri",
-    "test": "tsc -p tsconfig.test.json && node --test dist-tests/test/*.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test dist-tests/tray/test/*.test.js"
   },
   "dependencies": {
     "@ecs/client": "workspace:*",

@@ -30,7 +30,7 @@ The web client exists. It signs in, shows server status from `/api/v1/capabiliti
 
 Opening an item lists the files in its manifest and uploads a chosen file into it, or creates an item when none is open. A file picked here is bytes to send, not a path to resolve, which is why a file input is right for an upload and wrong for a content folder. Both directions go through the engine in `@ecs/client`: `upload` sends pieces of at most 4 MB so progress has something to report and a break costs one piece, and `collect` assembles a download in memory, asking for only the bytes a broken stream left behind. Those bytes are handed to the browser's own download, so the page still never names a path on disk.
 
-The tray exists as one Tauri application. Its dropdown reports whether the server answers and where, opens the interface in the real browser, opens a status window, and quits. It also reports and starts/stops the current user's local login service through a restricted native bridge (merged in #11). These controls operate on this computer even when the watched API address is remote. An absent registration shows CLI installation instructions. The window renders the same `Status` component as the web client, imported from `apps/web`, so the two cannot drift. The address it watches is editable and remembered.
+The tray exists as one Tauri application. Its dropdown reports whether the server answers and where, opens the shared interface in a separate bundled library window, offers Open in browser, opens the status window, and quits. It also reports and starts/stops the current user's local login service through a restricted native bridge (merged in #11). These controls operate on this computer even when the watched API address is remote. An absent registration shows CLI installation instructions. The window renders the same `Status` component as the web client, imported from `apps/web`, so the two cannot drift. The selected server profile is editable, remembered, and shared by both bundled windows. Sessions are scoped to the server origin, separate from browser storage; changing profiles retires old clients and ignores late responses. Closing either window hides it for reopening from the menu. Remote server HTML never loads in a privileged webview.
 
 The owner page lists guest grants and the audit log. Creating a grant shows the token in that visit only; a reload asks the list endpoint, which returns the grant without the token or its hash. A reader or editor never sees those panels, because `GET /api/v1/roots` is what decides the account is the owner.
 
@@ -38,8 +38,10 @@ Owner-only storage locations are implemented in the page and API (merged in #12)
 The owner can register a server directory, choose Primary or an online location
 for new uploads, see offline status, and remove a location when the server's
 guards allow it. See [Storage locations](../operations/storage-locations.md).
-The tray holds signed-in session state; a library list in the dropdown remains a
-follow-on UI improvement.
+The tray and library windows coordinate sign-in and sign-out for the selected
+server. A library list in the dropdown remains a follow-on UI improvement.
+See [Desktop library](../operations/library-browser.md#desktop-library) for session,
+player, download and native acceptance limits.
 
 The browser player is implemented under its
 [separate workstream](web-playback.md). Real-core compilation, emulation,
