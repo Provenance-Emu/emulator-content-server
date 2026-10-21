@@ -1,6 +1,6 @@
 # Handoff
 
-## Current checkpoint — 2026-10-20
+## Current checkpoint — 2026-10-21
 
 The sections below this checkpoint are historical. Scanning, the library browser,
 and library-folder management have since landed. Device-folder selection, bounded
@@ -61,6 +61,35 @@ browser regressions, TypeScript and production
 web builds, changed-file lint, and package boundaries. This does not establish
 native platform or real browser-core acceptance. Runtime notes below describe an
 earlier operator setup; verify current configuration before restarting anything.
+
+Desktop Tasks 6–7 are implemented on main: the bundled library window reuses the
+shared web App, while status/service controls and Open in browser remain available.
+Desktop sessions are scoped to canonical server origins and separated from browser
+storage. Server switches and cross-window sign-out discard credentials/private
+results; external player links retain only public selection IDs and support browser
+sign-in. Desktop CORS includes the resume/revision headers required by the client.
+
+Use local managed service derives the endpoint from native service/process/listener
+inspection. Only verified managed profiles receive the native directory adapter;
+manual/remote profiles keep the server chooser. Directory confirmation reuses the
+existing one-register/one-scan flow, creation stages paths, and upload storage keeps
+its current target. Native IDs bind owner/PID/birth/generation/listener and are
+revalidated around the dialog and before submission. Windows falls back; Linux
+verification is implemented with synthetic fixtures but not executed locally.
+
+Desktop validation: 186 web controller tests, 21 tray tests (one Windows-only skip),
+24 Rust fixtures, 3 server access/CORS cases and 7 isolated Chromium desktop/player/
+folder checks passed across the focused runs. Svelte checks and macOS release app/
+DMG builds passed. No managed LaunchAgent was registered on this Mac (read-only
+probe exit 113); live native dialogs and Linux/Windows platform acceptance remain
+unverified. The manual native CI matrix is available. Combined review found one
+recovery bug: failed managed-service re-verification retained captured native
+validators. Fix bf96e44 replaces the same-origin context with the server-chooser
+lifetime and discards pending selections, resetting navigation. Three focused
+regressions reproduce and cover that transition. Final publication status is in
+git history.
+External ZIP fixes ea61ef0 and a31c0ba were fast-forwarded into main; 40 focused ZIP
+tests passed. Do not repeat completed desktop/upload features from historical notes.
 
 ## Historical handoff
 
