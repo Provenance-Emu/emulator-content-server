@@ -26,6 +26,7 @@ interface Member {
   name: string;
   body: Buffer;
   compress?: boolean;
+  compressedBody?: Buffer;
   declaredSize?: number;
   declaredCrc?: number;
 }
@@ -40,7 +41,9 @@ function buildZip(members: Member[]): Buffer {
   let offset = 0;
   for (const member of members) {
     const name = Buffer.from(member.name, 'utf8');
-    const payload = member.compress ? deflateRawSync(member.body) : member.body;
+    const payload = member.compress
+      ? (member.compressedBody ?? deflateRawSync(member.body))
+      : member.body;
     const method = member.compress ? 8 : 0;
     const crc = member.declaredCrc ?? (crc32(member.body) ^ 0xffffffff) >>> 0;
     const declaredSize = member.declaredSize ?? member.body.length;
@@ -574,3 +577,28 @@ test('valid stored extents keep adjacent entries separate and allow empty files'
   assert.equal(empty.size, 0);
   assert.deepEqual(await cachedFiles(staged.root), []);
 });
+
+for (const corruption of ['invalid block', 'truncated stream'] as const) {
+  test(`corrupt DEFLATE (${corruption}) returns an archive error and cleans up`, async (t) => {
+    const body = Buffer.from('generated compressed bytes '.repeat(100));
+    const compressedBody =
+      corruption === 'invalid block' ? Buffer.from([0x07]) : deflateRawSync(body).subarray(0, -1);
+    const healthy = Buffer.from('healthy neighbor');
+    const staged = await stageArchive([
+      { name: 'corrupt.bin', body, compress: true, compressedBody },
+      { name: 'healthy.bin', body: healthy, compress: true },
+    ]);
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      assert.deepEqual(await cachedFiles(staged.root), []);
+    }
+    const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '1');
+    assert.ok(entry);
+    assert.deepEqual(await readRange(entry.path, 0, healthy.length - 1), healthy);
+    assert.equal((await cachedFiles(staged.root)).length, 1);
+  });
+}

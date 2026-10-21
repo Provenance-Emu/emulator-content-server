@@ -527,7 +527,18 @@ async function inflateEntry(
       end: start + record.compressedSize - 1,
       highWaterMark: 1024 * 1024,
     });
-    await pipeline(source, inflate, sink);
+    try {
+      await pipeline(source, inflate, sink);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error.code === 'Z_DATA_ERROR' || error.code === 'Z_BUF_ERROR')
+      ) {
+        reject('Archive entry contains invalid DEFLATE data');
+      }
+      throw error;
+    }
     if (written !== record.uncompressedSize) {
       reject('Archive entry did not expand to its declared size');
     }
