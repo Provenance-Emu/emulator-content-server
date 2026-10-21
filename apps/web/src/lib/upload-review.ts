@@ -112,16 +112,15 @@ export function createUploadReview(context: {
         const system =
           context.item?.systemIdentifier ??
           (context.systems.some((s) => s.identifier === inferred) ? inferred : '');
+        // Recognized save formats keep their association requirement even in Games.
         const kind =
-          context.category === 'games'
-            ? 'rom'
-            : inferred
-              ? 'rom'
-              : extension === 'sav'
-                ? 'battery_save'
-                : extension === 'state'
-                  ? 'save_state'
-                  : '';
+          extension === 'sav'
+            ? 'battery_save'
+            : extension === 'state'
+              ? 'save_state'
+              : inferred || context.category === 'games'
+                ? 'rom'
+                : '';
         const e = {
           id: uploadIdentity(),
           file,

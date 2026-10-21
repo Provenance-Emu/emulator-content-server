@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ContentClient, Item, SystemSummary } from '@ecs/client';
+  import { ContentError, type ContentClient, type Item, type SystemSummary } from '@ecs/client';
   import { onDestroy, untrack } from 'svelte';
   import { createUploadReview, type UploadReview as Review } from './lib/upload-review';
   import { createUploadQueue } from './lib/upload-queue';
@@ -35,12 +35,19 @@
     createUploadQueue(client, {
       libraryId,
       changed: oncomplete,
-      authorizationRejected: onauthorization,
+      authorizationRejected: rejectAuthorization,
     }),
   );
   const unsubscribe = queue.subscribe((state) => {
     if (!disposed) onbusy(state.running);
   });
+  function rejectAuthorization(status: 401 | 403) {
+    if (disposed) return;
+    queue.dispose();
+    review = null;
+    onbusy(false);
+    onauthorization(status);
+  }
   async function load() {
     try {
       const result = await client.systems();
@@ -49,7 +56,10 @@
       review = createUploadReview({ libraryId, item, systems, category });
       folderSupported = 'webkitdirectory' in document.createElement('input');
     } catch (error) {
-      if (!disposed) failure = explain(error);
+      if (disposed) return;
+      if (error instanceof ContentError && (error.status === 401 || error.status === 403))
+        rejectAuthorization(error.status);
+      else failure = explain(error);
     }
   }
   function pick(event: Event) {
@@ -78,9 +88,9 @@
       {#if folderSupported}<label>Folder<input type="file" multiple {...{webkitdirectory:true}} onchange={pick} /></label>
       {:else}<p>Folder selection is unavailable in this browser. Use File to select multiple files.</p>{/if}
       {#if mode==='folder' && folderSupported}<p>Select a folder using Folder. Relative folder paths will be preserved.</p>{/if}
-      <UploadReview controller={review} {systems} {client} {libraryId} />
+      <UploadReview controller={review} {systems} {client} {libraryId} onauthorization={rejectAuthorization} />
       <button type="button" disabled={!$review?.entries.length || $review?.entries.some(e=>e.errors.length)} onclick={start}>Upload</button>
     {:else if !failure}<p>Loading upload metadata…</p>{/if}
-  {:else}<UploadQueue controller={queue} {client} {libraryId} />{/if}
+  {:else}<UploadQueue controller={queue} {client} {libraryId} onauthorization={rejectAuthorization} />{/if}
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
 </section>

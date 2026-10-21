@@ -82,3 +82,26 @@ test('common metadata chosen before file selection remains applied when files ar
   review.selectFiles([file('second.bin')]);
   assert.equal(review.validate()?.[0]?.system, 'com.provenance.nes');
 });
+
+test('Games context preserves recognized save kinds in mixed folders and common system cannot make them ROMs', () => {
+  const review = createUploadReview({
+    libraryId: 'library',
+    item: null,
+    systems,
+    category: 'games',
+  });
+  review.selectFiles([file('game.nes'), file('progress.sav'), file('progress.state')]);
+  assert.deepEqual(
+    get(review).entries.map((entry) => entry.kind),
+    ['rom', 'battery_save', 'save_state'],
+  );
+  review.setCommonMetadata({ system: 'com.provenance.nes' });
+  assert.equal(review.validate(), null);
+  review.setCommonMetadata({ target: item() });
+  const valid = review.validate();
+  assert.ok(valid);
+  assert.deepEqual(
+    valid.map((entry) => entry.target?.id ?? null),
+    [null, 'item', 'item'],
+  );
+});

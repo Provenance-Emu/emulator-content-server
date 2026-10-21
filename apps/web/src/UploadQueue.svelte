@@ -6,10 +6,12 @@
     controller,
     client,
     libraryId,
+    onauthorization = () => {},
   }: {
     controller: UploadQueue;
     client: ContentClient;
     libraryId: string;
+    onauthorization?: (status: 401 | 403) => void;
   } = $props();
   let picking = $state<string | null>(null);
   const successes = $derived($controller.entries.filter((e) => e.state === 'succeeded').length);
@@ -21,7 +23,7 @@
   {#if $controller.running}<button type="button" disabled={$controller.stopping} onclick={()=>controller.stopAfterCurrent()}>Stop after current file</button>{#if $controller.stopping}<p>Stopping after the current file finishes. Its server commit may still complete.</p>{/if}
   {:else if $controller.entries.some(e=>e.state==='waiting'||e.state==='failed')}<button type="button" onclick={()=>void controller.retryUnfinished()}>Retry unfinished uploads</button>{/if}
   {#if $controller.status===401 || $controller.status===403}<p role="alert" class="problem">Upload authorization was lost. Sign in or restore access before retrying.</p>{/if}
-  {#if picking}<UploadTargetPicker {client} {libraryId} oncancel={()=>picking=null} onchoose={item=>{if(picking)controller.reconcile(picking,item);picking=null;}} />{/if}
+  {#if picking}<UploadTargetPicker {client} {libraryId} {onauthorization} oncancel={()=>picking=null} onchoose={item=>{if(picking)controller.reconcile(picking,item);picking=null;}} />{/if}
   {#each ['unfinished','successful'] as group}
     <h4>{group==='unfinished'?'Unfinished files':'Successful files'}</h4>
     <ul class="upload-entries">

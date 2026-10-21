@@ -50,7 +50,7 @@ test('missing metadata blocks upload and unsupported folders explain the files f
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog.getByText('2 succeeded · 0 unfinished')).toBeVisible();
 });
-test('large selections render only fifty review and queue entries', async ({ page, fixture }) => {
+test('large selections render only fifty review entries', async ({ page, fixture }) => {
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
   await page.getByRole('button', { name: 'Upload files', exact: true }).click();

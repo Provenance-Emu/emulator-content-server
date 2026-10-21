@@ -8,11 +8,13 @@
     systems,
     client,
     libraryId,
+    onauthorization = () => {},
   }: {
     controller: UploadReview;
     systems: SystemSummary[];
     client: ContentClient;
     libraryId: string;
+    onauthorization?: (status: 401 | 403) => void;
   } = $props();
   let commonKind = $state('');
   let commonSystem = $state('');
@@ -25,7 +27,7 @@
     <label>System<select bind:value={commonSystem} onchange={()=>{if(commonSystem)controller.setCommonMetadata({system:commonSystem});}}><option value="">Choose a system</option>{#each systems as system}<option value={system.identifier}>{system.name}</option>{/each}</select></label>
   </div>
   {#if $controller.entries.some(e=>e.kind && e.kind!=='rom')}<button type="button" onclick={()=>picking='all'}>Choose target for associated files</button>{/if}
-  {#if picking}<UploadTargetPicker {client} {libraryId} oncancel={()=>picking=null} onchoose={(target)=>{if(picking==='all'){controller.setCommonMetadata({target});}else if(picking){controller.setEntryMetadata(picking,{target});}picking=null;}} />{/if}
+  {#if picking}<UploadTargetPicker {client} {libraryId} {onauthorization} oncancel={()=>picking=null} onchoose={(target)=>{if(picking==='all'){controller.setCommonMetadata({target});}else if(picking){controller.setEntryMetadata(picking,{target});}picking=null;}} />{/if}
   <ol start={$controller.page*50+1} class="upload-entries">
     {#each $controller.visible as entry (entry.id)}
       <li>

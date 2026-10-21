@@ -25,7 +25,8 @@ Device uploads first show a review, with 50 files per page, editable titles,
 kinds and systems, and common metadata controls. Recognized unambiguous ROM
 extensions suggest a system only if the server lists it; unknown formats and BIN
 require review. An explicit Games category supplies ROM intent, but never a
-default system. Folder selection preserves safe relative paths. Browsers without
+default system. Recognized `.sav` and `.state` files retain their save kinds and
+require a target even when selected from Games. Folder selection preserves safe relative paths. Browsers without
 a folder input explain how to select multiple files instead.
 
 Each library-level ROM creates a separate managed item. Associated files require
@@ -46,7 +47,9 @@ of the correct managed item through Reconcile before retry can proceed.
 Keep the page open to retain the selection and retry state: queues are not saved
 across reloads. Closing a busy upload is disabled. Leaving the component stops
 scheduling later files but cannot cancel an in-flight server commit. Rejected
-upload authorization stops scheduling and clears private UI. Uploads also work
+upload authorization stops scheduling and clears private UI. Denied target-list
+reads clear the picker and close the upload too; 403 immediately rechecks
+application permissions. Uploads also work
 over ordinary LAN HTTP.
 
 Downloads retain original bytes, and choosing a preserved save copy keeps the

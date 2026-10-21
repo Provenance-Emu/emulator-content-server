@@ -106,6 +106,13 @@
       disposePrivate();
     } else void browser.refresh({ clear: true });
   }
+  function rejectUploadAccess(status: 401 | 403) {
+    if (disposed || get(application).authEpoch !== authEpoch) return;
+    upload = false;
+    uploading = false;
+    rejectAccess(status);
+    if (status === 403) void application.revalidate();
+  }
   let previousItems: LibraryBrowseEntry[] | null = null;
   const unsubscribeBrowser = browser.subscribe((state) => {
     if (disposed) return;
@@ -311,7 +318,7 @@
     {#if !libraries.length}<p>No libraries are available to this account.</p>{/if}
   {:else if detail}<LibraryDetail
       controller={detail}
-      onauthorization={rejectAccess}
+      onauthorization={rejectUploadAccess}
       selectedSource={$browser.active?.source??null}
       {owner}
       {context}
@@ -437,7 +444,7 @@
         item={null}
         mode={uploadMode}
         category={$browser.filters.category}
-        onauthorization={rejectAccess}
+        onauthorization={rejectUploadAccess}
         oncomplete={() => {
           void browser.refresh();
         }}
