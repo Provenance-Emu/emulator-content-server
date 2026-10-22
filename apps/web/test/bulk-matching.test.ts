@@ -441,3 +441,208 @@ test('checksum suggestions conflicting with a saved system require review', asyn
   assert.equal(writes, 0);
   assert.equal(get(bulk).rows[0]?.status, 'review');
 });
+
+for (const response of ['disconnect', 'server-error'] as const)
+  test(`bulk matching reconciles a committed auto-save after ${response} without repeating writes`, async (t) => {
+    const writes: string[] = [];
+    const choices: SavedSourceMatch[] = [];
+    let reads = 0;
+    let changed = 0;
+    const f = transport((url, init) => {
+      if (url.pathname === '/api/v1/browse')
+        return Response.json({ items: [entry('source', 'game')], nextCursor: null });
+      if (url.pathname.endsWith('/selections')) {
+        if (init?.method === 'PUT') {
+          const id = JSON.parse(String(init.body)).candidateId;
+          writes.push(id);
+          choices.push(selected(candidate(id, id === 'patch' ? 'patch' : 'metadata')));
+          if (id === 'metadata') {
+            if (response === 'disconnect') throw new TypeError('Generated lost response');
+            return problem(503);
+          }
+        } else reads++;
+        return Response.json({ sourceId: 'game', revision: choices.length, matches: choices });
+      }
+      return Response.json({
+        sourceId: 'game',
+        requestId: 'r',
+        plugins: [],
+        problems: [],
+        candidates: [candidate('metadata'), candidate('patch', 'patch')],
+      });
+    });
+    t.after(f.restore);
+    const bulk = createBulkMatching(f.client, { changed: () => changed++ });
+    t.after(() => bulk.dispose());
+    await bulk.start({ libraryId: 'library' }, {});
+    assert.deepEqual(writes, ['metadata', 'patch']);
+    assert.equal(reads, 2);
+    assert.equal(get(bulk).rows[0]?.status, 'saved');
+    assert.equal(get(bulk).rows[0]?.saved, 2);
+    assert.equal(changed, 1);
+    await bulk.retryFailures();
+    assert.deepEqual(writes, ['metadata', 'patch']);
+  });
+
+test('retry unmatched games keeps completed and reviewed games and reloads saved choices', async (t) => {
+  const lookups: string[] = [];
+  const writes: string[] = [];
+  let retry = false;
+  const f = transport((url, init) => {
+    if (url.pathname === '/api/v1/browse')
+      return Response.json({
+        items: ['empty', 'concurrent', 'reviewed', 'healthy'].map((id) => entry('source', id)),
+        nextCursor: null,
+      });
+    const id = url.pathname.split('/')[4] ?? '';
+    if (url.pathname.endsWith('/selections')) {
+      if (init?.method === 'PUT') writes.push(id);
+      const matches =
+        id === 'healthy' || (retry && id === 'concurrent') || writes.includes(id)
+          ? [selected(candidate(`saved-${id}`))]
+          : [];
+      return Response.json({ sourceId: id, revision: matches.length, matches });
+    }
+    lookups.push(id);
+    return Response.json({
+      sourceId: id,
+      requestId: 'r',
+      plugins: [],
+      problems: [],
+      candidates: retry ? [candidate(`new-${id}`)] : [],
+    });
+  });
+  t.after(f.restore);
+  const bulk = createBulkMatching(f.client);
+  t.after(() => bulk.dispose());
+  await bulk.start({ libraryId: 'library' }, {});
+  bulk.reviewed('reviewed');
+  retry = true;
+  await bulk.retryUnmatched();
+  assert.deepEqual(lookups, ['empty', 'concurrent', 'reviewed', 'healthy', 'empty', 'concurrent']);
+  assert.deepEqual(writes, ['empty']);
+  assert.deepEqual(
+    get(bulk).rows.map((r) => r.status),
+    ['saved', 'saved', 'reviewed', 'saved'],
+  );
+  await bulk.retryUnmatched();
+  assert.equal(lookups.length, 6);
+});
+
+for (const outcome of ['uncommitted', 'conflict', 'refresh-failed'] as const)
+  test(`uncertain bulk saves remain retryable without overwrite when ${outcome}`, async (t) => {
+    let reads = 0;
+    let writes = 0;
+    const f = transport((url, init) => {
+      if (url.pathname === '/api/v1/browse')
+        return Response.json({ items: [entry('source', 'game')], nextCursor: null });
+      if (url.pathname.endsWith('/selections')) {
+        if (init?.method === 'PUT') {
+          writes++;
+          return problem(outcome === 'conflict' ? 409 : 503);
+        }
+        reads++;
+        if (outcome === 'refresh-failed' && reads > 1) return problem(503);
+        return Response.json({ sourceId: 'game', revision: 0, matches: [] });
+      }
+      return Response.json({
+        sourceId: 'game',
+        requestId: 'r',
+        plugins: [],
+        problems: [],
+        candidates: [candidate('metadata'), candidate('patch', 'patch')],
+      });
+    });
+    t.after(f.restore);
+    const bulk = createBulkMatching(f.client);
+    t.after(() => bulk.dispose());
+    await bulk.start({ libraryId: 'library' }, {});
+    assert.equal(writes, 1);
+    assert.equal(get(bulk).rows[0]?.status, 'failed');
+    assert.equal(get(bulk).rows[0]?.saved, 0);
+    assert.equal(get(bulk).rows[0]?.retryable, true);
+  });
+
+test('authorization loss during save reconciliation clears the run and blocks later games', async (t) => {
+  let reads = 0;
+  let writes = 0;
+  const rejected: number[] = [];
+  const f = transport((url, init) => {
+    if (url.pathname === '/api/v1/browse')
+      return Response.json({
+        items: [entry('source', 'one'), entry('source', 'two')],
+        nextCursor: null,
+      });
+    if (url.pathname.endsWith('/selections')) {
+      if (init?.method === 'PUT') {
+        writes++;
+        return problem(503);
+      }
+      if (++reads > 1) return problem(403);
+      return Response.json({ sourceId: 'one', revision: 0, matches: [] });
+    }
+    return Response.json({
+      sourceId: 'one',
+      requestId: 'r',
+      plugins: [],
+      problems: [],
+      candidates: [candidate('metadata')],
+    });
+  });
+  t.after(f.restore);
+  const bulk = createBulkMatching(f.client, {
+    authorizationRejected: (status) => rejected.push(status),
+  });
+  t.after(() => bulk.dispose());
+  await bulk.start({ libraryId: 'library' }, {});
+  assert.deepEqual(get(bulk).rows, []);
+  assert.deepEqual(rejected, [403]);
+  assert.equal(writes, 1);
+  const requests = f.requests.length;
+  await bulk.retryUnmatched();
+  await bulk.retryFailures();
+  assert.equal(f.requests.length, requests);
+});
+
+test('pausing during save reconciliation ignores the late read and prevents the next auto-save', async (t) => {
+  const pending = deferred<Response>();
+  const reconciling = deferred<void>();
+  let reads = 0;
+  const writes: string[] = [];
+  const f = transport((url, init) => {
+    if (url.pathname === '/api/v1/browse')
+      return Response.json({ items: [entry('source', 'game')], nextCursor: null });
+    if (url.pathname.endsWith('/selections')) {
+      if (init?.method === 'PUT') {
+        writes.push(JSON.parse(String(init.body)).candidateId);
+        return problem(503);
+      }
+      if (++reads > 1) {
+        reconciling.resolve();
+        return pending.promise;
+      }
+      return Response.json({ sourceId: 'game', revision: 0, matches: [] });
+    }
+    return Response.json({
+      sourceId: 'game',
+      requestId: 'r',
+      plugins: [],
+      problems: [],
+      candidates: [candidate('metadata'), candidate('patch', 'patch')],
+    });
+  });
+  t.after(f.restore);
+  const bulk = createBulkMatching(f.client);
+  t.after(() => bulk.dispose());
+  const run = bulk.start({ libraryId: 'library' }, {});
+  await reconciling.promise;
+  bulk.pause();
+  pending.resolve(
+    Response.json({ sourceId: 'game', revision: 1, matches: [selected(candidate('metadata'))] }),
+  );
+  await run;
+  assert.deepEqual(writes, ['metadata']);
+  assert.equal(get(bulk).phase, 'paused');
+  assert.equal(get(bulk).rows[0]?.status, 'pending');
+  assert.equal(get(bulk).rows[0]?.saved, 0);
+});

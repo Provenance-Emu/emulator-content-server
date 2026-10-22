@@ -38,6 +38,7 @@ export interface BulkMatchingController extends Readable<BulkMatchingState> {
   start(scope: LibraryScope, options: MatchingOptions): Promise<void>;
   resume(): Promise<void>;
   retryFailures(): Promise<void>;
+  retryUnmatched(): Promise<void>;
   reviewed(id: string): void;
   pause(): void;
   reset(): void;
@@ -191,13 +192,23 @@ export function createBulkMatching(
             // category occupancy and system agreement before the next write.
             if (!plan(result, saved, checksum).auto.some((choice) => choice.id === candidate.id))
               continue;
-            saved = await client.saveSourceMatch(
-              id,
-              result.requestId,
-              candidate.id,
-              saved.revision,
-              signal,
-            );
+            try {
+              saved = await client.saveSourceMatch(
+                id,
+                result.requestId,
+                candidate.id,
+                saved.revision,
+                signal,
+              );
+            } catch (error) {
+              if (!live(run)) return;
+              // A lost response can follow a committed save. Reconcile without
+              // repeating the write or treating a revision conflict as permission.
+              if (error instanceof ContentError && error.status < 500) throw error;
+              saved = await client.sourceSelections(id, signal);
+              if (!live(run)) return;
+              if (!saved.matches.some((match) => match.id === candidate.id)) throw error;
+            }
             if (!live(run)) return;
             changed = true;
             count++;
@@ -259,6 +270,16 @@ export function createBulkMatching(
       update({
         rows: current.rows.map((r) =>
           r.retryable ? { ...r, status: 'pending', reason: '', retryable: false } : r,
+        ),
+      });
+      await execute();
+    },
+    async retryUnmatched() {
+      if (disposed || denied || busy()) return;
+      if (!current.rows.some((r) => r.status === 'unmatched')) return;
+      update({
+        rows: current.rows.map((r) =>
+          r.status === 'unmatched' ? { ...r, status: 'pending', reason: '', retryable: false } : r,
         ),
       });
       await execute();

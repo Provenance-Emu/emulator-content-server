@@ -21,8 +21,13 @@ same provider options, avoiding expired proposal IDs. Save the choices you want,
 then choose **Done reviewing this game**. Results are paginated, with separate
 filters for failures, unmatched games and skipped files. **Retry failed games**
 loads current selections again; revision conflicts never trigger an automatic
-overwrite. Partial provider failures appear in both **Needs review** and **Failed**
-and can be retried without repeating healthy games. **Done reviewing this game**
+overwrite. **Retry unmatched games** checks only games currently in **No match**,
+without rediscovering the library or rerunning completed/reviewed games. It reads
+current saved choices before each lookup so choices saved elsewhere are preserved.
+After a disconnected or failed auto-save response, matching reads saved choices:
+a confirmed candidate counts as saved and processing continues; an unconfirmed
+commit stays failed for explicit retry. Partial provider failures appear in both
+**Needs review** and **Failed** and can be retried without repeating healthy games. **Done reviewing this game**
 also removes that game from the retry list. Online cheat indexes are optional in
 bulk runs because anonymous GitHub API limits are small; local cheat matching
 remains selected by default.

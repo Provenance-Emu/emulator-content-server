@@ -79,6 +79,7 @@
     {:else}<p role="status">Library matching complete.</p>{/if}
     {#if !running}
       {#if $controller.rows.some((r)=>r.retryable)}<button type="button" onclick={()=>void controller.retryFailures()}>Retry failed games</button>{/if}
+      {#if $controller.rows.some((r)=>r.status==='unmatched')}<button type="button" onclick={()=>{filter='review';page=0;void controller.retryUnmatched();}}>Retry unmatched games</button>{/if}
       <button type="button" onclick={()=>controller.reset()}>New matching run</button>
     {/if}
   {/if}

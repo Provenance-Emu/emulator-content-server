@@ -123,9 +123,11 @@ sign-out at an approved development origin; those checks do not claim native
 webview or cross-platform interactive acceptance. Native-folder Chromium tests
 replace only IPC and use a real temporary HTTP server for writes; they cover
 cancellation, registration, failed verification and the actual server-chooser
-fallback. The local fixed macOS LaunchAgent was absent (launchctl 113), so a real
-managed-service dialog was not exercised. Linux/Windows build and interaction
-acceptance remains unclaimed until the platform workflow and operator checks run.
+fallback. Live macOS managed-directory selection/cancellation and native
+upload/download completion also passed with an isolated transient service and generated files;
+see [desktop acceptance](desktop-acceptance.md) for exact checks and platform
+build results. Linux/Windows interactive dialog/transfer acceptance remains
+unclaimed.
 
 ## Browser acceptance
 
