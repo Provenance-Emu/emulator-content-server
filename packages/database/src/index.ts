@@ -3,6 +3,8 @@ export {
   type CatalogLimits,
   type ChangeRecord,
   type SourceInspection,
+  type SourceOrganizationCopy,
+  type SourceOrganizationPolicy,
   type StorageLocationRecord,
   type UploadRecord,
   type WebDavCredentialRecord,

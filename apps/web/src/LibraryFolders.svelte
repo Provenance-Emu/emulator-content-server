@@ -5,6 +5,7 @@
   import { createLibraryFolders } from './lib/library-folders';
   import { chooseFolder, type FolderContext } from './lib/folder-selection';
   import { explain } from './lib/problems';
+  import FolderOrganizationPolicy from './FolderOrganizationPolicy.svelte';
   import FolderSummaryRows from './components/FolderSummaryRows.svelte';
   import Modal from './components/Modal.svelte';
   import FolderPicker from './FolderPicker.svelte';
@@ -17,6 +18,7 @@
   let pickerBusy = $state(false);
   let choosing = $state(false);
   let failure = $state<string | null>(null);
+  let policyRoot = $state<ContentRoot | null>(null);
   let disconnect = $state<ContentRoot | null>(null);
   let assignment = $state<ContentRoot | null>(null);
   let libraryId = $state('');
@@ -39,6 +41,7 @@
   <button type="button" disabled={$folders.busy || $folders.denied || !$folders.summaries.length} aria-label={`Scan ${library.name}`} onclick={() => void folders.scanLibrary()}>Scan library</button>
 </div>{/if}
 <FolderSummaryRows summaries={$folders.summaries} scanFailures={$folders.scanFailures} busy={$folders.busy} {onview}
+  onorganization={root=>policyRoot=root}
   onscan={(id) => void folders.retryScan(id)} onremove={(root) => (disconnect = root)} onassign={(root) => { assignment = root; libraryId = ''; }} />
 {#if $folders.failure || failure}<p class="problem" role="alert">{$folders.failure || failure}</p>{/if}
 {#if $folders.denied}<button type="button" disabled={$folders.busy} onclick={() => void folders.load(library ? { libraryId: library.id } : { unassigned: true })}>Retry folder access</button>{/if}
@@ -59,4 +62,8 @@
   <button type="button" disabled={$folders.busy} onclick={() => (assignment = null)}>Cancel</button>
   <button type="button" disabled={$folders.busy || !libraryId} onclick={async () => { if (assignment && await folders.assign(assignment.id, libraryId)) assignment = null; }}>Assign folder</button>
   {#if $folders.failure}<p class="problem" role="alert">{$folders.failure}</p>{/if}
+</Modal>{/if}
+
+{#if policyRoot}<Modal title="Automatic organization" onclose={()=>policyRoot=null}>
+  {#key policyRoot.id}<FolderOrganizationPolicy {client} root={policyRoot} onrejected={context.onrejected} />{/key}
 </Modal>{/if}

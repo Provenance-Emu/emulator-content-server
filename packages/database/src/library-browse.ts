@@ -114,7 +114,7 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
       AND ${system('i.system_identifier')} AND ecs_browse_fold(a.display_name) LIKE c.search ESCAPE '\\'
     UNION ALL
     SELECT 'source', s.id, ecs_browse_fold(${sourceTitleSql}), COALESCE(NULLIF(${sourceSystemSql},''),'unknown'), NULL
-    FROM source_files s JOIN content_roots r ON r.id = s.root_id CROSS JOIN c
+    FROM live_source_files s JOIN content_roots r ON r.id = s.root_id CROSS JOIN c
     WHERE c.can_read = 1 AND (c.root_id IS NULL OR s.root_id = c.root_id)
       AND ((r.library_id = c.library_id AND EXISTS (SELECT 1 FROM libraries l WHERE l.id = r.library_id AND l.deleted_at IS NULL))
         OR (c.library_id IS NULL AND r.library_id IS NULL AND c.is_owner = 1))

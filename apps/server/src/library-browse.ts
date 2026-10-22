@@ -16,6 +16,7 @@ import {
   requireOwner,
   requireRevision,
 } from './http.js';
+import { reserveContentRoots } from './root-mutations.js';
 
 export interface BrowseProbes {
   root: typeof probeRoot;
@@ -362,11 +363,17 @@ export function registerLibraryBrowse(
   });
   app.put('/api/v1/roots/:rootId/library', async (request) => {
     const actor = requireOwner(request, 'Only the server owner can assign folders');
-    return catalog.assignUnassignedRoot({
-      rootId: (request.params as { rootId: string }).rootId,
-      libraryId: requiredString(jsonObject(request.body), 'libraryId'),
-      actorId: actor.userId,
-      deviceId: actor.deviceId,
-    });
+    const rootId = (request.params as { rootId: string }).rootId;
+    const releaseRoots = reserveContentRoots(catalog, [rootId]);
+    try {
+      return catalog.assignUnassignedRoot({
+        rootId,
+        libraryId: requiredString(jsonObject(request.body), 'libraryId'),
+        actorId: actor.userId,
+        deviceId: actor.deviceId,
+      });
+    } finally {
+      releaseRoots();
+    }
   });
 }

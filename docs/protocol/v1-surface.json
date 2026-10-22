@@ -31,6 +31,7 @@
     "GET /api/v1/player/core",
     "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
+    "GET /api/v1/roots/:rootId/organization-policy",
     "GET /api/v1/sources",
     "GET /api/v1/sources/:sourceId/bundle",
     "GET /api/v1/sources/:sourceId/content",
@@ -73,6 +74,7 @@
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
     "PUT /api/v1/roots/:rootId/library",
+    "PUT /api/v1/roots/:rootId/organization-policy",
     "PUT /api/v1/sources/:sourceId/matches/selections",
     "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
@@ -486,6 +488,38 @@
         "plugins"
       ]
     },
+    "SourceOrganizationPolicy": {
+      "properties": [
+        "enabled",
+        "enabledAt",
+        "mode",
+        "sourceRootId",
+        "targetRootId"
+      ],
+      "required": [
+        "enabled",
+        "sourceRootId"
+      ]
+    },
+    "SourceOrganizationPolicyDraft": {
+      "properties": [
+        "enabled",
+        "planId"
+      ],
+      "required": [
+        "enabled"
+      ]
+    },
+    "AutomaticOrganizationOutcome": {
+      "properties": [
+        "sourceId",
+        "status",
+        "warning"
+      ],
+      "required": [
+        "status"
+      ]
+    },
     "SourceOrganizationDraft": {
       "properties": [
         "mode",
@@ -602,6 +636,7 @@
     },
     "SourceMatchSelections": {
       "properties": [
+        "automaticOrganization",
         "matches",
         "revision",
         "sourceId"

@@ -183,7 +183,7 @@
       of {$controller.reading.total}{/if}
   </p>{/if}
 {#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} {onchanged} sourceId={selectedSource.id} sourceName={selectedSource.name} />
-{#if selectedSource.kind==='rom'}<SourceOrganization {context} {owner} sourceId={selectedSource.id} libraryId={selectedSource.libraryId} onchanged={()=>{onchanged();onrefresh();}} />{/if}
+{#if selectedSource.kind==='rom'}<SourceOrganization {context} {owner} sourceRootId={selectedSource.rootId} sourceId={selectedSource.id} libraryId={selectedSource.libraryId} onchanged={()=>{onchanged();onrefresh();}} />{/if}
 {/key}{/if}
 {#if upload && uploadTarget}<Modal
     title="Add a file"

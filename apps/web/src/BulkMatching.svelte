@@ -69,6 +69,7 @@
   <button type="button" disabled={reviewBusy} onclick={()=>reviewing=null}>Back to matching results</button>
   <p role="status" aria-live="polite">{unresolved.length} unresolved game{unresolved.length===1?'':'s'} · {reviewedCount} reviewed</p>
   <h3 tabindex="-1" bind:this={reviewHeading}>{reviewing.entry.name}</h3>
+  {#if reviewing.reason}<p>{reviewing.reason}</p>{/if}
   <p class="dim">Suggestions refresh when you open a game, so expired proposals cannot overwrite your choices.</p>
   <p class="dim">Save and next moves through unsaved categories, then the next unresolved game. Next unresolved game leaves this game in the queue.</p>
   <button type="button" disabled={reviewBusy} onclick={done}>Done reviewing this game</button>

@@ -7,6 +7,7 @@ import { canSeeSource } from './content.js';
 import type { ServerContext } from './context.js';
 import { requireActor, requireOwner, requireRevision } from './http.js';
 import { visibleSource } from './source-groups.js';
+import { runAutomaticOrganization } from './source-organization.js';
 
 type Candidate = MatchCandidate & { providerId: string };
 interface Dependencies {
@@ -15,7 +16,7 @@ interface Dependencies {
     ownerId: string,
     requestId: string,
     candidateId: string,
-  ): { candidate: Candidate; validate(actor: Actor): Promise<void> };
+  ): { candidate: Candidate; pendingLocalKinds?: string[]; validate(actor: Actor): Promise<void> };
   resource(
     candidate: Candidate,
     sourceId: string,
@@ -132,8 +133,22 @@ export function registerSourceSelections(
       file?.bytes ?? null,
       actor.userId,
     );
+    const automaticOrganization = ['rom', 'metadata', 'artwork'].includes(candidate.kind)
+      ? await runAutomaticOrganization(
+          context,
+          actor,
+          sourceId,
+          proposed.pendingLocalKinds?.filter(
+            (kind) =>
+              !context.catalog.sourceMatches(sourceId).matches.some((match) => match.kind === kind),
+          ),
+        )
+      : undefined;
     reply.header('cache-control', 'private, no-store');
-    return state(actor, sourceId);
+    return {
+      ...state(actor, sourceId),
+      ...(automaticOrganization ? { automaticOrganization } : {}),
+    };
   });
   app.delete('/api/v1/sources/:sourceId/matches/selections/:kind', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can remove selected matches');

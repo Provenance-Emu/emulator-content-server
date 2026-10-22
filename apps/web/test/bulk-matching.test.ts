@@ -646,3 +646,47 @@ test('pausing during save reconciliation ignores the late read and prevents the 
   assert.equal(get(bulk).rows[0]?.status, 'pending');
   assert.equal(get(bulk).rows[0]?.saved, 0);
 });
+
+test('bulk auto matching refreshes proposals after automatic move and keeps saved categories', async (t) => {
+  let lookups = 0;
+  const writes: string[] = [];
+  const choices: SavedSourceMatch[] = [];
+  const f = transport((url, init) => {
+    if (url.pathname === '/api/v1/browse')
+      return Response.json({ items: [entry('source', 'game')], nextCursor: null });
+    if (url.pathname.endsWith('/selections')) {
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body));
+        assert.equal(body.requestId, writes.length ? 'r2' : 'r1');
+        writes.push(body.candidateId);
+        choices.push(
+          selected(candidate(body.candidateId, writes.length === 1 ? 'metadata' : 'rom')),
+        );
+      }
+      return Response.json({
+        sourceId: 'game',
+        revision: choices.length,
+        matches: choices,
+        ...(choices.length === 1 ? { automaticOrganization: { status: 'moved' } } : {}),
+      });
+    }
+    lookups++;
+    return Response.json({
+      sourceId: 'game',
+      requestId: `r${lookups}`,
+      plugins: [],
+      problems: [],
+      candidates: [
+        candidate('metadata'),
+        candidate(lookups === 1 ? 'old-system' : 'fresh-system', 'rom'),
+      ],
+    });
+  });
+  t.after(f.restore);
+  const bulk = createBulkMatching(f.client);
+  t.after(() => bulk.dispose());
+  await bulk.start({ libraryId: 'library' }, {});
+  assert.deepEqual(writes, ['metadata', 'fresh-system']);
+  assert.equal(get(bulk).rows[0]?.saved, 2);
+  assert.equal(get(bulk).rows[0]?.status, 'saved');
+});

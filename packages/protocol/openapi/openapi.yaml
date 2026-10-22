@@ -505,6 +505,30 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MatchingPluginList' }
+  /api/v1/roots/{rootId}/organization-policy:
+    get:
+      operationId: sourceOrganizationPolicy
+      responses:
+        '200':
+          description: Owner-only automatic organization policy for a registered source folder. Disabled by default. Internal filesystem paths are not exposed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceOrganizationPolicy' }
+    put:
+      operationId: setSourceOrganizationPolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SourceOrganizationPolicyDraft' }
+      responses:
+        '200':
+          description: Owner explicitly enables future successful ROM, metadata and artwork match saves using a current organization preview bound to this source folder. Enabling does not process existing files. Disable at any time with enabled false. Policy fails closed if either folder changes library or path. Copy retains one verified owned copy and synchronizes later saved snapshots; move retains source identity. Unsupported files, stale sources and collisions leave saved matches intact and return an automatic organization warning.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceOrganizationPolicy' }
+        '409':
+          description: Preview expired or changed. Create a new preview before enabling.
   /api/v1/sources/{sourceId}/organization/preview:
     post:
       operationId: previewSourceOrganization
@@ -515,7 +539,7 @@ paths:
             schema: { $ref: '#/components/schemas/SourceOrganizationDraft' }
       responses:
         '200':
-          description: Owner-only, read-only preview for one local cartridge ROM. Destination is generated from system, saved title and original filename, within a registered root in the same library (including unassigned roots). Archives, disc sets and companions are unsupported. Copy supports different volumes; move requires the same volume. Preview is bound to owner, source, roots, saved matches and file validators, expires after ten minutes and may be discarded when the bounded preview cache fills. No automatic organization occurs.
+          description: Owner-only, read-only preview for one local cartridge ROM. Destination is generated from system, saved title and original filename, within a registered root in the same library (including unassigned roots). Archives, disc sets and companions are unsupported. Copy supports different volumes; move requires the same volume. Preview is bound to owner, source, roots, saved matches and file validators, expires after ten minutes and may be discarded when the bounded preview cache fills. Preview itself does not organize files. A separate explicit root policy can enable automatic organization on future saved matches.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SourceOrganizationPreview' }
@@ -959,6 +983,29 @@ components:
         plugins:
           type: array
           items: { $ref: '#/components/schemas/MatchingPlugin' }
+    SourceOrganizationPolicy:
+      type: object
+      required: [sourceRootId, enabled]
+      properties:
+        sourceRootId: { type: string }
+        enabled: { type: boolean }
+        mode: { type: string, enum: [copy, move] }
+        targetRootId: { type: string }
+        enabledAt: { type: string, format: date-time }
+    SourceOrganizationPolicyDraft:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        planId: { type: string, description: Required when enabling. A current owner-bound organization preview for a source in this folder. }
+    AutomaticOrganizationOutcome:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [copied, moved, synchronized, skipped, failed] }
+        sourceId: { type: string }
+        warning: { type: string, description: The match was saved. Organization needs owner attention. }
     SourceOrganizationDraft:
       type: object
       additionalProperties: false
@@ -1040,6 +1087,7 @@ components:
       type: object
       required: [sourceId, revision, matches]
       properties:
+        automaticOrganization: { $ref: '#/components/schemas/AutomaticOrganizationOutcome' }
         sourceId: { type: string }
         revision: { type: integer, minimum: 0 }
         matches:

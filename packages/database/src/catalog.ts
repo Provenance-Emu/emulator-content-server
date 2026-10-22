@@ -49,6 +49,28 @@ export interface SourceInspection {
   mtimeMs?: number | null;
 }
 
+export interface SourceOrganizationPolicy {
+  sourceRootId: string;
+  libraryId: string | null;
+  targetRootId: string;
+  sourceRootPath: string;
+  targetRootPath: string;
+  mode: 'copy' | 'move';
+  enabledBy: string;
+  enabledAt: string;
+}
+export interface SourceOrganizationCopy {
+  copySourceId: string;
+  originalIdentity: string;
+  copyIdentity: string;
+  sha256: string;
+}
+interface OrganizationCopyInput {
+  sourceRootId: string;
+  originalIdentity: string;
+  sha256: string;
+}
+
 export interface CatalogLimits {
   maxUploadBytes: number;
   maxLibraryBytes: number;
@@ -585,7 +607,7 @@ export class CatalogDatabase {
           ? 'AND r.library_id IS NULL'
           : 'AND r.library_id = ?';
     const rows = this.db
-      .prepare(`SELECT r.*, (SELECT COUNT(*) FROM source_files s WHERE s.root_id = r.id) AS indexed_file_count
+      .prepare(`SELECT r.*, (SELECT COUNT(*) FROM live_source_files s WHERE s.root_id = r.id) AS indexed_file_count
       FROM content_roots r WHERE (r.library_id IS NULL OR EXISTS (SELECT 1 FROM libraries l WHERE l.id = r.library_id AND l.deleted_at IS NULL)) ${where}
       ORDER BY r.created_at, r.id`)
       .all(...(typeof filter.libraryId === 'string' ? [filter.libraryId] : [])) as Array<
@@ -1039,6 +1061,8 @@ export class CatalogDatabase {
     actorId: string;
     online: boolean;
     files: SourceInspection[];
+    /** Candidates whose old path was verified absent on an online root by the scanner. */
+    verifiedMoveSourceIds?: readonly string[];
   }): number {
     const root = this.getContentRoot(input.rootId);
     if (!root) throw new DomainError('not-found', 404, 'Content root not found');
@@ -1048,8 +1072,10 @@ export class CatalogDatabase {
     }
     const scannedAt = nowIso();
     this.transaction(() => {
-      const existing = this.sourceRows(input.rootId);
-      const byPath = new Map(existing.map((row) => [row.relative_path, row]));
+      const existing = this.sourceRows(input.rootId, undefined, true);
+      const byPath = new Map(
+        existing.filter((row) => !row.missing_at).map((row) => [row.relative_path, row]),
+      );
       const paths = new Set(input.files.map((file) => file.relativePath));
       if (paths.size !== input.files.length)
         throw new DomainError('invalid-body', 400, 'Scanned paths must be unique');
@@ -1061,6 +1087,10 @@ export class CatalogDatabase {
       );
       const oldIdentities = identityCounts(existing.map((row) => row.filesystem_identity));
       const newIdentities = identityCounts(input.files.map((file) => file.filesystemIdentity));
+      const verifiedIds = new Set(input.verifiedMoveSourceIds ?? []);
+      const libraryRows = this.librarySourceRows(root.libraryId);
+      const libraryIdentities = identityCounts(libraryRows.map((row) => row.filesystem_identity));
+      const libraryByIdentity = new Map(libraryRows.map((row) => [row.filesystem_identity, row]));
       const seen = new Set<string>();
       const deleted = new Set<string>();
       // Delete replacements first so a new row cannot inherit another file's selections.
@@ -1090,8 +1120,28 @@ export class CatalogDatabase {
           const candidate = byIdentity.get(file.filesystemIdentity);
           if (
             candidate &&
-            !paths.has(candidate.relative_path) &&
+            (!paths.has(candidate.original_relative_path ?? candidate.relative_path) ||
+              (candidate.missing_at !== null &&
+                candidate.original_relative_path === file.relativePath)) &&
             !oldPaths.has(file.relativePath) &&
+            candidate.size === file.size &&
+            candidate.mtime_ms !== null &&
+            candidate.mtime_ms === file.mtimeMs
+          )
+            prior = candidate;
+        }
+        if (
+          !prior &&
+          file.filesystemIdentity &&
+          newIdentities.get(file.filesystemIdentity) === 1 &&
+          libraryIdentities.get(file.filesystemIdentity) === 1 &&
+          !oldPaths.has(file.relativePath)
+        ) {
+          const candidate = libraryByIdentity.get(file.filesystemIdentity);
+          if (
+            candidate &&
+            candidate.root_id !== root.id &&
+            verifiedIds.has(candidate.id) &&
             candidate.size === file.size &&
             candidate.mtime_ms !== null &&
             candidate.mtime_ms === file.mtimeMs
@@ -1102,6 +1152,8 @@ export class CatalogDatabase {
         seen.add(id);
         const changed =
           !prior ||
+          prior.root_id !== input.rootId ||
+          prior.missing_at !== null ||
           prior.relative_path !== file.relativePath ||
           prior.display_name !== file.displayName ||
           prior.size !== file.size ||
@@ -1133,7 +1185,7 @@ export class CatalogDatabase {
       }
       for (const prior of existing) {
         if (!seen.has(prior.id) && !deleted.has(prior.id))
-          this.deleteInspectedSource(prior, root.libraryId, scannedAt);
+          this.markInspectedSourceMissing(prior, root.libraryId, scannedAt);
       }
       this.insertAudit(input.actorId, 'scan-content-root', 'content-root', input.rootId, {
         count: String(input.files.length),
@@ -1181,7 +1233,7 @@ export class CatalogDatabase {
     this.db
       .prepare(`UPDATE source_files SET root_id=?, relative_path=?, display_name=?, size=?, blocks=?,
       kind=?,system_id=?,availability=?,scanned_at=?,group_anchor=?,group_members_json=?,group_error=?,
-      filesystem_identity=?,mtime_ms=? WHERE id=?`)
+      filesystem_identity=?,mtime_ms=?,missing_at=NULL,original_relative_path=NULL WHERE id=?`)
       .run(
         rootId,
         file.relativePath,
@@ -1199,6 +1251,56 @@ export class CatalogDatabase {
         file.mtimeMs ?? null,
         id,
       );
+  }
+
+  /** Scanner-only retained facts, including rows hidden from public source reads. */
+  inspectionMoveCandidates(rootId: string): {
+    id: string;
+    rootId: string;
+    relativePath: string;
+    filesystemIdentity: string | null;
+    mtimeMs: number | null;
+    size: number;
+  }[] {
+    const root = this.getContentRoot(rootId);
+    if (!root) throw new DomainError('not-found', 404, 'Content root not found');
+    return this.librarySourceRows(root.libraryId).map((row) => ({
+      id: row.id,
+      rootId: row.root_id,
+      relativePath: row.original_relative_path ?? row.relative_path,
+      filesystemIdentity: row.filesystem_identity,
+      mtimeMs: row.mtime_ms,
+      size: row.size,
+    }));
+  }
+
+  private librarySourceRows(libraryId: string | null): SourceRow[] {
+    return this.db
+      .prepare(`SELECT s.*, r.library_id FROM source_files s
+      JOIN content_roots r ON r.id=s.root_id WHERE r.library_id IS ?`)
+      .all(libraryId) as SourceRow[];
+  }
+
+  private markInspectedSourceMissing(
+    prior: SourceRow,
+    libraryId: string | null,
+    scannedAt: string,
+  ): void {
+    if (prior.missing_at) return;
+    this.db
+      .prepare(`UPDATE source_files SET missing_at=?,original_relative_path=relative_path,
+      relative_path=? WHERE id=?`)
+      .run(scannedAt, `.ecs-missing/${prior.id}`, prior.id);
+    this.insertChange(
+      'source',
+      prior.id,
+      'delete',
+      libraryId,
+      null,
+      sensitiveKind(prior.kind),
+      scannedAt,
+      null,
+    );
   }
 
   private deleteInspectedSource(
@@ -1234,12 +1336,19 @@ export class CatalogDatabase {
     targetRootId: string;
     actorId: string;
     file: SourceInspection;
+    organizationCopy?: OrganizationCopyInput;
   }): SourceFileRecord {
     return this.transferInspectedSource(input, true);
   }
 
   private transferInspectedSource(
-    input: { sourceId: string; targetRootId: string; actorId: string; file: SourceInspection },
+    input: {
+      sourceId: string;
+      targetRootId: string;
+      actorId: string;
+      file: SourceInspection;
+      organizationCopy?: OrganizationCopyInput;
+    },
     copy: boolean,
   ): SourceFileRecord {
     return this.transaction(() => {
@@ -1275,6 +1384,13 @@ export class CatalogDatabase {
           .prepare(`INSERT INTO source_match_selections(source_id,kind,selection_json,content)
           SELECT ?,kind,selection_json,content FROM source_match_selections WHERE source_id=?`)
           .run(id, source.id);
+        if (input.organizationCopy)
+          this.setSourceOrganizationCopy(input.organizationCopy.sourceRootId, source.id, {
+            copySourceId: id,
+            originalIdentity: input.organizationCopy.originalIdentity,
+            copyIdentity: input.file.filesystemIdentity,
+            sha256: input.organizationCopy.sha256,
+          });
       } else this.updateInspectedSource(id, target.id, input.file, at);
       this.insertChange(
         'source',
@@ -1292,6 +1408,184 @@ export class CatalogDatabase {
       const result = this.getSource(id);
       if (!result) throw new DomainError('not-found', 500, 'Organized source was not saved');
       return result;
+    });
+  }
+
+  getSourceOrganizationPolicy(sourceRootId: string): SourceOrganizationPolicy | null {
+    const policy = this.one<SourceOrganizationPolicy>(
+      `SELECT source_root_id AS sourceRootId,
+      library_id AS libraryId,target_root_id AS targetRootId,source_root_path AS sourceRootPath,
+      target_root_path AS targetRootPath,mode,enabled_by AS enabledBy,enabled_at AS enabledAt
+      FROM source_organization_policies WHERE source_root_id=?`,
+      sourceRootId,
+    );
+    if (!policy) return null;
+    const source = this.getContentRoot(policy.sourceRootId);
+    const target = this.getContentRoot(policy.targetRootId);
+    if (
+      !source ||
+      !target ||
+      source.libraryId !== policy.libraryId ||
+      target.libraryId !== policy.libraryId ||
+      source.path !== policy.sourceRootPath ||
+      target.path !== policy.targetRootPath
+    )
+      return null;
+    return { ...policy };
+  }
+
+  setSourceOrganizationPolicy(policy: SourceOrganizationPolicy): void {
+    this.transaction(() => {
+      const source = this.getContentRoot(policy.sourceRootId);
+      const target = this.getContentRoot(policy.targetRootId);
+      if (
+        !source ||
+        !target ||
+        source.libraryId !== policy.libraryId ||
+        target.libraryId !== policy.libraryId ||
+        source.path !== policy.sourceRootPath ||
+        target.path !== policy.targetRootPath
+      )
+        throw new DomainError('conflict', 409, 'Organization policy folders changed');
+      // Disabled policies keep ownership, but a new destination must not inherit
+      // the previous destination's mapping when the policy row no longer exists.
+      this.db
+        .prepare(`DELETE FROM source_organization_copies WHERE source_root_id=?
+        AND (? != 'copy' OR copy_source_id NOT IN (SELECT id FROM source_files WHERE root_id=?))`)
+        .run(policy.sourceRootId, policy.mode, policy.targetRootId);
+      this.db
+        .prepare(`INSERT INTO source_organization_policies
+        (source_root_id,library_id,target_root_id,source_root_path,target_root_path,mode,enabled_by,enabled_at)
+        VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(source_root_id) DO UPDATE SET
+        library_id=excluded.library_id,target_root_id=excluded.target_root_id,source_root_path=excluded.source_root_path,
+        target_root_path=excluded.target_root_path,mode=excluded.mode,enabled_by=excluded.enabled_by,enabled_at=excluded.enabled_at`)
+        .run(
+          policy.sourceRootId,
+          policy.libraryId,
+          policy.targetRootId,
+          policy.sourceRootPath,
+          policy.targetRootPath,
+          policy.mode,
+          policy.enabledBy,
+          policy.enabledAt,
+        );
+      this.insertAudit(
+        policy.enabledBy,
+        'enable-source-organization',
+        'content-root',
+        policy.sourceRootId,
+        { mode: policy.mode, targetRootId: policy.targetRootId },
+      );
+    });
+  }
+
+  clearSourceOrganizationPolicy(sourceRootId: string): void {
+    this.db
+      .prepare('DELETE FROM source_organization_policies WHERE source_root_id=?')
+      .run(sourceRootId);
+  }
+
+  getSourceOrganizationCopy(
+    sourceRootId: string,
+    originalSourceId: string,
+  ): SourceOrganizationCopy | null {
+    if (!this.getSourceOrganizationPolicy(sourceRootId)) return null;
+    return (
+      this.one<SourceOrganizationCopy>(
+        `SELECT copy_source_id AS copySourceId,
+      original_identity AS originalIdentity,copy_identity AS copyIdentity,sha256
+      FROM source_organization_copies WHERE source_root_id=? AND original_source_id=?`,
+        sourceRootId,
+        originalSourceId,
+      ) ?? null
+    );
+  }
+
+  setSourceOrganizationCopy(
+    sourceRootId: string,
+    originalSourceId: string,
+    copy: SourceOrganizationCopy,
+  ): void {
+    const policy = this.getSourceOrganizationPolicy(sourceRootId);
+    const original = this.getSource(originalSourceId);
+    const target = this.getSource(copy.copySourceId);
+    if (
+      policy?.mode !== 'copy' ||
+      !original ||
+      !target ||
+      original.rootId !== sourceRootId ||
+      target.rootId !== policy.targetRootId ||
+      original.id === target.id ||
+      original.libraryId !== policy.libraryId ||
+      target.libraryId !== policy.libraryId
+    )
+      throw new DomainError('conflict', 409, 'Automatic copy ownership changed');
+    if (!/^[a-f0-9]{64}$/.test(copy.sha256) || !copy.originalIdentity || !copy.copyIdentity)
+      throw new DomainError(
+        'invalid-body',
+        400,
+        'Automatic copy requires verified filesystem facts',
+      );
+    this.db
+      .prepare(`INSERT INTO source_organization_copies
+      (source_root_id,original_source_id,copy_source_id,original_identity,copy_identity,sha256)
+      VALUES(?,?,?,?,?,?) ON CONFLICT(source_root_id,original_source_id) DO UPDATE SET
+      copy_source_id=excluded.copy_source_id,original_identity=excluded.original_identity,
+      copy_identity=excluded.copy_identity,sha256=excluded.sha256`)
+      .run(
+        sourceRootId,
+        originalSourceId,
+        copy.copySourceId,
+        copy.originalIdentity,
+        copy.copyIdentity,
+        copy.sha256,
+      );
+  }
+
+  /** The organizer verified ownership and both files before synchronizing their selections. */
+  synchronizeSourceMatches(originalId: string, copyId: string): SourceMatchState {
+    return this.transaction(() => {
+      const original = this.getSource(originalId);
+      const copy = this.getSource(copyId);
+      if (!original || !copy || original.libraryId !== copy.libraryId || original.id === copy.id)
+        throw new DomainError('conflict', 409, 'Source copies must stay in the same library');
+      const current = sourceMatches(this.db, copyId);
+      const differs =
+        this.one<{ n: number }>(
+          `SELECT COUNT(*) AS n FROM (
+        SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?
+        EXCEPT SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?)`,
+          originalId,
+          copyId,
+        )?.n ||
+        this.one<{ n: number }>(
+          `SELECT COUNT(*) AS n FROM (
+        SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?
+        EXCEPT SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?)`,
+          copyId,
+          originalId,
+        )?.n;
+      if (!differs) return current;
+      this.db.prepare('DELETE FROM source_match_selections WHERE source_id=?').run(copyId);
+      this.db
+        .prepare(`INSERT INTO source_match_selections(source_id,kind,selection_json,content)
+        SELECT ?,kind,selection_json,content FROM source_match_selections WHERE source_id=?`)
+        .run(copyId, originalId);
+      this.db
+        .prepare(`INSERT INTO source_match_state(source_id,revision) VALUES(?,?)
+        ON CONFLICT(source_id) DO UPDATE SET revision=excluded.revision`)
+        .run(copyId, Math.max(current.revision + 1, sourceMatches(this.db, originalId).revision));
+      this.insertChange(
+        'source',
+        copyId,
+        'upsert',
+        copy.libraryId,
+        null,
+        sensitiveKind(copy.kind),
+        nowIso(),
+        null,
+      );
+      return sourceMatches(this.db, copyId);
     });
   }
 
@@ -1320,7 +1614,7 @@ export class CatalogDatabase {
   getSource(id: string): SourceFileRecord | null {
     const row = this.one<SourceRow>(
       `SELECT s.*, r.library_id, ${sourceMatchColumns}
-       FROM source_files s JOIN content_roots r ON r.id = s.root_id
+       FROM live_source_files s JOIN content_roots r ON r.id = s.root_id
        WHERE s.id = ?`,
       id,
     );
@@ -1376,7 +1670,7 @@ export class CatalogDatabase {
     if (!source.groupMembers?.length) return [source];
     const rows = this.db
       .prepare(
-        `SELECT s.*,r.library_id FROM source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.root_id=? AND s.relative_path IN (SELECT value FROM json_each(?))`,
+        `SELECT s.*,r.library_id FROM live_source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.root_id=? AND s.relative_path IN (SELECT value FROM json_each(?))`,
       )
       .all(source.rootId, JSON.stringify(source.groupMembers)) as SourceRow[];
     const byPath = new Map(rows.map((row) => [row.relative_path, mapSource(row)]));
@@ -1396,7 +1690,7 @@ export class CatalogDatabase {
       this.db
         .prepare(
           `UPDATE source_files SET availability = 'offline', scanned_at = ?
-           WHERE root_id = ? AND availability != 'offline'`,
+           WHERE root_id = ? AND missing_at IS NULL AND availability != 'offline'`,
         )
         .run(scannedAt, rootId);
       for (const row of rows) {
@@ -1450,12 +1744,12 @@ export class CatalogDatabase {
     });
   }
 
-  private sourceRows(rootId: string, limit?: number): SourceRow[] {
+  private sourceRows(rootId: string, limit?: number, includeMissing = false): SourceRow[] {
     return this.db
       .prepare(
         `SELECT s.*, r.library_id, ${sourceMatchColumns}
          FROM source_files s JOIN content_roots r ON r.id = s.root_id
-         WHERE s.root_id = ?
+         WHERE s.root_id = ? ${includeMissing ? '' : 'AND s.missing_at IS NULL'}
          ORDER BY s.relative_path LIMIT ?`,
       )
       .all(rootId, limit ?? -1) as SourceRow[];
@@ -2595,6 +2889,8 @@ type ContentRootRow = {
 };
 
 type SourceRow = {
+  missing_at: string | null;
+  original_relative_path: string | null;
   matched_title?: string | null;
   matched_system_id?: string | null;
   saved_artwork?: number;

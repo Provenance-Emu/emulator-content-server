@@ -32,7 +32,6 @@ import {
   createStagingFile,
   ensureBlobStore,
   hashFile,
-  inspectRoot,
   listFolders,
   listVirtualEntries,
   locationOnline,
@@ -80,6 +79,7 @@ import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
 import { registerSourceMatching } from './source-matching.js';
 import { registerSourceOrganization } from './source-organization.js';
+import { scanRoot } from './source-scan.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
@@ -966,7 +966,12 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   app.delete('/api/v1/roots/:rootId', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can remove a content root');
     const { rootId } = request.params as { rootId: string };
-    catalog.deleteContentRoot(rootId, actor.userId);
+    const releaseRoots = reserveContentRoots(catalog, [rootId]);
+    try {
+      catalog.deleteContentRoot(rootId, actor.userId);
+    } finally {
+      releaseRoots();
+    }
     reply.code(204);
   });
 
@@ -1179,38 +1184,6 @@ function requireVisibleRoot(
     throw new DomainError('not-found', 404, 'Content root not found');
   }
   return root;
-}
-
-async function scanRoot(
-  catalog: CatalogDatabase,
-  root: { id: string; path: string },
-  actorId: string,
-) {
-  const releaseRoots = reserveContentRoots(catalog, [root.id]);
-  try {
-    catalog.beginRootScan(root.id);
-    try {
-      const inspected = await inspectRoot(root.path);
-      const count = catalog.applyInspection({
-        rootId: root.id,
-        actorId,
-        online: inspected.online,
-        files: inspected.files,
-      });
-      catalog.recordRootCheck({
-        rootId: root.id,
-        availability: inspected.online ? 'online' : 'offline',
-        medium: inspected.medium,
-      });
-      catalog.finishRootScan({ rootId: root.id, succeeded: true });
-      return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
-    } catch (error) {
-      catalog.finishRootScan({ rootId: root.id, succeeded: false });
-      throw error;
-    }
-  } finally {
-    releaseRoots();
-  }
 }
 
 async function sendEntryContent(

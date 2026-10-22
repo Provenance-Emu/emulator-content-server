@@ -260,3 +260,139 @@ test('organization is opt-in, previews before copy or move, and retains moved re
     page.getByRole('heading', { name: 'Organized generated game', exact: true, level: 1 }),
   ).toBeVisible();
 });
+
+test('automatic Copy needs preview opt-in, runs on saves, and can be disabled from folder settings', async ({
+  page,
+  fixture,
+}) => {
+  const { mkdir } = await import('node:fs/promises');
+  const root = await fixture.legacy();
+  await writeFile(
+    join(root.path, 'external.json'),
+    JSON.stringify({ title: 'Automatic generated game' }),
+  );
+  await writeFile(
+    join(root.path, 'external.png'),
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  );
+  const targetPath = join(fixture.directory, 'Auto target');
+  await mkdir(targetPath);
+  const target = await fixture.client.addRoot({ path: targetPath, label: 'Automatic destination' });
+  await fixture.client.scanRoot(root.id);
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
+  const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
+  await matching.getByRole('button', { name: 'Save metadata', exact: true }).click();
+  const organization = page.getByRole('region', { name: 'Organize original file', exact: true });
+  expect(
+    (await fixture.client.sources()).items.filter((source) => source.rootId === target.id),
+  ).toHaveLength(0);
+  await organization.getByRole('button', { name: 'Organize files', exact: true }).click();
+  await organization.getByRole('combobox', { name: /^Destination folder/ }).selectOption(target.id);
+  await organization.getByRole('button', { name: 'Preview organization', exact: true }).click();
+  await organization
+    .getByRole('button', { name: 'Confirm automatic Copy for this source folder', exact: true })
+    .click();
+  await expect(
+    organization.getByRole('status').filter({ hasText: 'Automatic Copy is enabled' }),
+  ).toBeVisible();
+  expect(
+    (await fixture.client.sources()).items.filter((source) => source.rootId === target.id),
+  ).toHaveLength(0);
+  await matching.getByRole('button', { name: 'Artwork (1)', exact: true }).click();
+  await matching.getByRole('button', { name: 'Save artwork', exact: true }).click();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved artwork', exact: true }),
+  ).toBeVisible();
+  const copies = (await fixture.client.sources()).items.filter(
+    (source) => source.rootId === target.id,
+  );
+  expect(copies).toHaveLength(1);
+  expect(
+    (await fixture.client.sourceSelections(copies[0]?.id ?? '')).matches
+      .map((match) => match.kind)
+      .sort(),
+  ).toEqual(['artwork', 'metadata']);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Automatic organization for External folder', exact: true })
+    .click();
+  const policy = page.getByRole('dialog', { name: 'Automatic organization', exact: true });
+  await expect(policy.getByRole('status')).toContainText('Automatic Copy is enabled');
+  await policy
+    .getByRole('button', { name: 'Turn off automatic organization', exact: true })
+    .click();
+  await expect(policy.getByRole('status')).toContainText('Automatic organization is off');
+  expect((await fixture.client.sourceOrganizationPolicy(root.id)).enabled).toBe(false);
+});
+
+test('automatic Move waits for local artwork review and preserves the game and both choices', async ({
+  page,
+  fixture,
+}) => {
+  const { mkdir } = await import('node:fs/promises');
+  const root = await fixture.legacy();
+  await writeFile(
+    join(root.path, 'external.json'),
+    JSON.stringify({ title: 'Automatic moved game' }),
+  );
+  await writeFile(
+    join(root.path, 'external.png'),
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  );
+  const targetPath = join(fixture.directory, 'Auto move target');
+  await mkdir(targetPath);
+  const target = await fixture.client.addRoot({ path: targetPath, label: 'Move destination' });
+  await fixture.client.scanRoot(root.id);
+  const original = (await fixture.client.sources()).items.find((source) => source.kind === 'rom');
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
+  const organization = page.getByRole('region', { name: 'Organize original file', exact: true });
+  await organization.getByRole('button', { name: 'Organize files', exact: true }).click();
+  await organization.getByRole('combobox', { name: /^Destination folder/ }).selectOption(target.id);
+  await organization.getByRole('combobox', { name: /^Action/ }).selectOption('move');
+  await organization.getByRole('button', { name: 'Preview organization', exact: true }).click();
+  await organization
+    .getByRole('button', { name: 'Confirm automatic Move for this source folder', exact: true })
+    .click();
+  const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
+  await matching.getByRole('button', { name: 'Save metadata', exact: true }).click();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved metadata', exact: true }),
+  ).toBeVisible();
+  expect(
+    (await fixture.client.sources()).items.find((source) => source.id === original?.id)?.rootId,
+  ).toBe(root.id);
+  await matching.getByRole('button', { name: 'Artwork (1)', exact: true }).click();
+  await matching.getByRole('button', { name: 'Save artwork', exact: true }).click();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved artwork', exact: true }),
+  ).toBeVisible();
+  expect(
+    (await fixture.client.sources()).items.find((source) => source.id === original?.id)?.rootId,
+  ).toBe(target.id);
+  expect(
+    (await fixture.client.sourceSelections(original?.id ?? '')).matches
+      .map((match) => match.kind)
+      .sort(),
+  ).toEqual(['artwork', 'metadata']);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Automatic organization for External folder', exact: true })
+    .click();
+  const policy = page.getByRole('dialog', { name: 'Automatic organization', exact: true });
+  await policy
+    .getByRole('button', { name: 'Turn off automatic organization', exact: true })
+    .click();
+  await expect(policy.getByRole('status')).toContainText('Automatic organization is off');
+});

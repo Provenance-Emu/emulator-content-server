@@ -165,8 +165,20 @@ Game details offer **Organize files** to the owner. Leave it unused to keep link
 files in place. Choose **Copy** or **Move** and a registered destination in the same
 library, inspect the generated `System / Matched title / Original filename` path,
 then confirm. Cancel makes no filesystem or catalog changes. Names are made
-portable; existing destinations are never overwritten. Matching alone never moves
-files, and there is no unattended background organizer.
+portable; existing destinations are never overwritten. Automatic organization starts off. To opt in, use the preview's **Confirm automatic
+Copy/Move for this source folder** action. Enabling changes no files immediately;
+future successful metadata, artwork or system-match saves trigger organization.
+Existing files are not processed as a backlog. Turn it off from a game or from
+**Automatic organization** in the folder's settings, including an empty source
+folder after its games have moved.
+
+Automatic Copy keeps one owned copy and synchronizes later saved metadata/artwork
+only after verifying both files. Disable/re-enable with the same destination reuses
+that copy; changing destinations starts new ownership without deleting old files.
+Automatic Move waits while the current lookup still has unsaved local metadata or
+artwork suggestions. Completing those choices moves the file with its ID and
+saved snapshots intact. Organization errors leave the saved match committed and
+surface a warning; collisions never authorize an overwrite.
 
 The initial organizer supports local single-file cartridge ROMs up to 512 MiB.
 Archives, disc descriptors/sets, cloud placeholders and network roots are excluded.
@@ -182,12 +194,18 @@ the destination record remains valid and a warning identifies recovery work;
 original or unexpected bytes are preserved. Scans and organization reserve their
 registered roots so a stale scan cannot erase an organized record.
 
-After an external rename or move **within one registered folder**, rescan it.
-The scanner keeps IDs and saved matches when filesystem identity, size and
-modification time identify exactly one unchanged file. It also updates its inferred
-kind/system for the new location. Existing catalogs need one scan on the updated
-server to establish identity before subsequent moves can be tracked. Hardlink
-ambiguities, replacements, unsupported identity, edits made during a move and
-manual moves across registered roots/volumes are not guessed. Use the previewed
-Move action for an explicit move between registered folders. This is rescan-based
-detection, not an always-running filesystem watcher.
+After an external rename or move within a registered folder, or between registered
+folders in the same library, rescan the affected folders. The scanner verifies a
+unique filesystem identity, unchanged size/modification time and absence at the
+old path on an online root. It preserves the source ID and saved matches in either
+scan order. Moves across different libraries are never inferred; unassigned roots
+form their own scope. Unsupported identity, ambiguous hardlinks, replacements,
+offline roots and manual cross-volume moves are not guessed.
+
+Missing records are hidden from source lists, browse results, counts and content
+reads, but retained internally with their saved matches until their root is
+explicitly disconnected. This lets a later destination scan restore an identity
+after the old folder was scanned first, including after a server restart. Returning
+the same file to its original path restores its record too. Existing catalogs need
+one scan on the updated server to establish filesystem identity before subsequent
+moves can be tracked. This is rescan-based detection, not a filesystem watcher.

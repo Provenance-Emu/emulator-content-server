@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { basename, extname } from 'node:path';
-import { DomainError, type SourceFileRecord } from '@ecs/domain';
+import { type Actor, DomainError, type SourceFileRecord } from '@ecs/domain';
 import { PROVENANCE_SYSTEMS } from '@ecs/protocol';
 import {
   applyOrganization,
+  inspectOrganizationFile,
   type OrganizationPlan,
   portableSegment,
   previewOrganization,
   probeRoot,
+  resolveInside,
 } from '@ecs/storage';
 import type { FastifyInstance } from 'fastify';
 import type { ServerContext } from './context.js';
@@ -36,6 +38,39 @@ function stale(): never {
   );
 }
 
+export interface AutomaticOrganizationOutcome {
+  status: 'copied' | 'moved' | 'synchronized' | 'skipped' | 'failed';
+  sourceId?: string;
+  warning?: string;
+}
+type Owner = Actor & { kind: 'user' };
+const automatic = new WeakMap<
+  ServerContext['catalog'],
+  (
+    actor: Owner,
+    sourceId: string,
+    pendingLocalKinds: readonly string[],
+  ) => Promise<AutomaticOrganizationOutcome | undefined>
+>();
+/** A saved selection is already committed. Organization errors must never undo it. */
+export async function runAutomaticOrganization(
+  context: Pick<ServerContext, 'catalog'>,
+  actor: Actor,
+  sourceId: string,
+  pendingLocalKinds: readonly string[] = [],
+): Promise<AutomaticOrganizationOutcome | undefined> {
+  if (actor.kind !== 'user' || !actor.isOwner) return;
+  try {
+    return await automatic.get(context.catalog)?.(actor, sourceId, pendingLocalKinds);
+  } catch {
+    return {
+      status: 'failed',
+      warning:
+        'Match saved. Automatic organization could not complete; preview the file organization to inspect the destination.',
+    };
+  }
+}
+
 export function registerSourceOrganization(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
   const plans = new Map<string, SavedPlan>();
@@ -61,16 +96,12 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
         'Only a single local cartridge ROM can be organized. Disc sets, archives, descriptors and companion files are not supported.',
       );
   };
-  app.post('/api/v1/sources/:sourceId/organization/preview', async (request) => {
-    const actor = requireOwner(request, 'Only an owner can organize original files');
-    const sourceId = (request.params as { sourceId: string }).sourceId;
-    const body = jsonObject(request.body);
-    if (Object.keys(body).some((key) => !['mode', 'targetRootId'].includes(key)))
-      throw new DomainError('invalid-body', 400, 'Only mode and targetRootId are accepted');
-    const mode = requiredString(body, 'mode');
-    if (mode !== 'copy' && mode !== 'move')
-      throw new DomainError('invalid-body', 400, 'Choose Copy or Move');
-    const targetRootId = requiredString(body, 'targetRootId');
+  async function prepare(
+    actor: Owner,
+    sourceId: string,
+    mode: 'copy' | 'move',
+    targetRootId: string,
+  ) {
     if (busy.has(sourceId) || busy.size >= 4)
       throw new DomainError(
         'organization-conflict',
@@ -175,14 +206,14 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
     } finally {
       busy.delete(sourceId);
     }
-  });
-  app.post('/api/v1/sources/:sourceId/organization/apply', async (request) => {
-    const actor = requireOwner(request, 'Only an owner can organize original files');
-    const sourceId = (request.params as { sourceId: string }).sourceId;
-    const body = jsonObject(request.body);
-    if (Object.keys(body).some((key) => key !== 'planId'))
-      throw new DomainError('invalid-body', 400, 'Only the preview planId is accepted');
-    const planId = requiredString(body, 'planId');
+  }
+  async function execute(
+    actor: Owner,
+    sourceId: string,
+    planId: string,
+    validate?: () => void,
+    organizationCopy?: { sourceRootId: string; originalIdentity: string; sha256: string },
+  ) {
     const plan = plans.get(planId);
     if (
       !plan ||
@@ -232,10 +263,12 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
           .some((file) => file.relativePath === plan.operation.targetRelativePath)
       )
         stale();
+      validate?.();
       const operation = await applyOrganization(plan.operation);
       let saved: SourceFileRecord;
       try {
         // Async file work gives other requests an opportunity to change metadata.
+        validate?.();
         const current = catalog.getSource(sourceId);
         if (!current || snapshot(current) !== plan.snapshot) stale();
         const file = {
@@ -245,7 +278,13 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
           displayName: basename(plan.operation.targetRelativePath),
           availability: 'local' as const,
         };
-        const input = { sourceId, targetRootId: target.id, actorId: actor.userId, file };
+        const input = {
+          sourceId,
+          targetRootId: target.id,
+          actorId: actor.userId,
+          file,
+          ...(organizationCopy ? { organizationCopy } : {}),
+        };
         saved =
           plan.operation.mode === 'move'
             ? catalog.relocateSource(input)
@@ -277,5 +316,220 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
       releaseRoots?.();
       busy.delete(sourceId);
     }
+  }
+  app.post('/api/v1/sources/:sourceId/organization/preview', async (request) => {
+    const actor = requireOwner(request, 'Only an owner can organize original files');
+    const sourceId = (request.params as { sourceId: string }).sourceId;
+    const body = jsonObject(request.body);
+    if (Object.keys(body).some((key) => !['mode', 'targetRootId'].includes(key)))
+      throw new DomainError('invalid-body', 400, 'Only mode and targetRootId are accepted');
+    const mode = requiredString(body, 'mode');
+    if (mode !== 'copy' && mode !== 'move')
+      throw new DomainError('invalid-body', 400, 'Choose Copy or Move');
+    return prepare(actor, sourceId, mode, requiredString(body, 'targetRootId'));
+  });
+  app.post('/api/v1/sources/:sourceId/organization/apply', async (request) => {
+    const actor = requireOwner(request, 'Only an owner can organize original files');
+    const body = jsonObject(request.body);
+    if (Object.keys(body).some((key) => key !== 'planId'))
+      throw new DomainError('invalid-body', 400, 'Only the preview planId is accepted');
+    return execute(
+      actor,
+      (request.params as { sourceId: string }).sourceId,
+      requiredString(body, 'planId'),
+    );
+  });
+  function policyView(rootId: string) {
+    const policy = catalog.getSourceOrganizationPolicy(rootId);
+    return {
+      sourceRootId: rootId,
+      enabled: !!policy,
+      ...(policy
+        ? { mode: policy.mode, targetRootId: policy.targetRootId, enabledAt: policy.enabledAt }
+        : {}),
+    };
+  }
+  app.get('/api/v1/roots/:rootId/organization-policy', async (request, reply) => {
+    requireOwner(request, 'Only an owner can manage automatic organization');
+    const rootId = (request.params as { rootId: string }).rootId;
+    if (!catalog.getContentRoot(rootId))
+      throw new DomainError('not-found', 404, 'Folder not found');
+    reply.header('cache-control', 'private, no-store');
+    return policyView(rootId);
+  });
+  app.put('/api/v1/roots/:rootId/organization-policy', async (request) => {
+    const actor = requireOwner(request, 'Only an owner can manage automatic organization');
+    const rootId = (request.params as { rootId: string }).rootId;
+    const body = jsonObject(request.body);
+    if (
+      Object.keys(body).some((key) => !['enabled', 'planId'].includes(key)) ||
+      typeof body.enabled !== 'boolean'
+    )
+      throw new DomainError('invalid-body', 400, 'Supply enabled and a preview planId to enable');
+    if (!catalog.getContentRoot(rootId))
+      throw new DomainError('not-found', 404, 'Folder not found');
+    if (!body.enabled) {
+      catalog.clearSourceOrganizationPolicy(rootId);
+      return policyView(rootId);
+    }
+    const planId = requiredString(body, 'planId');
+    const plan = plans.get(planId);
+    if (!plan || plan.ownerId !== actor.userId || plan.expiresAt <= Date.now()) stale();
+    const source = catalog.getSource(plan.sourceId);
+    if (!source || source.rootId !== rootId || snapshot(source) !== plan.snapshot) stale();
+    const root = catalog.getContentRoot(rootId);
+    const target = catalog.getContentRoot(plan.targetRootId);
+    if (
+      !root ||
+      !target ||
+      root.path !== plan.operation.sourceRoot ||
+      target.path !== plan.operation.targetRoot ||
+      root.libraryId !== target.libraryId
+    )
+      stale();
+    const release = reserveContentRoots(catalog, [root.id, target.id]);
+    try {
+      // Fresh validation confirms the sample still means exactly what the owner saw.
+      const fresh = await prepare(actor, source.id, plan.operation.mode, target.id);
+      const refreshed = plans.get(fresh.planId);
+      const currentSource = catalog.getSource(source.id);
+      if (
+        !refreshed ||
+        !currentSource ||
+        refreshed.operation.file.validator !== plan.operation.file.validator ||
+        refreshed.operation.targetRelativePath !== plan.operation.targetRelativePath ||
+        snapshot(currentSource) !== plan.snapshot
+      )
+        stale();
+      catalog.setSourceOrganizationPolicy({
+        sourceRootId: root.id,
+        libraryId: root.libraryId,
+        targetRootId: target.id,
+        sourceRootPath: root.path,
+        targetRootPath: target.path,
+        mode: plan.operation.mode,
+        enabledBy: actor.userId,
+        enabledAt: new Date().toISOString(),
+      });
+      plans.delete(fresh.planId);
+      plans.delete(planId);
+      return policyView(rootId);
+    } finally {
+      release();
+    }
+  });
+  automatic.set(catalog, async (actor, sourceId, pendingLocalKinds) => {
+    const source = catalog.getSource(sourceId);
+    if (!source) return;
+    const policy = catalog.getSourceOrganizationPolicy(source.rootId);
+    if (!policy) return;
+    // Keep local companion proposals usable until their selected snapshots are saved.
+    if (
+      policy.mode === 'move' &&
+      pendingLocalKinds.some((kind) => ['metadata', 'artwork'].includes(kind))
+    )
+      return { status: 'skipped', sourceId };
+    const root = catalog.getContentRoot(source.rootId);
+    const target = catalog.getContentRoot(policy.targetRootId);
+    if (
+      !root ||
+      !target ||
+      root.libraryId !== policy.libraryId ||
+      target.libraryId !== policy.libraryId ||
+      root.path !== policy.sourceRootPath ||
+      target.path !== policy.targetRootPath
+    )
+      stale();
+    const policySnapshot = JSON.stringify(policy);
+    const stillEnabled = () => {
+      if (JSON.stringify(catalog.getSourceOrganizationPolicy(root.id)) !== policySnapshot) stale();
+    };
+    const owned =
+      policy.mode === 'copy' ? catalog.getSourceOrganizationCopy(root.id, sourceId) : null;
+    if (owned) {
+      const release = reserveContentRoots(catalog, [root.id, target.id]);
+      try {
+        const copy = catalog.getSource(owned.copySourceId);
+        if (!copy || copy.rootId !== target.id) stale();
+        const before = snapshot(source);
+        const copyBefore = snapshot(copy);
+        const media = await Promise.all([probeRoot(root.path), probeRoot(target.path)]);
+        if (
+          media.some(
+            (medium) => !medium.online || medium.medium === 'icloud' || medium.medium === 'network',
+          )
+        )
+          stale();
+        const [originalFile, copyFile] = await Promise.all([
+          resolveInside(root.path, source.relativePath, { pinnedRoot: true }).then(
+            inspectOrganizationFile,
+          ),
+          resolveInside(target.path, copy.relativePath, { pinnedRoot: true }).then(
+            inspectOrganizationFile,
+          ),
+        ]);
+        if (
+          originalFile.filesystemIdentity !== owned.originalIdentity ||
+          copyFile.filesystemIdentity !== owned.copyIdentity ||
+          originalFile.sha256 !== owned.sha256 ||
+          copyFile.sha256 !== owned.sha256
+        )
+          stale();
+        stillEnabled();
+        const currentSource = catalog.getSource(sourceId);
+        const currentCopy = catalog.getSource(copy.id);
+        if (
+          !currentSource ||
+          !currentCopy ||
+          snapshot(currentSource) !== before ||
+          snapshot(currentCopy) !== copyBefore
+        )
+          stale();
+        catalog.synchronizeSourceMatches(sourceId, copy.id);
+        return { status: 'synchronized', sourceId: copy.id };
+      } finally {
+        release();
+      }
+    }
+    eligible(source);
+    // A later match in a same-root move should not attempt to overwrite itself.
+    const system =
+      PROVENANCE_SYSTEMS.find((entry) => entry.identifier === source.systemId)?.name ??
+      source.systemId ??
+      'Unknown System';
+    const extension = extname(source.relativePath);
+    const fileName =
+      portableSegment(
+        basename(source.relativePath, extension),
+        120 - Buffer.byteLength(extension, 'utf8'),
+      ) + extension;
+    const destination = [
+      portableSegment(system),
+      portableSegment(source.title ?? basename(source.displayName, extname(source.displayName))),
+      fileName,
+    ].join('/');
+    if (source.rootId === target.id && source.relativePath === destination)
+      return { status: 'skipped', sourceId };
+    const preview = await prepare(actor, sourceId, policy.mode, target.id);
+    stillEnabled();
+    const originalIdentity = plans.get(preview.planId)?.operation.file;
+    const result = await execute(
+      actor,
+      sourceId,
+      preview.planId,
+      stillEnabled,
+      policy.mode === 'copy' && originalIdentity
+        ? {
+            sourceRootId: root.id,
+            originalIdentity: originalIdentity.filesystemIdentity,
+            sha256: originalIdentity.sha256,
+          }
+        : undefined,
+    );
+    return {
+      status: policy.mode === 'copy' ? 'copied' : 'moved',
+      sourceId: result.sourceId,
+      ...(result.warning ? { warning: result.warning } : {}),
+    };
   });
 }

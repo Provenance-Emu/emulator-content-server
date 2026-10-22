@@ -298,6 +298,40 @@ export const MIGRATIONS: readonly Migration[] = [
     CREATE INDEX source_files_identity ON source_files(root_id,filesystem_identity);
   `,
   },
+  {
+    version: 13,
+    sql: `
+    ALTER TABLE source_files ADD COLUMN missing_at TEXT;
+    ALTER TABLE source_files ADD COLUMN original_relative_path TEXT;
+    CREATE VIEW live_source_files AS SELECT * FROM source_files WHERE missing_at IS NULL;
+    CREATE INDEX source_files_live_identity ON source_files(filesystem_identity);
+  `,
+  },
+  {
+    version: 14,
+    sql: `
+    CREATE TABLE source_organization_policies (
+      source_root_id TEXT PRIMARY KEY REFERENCES content_roots(id) ON DELETE CASCADE,
+      library_id TEXT REFERENCES libraries(id) ON DELETE CASCADE,
+      target_root_id TEXT NOT NULL REFERENCES content_roots(id) ON DELETE CASCADE,
+      source_root_path TEXT NOT NULL,
+      target_root_path TEXT NOT NULL,
+      mode TEXT NOT NULL CHECK(mode IN ('copy','move')),
+      enabled_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      enabled_at TEXT NOT NULL
+    );
+    CREATE TABLE source_organization_copies (
+      source_root_id TEXT NOT NULL REFERENCES content_roots(id) ON DELETE CASCADE,
+      original_source_id TEXT NOT NULL REFERENCES source_files(id) ON DELETE CASCADE,
+      copy_source_id TEXT NOT NULL REFERENCES source_files(id) ON DELETE CASCADE,
+      original_identity TEXT NOT NULL,
+      copy_identity TEXT NOT NULL,
+      sha256 TEXT NOT NULL,
+      PRIMARY KEY(source_root_id,original_source_id),
+      UNIQUE(copy_source_id)
+    );
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

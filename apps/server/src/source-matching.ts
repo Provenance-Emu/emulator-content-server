@@ -305,6 +305,15 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
       throw new DomainError('not-found', 404, 'Matching request expired; find matches again');
     return {
       candidate,
+      pendingLocalKinds: [
+        ...new Set(
+          job.candidates
+            .filter(
+              (candidate) => candidate.fileId && ['metadata', 'artwork'].includes(candidate.kind),
+            )
+            .map((candidate) => candidate.kind),
+        ),
+      ],
       async validate(actor: Actor) {
         for (const id of [sourceId, ...(candidate.fileId ? [candidate.fileId] : [])]) {
           if (!job.stamps.has(id) || job.stamps.get(id) !== (await stamp(actor, id)))

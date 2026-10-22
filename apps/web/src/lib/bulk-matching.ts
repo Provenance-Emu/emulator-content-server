@@ -182,16 +182,20 @@ export function createBulkMatching(
           let saved = await client.sourceSelections(id, signal);
           if (!live(run)) return;
           const checksum = canChecksum(next.entry.source);
-          const result = await client.sourceMatches(id, { ...current.options, checksum }, signal);
+          let result = await client.sourceMatches(id, { ...current.options, checksum }, signal);
           if (!live(run)) return;
           const { auto } = plan(result, saved, checksum);
           let count = next.saved;
-          for (const candidate of auto) {
+          let organizationWarning: string | undefined;
+          for (let index = 0; index < auto.length && index < 5; index++) {
+            const candidate = auto[index];
+            if (!candidate) break;
             if (!live(run)) return;
             // Each response may reveal another owner's choice. Recheck both
             // category occupancy and system agreement before the next write.
             if (!plan(result, saved, checksum).auto.some((choice) => choice.id === candidate.id))
               continue;
+            let reconciled = false;
             try {
               saved = await client.saveSourceMatch(
                 id,
@@ -208,27 +212,44 @@ export function createBulkMatching(
               saved = await client.sourceSelections(id, signal);
               if (!live(run)) return;
               if (!saved.matches.some((match) => match.id === candidate.id)) throw error;
+              reconciled = true;
             }
             if (!live(run)) return;
             changed = true;
             count++;
             row(id, { saved: count });
+            const organization =
+              'automaticOrganization' in saved
+                ? (saved.automaticOrganization as { status: string; warning?: string })
+                : undefined;
+            if (organization?.warning) {
+              organizationWarning = organization.warning;
+              break;
+            }
+            if (organization?.status === 'moved' || reconciled) {
+              result = await client.sourceMatches(id, { ...current.options, checksum }, signal);
+              if (!live(run)) return;
+              auto.splice(index + 1, auto.length, ...plan(result, saved, checksum).auto);
+            }
           }
           const remaining = plan(result, saved, checksum).remaining;
-          const review = remaining.length > 0 || result.problems.length > 0;
+          const review =
+            remaining.length > 0 || result.problems.length > 0 || !!organizationWarning;
           row(id, {
             status: review ? 'review' : saved.matches.length ? 'saved' : 'unmatched',
             suggestions: remaining.length,
             retryable: result.problems.length > 0,
-            reason: result.problems.length
-              ? 'Some providers failed; review these results or retry later.'
-              : review
-                ? 'Choose between suggestions. Filename matches are never auto-saved.'
-                : count
-                  ? `${count} exact checksum match${count === 1 ? '' : 'es'} saved.`
-                  : saved.matches.length
-                    ? 'Existing saved choices preserved.'
-                    : 'No suggestions from the selected providers.',
+            reason: organizationWarning
+              ? `Matches saved. Automatic organization: ${organizationWarning}`
+              : result.problems.length
+                ? 'Some providers failed; review these results or retry later.'
+                : review
+                  ? 'Choose between suggestions. Filename matches are never auto-saved.'
+                  : count
+                    ? `${count} exact checksum match${count === 1 ? '' : 'es'} saved.`
+                    : saved.matches.length
+                      ? 'Existing saved choices preserved.'
+                      : 'No suggestions from the selected providers.',
           });
         } catch (error) {
           if (!live(run)) return;

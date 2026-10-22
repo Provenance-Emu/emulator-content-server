@@ -345,3 +345,55 @@ test('authorization loss invalidates saved matches and prevents a late preview f
   await controller.find({});
   assert.equal(f.requests.length, before);
 });
+
+for (const refreshFails of [false, true])
+  test(`automatic move ${refreshFails ? 'blocks stale proposals if refresh fails' : 'refreshes proposals before review continues'}`, async (t) => {
+    let lookups = 0;
+    let writes = 0;
+    const selection = {
+      ...reply.candidates[0],
+      contentAvailable: false,
+      contentType: null,
+      fileName: null,
+      updatedAt: '',
+    };
+    const f = transport((url, init) => {
+      if (url.pathname.endsWith('/matches')) {
+        lookups++;
+        assert.deepEqual(JSON.parse(String(init?.body)), {
+          online: false,
+          providerIds: ['org.ecs.local'],
+        });
+        if (lookups > 1 && refreshFails) return problem(503);
+        return Response.json({
+          ...reply,
+          requestId: `request-${lookups}`,
+          candidates:
+            lookups === 1
+              ? reply.candidates
+              : [{ ...reply.candidates[0], id: 'fresh', kind: 'metadata' }],
+        });
+      }
+      if (init?.method === 'PUT') writes++;
+      return Response.json({
+        sourceId: 'source',
+        revision: writes,
+        matches: writes ? [selection] : [],
+        ...(writes ? { automaticOrganization: { status: 'moved', sourceId: 'source' } } : {}),
+      });
+    });
+    t.after(f.restore);
+    const controller = createMatching(f.client, 'source');
+    t.after(() => controller.dispose());
+    await controller.load();
+    await controller.find({ online: false, providerIds: ['org.ecs.local'] });
+    assert.equal(await controller.save('art'), true, 'the saved choice remains committed');
+    assert.equal(lookups, 2);
+    assert.equal(get(controller).suggestionsStale, refreshFails);
+    assert.equal(get(controller).saved?.matches[0]?.id, 'art');
+    if (refreshFails) {
+      assert.ok(get(controller).failure?.includes('saved'));
+      assert.equal(await controller.save('art'), false);
+      assert.equal(writes, 1);
+    } else assert.equal(get(controller).result?.requestId, 'request-2');
+  });

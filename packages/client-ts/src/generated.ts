@@ -210,6 +210,25 @@ export interface MatchingPluginList {
   plugins: MatchingPlugin[];
 }
 
+export interface SourceOrganizationPolicy {
+  sourceRootId: string;
+  enabled: boolean;
+  mode?: string;
+  targetRootId?: string;
+  enabledAt?: string;
+}
+
+export interface SourceOrganizationPolicyDraft {
+  enabled: boolean;
+  planId?: string;
+}
+
+export interface AutomaticOrganizationOutcome {
+  status: string;
+  sourceId?: string;
+  warning?: string;
+}
+
 export interface SourceOrganizationDraft {
   mode: string;
   targetRootId: string;
@@ -273,6 +292,7 @@ export interface SavedSourceMatch {
 }
 
 export interface SourceMatchSelections {
+  automaticOrganization?: AutomaticOrganizationOutcome;
   sourceId: string;
   revision: number;
   matches: SavedSourceMatch[];

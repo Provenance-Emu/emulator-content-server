@@ -186,3 +186,12 @@ Owner-only PUT at `/api/v1/sources/{sourceId}/matches/selections` selects a matc
 DELETE at that path plus `/{kind}` clears the choice. Authorized readers GET the saved state and the
 `/{kind}/content` snapshot without rerunning online matching. Clearing a selection
 does not remove or modify any original companion file.
+
+
+With an enabled folder organization policy, successful metadata, artwork and system
+saves also perform the opted-in Copy/Move. Automatic Move waits for pending local
+metadata/artwork choices. After a move, review refreshes proposals before continuing;
+if refresh fails, the choice stays saved but stale suggestions are blocked until
+**Find matches** succeeds. Library auto-matching also refreshes proposals after a
+move or a reconciled uncertain save. Organization warnings stay visible for review;
+they do not roll back the saved match.

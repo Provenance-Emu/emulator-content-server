@@ -422,6 +422,44 @@ public struct MatchingPluginList: Codable, Equatable, Sendable {
     }
 }
 
+public struct SourceOrganizationPolicy: Codable, Equatable, Sendable {
+    public var sourceRootId: String
+    public var enabled: Bool
+    public var mode: String?
+    public var targetRootId: String?
+    public var enabledAt: String?
+
+    public init(sourceRootId: String, enabled: Bool, mode: String? = nil, targetRootId: String? = nil, enabledAt: String? = nil) {
+        self.sourceRootId = sourceRootId
+        self.enabled = enabled
+        self.mode = mode
+        self.targetRootId = targetRootId
+        self.enabledAt = enabledAt
+    }
+}
+
+public struct SourceOrganizationPolicyDraft: Codable, Equatable, Sendable {
+    public var enabled: Bool
+    public var planId: String?
+
+    public init(enabled: Bool, planId: String? = nil) {
+        self.enabled = enabled
+        self.planId = planId
+    }
+}
+
+public struct AutomaticOrganizationOutcome: Codable, Equatable, Sendable {
+    public var status: String
+    public var sourceId: String?
+    public var warning: String?
+
+    public init(status: String, sourceId: String? = nil, warning: String? = nil) {
+        self.status = status
+        self.sourceId = sourceId
+        self.warning = warning
+    }
+}
+
 public struct SourceOrganizationDraft: Codable, Equatable, Sendable {
     public var mode: String
     public var targetRootId: String
@@ -547,11 +585,13 @@ public struct SavedSourceMatch: Codable, Equatable, Sendable {
 }
 
 public struct SourceMatchSelections: Codable, Equatable, Sendable {
+    public var automaticOrganization: AutomaticOrganizationOutcome?
     public var sourceId: String
     public var revision: Int
     public var matches: [SavedSourceMatch]
 
-    public init(sourceId: String, revision: Int, matches: [SavedSourceMatch]) {
+    public init(automaticOrganization: AutomaticOrganizationOutcome? = nil, sourceId: String, revision: Int, matches: [SavedSourceMatch]) {
+        self.automaticOrganization = automaticOrganization
         self.sourceId = sourceId
         self.revision = revision
         self.matches = matches

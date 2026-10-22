@@ -240,3 +240,42 @@ test('version 11 upgrades saved selections and source rows twice without exposin
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('version 12 upgrades identity and saved snapshots before opening twice', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-v12-'));
+  const filename = join(dir, 'catalog.sqlite');
+  try {
+    const prior = new DatabaseSync(filename);
+    for (const migration of MIGRATIONS.filter((entry) => entry.version <= 12)) {
+      prior.exec(migration.sql);
+      prior.prepare('INSERT INTO schema_migrations VALUES(?,?)').run(migration.version, 'now');
+    }
+    prior.exec(`INSERT INTO users VALUES ('owner','owner','fixture',1,'now');
+      INSERT INTO libraries VALUES ('library','Library','owner',1,'now',NULL);
+      INSERT INTO content_roots(id,path,label,library_id,created_at) VALUES ('root','/never/probed','Shelf','library','now');
+      INSERT INTO source_files(id,root_id,relative_path,display_name,size,blocks,kind,availability,scanned_at,filesystem_identity,mtime_ms)
+        VALUES ('source','root','generated','Generated',1,1,'rom','local','now','1:2:3',42);
+      INSERT INTO source_match_state VALUES('source',7);
+      INSERT INTO source_match_selections(source_id,kind,selection_json,content)
+        VALUES('source','artwork','{"id":"saved-art","kind":"artwork"}',X'00010203');`);
+    prior.close();
+    for (let open = 0; open < 2; open++) {
+      const upgraded = new CatalogDatabase(filename);
+      try {
+        assert.equal(upgraded.getSource('source')?.id, 'source');
+        assert.equal(upgraded.sourceMatches('source').revision, 7);
+        assert.deepEqual(
+          upgraded.sourceMatchContent('source', 'artwork'),
+          new Uint8Array([0, 1, 2, 3]),
+        );
+        assert.equal(upgraded.inspectionMoveCandidates('root')[0]?.filesystemIdentity, '1:2:3');
+        assert.equal(upgraded.getSourceOrganizationPolicy('root'), null);
+        assert.equal(upgraded.integrity(), 'ok');
+      } finally {
+        upgraded.close();
+      }
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

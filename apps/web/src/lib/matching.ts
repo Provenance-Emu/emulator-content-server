@@ -9,6 +9,7 @@ import { type Readable, writable } from 'svelte/store';
 import { explain } from './problems.js';
 export interface MatchingState {
   result: SourceMatches | null;
+  suggestionsStale: boolean;
   loading: boolean;
   failure: string | null;
   artwork: Record<string, string>;
@@ -32,6 +33,7 @@ export interface MatchingController extends Readable<MatchingState> {
 export function createMatching(client: ContentClient, sourceId: string): MatchingController {
   let current: MatchingState = {
     result: null,
+    suggestionsStale: false,
     loading: false,
     failure: null,
     artwork: {},
@@ -48,6 +50,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
   let epoch = 0;
   let request: AbortController | null = null;
   const lifetime = new AbortController();
+  let lastOptions: MatchingOptions = {};
   const live = (run: number) => !disposed && !denied && epoch === run;
   function update(patch: Partial<MatchingState>) {
     current = { ...current, ...patch };
@@ -107,6 +110,32 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       if (live(run)) failure(error);
     }
   }
+  async function afterOrganization(saved: SourceMatchSelections, run: number, uncertain = false) {
+    if (!live(run)) return;
+    const outcome =
+      'automaticOrganization' in saved
+        ? (saved.automaticOrganization as { status: string; warning?: string })
+        : undefined;
+    if (uncertain || outcome?.status === 'moved') {
+      update({ suggestionsStale: true });
+      try {
+        const result = await client.sourceMatches(sourceId, lastOptions, lifetime.signal);
+        if (!live(run)) return;
+        clearResults();
+        update({ result, suggestionsStale: false });
+      } catch (error) {
+        if (live(run)) {
+          failure(error);
+          if (live(run))
+            update({
+              failure: `Match saved. Suggestions could not refresh after organization: ${explain(error)}. Find matches again.`,
+            });
+        }
+      }
+    }
+    if (live(run) && outcome?.warning)
+      update({ failure: `Match saved. Automatic organization: ${outcome.warning}` });
+  }
   async function mutate(id: string, remove: boolean): Promise<boolean> {
     if (
       disposed ||
@@ -115,7 +144,8 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       current.savedLoading ||
       current.savedLoadFailed ||
       current.saving ||
-      !current.saved
+      !current.saved ||
+      (!remove && current.suggestionsStale)
     )
       return false;
     const result = current.result;
@@ -139,6 +169,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
             lifetime.signal,
           );
       await showSaved(saved, run);
+      if (!remove) await afterOrganization(saved, run);
       return live(run);
     } catch (error) {
       if (!live(run)) return false;
@@ -157,8 +188,10 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
             (remove
               ? !saved.matches.some((match) => match.kind === id)
               : saved.matches.some((match) => match.id === id))
-          )
-            return true;
+          ) {
+            if (!remove) await afterOrganization(saved, run, true);
+            return live(run);
+          }
         } catch (refreshError) {
           if (live(run)) {
             failure(refreshError);
@@ -193,6 +226,10 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     async find(options) {
       if (disposed || denied || current.loading || current.savedLoading || current.saving) return;
       const run = ++epoch;
+      lastOptions = {
+        ...options,
+        ...(options.providerIds ? { providerIds: [...options.providerIds] } : {}),
+      };
       request?.abort();
       request = new AbortController();
       clearResults();
@@ -203,7 +240,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
           options,
           AbortSignal.any([request.signal, lifetime.signal]),
         );
-        if (live(run)) update({ result });
+        if (live(run)) update({ result, suggestionsStale: false });
       } catch (error) {
         if (live(run)) failure(error);
       } finally {

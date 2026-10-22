@@ -281,3 +281,237 @@ test('moving the same file into a different category retains saved selections an
     assert.equal(f.db.getSource(source.id)?.kind, 'bios');
     assert.deepEqual(f.db.sourceMatches(source.id), saved);
   }));
+
+test('missing sources retain identity and snapshots internally through reopen until root removal', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'before.nes'), 'generated');
+    const initial = await inspected(f.root, 'before.nes');
+    f.db.applyInspection({ ...f, online: true, files: [initial] });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    const saved = f.db.saveSourceMatch(source.id, 0, 'metadata', selection, null, f.actorId);
+    f.db.applyInspection({ ...f, online: true, files: [] });
+    const reopened = new CatalogDatabase(f.filename);
+    try {
+      assert.equal(reopened.getSource(source.id), null);
+      assert.deepEqual(reopened.listSources(f.rootId), []);
+      assert.equal(
+        reopened.inspectionMoveCandidates(f.rootId)[0]?.relativePath,
+        initial.relativePath,
+      );
+      const target = reopened.createContentRoot({
+        path: `${f.root}-later`,
+        label: 'Later',
+        libraryId: source.libraryId,
+        actorId: f.actorId,
+      });
+      reopened.applyInspection({
+        ...f,
+        rootId: target.id,
+        online: true,
+        files: [{ ...initial, relativePath: 'later.nes' }],
+        verifiedMoveSourceIds: [source.id],
+      });
+      assert.equal(reopened.getSource(source.id)?.rootId, target.id);
+      assert.deepEqual(reopened.sourceMatches(source.id), saved);
+      reopened.applyInspection({ ...f, rootId: target.id, online: true, files: [] });
+      reopened.deleteContentRoot(target.id, f.actorId);
+      assert.equal(
+        reopened.inspectionMoveCandidates(f.rootId).some((candidate) => candidate.id === source.id),
+        false,
+      );
+      assert.equal(reopened.integrity(), 'ok');
+    } finally {
+      reopened.close();
+    }
+  }));
+
+test('unverified, cross-library, unknown, changed or ambiguous cross-root facts never transfer selections', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'before.nes'), 'generated');
+    const initial = await inspected(f.root, 'before.nes');
+    f.db.applyInspection({ ...f, online: true, files: [initial] });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    f.db.saveSourceMatch(source.id, 0, 'metadata', selection, null, f.actorId);
+    const other = f.db.createLibrary(f.actorId, 'Other');
+    for (const reason of [
+      'unverified',
+      'cross-library',
+      'unknown',
+      'mtime',
+      'size',
+      'ambiguous',
+    ] as const) {
+      const target = f.db.createContentRoot({
+        path: `${f.root}-${reason}`,
+        label: reason,
+        libraryId: reason === 'cross-library' ? other.id : source.libraryId,
+        actorId: f.actorId,
+      });
+      const file = {
+        ...initial,
+        relativePath: `${reason}.nes`,
+        ...(reason === 'unknown' ? { filesystemIdentity: null } : {}),
+        ...(reason === 'mtime' ? { mtimeMs: initial.mtimeMs + 1 } : {}),
+        ...(reason === 'size' ? { size: initial.size + 1 } : {}),
+      };
+      f.db.applyInspection({
+        ...f,
+        rootId: target.id,
+        online: true,
+        files: reason === 'ambiguous' ? [file, { ...file, relativePath: 'second.nes' }] : [file],
+        verifiedMoveSourceIds: reason === 'unverified' ? [] : [source.id],
+      });
+      for (const row of f.db.listSources(target.id)) {
+        assert.notEqual(row.id, source.id);
+        assert.equal(f.db.sourceMatches(row.id).revision, 0);
+      }
+      f.db.deleteContentRoot(target.id, f.actorId);
+    }
+    assert.equal(f.db.sourceMatches(source.id).revision, 1);
+  }));
+
+test('automatic copy ownership and snapshots persist, synchronize atomically, and survive policy disable', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'before.nes'), 'generated');
+    const initial = await inspected(f.root, 'before.nes');
+    f.db.applyInspection({ ...f, online: true, files: [initial] });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    f.db.saveSourceMatch(source.id, 0, 'metadata', selection, null, f.actorId);
+    const target = f.db.createContentRoot({
+      path: `${f.root}-copy`,
+      label: 'Copy',
+      libraryId: source.libraryId,
+      actorId: f.actorId,
+    });
+    const policy = {
+      sourceRootId: f.rootId,
+      targetRootId: target.id,
+      libraryId: source.libraryId,
+      sourceRootPath: f.root,
+      targetRootPath: target.path,
+      mode: 'copy' as const,
+      enabledBy: f.actorId,
+      enabledAt: '2026-10-21T00:00:00Z',
+    };
+    f.db.setSourceOrganizationPolicy(policy);
+    const copy = f.db.cloneSource({
+      ...f,
+      sourceId: source.id,
+      targetRootId: target.id,
+      file: { ...initial, relativePath: 'copy.nes', filesystemIdentity: '1:2:3' },
+      organizationCopy: {
+        sourceRootId: f.rootId,
+        originalIdentity: initial.filesystemIdentity,
+        sha256: 'a'.repeat(64),
+      },
+    });
+    const owned = f.db.getSourceOrganizationCopy(f.rootId, source.id);
+    assert.equal(owned?.copySourceId, copy.id);
+    assert.equal(owned?.copyIdentity, '1:2:3');
+    f.db.clearSourceOrganizationPolicy(f.rootId);
+    assert.equal(f.db.getSourceOrganizationPolicy(f.rootId), null);
+    f.db.setSourceOrganizationPolicy(policy);
+    assert.deepEqual(f.db.getSourceOrganizationCopy(f.rootId, source.id), owned);
+    const saved = f.db.saveSourceMatch(
+      source.id,
+      1,
+      'artwork',
+      {
+        ...selection,
+        id: 'art',
+        kind: 'artwork',
+        contentAvailable: true,
+        contentType: 'image/png',
+      },
+      Buffer.from('generated artwork'),
+      f.actorId,
+    );
+    const synced = f.db.synchronizeSourceMatches(source.id, copy.id);
+    assert.deepEqual(synced, { ...saved, sourceId: copy.id });
+    assert.deepEqual(f.db.sourceMatches(source.id), saved);
+    assert.deepEqual(
+      f.db.sourceMatchContent(copy.id, 'artwork'),
+      new Uint8Array(Buffer.from('generated artwork')),
+    );
+    assert.deepEqual(f.db.synchronizeSourceMatches(source.id, copy.id), synced);
+    const reopened = new CatalogDatabase(f.filename);
+    try {
+      assert.deepEqual(reopened.getSourceOrganizationPolicy(f.rootId), policy);
+      assert.deepEqual(reopened.getSourceOrganizationCopy(f.rootId, source.id), owned);
+      assert.deepEqual(reopened.sourceMatches(copy.id), synced);
+      assert.equal(reopened.integrity(), 'ok');
+    } finally {
+      reopened.close();
+    }
+    f.db.clearSourceOrganizationPolicy(f.rootId);
+    const otherTarget = f.db.createContentRoot({
+      path: `${f.root}-other-copy`,
+      label: 'Other Copy',
+      libraryId: source.libraryId,
+      actorId: f.actorId,
+    });
+    f.db.setSourceOrganizationPolicy({
+      ...policy,
+      targetRootId: otherTarget.id,
+      targetRootPath: otherTarget.path,
+    });
+    assert.equal(f.db.getSourceOrganizationCopy(f.rootId, source.id), null);
+    assert.equal(f.db.getSource(copy.id)?.rootId, target.id);
+    f.db.deleteContentRoot(otherTarget.id, f.actorId);
+    assert.equal(f.db.getSourceOrganizationPolicy(f.rootId), null);
+  }));
+
+test('the same inode returning to its original missing path restores saved selections', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'before.nes'), 'generated');
+    const initial = await inspected(f.root, 'before.nes');
+    f.db.applyInspection({ ...f, online: true, files: [initial] });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    const saved = f.db.saveSourceMatch(source.id, 0, 'metadata', selection, null, f.actorId);
+    await rename(join(f.root, 'before.nes'), join(f.root, 'held'));
+    f.db.applyInspection({ ...f, online: true, files: [] });
+    await rename(join(f.root, 'held'), join(f.root, 'before.nes'));
+    f.db.applyInspection({ ...f, online: true, files: [await inspected(f.root, 'before.nes')] });
+    assert.equal(f.db.listSources(f.rootId)[0]?.id, source.id);
+    assert.deepEqual(f.db.sourceMatches(source.id), saved);
+  }));
+
+test('a verified cross-root move can occupy a path held only by a missing tombstone', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'before.nes'), 'generated');
+    const initial = await inspected(f.root, 'before.nes');
+    f.db.applyInspection({ ...f, online: true, files: [initial] });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    const saved = f.db.saveSourceMatch(source.id, 0, 'metadata', selection, null, f.actorId);
+    const target = f.db.createContentRoot({
+      path: `${f.root}-target`,
+      label: 'Target',
+      libraryId: source.libraryId,
+      actorId: f.actorId,
+    });
+    const file = { ...initial, relativePath: 'after.nes' };
+    f.db.applyInspection({
+      ...f,
+      rootId: target.id,
+      online: true,
+      files: [{ ...file, filesystemIdentity: '1:2:3' }],
+    });
+    const former = f.db.listSources(target.id)[0];
+    assert.ok(former);
+    f.db.applyInspection({ ...f, rootId: target.id, online: true, files: [] });
+    f.db.applyInspection({
+      ...f,
+      rootId: target.id,
+      online: true,
+      files: [file],
+      verifiedMoveSourceIds: [source.id],
+    });
+    assert.equal(f.db.listSources(target.id)[0]?.id, source.id);
+    assert.equal(f.db.getSource(former.id), null);
+    assert.deepEqual(f.db.sourceMatches(source.id), saved);
+  }));

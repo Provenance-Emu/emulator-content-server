@@ -31,6 +31,8 @@ import type {
   SourceMatches,
   SourceMatchSelections,
   SourceOrganizationDraft,
+  SourceOrganizationPolicy,
+  SourceOrganizationPolicyDraft,
   SourceOrganizationPreview,
   SourceOrganizationResult,
   StorageLocation,
@@ -512,6 +514,16 @@ export class ContentClient {
     return new Blob(chunks, {
       type: response.headers.get('content-type') ?? 'application/octet-stream',
     });
+  }
+
+  sourceOrganizationPolicy(rootId: string): Promise<SourceOrganizationPolicy> {
+    return this.getJson(`/api/v1/roots/${encodeURIComponent(rootId)}/organization-policy`);
+  }
+  setSourceOrganizationPolicy(
+    rootId: string,
+    draft: SourceOrganizationPolicyDraft,
+  ): Promise<SourceOrganizationPolicy> {
+    return this.putJson(`/api/v1/roots/${encodeURIComponent(rootId)}/organization-policy`, draft);
   }
 
   previewSourceOrganization(
