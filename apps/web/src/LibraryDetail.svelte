@@ -9,6 +9,7 @@
   import { sourcePlayHref } from './player/links';
   import Files from './Files.svelte';
   import MatchingPanel from './MatchingPanel.svelte';
+  import SourceOrganization from './SourceOrganization.svelte';
   import Upload from './Upload.svelte';
   import Modal from './components/Modal.svelte';
   let {
@@ -181,7 +182,9 @@
     Downloading {$controller.reading.received} bytes{#if $controller.reading.total !== null}
       of {$controller.reading.total}{/if}
   </p>{/if}
-{#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} {onchanged} sourceId={selectedSource.id} sourceName={selectedSource.name} />{/key}{/if}
+{#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} {onchanged} sourceId={selectedSource.id} sourceName={selectedSource.name} />
+{#if selectedSource.kind==='rom'}<SourceOrganization {context} {owner} sourceId={selectedSource.id} libraryId={selectedSource.libraryId} onchanged={()=>{onchanged();onrefresh();}} />{/if}
+{/key}{/if}
 {#if upload && uploadTarget}<Modal
     title="Add a file"
     busy={uploading}

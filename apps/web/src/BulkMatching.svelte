@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { LibraryScope, MatchingPlugin } from '@ecs/client';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { ServerContext } from './lib/application';
   import { canChecksum, type BulkMatchingController, type BulkMatchRow } from './lib/bulk-matching';
   import { explain } from './lib/problems';
@@ -19,6 +19,11 @@
   let registryLoading = $state(false);
   let disposed = false;
   let reviewing = $state<BulkMatchRow|null>(null);
+  let reviewBusy = $state(false);
+  let reviewHeading = $state<HTMLHeadingElement>();
+  $effect(()=>{const id=reviewing?.entry.id;if(id)void tick().then(()=>{if(!disposed&&reviewing?.entry.id===id)reviewHeading?.focus();});});
+  const unresolved = $derived($controller.rows.filter(r=>r.entry.source&&['review','failed','unmatched'].includes(r.status)));
+  const reviewedCount = $derived($controller.rows.filter(r=>r.status==='reviewed').length);
   let filter = $state('review');
   let page = $state(0);
   const running = $derived(['discovering','running'].includes($controller.phase));
@@ -48,15 +53,27 @@
     finally {if(!disposed)registryLoading=false;}
   }
   function review(row:BulkMatchRow){controller.pause();reviewing=row;}
-  function done(){if(reviewing)controller.reviewed(reviewing.entry.id);reviewing=null;onchanged();}
+  function advance(resolve:boolean){
+    if(!reviewing||reviewBusy)return;
+    const id=reviewing.entry.id;
+    const position=$controller.rows.findIndex(r=>r.entry.id===id);
+    const ordered=[...$controller.rows.slice(position+1),...$controller.rows.slice(0,position)];
+    if(resolve)controller.reviewed(id);
+    reviewing=ordered.find(r=>r.entry.source&&['review','failed','unmatched'].includes(r.status))??null;
+    onchanged();
+  }
+  function done(){advance(true);}
 </script>
 
 {#if reviewing?.entry.source}
-  <button type="button" onclick={()=>reviewing=null}>Back to matching results</button>
-  <h3>{reviewing.entry.name}</h3>
+  <button type="button" disabled={reviewBusy} onclick={()=>reviewing=null}>Back to matching results</button>
+  <p role="status" aria-live="polite">{unresolved.length} unresolved game{unresolved.length===1?'':'s'} · {reviewedCount} reviewed</p>
+  <h3 tabindex="-1" bind:this={reviewHeading}>{reviewing.entry.name}</h3>
   <p class="dim">Suggestions refresh when you open a game, so expired proposals cannot overwrite your choices.</p>
-  <button type="button" onclick={done}>Done reviewing this game</button>
-  {#key reviewing.entry.id}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.entry.id} sourceName={reviewing.entry.source.name} reviewOptions={{...$controller.options,checksum:canChecksum(reviewing.entry.source)}} />{/key}
+  <p class="dim">Save and next moves through unsaved categories, then the next unresolved game. Next unresolved game leaves this game in the queue.</p>
+  <button type="button" disabled={reviewBusy} onclick={done}>Done reviewing this game</button>
+  {#if unresolved.length>1}<button type="button" disabled={reviewBusy} onclick={()=>advance(false)}>Next unresolved game</button>{/if}
+  {#key reviewing.entry.id}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.entry.id} sourceName={reviewing.entry.source.name} onnext={()=>{reviewBusy=false;advance(true);}} onbusy={busy=>reviewBusy=busy} reviewOptions={{...$controller.options,checksum:canChecksum(reviewing.entry.source)}} />{/key}
 {:else}
   <p>Match every server-folder game in this library. Unique checksum matches save automatically. Conflicting matches and filename suggestions stay here for review.</p>
   <p class="dim">Existing saved choices are preserved. Saving metadata updates the title and details visible to people who can read the game. Original files stay unchanged; patches and cheats are never applied.</p>
@@ -68,7 +85,8 @@
   {:else}
     <div class="summary" role="status" aria-live="polite">
       <span><strong>{completed} / {$controller.rows.length}</strong> games checked</span>
-      <span><strong>{saved}</strong> exact matches saved</span>
+      <span><strong>{saved}</strong> exact matches auto-saved</span>
+      <span>{reviewedCount} games reviewed</span>
       <span><strong>{$controller.rows.filter((r)=>r.status==='review').length}</strong> games to review</span>
     </div>
     {#if running}

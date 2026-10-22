@@ -185,3 +185,78 @@ test('a transient saved-match load can retry inside the open game', async ({ pag
   await expect(matching.getByRole('button', { name: 'Retry saved matches' })).toHaveCount(0);
   expect(reads).toBe(2);
 });
+
+test('organization is opt-in, previews before copy or move, and retains moved records', async ({
+  page,
+  fixture,
+}) => {
+  const { mkdir, readFile } = await import('node:fs/promises');
+  const root = await fixture.legacy();
+  await writeFile(
+    join(root.path, 'external.json'),
+    JSON.stringify({ title: 'Organized generated game' }),
+  );
+  const targetPath = join(fixture.directory, 'Organized files');
+  await mkdir(targetPath);
+  const target = await fixture.client.addRoot({
+    path: targetPath,
+    label: 'Organization destination',
+  });
+  await fixture.client.scanRoot(root.id);
+  const sources = await fixture.client.sources();
+  const original = sources.items.find((source) => source.name === 'external.nes');
+  expect(original).toBeTruthy();
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
+  const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
+  await matching.getByRole('button', { name: 'Save metadata', exact: true }).click();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved metadata', exact: true }),
+  ).toBeVisible();
+  const organization = page.getByRole('region', { name: 'Organize original file', exact: true });
+  await expect(organization.getByRole('button', { name: 'Confirm copy' })).toHaveCount(0);
+  await organization.getByRole('button', { name: 'Organize files', exact: true }).click();
+  await organization.getByRole('combobox', { name: /^Destination folder/ }).selectOption(target.id);
+  await organization.getByRole('button', { name: 'Preview organization', exact: true }).click();
+  await expect(
+    organization.getByRole('button', { name: 'Confirm copy', exact: true }),
+  ).toBeVisible();
+  await expect(
+    organization.getByText(/Organized generated game\/external.nes/, { exact: false }),
+  ).toBeVisible();
+  expect(await readFile(join(root.path, 'external.nes'))).toEqual(
+    Buffer.from([78, 69, 83, 26, 0, 0, 0, 0]),
+  );
+  await organization.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(
+    (await fixture.client.sources()).items.filter((source) => source.rootId === target.id),
+  ).toHaveLength(0);
+  await organization.getByRole('button', { name: 'Organize files', exact: true }).click();
+  await organization.getByRole('combobox', { name: /^Destination folder/ }).selectOption(target.id);
+  await organization.getByRole('combobox', { name: /^Action/ }).selectOption('move');
+  await organization.getByRole('button', { name: 'Preview organization', exact: true }).click();
+  await organization.getByRole('button', { name: 'Confirm move', exact: true }).click();
+  await expect(organization.getByRole('status')).toContainText('File moved');
+  await fixture.client.scanRoot(target.id);
+  const moved = (await fixture.client.sources()).items.find((source) => source.id === original?.id);
+  expect(moved?.title).toBe('Organized generated game');
+  expect((await fixture.client.sourceSelections(original?.id ?? '')).matches).toHaveLength(1);
+  await organization.getByRole('button', { name: 'Organize files', exact: true }).click();
+  await organization.getByRole('combobox', { name: /^Destination folder/ }).selectOption(root.id);
+  await organization.getByRole('combobox', { name: /^Action/ }).selectOption('copy');
+  await organization.getByRole('button', { name: 'Preview organization', exact: true }).click();
+  await organization.getByRole('button', { name: 'Confirm copy', exact: true }).click();
+  await expect(organization.getByRole('status')).toContainText('File copied');
+  const copies = (await fixture.client.sources()).items.filter((source) => source.kind === 'rom');
+  expect(copies).toHaveLength(2);
+  const copy = copies.find((source) => source.id !== original?.id);
+  expect(copy?.rootId).toBe(root.id);
+  expect(copy?.title).toBe('Organized generated game');
+  expect((await fixture.client.sourceSelections(copy?.id ?? '')).matches).toHaveLength(1);
+
+  await expect(
+    page.getByRole('heading', { name: 'Organized generated game', exact: true, level: 1 }),
+  ).toBeVisible();
+});

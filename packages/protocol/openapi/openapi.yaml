@@ -505,6 +505,38 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MatchingPluginList' }
+  /api/v1/sources/{sourceId}/organization/preview:
+    post:
+      operationId: previewSourceOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SourceOrganizationDraft' }
+      responses:
+        '200':
+          description: Owner-only, read-only preview for one local cartridge ROM. Destination is generated from system, saved title and original filename, within a registered root in the same library (including unassigned roots). Archives, disc sets and companions are unsupported. Copy supports different volumes; move requires the same volume. Preview is bound to owner, source, roots, saved matches and file validators, expires after ten minutes and may be discarded when the bounded preview cache fills. No automatic organization occurs.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceOrganizationPreview' }
+        '409':
+          description: Unsupported source, changed source, destination collision or cross-volume move. Preview again after resolving the conflict.
+  /api/v1/sources/{sourceId}/organization/apply:
+    post:
+      operationId: applySourceOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SourceOrganizationApply' }
+      responses:
+        '200':
+          description: Applies exactly the owner's single-use preview with exclusive no-overwrite placement and revalidation. Move retains the source ID and saved match snapshots. Copy creates a source with cloned selections and leaves the original intact.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceOrganizationResult' }
+        '409':
+          description: Preview expired, consumed, or changed. No new paths are accepted. Preview again.
   /api/v1/sources/{sourceId}/matches:
     post:
       operationId: findSourceMatches
@@ -927,6 +959,41 @@ components:
         plugins:
           type: array
           items: { $ref: '#/components/schemas/MatchingPlugin' }
+    SourceOrganizationDraft:
+      type: object
+      additionalProperties: false
+      required: [mode, targetRootId]
+      properties:
+        mode: { type: string, enum: [copy, move] }
+        targetRootId: { type: string }
+    SourceOrganizationApply:
+      type: object
+      additionalProperties: false
+      required: [planId]
+      properties:
+        planId: { type: string }
+    SourceOrganizationPreview:
+      type: object
+      required: [planId, sourceId, mode, sourceRootId, targetRootId, sourceRelativePath, targetRelativePath, expiresAt]
+      properties:
+        planId: { type: string }
+        sourceId: { type: string }
+        mode: { type: string, enum: [copy, move] }
+        sourceRootId: { type: string }
+        targetRootId: { type: string }
+        sourceRelativePath: { type: string }
+        targetRelativePath: { type: string }
+        expiresAt: { type: string, format: date-time }
+    SourceOrganizationResult:
+      type: object
+      required: [sourceId, originalSourceId, mode, targetRootId, targetRelativePath]
+      properties:
+        sourceId: { type: string }
+        originalSourceId: { type: string }
+        warning: { type: string, description: Destination is indexed but the original could not be removed. Inspect both locations before removing the extra file. }
+        mode: { type: string, enum: [copy, move] }
+        targetRootId: { type: string }
+        targetRelativePath: { type: string }
     MatchingOptions:
       type: object
       properties:

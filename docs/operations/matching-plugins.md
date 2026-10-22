@@ -18,7 +18,13 @@ also needs review, even when its game's metadata was verified.
 
 **Needs review** opens the shared matching panel with fresh suggestions and the
 same provider options, avoiding expired proposal IDs. Save the choices you want,
-then choose **Done reviewing this game**. Results are paginated, with separate
+then choose **Done reviewing this game**. In library review, **Save and next
+category** saves the chosen suggestion and opens the next category without a saved
+choice. **Save and next game** finishes the current review and opens the next
+unresolved game. Failed saves stay on the current game. **Next unresolved game**
+skips ahead without resolving the current game; it remains in the queue. Keyboard
+focus follows the next game's heading. Progress separates checked games, games
+reviewed, unresolved games and exact matches auto-saved. Results are paginated, with separate
 filters for failures, unmatched games and skipped files. **Retry failed games**
 loads current selections again; revision conflicts never trigger an automatic
 overwrite. **Retry unmatched games** checks only games currently in **No match**,

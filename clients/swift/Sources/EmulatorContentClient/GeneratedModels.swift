@@ -422,6 +422,64 @@ public struct MatchingPluginList: Codable, Equatable, Sendable {
     }
 }
 
+public struct SourceOrganizationDraft: Codable, Equatable, Sendable {
+    public var mode: String
+    public var targetRootId: String
+
+    public init(mode: String, targetRootId: String) {
+        self.mode = mode
+        self.targetRootId = targetRootId
+    }
+}
+
+public struct SourceOrganizationApply: Codable, Equatable, Sendable {
+    public var planId: String
+
+    public init(planId: String) {
+        self.planId = planId
+    }
+}
+
+public struct SourceOrganizationPreview: Codable, Equatable, Sendable {
+    public var planId: String
+    public var sourceId: String
+    public var mode: String
+    public var sourceRootId: String
+    public var targetRootId: String
+    public var sourceRelativePath: String
+    public var targetRelativePath: String
+    public var expiresAt: String
+
+    public init(planId: String, sourceId: String, mode: String, sourceRootId: String, targetRootId: String, sourceRelativePath: String, targetRelativePath: String, expiresAt: String) {
+        self.planId = planId
+        self.sourceId = sourceId
+        self.mode = mode
+        self.sourceRootId = sourceRootId
+        self.targetRootId = targetRootId
+        self.sourceRelativePath = sourceRelativePath
+        self.targetRelativePath = targetRelativePath
+        self.expiresAt = expiresAt
+    }
+}
+
+public struct SourceOrganizationResult: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var originalSourceId: String
+    public var warning: String?
+    public var mode: String
+    public var targetRootId: String
+    public var targetRelativePath: String
+
+    public init(sourceId: String, originalSourceId: String, warning: String? = nil, mode: String, targetRootId: String, targetRelativePath: String) {
+        self.sourceId = sourceId
+        self.originalSourceId = originalSourceId
+        self.warning = warning
+        self.mode = mode
+        self.targetRootId = targetRootId
+        self.targetRelativePath = targetRelativePath
+    }
+}
+
 public struct MatchingOptions: Codable, Equatable, Sendable {
     public var online: Bool?
     public var checksum: Bool?

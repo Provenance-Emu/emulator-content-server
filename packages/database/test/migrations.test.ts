@@ -203,3 +203,40 @@ test('version 8 upgrades preserve identities while only explicit startup recover
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('version 11 upgrades saved selections and source rows twice without exposing filesystem facts', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-v11-'));
+  const filename = join(dir, 'catalog.sqlite');
+  try {
+    const prior = new DatabaseSync(filename);
+    for (const migration of MIGRATIONS.filter((entry) => entry.version <= 11)) {
+      prior.exec(migration.sql);
+      prior.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(migration.version, 'now');
+    }
+    prior.exec(`INSERT INTO users VALUES ('owner','owner','fixture',1,'now');
+      INSERT INTO libraries VALUES ('library','Library','owner',1,'now',NULL);
+      INSERT INTO content_roots(id,path,label,library_id,created_at) VALUES ('root','/never/probed','Shelf','library','now');
+      INSERT INTO source_files(id,root_id,relative_path,display_name,size,blocks,kind,availability,scanned_at)
+        VALUES ('source','root','generated','Generated',1,1,'rom','local','now');
+      INSERT INTO source_match_state VALUES ('source',7);
+      INSERT INTO source_match_selections(source_id,kind,selection_json,content)
+        VALUES ('source','metadata','{"id":"saved","kind":"metadata","title":"Saved title"}',NULL);`);
+    prior.close();
+    for (let open = 0; open < 2; open++) {
+      const upgraded = new CatalogDatabase(filename);
+      try {
+        assert.equal(upgraded.getSource('source')?.title, 'Saved title');
+        assert.equal(upgraded.sourceMatches('source').revision, 7);
+        assert.equal(upgraded.sourceMatches('source').matches[0]?.id, 'saved');
+        const source = upgraded.getSource('source');
+        assert.ok(source);
+        assert.equal('filesystemIdentity' in source, false);
+        assert.equal(upgraded.integrity(), 'ok');
+      } finally {
+        upgraded.close();
+      }
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

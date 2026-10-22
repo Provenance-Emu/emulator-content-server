@@ -6,7 +6,7 @@
   import { createMatching } from './lib/matching';
   import { explain } from './lib/problems';
   import MatchingProviders from './components/MatchingProviders.svelte';
-  let {context,sourceId,sourceName,owner,onchanged,reviewOptions}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions}=$props();
+  let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void}=$props();
   const controller=untrack(()=>createMatching(context.client,sourceId));
   let plugins=$state<MatchingPlugin[]>([]);
   let providerIds=$state<string[]>([]);
@@ -24,6 +24,7 @@
   const categories=[['metadata','Metadata'],['artwork','Artwork'],['patch','Patches'],['rom','System matching'],['cheats','Cheats']] as const;
   const candidates=$derived($controller.result?.candidates.filter((c)=>c.kind===category) ?? []);
   const activeProviders=$derived(plugins.some((plugin)=>plugin.kind==='provider'&&providerIds.includes(plugin.id)&&(!plugin.network||online)));
+  $effect(()=>{onbusy?.($controller.loading || $controller.savedLoading || !!$controller.saving);});
   const container=$derived(/\.(zip|7z|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(sourceName));
   onMount(()=>{savedReady=controller.load();if(owner)void loadPlugins();});
   async function loadPlugins(){
@@ -39,6 +40,17 @@
   }
   onDestroy(()=>{disposed=true;controller.dispose();});
   async function save(id:string){if(await controller.save(id))onchanged();}
+  function nextCategory(exclude?:string){
+    const state=get(controller);
+    return state.result?.candidates.find(c=>c.kind!==exclude&&!state.saved?.matches.some(m=>m.kind===c.kind))?.kind;
+  }
+  async function saveAndNext(id:string){
+    if(!await controller.save(id)||disposed)return;
+    onchanged();
+    const next=nextCategory();
+    if(next){category=next;page=0;}
+    else onnext?.();
+  }
   async function remove(kind:string){if(await controller.remove(kind))onchanged();}
   async function downloadSaved(kind:string,name:string){
     try {const blob=await context.client.selectedMatchContent(sourceId,kind);if(disposed)return;const url=URL.createObjectURL(blob);try{const link=document.createElement('a');link.href=url;link.download=name;link.click();}finally{URL.revokeObjectURL(url);}}
@@ -112,6 +124,7 @@
             {:else}<button type="button" disabled={!!$controller.previewing} onclick={()=>void controller.preview(candidate.id)}>{$controller.previewing===candidate.id ? 'Loading preview…' : 'Preview artwork'}</button>{/if}
           {:else}<dl>{#each Object.entries(candidate.metadata) as [key,value]}<dt>{key}</dt><dd>{String(value)}</dd>{/each}</dl>{/if}
           <button type="button" disabled={!$controller.saved||!!$controller.saving||$controller.savedLoadFailed||$controller.savedLoading||$controller.saved.matches.some((m)=>m.id===candidate.id)} onclick={()=>void save(candidate.id)}>{$controller.saving===candidate.id ? 'Saving…' : $controller.saved?.matches.some((m)=>m.id===candidate.id) ? 'Saved' : $controller.saved?.matches.some((m)=>m.kind===candidate.kind) ? 'Replace saved '+candidate.kind : 'Save '+candidate.kind}</button>
+          {#if onnext}<button type="button" disabled={!$controller.saved||!!$controller.saving||$controller.loading||$controller.savedLoadFailed||$controller.savedLoading||$controller.saved.matches.some((m)=>m.id===candidate.id)} onclick={()=>void saveAndNext(candidate.id)}>{nextCategory(candidate.kind)?'Save and next category':'Save and next game'}</button>{/if}
           {#if candidate.kind==='patch'&&candidate.fileId}<button type="button" onclick={()=>void download(candidate)}>Download patch</button>{/if}
         </article>
       {/each}

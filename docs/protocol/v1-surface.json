@@ -62,6 +62,8 @@
     "POST /api/v1/roots",
     "POST /api/v1/roots/:rootId/scan",
     "POST /api/v1/sources/:sourceId/matches",
+    "POST /api/v1/sources/:sourceId/organization/apply",
+    "POST /api/v1/sources/:sourceId/organization/preview",
     "POST /api/v1/storage-locations",
     "POST /api/v1/uploads",
     "POST /api/v1/uploads/:uploadId/complete",
@@ -482,6 +484,63 @@
       ],
       "required": [
         "plugins"
+      ]
+    },
+    "SourceOrganizationDraft": {
+      "properties": [
+        "mode",
+        "targetRootId"
+      ],
+      "required": [
+        "mode",
+        "targetRootId"
+      ]
+    },
+    "SourceOrganizationApply": {
+      "properties": [
+        "planId"
+      ],
+      "required": [
+        "planId"
+      ]
+    },
+    "SourceOrganizationPreview": {
+      "properties": [
+        "expiresAt",
+        "mode",
+        "planId",
+        "sourceId",
+        "sourceRelativePath",
+        "sourceRootId",
+        "targetRelativePath",
+        "targetRootId"
+      ],
+      "required": [
+        "expiresAt",
+        "mode",
+        "planId",
+        "sourceId",
+        "sourceRelativePath",
+        "sourceRootId",
+        "targetRelativePath",
+        "targetRootId"
+      ]
+    },
+    "SourceOrganizationResult": {
+      "properties": [
+        "mode",
+        "originalSourceId",
+        "sourceId",
+        "targetRelativePath",
+        "targetRootId",
+        "warning"
+      ],
+      "required": [
+        "mode",
+        "originalSourceId",
+        "sourceId",
+        "targetRelativePath",
+        "targetRootId"
       ]
     },
     "MatchingOptions": {

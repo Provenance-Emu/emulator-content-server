@@ -210,6 +210,35 @@ export interface MatchingPluginList {
   plugins: MatchingPlugin[];
 }
 
+export interface SourceOrganizationDraft {
+  mode: string;
+  targetRootId: string;
+}
+
+export interface SourceOrganizationApply {
+  planId: string;
+}
+
+export interface SourceOrganizationPreview {
+  planId: string;
+  sourceId: string;
+  mode: string;
+  sourceRootId: string;
+  targetRootId: string;
+  sourceRelativePath: string;
+  targetRelativePath: string;
+  expiresAt: string;
+}
+
+export interface SourceOrganizationResult {
+  sourceId: string;
+  originalSourceId: string;
+  warning?: string;
+  mode: string;
+  targetRootId: string;
+  targetRelativePath: string;
+}
+
 export interface MatchingOptions {
   online?: boolean;
   checksum?: boolean;

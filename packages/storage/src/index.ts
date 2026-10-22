@@ -25,6 +25,15 @@ export { groupDiscs } from './disc-groups.js';
 export { type ContentHash, crc32Hex, hashFile } from './hash.js';
 export { ensureBlobStore, ensureLayout, locationOnline } from './layout.js';
 export {
+  applyOrganization,
+  inspectOrganizationFile,
+  type OrganizationFile,
+  type OrganizationMode,
+  type OrganizationPlan,
+  portableSegment,
+  previewOrganization,
+} from './organization.js';
+export {
   blobPath,
   pathsOverlap,
   resolveContentRoot,

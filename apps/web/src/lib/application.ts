@@ -295,9 +295,7 @@ export function createApplication(
     async adoptSession(session, expectedEpoch) {
       if (!live(expectedEpoch)) {
         // A disposed context is inert. While live, undo Login's pre-callback token mutation.
-        context.client.setToken(
-          !disposed && context.key === contextKey ? acceptedToken : undefined,
-        );
+        if (!disposed && context.key === contextKey) context.client.setToken(acceptedToken);
         return false;
       }
       clearTimer();

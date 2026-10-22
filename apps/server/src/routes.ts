@@ -76,8 +76,10 @@ import {
 } from './http.js';
 import { registerLibraryBrowse } from './library-browse.js';
 import { accessView } from './local-access.js';
+import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
 import { registerSourceMatching } from './source-matching.js';
+import { registerSourceOrganization } from './source-organization.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
@@ -97,6 +99,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
   registerSourceMatching(app, context);
+  registerSourceOrganization(app, context);
 
   const uploadMutations = new Set<string>();
   async function mutateUpload<T>(
@@ -1183,25 +1186,30 @@ async function scanRoot(
   root: { id: string; path: string },
   actorId: string,
 ) {
-  catalog.beginRootScan(root.id);
+  const releaseRoots = reserveContentRoots(catalog, [root.id]);
   try {
-    const inspected = await inspectRoot(root.path);
-    const count = catalog.applyInspection({
-      rootId: root.id,
-      actorId,
-      online: inspected.online,
-      files: inspected.files,
-    });
-    catalog.recordRootCheck({
-      rootId: root.id,
-      availability: inspected.online ? 'online' : 'offline',
-      medium: inspected.medium,
-    });
-    catalog.finishRootScan({ rootId: root.id, succeeded: true });
-    return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
-  } catch (error) {
-    catalog.finishRootScan({ rootId: root.id, succeeded: false });
-    throw error;
+    catalog.beginRootScan(root.id);
+    try {
+      const inspected = await inspectRoot(root.path);
+      const count = catalog.applyInspection({
+        rootId: root.id,
+        actorId,
+        online: inspected.online,
+        files: inspected.files,
+      });
+      catalog.recordRootCheck({
+        rootId: root.id,
+        availability: inspected.online ? 'online' : 'offline',
+        medium: inspected.medium,
+      });
+      catalog.finishRootScan({ rootId: root.id, succeeded: true });
+      return { rootId: root.id, medium: inspected.medium, online: inspected.online, count };
+    } catch (error) {
+      catalog.finishRootScan({ rootId: root.id, succeeded: false });
+      throw error;
+    }
+  } finally {
+    releaseRoots();
   }
 }
 

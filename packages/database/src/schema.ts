@@ -290,6 +290,14 @@ export const MIGRATIONS: readonly Migration[] = [
     );
   `,
   },
+  {
+    version: 12,
+    sql: `
+    ALTER TABLE source_files ADD COLUMN filesystem_identity TEXT;
+    ALTER TABLE source_files ADD COLUMN mtime_ms REAL;
+    CREATE INDEX source_files_identity ON source_files(root_id,filesystem_identity);
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

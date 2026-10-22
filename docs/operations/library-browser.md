@@ -158,3 +158,36 @@ Scans use the Provenance system/extension catalog snapshot recorded in `packages
 CUE/BIN, M3U multi-disc playlists, GDI track sets and CCD/IMG/SUB companions appear as one Games entry after scanning. Referenced members stay available in the game detail with individual downloads. Download complete set as ZIP streams a ZIP64 archive in the original relative layout, including descriptors and subchannel files. The server validates each member and rechecks descriptors before downloading. ZIP bundles do not support ranges. Browser native save streams are used when available; other browsers receive a normal Blob download.
 
 Missing, malformed, cyclic, escaping, unavailable or oversized descriptors remain visible with a group error; unrelated files are never hidden to complete an invalid set. Fix the files and rescan. Former group members become standalone again if a later scan no longer groups them. Existing clients may keep using individual source IDs and content endpoints.
+
+## Optional file organization and moved files
+
+Game details offer **Organize files** to the owner. Leave it unused to keep linked
+files in place. Choose **Copy** or **Move** and a registered destination in the same
+library, inspect the generated `System / Matched title / Original filename` path,
+then confirm. Cancel makes no filesystem or catalog changes. Names are made
+portable; existing destinations are never overwritten. Matching alone never moves
+files, and there is no unattended background organizer.
+
+The initial organizer supports local single-file cartridge ROMs up to 512 MiB.
+Archives, disc descriptors/sets, cloud placeholders and network roots are excluded.
+Copy can cross volumes; Move requires the same volume. Sidecar originals stay in
+place; saved metadata/artwork snapshots remain available. A moved game keeps its
+ID and saved choices. A copy receives a new ID and copies the saved choices while
+the original record stays intact. Preview expires after ten minutes and must be
+repeated if the source, saved choices or registered folders change.
+
+A move prepares and verifies the destination before changing the catalog. Only
+after the catalog commits does it remove the original. If cleanup cannot complete,
+the destination record remains valid and a warning identifies recovery work;
+original or unexpected bytes are preserved. Scans and organization reserve their
+registered roots so a stale scan cannot erase an organized record.
+
+After an external rename or move **within one registered folder**, rescan it.
+The scanner keeps IDs and saved matches when filesystem identity, size and
+modification time identify exactly one unchanged file. It also updates its inferred
+kind/system for the new location. Existing catalogs need one scan on the updated
+server to establish identity before subsequent moves can be tracked. Hardlink
+ambiguities, replacements, unsupported identity, edits made during a move and
+manual moves across registered roots/volumes are not guessed. Use the previewed
+Move action for an explicit move between registered folders. This is rescan-based
+detection, not an always-running filesystem watcher.

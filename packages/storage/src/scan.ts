@@ -12,6 +12,8 @@ export interface ScannedFile {
   kind: AssetKind;
   systemId: string | null;
   availability: Availability;
+  filesystemIdentity?: string | null;
+  mtimeMs?: number | null;
   groupAnchor?: string | null;
   groupMembers?: string[];
   groupError?: string | null;
@@ -30,7 +32,7 @@ export async function inspectRoot(rootPath: string): Promise<{
   if (!probe.online) return { medium: probe.medium, online: false, files: [] };
   const root = await realpath(rootPath);
   const files: ScannedFile[] = [];
-  await walk(root, root, probe.medium, files);
+  await walk(root, root, probe.medium, files, new Set<string>());
   await groupDiscs(root, files);
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   return { medium: probe.medium, online: true, files };
@@ -75,11 +77,15 @@ async function walk(
   dir: string,
   medium: Medium,
   files: ScannedFile[],
+  visited: Set<string>,
 ): Promise<void> {
-  const entries = await readdir(dir, { withFileTypes: true });
+  const canonical = await realpath(dir);
+  if (!contained(root, canonical) || visited.has(canonical)) return;
+  visited.add(canonical);
+  const entries = await readdir(canonical, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
-    const full = resolve(dir, entry.name);
+    const full = resolve(canonical, entry.name);
     if (entry.isSymbolicLink()) {
       let target: string;
       try {
@@ -89,27 +95,46 @@ async function walk(
       }
       if (!contained(root, target)) continue;
       const linked = await stat(target);
-      if (linked.isDirectory()) await walk(root, target, medium, files);
-      else if (linked.isFile()) files.push(await describe(root, target, medium));
+      if (linked.isDirectory()) await walk(root, target, medium, files, visited);
+      else if (linked.isFile()) await addFile(root, target, medium, files, visited);
       continue;
     }
     if (entry.isDirectory()) {
-      await walk(root, full, medium, files);
+      await walk(root, full, medium, files, visited);
       continue;
     }
     if (!entry.isFile()) continue;
-    files.push(await describe(root, full, medium));
+    await addFile(root, full, medium, files, visited);
   }
 }
 
+async function addFile(
+  root: string,
+  full: string,
+  medium: Medium,
+  files: ScannedFile[],
+  visited: Set<string>,
+): Promise<void> {
+  const canonical = await realpath(full);
+  if (!contained(root, canonical) || visited.has(canonical)) return;
+  visited.add(canonical);
+  files.push(await describe(root, canonical, medium));
+}
+
 async function describe(root: string, full: string, medium: Medium): Promise<ScannedFile> {
-  const file = await stat(full);
+  const facts = await stat(full, { bigint: true });
+  const file = { size: Number(facts.size), blocks: Number(facts.blocks) };
   const blocks = typeof file.blocks === 'number' ? file.blocks : 1;
   const relativePath = relative(root, full).split(sep).join('/');
   const inferred = inferSource(`${basename(root)}/${relativePath}`);
   return {
     relativePath,
     displayName: relativePath.split('/').at(-1) ?? relativePath,
+    filesystemIdentity:
+      facts.dev >= 0n && facts.ino > 0n && facts.birthtimeNs > 0n
+        ? `${facts.dev}:${facts.ino}:${facts.birthtimeNs}`
+        : null,
+    mtimeMs: Number(facts.mtimeNs) / 1e6,
     size: file.size,
     blocks,
     kind: inferred.kind,

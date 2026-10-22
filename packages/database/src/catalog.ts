@@ -33,6 +33,22 @@ import {
   writeSourceMatch,
 } from './source-matches.js';
 
+/** Filesystem facts stay internal and never appear in API source records. */
+export interface SourceInspection {
+  relativePath: string;
+  displayName: string;
+  size: number;
+  blocks: number;
+  kind: string;
+  systemId: string | null;
+  availability: SourceAvailability;
+  groupAnchor?: string | null;
+  groupMembers?: string[];
+  groupError?: string | null;
+  filesystemIdentity?: string | null;
+  mtimeMs?: number | null;
+}
+
 export interface CatalogLimits {
   maxUploadBytes: number;
   maxLibraryBytes: number;
@@ -1022,18 +1038,7 @@ export class CatalogDatabase {
     rootId: string;
     actorId: string;
     online: boolean;
-    files: Array<{
-      relativePath: string;
-      displayName: string;
-      size: number;
-      blocks: number;
-      kind: string;
-      systemId: string | null;
-      availability: SourceAvailability;
-      groupAnchor?: string | null;
-      groupMembers?: string[];
-      groupError?: string | null;
-    }>;
+    files: SourceInspection[];
   }): number {
     const root = this.getContentRoot(input.rootId);
     if (!root) throw new DomainError('not-found', 404, 'Content root not found');
@@ -1045,40 +1050,76 @@ export class CatalogDatabase {
     this.transaction(() => {
       const existing = this.sourceRows(input.rootId);
       const byPath = new Map(existing.map((row) => [row.relative_path, row]));
+      const paths = new Set(input.files.map((file) => file.relativePath));
+      if (paths.size !== input.files.length)
+        throw new DomainError('invalid-body', 400, 'Scanned paths must be unique');
+      const oldPaths = new Set(byPath.keys());
+      const byIdentity = new Map(
+        existing
+          .filter((row) => row.filesystem_identity)
+          .map((row) => [row.filesystem_identity, row]),
+      );
+      const oldIdentities = identityCounts(existing.map((row) => row.filesystem_identity));
+      const newIdentities = identityCounts(input.files.map((file) => file.filesystemIdentity));
       const seen = new Set<string>();
+      const deleted = new Set<string>();
+      // Delete replacements first so a new row cannot inherit another file's selections.
       for (const file of input.files) {
-        assertSourcePath(file.relativePath);
-        assertSourceKind(file.kind);
-        if (file.groupAnchor) assertSourcePath(file.groupAnchor);
-        if ((file.groupMembers?.length ?? 0) > 512)
-          throw new DomainError('invalid-body', 400, 'Disc group has too many members');
-        for (const member of file.groupMembers ?? []) assertSourcePath(member);
-        seen.add(file.relativePath);
+        assertInspection(file);
         const prior = byPath.get(file.relativePath);
-        if (!prior) {
-          const id = randomUUID();
-          this.db
-            .prepare(
-              `INSERT INTO source_files (
-                id, root_id, relative_path, display_name, size, blocks, kind, system_id,
-                availability, scanned_at, group_anchor, group_members_json, group_error
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            )
-            .run(
-              id,
-              input.rootId,
-              file.relativePath,
-              file.displayName,
-              file.size,
-              file.blocks,
-              file.kind,
-              file.systemId,
-              file.availability,
-              scannedAt,
-              file.groupAnchor ?? null,
-              JSON.stringify(file.groupMembers ?? []),
-              file.groupError ?? null,
-            );
+        if (
+          prior?.filesystem_identity &&
+          file.filesystemIdentity &&
+          prior.filesystem_identity !== file.filesystemIdentity
+        ) {
+          this.deleteInspectedSource(prior, root.libraryId, scannedAt);
+          byPath.delete(file.relativePath);
+          deleted.add(prior.id);
+        }
+      }
+      for (const file of input.files) {
+        let prior = byPath.get(file.relativePath);
+        if (
+          !prior &&
+          file.filesystemIdentity &&
+          newIdentities.get(file.filesystemIdentity) === 1 &&
+          oldIdentities.get(file.filesystemIdentity) === 1
+        ) {
+          // Both names must be absent from the opposite snapshot. Replacements and swaps
+          // are deliberately conservative, even when an inode could suggest a move.
+          const candidate = byIdentity.get(file.filesystemIdentity);
+          if (
+            candidate &&
+            !paths.has(candidate.relative_path) &&
+            !oldPaths.has(file.relativePath) &&
+            candidate.size === file.size &&
+            candidate.mtime_ms !== null &&
+            candidate.mtime_ms === file.mtimeMs
+          )
+            prior = candidate;
+        }
+        const id = prior?.id ?? randomUUID();
+        seen.add(id);
+        const changed =
+          !prior ||
+          prior.relative_path !== file.relativePath ||
+          prior.display_name !== file.displayName ||
+          prior.size !== file.size ||
+          prior.blocks !== file.blocks ||
+          prior.kind !== file.kind ||
+          prior.system_id !== file.systemId ||
+          prior.availability !== file.availability ||
+          prior.group_anchor !== (file.groupAnchor ?? null) ||
+          prior.group_members_json !== JSON.stringify(file.groupMembers ?? []) ||
+          prior.group_error !== (file.groupError ?? null);
+        if (!prior) this.insertInspectedSource(id, input.rootId, file, scannedAt);
+        else if (
+          changed ||
+          prior.filesystem_identity !== (file.filesystemIdentity ?? null) ||
+          prior.mtime_ms !== (file.mtimeMs ?? null)
+        )
+          this.updateInspectedSource(id, input.rootId, file, scannedAt);
+        if (changed)
           this.insertChange(
             'source',
             id,
@@ -1089,63 +1130,10 @@ export class CatalogDatabase {
             scannedAt,
             null,
           );
-          continue;
-        }
-        const changed =
-          prior.display_name !== file.displayName ||
-          prior.size !== file.size ||
-          prior.blocks !== file.blocks ||
-          prior.kind !== file.kind ||
-          prior.system_id !== file.systemId ||
-          prior.availability !== file.availability ||
-          prior.group_anchor !== (file.groupAnchor ?? null) ||
-          prior.group_members_json !== JSON.stringify(file.groupMembers ?? []) ||
-          prior.group_error !== (file.groupError ?? null);
-        if (!changed) continue;
-        this.db
-          .prepare(
-            `UPDATE source_files
-             SET display_name = ?, size = ?, blocks = ?, kind = ?, system_id = ?,
-                 availability = ?, scanned_at = ?, group_anchor = ?, group_members_json = ?, group_error = ?
-             WHERE id = ?`,
-          )
-          .run(
-            file.displayName,
-            file.size,
-            file.blocks,
-            file.kind,
-            file.systemId,
-            file.availability,
-            scannedAt,
-            file.groupAnchor ?? null,
-            JSON.stringify(file.groupMembers ?? []),
-            file.groupError ?? null,
-            prior.id,
-          );
-        this.insertChange(
-          'source',
-          prior.id,
-          'upsert',
-          root.libraryId,
-          null,
-          sensitiveKind(file.kind),
-          scannedAt,
-          null,
-        );
       }
       for (const prior of existing) {
-        if (seen.has(prior.relative_path)) continue;
-        this.db.prepare('DELETE FROM source_files WHERE id = ?').run(prior.id);
-        this.insertChange(
-          'source',
-          prior.id,
-          'delete',
-          root.libraryId,
-          null,
-          sensitiveKind(prior.kind),
-          scannedAt,
-          null,
-        );
+        if (!seen.has(prior.id) && !deleted.has(prior.id))
+          this.deleteInspectedSource(prior, root.libraryId, scannedAt);
       }
       this.insertAudit(input.actorId, 'scan-content-root', 'content-root', input.rootId, {
         count: String(input.files.length),
@@ -1154,10 +1142,179 @@ export class CatalogDatabase {
     return input.files.length;
   }
 
+  private insertInspectedSource(
+    id: string,
+    rootId: string,
+    file: SourceInspection,
+    scannedAt: string,
+  ): void {
+    this.db
+      .prepare(`INSERT INTO source_files
+      (id,root_id,relative_path,display_name,size,blocks,kind,system_id,availability,scanned_at,
+       group_anchor,group_members_json,group_error,filesystem_identity,mtime_ms)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(
+        id,
+        rootId,
+        file.relativePath,
+        file.displayName,
+        file.size,
+        file.blocks,
+        file.kind,
+        file.systemId,
+        file.availability,
+        scannedAt,
+        file.groupAnchor ?? null,
+        JSON.stringify(file.groupMembers ?? []),
+        file.groupError ?? null,
+        file.filesystemIdentity ?? null,
+        file.mtimeMs ?? null,
+      );
+  }
+
+  private updateInspectedSource(
+    id: string,
+    rootId: string,
+    file: SourceInspection,
+    scannedAt: string,
+  ): void {
+    this.db
+      .prepare(`UPDATE source_files SET root_id=?, relative_path=?, display_name=?, size=?, blocks=?,
+      kind=?,system_id=?,availability=?,scanned_at=?,group_anchor=?,group_members_json=?,group_error=?,
+      filesystem_identity=?,mtime_ms=? WHERE id=?`)
+      .run(
+        rootId,
+        file.relativePath,
+        file.displayName,
+        file.size,
+        file.blocks,
+        file.kind,
+        file.systemId,
+        file.availability,
+        scannedAt,
+        file.groupAnchor ?? null,
+        JSON.stringify(file.groupMembers ?? []),
+        file.groupError ?? null,
+        file.filesystemIdentity ?? null,
+        file.mtimeMs ?? null,
+        id,
+      );
+  }
+
+  private deleteInspectedSource(
+    prior: SourceRow,
+    libraryId: string | null,
+    scannedAt: string,
+  ): void {
+    this.db.prepare('DELETE FROM source_files WHERE id=?').run(prior.id);
+    this.insertChange(
+      'source',
+      prior.id,
+      'delete',
+      libraryId,
+      null,
+      sensitiveKind(prior.kind),
+      scannedAt,
+      null,
+    );
+  }
+
+  /** The organizer has already verified and completed the explicit filesystem operation. */
+  relocateSource(input: {
+    sourceId: string;
+    targetRootId: string;
+    actorId: string;
+    file: SourceInspection;
+  }): SourceFileRecord {
+    return this.transferInspectedSource(input, false);
+  }
+
+  cloneSource(input: {
+    sourceId: string;
+    targetRootId: string;
+    actorId: string;
+    file: SourceInspection;
+  }): SourceFileRecord {
+    return this.transferInspectedSource(input, true);
+  }
+
+  private transferInspectedSource(
+    input: { sourceId: string; targetRootId: string; actorId: string; file: SourceInspection },
+    copy: boolean,
+  ): SourceFileRecord {
+    return this.transaction(() => {
+      const source = this.getSource(input.sourceId);
+      const target = this.getContentRoot(input.targetRootId);
+      if (!source || !target)
+        throw new DomainError('not-found', 404, 'Source or content root not found');
+      if (target.libraryId !== source.libraryId)
+        throw new DomainError('conflict', 409, 'Organization must stay in the same library');
+      assertInspection(input.file);
+      if (!input.file.filesystemIdentity || input.file.mtimeMs == null)
+        throw new DomainError(
+          'invalid-body',
+          400,
+          'Organization requires inspected filesystem identity',
+        );
+      const collision = this.one<{ id: string }>(
+        'SELECT id FROM source_files WHERE root_id=? AND relative_path=?',
+        input.targetRootId,
+        input.file.relativePath,
+      );
+      if (collision && (copy || collision.id !== source.id))
+        throw new DomainError('conflict', 409, 'Target path is already indexed');
+      const id = copy ? randomUUID() : source.id;
+      const at = nowIso();
+      if (copy) {
+        this.insertInspectedSource(id, target.id, input.file, at);
+        this.db
+          .prepare(`INSERT INTO source_match_state(source_id,revision)
+          SELECT ?,revision FROM source_match_state WHERE source_id=?`)
+          .run(id, source.id);
+        this.db
+          .prepare(`INSERT INTO source_match_selections(source_id,kind,selection_json,content)
+          SELECT ?,kind,selection_json,content FROM source_match_selections WHERE source_id=?`)
+          .run(id, source.id);
+      } else this.updateInspectedSource(id, target.id, input.file, at);
+      this.insertChange(
+        'source',
+        id,
+        'upsert',
+        source.libraryId,
+        null,
+        sensitiveKind(input.file.kind),
+        at,
+        null,
+      );
+      this.insertAudit(input.actorId, copy ? 'copy-source' : 'move-source', 'source', id, {
+        targetRootId: target.id,
+      });
+      const result = this.getSource(id);
+      if (!result) throw new DomainError('not-found', 500, 'Organized source was not saved');
+      return result;
+    });
+  }
+
   listSources(rootId: string, limit?: number): SourceFileRecord[] {
     if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1))
       throw new Error('Invalid source row limit');
     return this.sourceRows(rootId, limit).map((row) => mapSource(row));
+  }
+
+  /** Internal scanner facts for verifying an organization preview against the indexed file. */
+  sourceInspectionIdentity(sourceId: string): {
+    filesystemIdentity: string | null;
+    mtimeMs: number | null;
+    size: number;
+  } | null {
+    const row = this.one<{
+      filesystem_identity: string | null;
+      mtime_ms: number | null;
+      size: number;
+    }>('SELECT filesystem_identity, mtime_ms, size FROM source_files WHERE id = ?', sourceId);
+    return row
+      ? { filesystemIdentity: row.filesystem_identity, mtimeMs: row.mtime_ms, size: row.size }
+      : null;
   }
 
   getSource(id: string): SourceFileRecord | null {
@@ -2454,6 +2611,8 @@ type SourceRow = {
   group_anchor: string | null;
   group_members_json: string;
   group_error: string | null;
+  filesystem_identity: string | null;
+  mtime_ms: number | null;
 };
 
 function mapSource(row: SourceRow): SourceFileRecord {
@@ -2474,6 +2633,26 @@ function mapSource(row: SourceRow): SourceFileRecord {
     groupMembers: JSON.parse(row.group_members_json),
     groupError: row.group_error,
   };
+}
+
+function identityCounts(identities: Array<string | null | undefined>): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const identity of identities)
+    if (identity) counts.set(identity, (counts.get(identity) ?? 0) + 1);
+  return counts;
+}
+
+function assertInspection(file: SourceInspection): void {
+  assertSourcePath(file.relativePath);
+  assertSourceKind(file.kind);
+  if (file.groupAnchor) assertSourcePath(file.groupAnchor);
+  if ((file.groupMembers?.length ?? 0) > 512)
+    throw new DomainError('invalid-body', 400, 'Disc group has too many members');
+  for (const member of file.groupMembers ?? []) assertSourcePath(member);
+  if (file.filesystemIdentity != null && !/^\d+:[1-9]\d*:[1-9]\d*$/.test(file.filesystemIdentity))
+    throw new DomainError('invalid-body', 400, 'Invalid filesystem identity');
+  if (file.mtimeMs != null && !Number.isFinite(file.mtimeMs))
+    throw new DomainError('invalid-body', 400, 'Invalid filesystem modification time');
 }
 
 function assertSourcePath(path: string): void {

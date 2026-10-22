@@ -30,6 +30,9 @@ import type {
   SourceGroup,
   SourceMatches,
   SourceMatchSelections,
+  SourceOrganizationDraft,
+  SourceOrganizationPreview,
+  SourceOrganizationResult,
   StorageLocation,
   StorageLocationDraft,
   StorageLocationList,
@@ -509,6 +512,17 @@ export class ContentClient {
     return new Blob(chunks, {
       type: response.headers.get('content-type') ?? 'application/octet-stream',
     });
+  }
+
+  previewSourceOrganization(
+    id: string,
+    draft: SourceOrganizationDraft,
+  ): Promise<SourceOrganizationPreview> {
+    return this.post(`/api/v1/sources/${encodeURIComponent(id)}/organization/preview`, draft);
+  }
+
+  applySourceOrganization(id: string, planId: string): Promise<SourceOrganizationResult> {
+    return this.post(`/api/v1/sources/${encodeURIComponent(id)}/organization/apply`, { planId });
   }
 
   async matchingPlugins(): Promise<MatchingPluginList> {

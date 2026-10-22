@@ -2,6 +2,7 @@ export {
   CatalogDatabase,
   type CatalogLimits,
   type ChangeRecord,
+  type SourceInspection,
   type StorageLocationRecord,
   type UploadRecord,
   type WebDavCredentialRecord,
