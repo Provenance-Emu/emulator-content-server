@@ -560,6 +560,9 @@ async function inflateEntry(
       }
       throw error;
     }
+    if (inflate.bytesWritten !== record.compressedSize) {
+      reject('Archive entry contains trailing bytes after its DEFLATE stream');
+    }
     if (written !== record.uncompressedSize) {
       reject('Archive entry did not expand to its declared size');
     }

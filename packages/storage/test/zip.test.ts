@@ -685,3 +685,24 @@ for (const compress of [false, true]) {
     });
   }
 }
+
+for (const suffix of ['junk', 'second stream'] as const) {
+  test(`DEFLATE rejects trailing ${suffix} within the declared compressed extent`, async (t) => {
+    const body = Buffer.from('generated payload');
+    const compressedBody = Buffer.concat([
+      deflateRawSync(body),
+      suffix === 'junk' ? Buffer.from('unexpected bytes') : deflateRawSync(Buffer.from('hidden')),
+    ]);
+    const staged = await stageArchive([
+      { name: 'generated.bin', body, compress: true, compressedBody },
+    ]);
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      assert.deepEqual(await cachedFiles(staged.root), []);
+    }
+  });
+}
