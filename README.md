@@ -40,6 +40,8 @@ backend.
 
 From the page you can sign in, read status, manage content folders, and move files: opening an item lists the files in its manifest, an upload goes in 4 MB pieces with progress, and a download that is cut short resumes from the bytes that arrived instead of starting over.
 
+Owners can open **Settings → Folder watching** for a registered server folder and enable automatic index updates. Watching starts off and the preference survives a server restart. It detects changes inside nested folders without moving files. For reliable detection of moves in either direction, enable watching on both registered folders in the same library (or both unassigned); verified moves retain the source ID and saved matches. Cross-volume copies remain separate files. Recovery scans every 30 seconds catch missed events, recover offline folders, and provide a fallback when native notifications are unavailable. The dialog shows current status and can turn watching off at any time.
+
 `apps/tray` is a menu-bar companion for macOS, Windows, and Linux. It reports whether the server answers and opens the interface, and it is an API client with no data directory of its own. It needs a Rust toolchain: `pnpm tray-dev` to run it, `pnpm tray` to bundle it. Nothing else in the repository needs Rust.
 
 ## WebDAV

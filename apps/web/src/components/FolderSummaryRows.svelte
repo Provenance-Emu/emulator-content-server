@@ -3,12 +3,13 @@
   let {
     summaries,
     onview,
-    scanFailures = {}, busy = false, onscan, onremove, onassign, onorganization,
+    scanFailures = {}, busy = false, onscan, onremove, onassign, onorganization, onwatching,
   }: {
     summaries: ContentRootSummary[];
     onview: (rootId: string, libraryId: string | null) => void;
     scanFailures?: Record<string, string>; busy?: boolean;
     onorganization?: (root: ContentRoot) => void;
+    onwatching?: (root: ContentRoot) => void;
     onscan?: (rootId: string) => void; onremove?: (root: ContentRoot) => void; onassign?: (root: ContentRoot) => void;
   } = $props();
 </script>
@@ -58,6 +59,7 @@
                 View files
               </button>
               {#if onscan && scanFailures[summary.root.id]}<button type="button" disabled={busy} aria-label={`Retry scan ${summary.root.label}`} onclick={() => onscan?.(summary.root.id)}>Retry scan</button>{/if}
+              {#if onwatching}<button type="button" disabled={busy} aria-label={`Folder watching for ${summary.root.label}`} onclick={() => onwatching?.(summary.root)}>Folder watching</button>{/if}
               {#if onorganization}<button type="button" disabled={busy} aria-label={`Automatic organization for ${summary.root.label}`} onclick={()=>onorganization?.(summary.root)}>Automatic organization</button>{/if}
               {#if onremove}<button type="button" disabled={busy} aria-label={`Disconnect ${summary.root.label}`} onclick={() => onremove?.(summary.root)}>Disconnect</button>{/if}
               {#if onassign && summary.root.libraryId === null}<button type="button" disabled={busy} aria-label={`Assign ${summary.root.label}`} onclick={() => onassign?.(summary.root)}>Assign to library</button>{/if}

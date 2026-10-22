@@ -16,6 +16,8 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import './actor.js';
 import type { ServerContext } from './context.js';
+import { registerFolderWatchRoutes } from './folder-watch-routes.js';
+import { FolderWatcher } from './folder-watcher.js';
 import { sendProblem } from './http.js';
 import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
 import { loadPlayerAssets, registerPlayerAssets } from './player-assets.js';
@@ -206,6 +208,14 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
         }),
       );
   });
+  const folderWatcher = new FolderWatcher(context.catalog);
+  app.addHook('onReady', async () => {
+    folderWatcher.reconcile();
+  });
+  app.addHook('preClose', async () => {
+    await folderWatcher.close();
+  });
+  registerFolderWatchRoutes(app, context, folderWatcher);
   registerWebDav(app, context);
   registerRoutes(app, context);
   registerPlayerAssets(app, context);

@@ -422,6 +422,30 @@ public struct MatchingPluginList: Codable, Equatable, Sendable {
     }
 }
 
+public struct FolderWatchPolicy: Codable, Equatable, Sendable {
+    public var rootId: String
+    public var enabled: Bool
+    public var state: String
+    public var lastScanAt: String?
+    public var warning: String?
+
+    public init(rootId: String, enabled: Bool, state: String, lastScanAt: String? = nil, warning: String? = nil) {
+        self.rootId = rootId
+        self.enabled = enabled
+        self.state = state
+        self.lastScanAt = lastScanAt
+        self.warning = warning
+    }
+}
+
+public struct FolderWatchPolicyDraft: Codable, Equatable, Sendable {
+    public var enabled: Bool
+
+    public init(enabled: Bool) {
+        self.enabled = enabled
+    }
+}
+
 public struct SourceOrganizationPolicy: Codable, Equatable, Sendable {
     public var sourceRootId: String
     public var enabled: Bool

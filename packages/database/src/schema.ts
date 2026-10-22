@@ -332,6 +332,16 @@ export const MIGRATIONS: readonly Migration[] = [
     );
   `,
   },
+  {
+    version: 15,
+    sql: `
+    CREATE TABLE folder_watch_policies (
+      root_id TEXT PRIMARY KEY REFERENCES content_roots(id) ON DELETE CASCADE,
+      root_path TEXT NOT NULL,
+      enabled_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    );
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

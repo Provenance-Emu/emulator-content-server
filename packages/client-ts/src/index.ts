@@ -35,6 +35,8 @@ export type {
   FolderEntry,
   FolderListing,
   FolderPlace,
+  FolderWatchPolicy,
+  FolderWatchPolicyDraft,
   GuestGrant,
   GuestGrantCreated,
   GuestGrantDraft,

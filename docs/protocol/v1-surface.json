@@ -32,6 +32,7 @@
     "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
     "GET /api/v1/roots/:rootId/organization-policy",
+    "GET /api/v1/roots/:rootId/watching-policy",
     "GET /api/v1/sources",
     "GET /api/v1/sources/:sourceId/bundle",
     "GET /api/v1/sources/:sourceId/content",
@@ -75,6 +76,7 @@
     "PUT /api/v1/libraries/:libraryId/members/:userId",
     "PUT /api/v1/roots/:rootId/library",
     "PUT /api/v1/roots/:rootId/organization-policy",
+    "PUT /api/v1/roots/:rootId/watching-policy",
     "PUT /api/v1/sources/:sourceId/matches/selections",
     "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
@@ -486,6 +488,28 @@
       ],
       "required": [
         "plugins"
+      ]
+    },
+    "FolderWatchPolicy": {
+      "properties": [
+        "enabled",
+        "lastScanAt",
+        "rootId",
+        "state",
+        "warning"
+      ],
+      "required": [
+        "enabled",
+        "rootId",
+        "state"
+      ]
+    },
+    "FolderWatchPolicyDraft": {
+      "properties": [
+        "enabled"
+      ],
+      "required": [
+        "enabled"
       ]
     },
     "SourceOrganizationPolicy": {

@@ -210,6 +210,18 @@ export interface MatchingPluginList {
   plugins: MatchingPlugin[];
 }
 
+export interface FolderWatchPolicy {
+  rootId: string;
+  enabled: boolean;
+  state: string;
+  lastScanAt?: string;
+  warning?: string;
+}
+
+export interface FolderWatchPolicyDraft {
+  enabled: boolean;
+}
+
 export interface SourceOrganizationPolicy {
   sourceRootId: string;
   enabled: boolean;

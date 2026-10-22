@@ -10,6 +10,8 @@ import type {
   ContentRootScan,
   ContentRootSummaryList,
   FolderListing,
+  FolderWatchPolicy,
+  FolderWatchPolicyDraft,
   GuestGrantCreated,
   GuestGrantDraft,
   GuestGrantList,
@@ -514,6 +516,14 @@ export class ContentClient {
     return new Blob(chunks, {
       type: response.headers.get('content-type') ?? 'application/octet-stream',
     });
+  }
+
+  folderWatchPolicy(rootId: string): Promise<FolderWatchPolicy> {
+    return this.getJson(`/api/v1/roots/${encodeURIComponent(rootId)}/watching-policy`);
+  }
+
+  setFolderWatchPolicy(rootId: string, draft: FolderWatchPolicyDraft): Promise<FolderWatchPolicy> {
+    return this.putJson(`/api/v1/roots/${encodeURIComponent(rootId)}/watching-policy`, draft);
   }
 
   sourceOrganizationPolicy(rootId: string): Promise<SourceOrganizationPolicy> {

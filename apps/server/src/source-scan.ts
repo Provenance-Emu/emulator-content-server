@@ -1,4 +1,4 @@
-import { lstat } from 'node:fs/promises';
+import { lstat, realpath } from 'node:fs/promises';
 import type { CatalogDatabase, SourceInspection } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { inspectRoot, probeRoot, resolveInside } from '@ecs/storage';
@@ -22,10 +22,16 @@ export async function scanRoot(
   try {
     catalog.beginRootScan(root.id);
     try {
-      const inspected = await inspectRoot(registered.path);
+      const inspected = await inspectRoot(registered.path, { pinnedRoot: true });
+      if (inspected.online)
+        inspected.files = await pruneRenamedEntries(registered.path, inspected.files);
       const verifiedMoveSourceIds = inspected.online
         ? await verifiedMoves(catalog, registered.id, registered.path, inspected.files)
         : [];
+      // Check again after traversal and move verification, before committing any
+      // observations. A replaced/missing root must leave the last good index intact.
+      if (inspected.online && (await realpath(registered.path)) !== registered.path)
+        throw new DomainError('invalid-body', 400, 'Registered folder has changed');
       const count = catalog.applyInspection({
         rootId: root.id,
         actorId,
@@ -47,6 +53,42 @@ export async function scanRoot(
   } finally {
     releaseRoots();
   }
+}
+
+/** A traversal can observe a rename twice: old name first, new directory later.
+ * Recheck duplicate identities before committing so stale names cannot manufacture
+ * ambiguity and permanently detach saved matches. Real hard links remain ambiguous. */
+async function pruneRenamedEntries<T extends SourceInspection>(
+  rootPath: string,
+  files: T[],
+): Promise<T[]> {
+  const counts = new Map<string, number>();
+  for (const file of files)
+    if (file.filesystemIdentity)
+      counts.set(file.filesystemIdentity, (counts.get(file.filesystemIdentity) ?? 0) + 1);
+  const current: T[] = [];
+  for (const file of files) {
+    if (!file.filesystemIdentity || counts.get(file.filesystemIdentity) === 1) {
+      current.push(file);
+      continue;
+    }
+    try {
+      const path = await resolveInside(rootPath, file.relativePath, { pinnedRoot: true });
+      const facts = await lstat(path, { bigint: true });
+      if (
+        facts.isFile() &&
+        `${facts.dev}:${facts.ino}:${facts.birthtimeNs}` === file.filesystemIdentity &&
+        Number(facts.size) === file.size &&
+        Number(facts.mtimeNs) / 1e6 === file.mtimeMs
+      )
+        current.push(file);
+    } catch (error) {
+      // Permission/containment errors are not proof a competing name disappeared.
+      // Abort this snapshot rather than transferring a record on incomplete facts.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+  return current;
 }
 
 async function verifiedMoves(

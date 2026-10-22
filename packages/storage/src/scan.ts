@@ -1,6 +1,6 @@
 import { readdir, realpath, stat } from 'node:fs/promises';
 import { basename, relative, resolve, sep } from 'node:path';
-import { type AssetKind, detectRomSystem, isRomExtension } from '@ecs/domain';
+import { type AssetKind, DomainError, detectRomSystem, isRomExtension } from '@ecs/domain';
 import { groupDiscs } from './disc-groups.js';
 import { type Availability, fileAvailability, type Medium, probeRoot } from './volume.js';
 
@@ -23,7 +23,10 @@ export interface ScannedFile {
  * Reads a registered folder in place. Names and sizes come from `stat`.
  * File bytes are not opened, so a placeholder is not downloaded.
  */
-export async function inspectRoot(rootPath: string): Promise<{
+export async function inspectRoot(
+  rootPath: string,
+  options: { pinnedRoot?: boolean } = {},
+): Promise<{
   medium: Medium;
   online: boolean;
   files: ScannedFile[];
@@ -31,6 +34,8 @@ export async function inspectRoot(rootPath: string): Promise<{
   const probe = await probeRoot(rootPath);
   if (!probe.online) return { medium: probe.medium, online: false, files: [] };
   const root = await realpath(rootPath);
+  if (options.pinnedRoot && root !== resolve(rootPath))
+    throw new DomainError('invalid-body', 400, 'Registered folder has changed');
   const files: ScannedFile[] = [];
   await walk(root, root, probe.medium, files, new Set<string>());
   await groupDiscs(root, files);

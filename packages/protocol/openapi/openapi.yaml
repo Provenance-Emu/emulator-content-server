@@ -505,6 +505,28 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MatchingPluginList' }
+  /api/v1/roots/{rootId}/watching-policy:
+    get:
+      operationId: folderWatchPolicy
+      responses:
+        '200':
+          description: Owner-only watching preference and live status for a registered server folder. Disabled by default. Internal filesystem paths are not exposed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderWatchPolicy' }
+    put:
+      operationId: setFolderWatchPolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FolderWatchPolicyDraft' }
+      responses:
+        '200':
+          description: Persist explicit owner consent and start or stop watching this server folder. Watching refreshes the index without moving files. Enable both registered folders to track moves between them. Periodic recovery scans handle missed events and unavailable native watches. Preference survives restart; runtime status does not.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderWatchPolicy' }
   /api/v1/roots/{rootId}/organization-policy:
     get:
       operationId: sourceOrganizationPolicy
@@ -983,6 +1005,21 @@ components:
         plugins:
           type: array
           items: { $ref: '#/components/schemas/MatchingPlugin' }
+    FolderWatchPolicy:
+      type: object
+      required: [rootId, enabled, state]
+      properties:
+        rootId: { type: string }
+        enabled: { type: boolean }
+        state: { type: string, enum: [off, watching, polling, offline, scanning, error] }
+        lastScanAt: { type: string, format: date-time }
+        warning: { type: string }
+    FolderWatchPolicyDraft:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
     SourceOrganizationPolicy:
       type: object
       required: [sourceRootId, enabled]

@@ -1411,6 +1411,32 @@ export class CatalogDatabase {
     });
   }
 
+  listFolderWatchPolicies(): { rootId: string; rootPath: string; enabledBy: string }[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT p.root_id AS rootId, p.root_path AS rootPath, p.enabled_by AS enabledBy
+       FROM folder_watch_policies p JOIN content_roots r ON r.id=p.root_id
+       WHERE r.path=p.root_path ORDER BY p.root_id`,
+        )
+        .all() as { rootId: string; rootPath: string; enabledBy: string }[]
+    ).map((policy) => ({ ...policy }));
+  }
+
+  setFolderWatchPolicy(rootId: string, enabledBy: string): void {
+    const root = this.getContentRoot(rootId);
+    if (!root) throw new DomainError('not-found', 404, 'Folder not found');
+    this.db
+      .prepare(`INSERT INTO folder_watch_policies(root_id,root_path,enabled_by)
+      VALUES(?,?,?) ON CONFLICT(root_id) DO UPDATE SET
+      root_path=excluded.root_path,enabled_by=excluded.enabled_by`)
+      .run(root.id, root.path, enabledBy);
+  }
+
+  clearFolderWatchPolicy(rootId: string): void {
+    this.db.prepare('DELETE FROM folder_watch_policies WHERE root_id=?').run(rootId);
+  }
+
   getSourceOrganizationPolicy(sourceRootId: string): SourceOrganizationPolicy | null {
     const policy = this.one<SourceOrganizationPolicy>(
       `SELECT source_root_id AS sourceRootId,
