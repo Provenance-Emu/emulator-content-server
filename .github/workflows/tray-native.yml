@@ -9,6 +9,13 @@ on:
         type: choice
         default: all
         options: [all, macos-latest, windows-latest, ubuntu-24.04]
+      release_tag:
+        description: Existing release to upload installers to (empty runs verification only)
+        type: string
+        default: ''
+
+permissions:
+  contents: write
 
 jobs:
   native:
@@ -19,6 +26,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - if: inputs.release_tag != ''
+        name: Check installer destination
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
+        shell: bash
       - uses: pnpm/action-setup@v4
         with:
           version: 10.30.1
@@ -34,7 +48,29 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsc -b packages/client-ts
-      - run: pnpm --filter @ecs/tray check
+      - if: inputs.release_tag == ''
+        run: pnpm --filter @ecs/tray check
       # These tests use generated service/process fixtures, never operator services.
-      - run: cargo test --manifest-path apps/tray/src-tauri/Cargo.toml
-      - run: pnpm --filter @ecs/tray tauri build --no-bundle
+      - if: inputs.release_tag == ''
+        run: cargo test --manifest-path apps/tray/src-tauri/Cargo.toml
+      - if: inputs.release_tag == ''
+        run: pnpm --filter @ecs/tray tauri build --no-bundle
+      - if: inputs.release_tag != ''
+        name: Build desktop installers
+        shell: bash
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          case "$RUNNER_OS" in
+            Windows) pnpm --filter @ecs/tray tauri build --ci --bundles msi ;;
+            Linux) pnpm --filter @ecs/tray tauri build --ci --bundles deb,appimage ;;
+            macOS) pnpm --filter @ecs/tray tauri build --ci --bundles app,dmg ;;
+          esac
+      - if: inputs.release_tag != ''
+        name: Publish desktop installers
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          node scripts/publish-desktop.mjs "$RELEASE_TAG"
