@@ -1,6 +1,6 @@
 [package]
 name = "ecs-tray"
-version = "0.1.1"
+version = "0.1.2"
 description = "Menu-bar status for the emulator content server"
 edition = "2021"
 rust-version = "1.90"
