@@ -124,14 +124,27 @@ export interface DownloadQuery {
   localBytes?: number;
   /** The ETag those bytes came from, so changed content restarts rather than appending. */
   etag?: string;
+  signal?: AbortSignal;
 }
 
 export interface CollectOptions {
   attempts?: number;
-  /** Maximum whole body size, checked against headers and streamed bytes before retaining them. */
+  signal?: AbortSignal;
+  /** Maximum whole body size, checked against headers and bytes before accepting them. */
   maxBytes?: number;
   /** Called as bytes arrive, with the whole size when the server states one. */
   onProgress?: (received: number, total: number | null) => void;
+}
+
+/** A caller-owned destination. Failed transfers abort instead of committing partial bytes. */
+export interface DownloadSink {
+  /** Resolve only after consuming the chunk; the client awaits this before writing more. */
+  write(chunk: Uint8Array): Promise<void>;
+  /** Truncate the destination and seek to its beginning. */
+  reset(): Promise<void>;
+  /** Commit only a complete, validated representation. */
+  close(): Promise<void>;
+  abort(reason?: unknown): Promise<void>;
 }
 
 export interface CollectedAsset {
@@ -749,19 +762,24 @@ export class ContentClient {
   private async downloadPath(
     path: string,
     query: DownloadQuery,
-  ): Promise<DownloadResponse & { bodyBytes: number | null }> {
+  ): Promise<DownloadResponse & { bodyBytes: number | null; status: number }> {
     const plan = planResume(query.localBytes ?? 0, null);
     const headers = this.headers();
     if (plan.range) {
       headers.range = plan.range;
       if (query.etag) headers['if-range'] = query.etag;
     }
-    const response = await fetch(this.url(path), { headers, redirect: 'error' });
+    const response = await fetch(this.url(path), {
+      headers,
+      redirect: 'error',
+      signal: query.signal,
+    });
     if (!response.ok && response.status !== 304 && response.status !== 416)
       throw await failure(response);
     let total: number | null;
     let bodyBytes: number | null = null;
     try {
+      query.signal?.throwIfAborted();
       total = totalBytes(response);
       if (response.status === 206) {
         const range = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(
@@ -784,22 +802,23 @@ export class ContentClient {
         }
         bodyBytes = end - start + 1;
         if (query.etag && response.headers.get('etag') !== query.etag) {
-          throw new Error('Content validator changed during resumed download');
+          throw new DownloadChangedError('Content validator changed during resumed download');
         }
       }
     } catch (error) {
-      await response.body?.cancel();
+      await response.body?.cancel().catch(() => undefined);
       throw error;
     }
     const instruction = interpretDownload(response.status, plan.offset);
     const carriesContent = instruction === 'append' || instruction === 'restart';
-    if (!carriesContent) await response.body?.cancel();
+    if (!carriesContent) await response.body?.cancel().catch(() => undefined);
     return {
       instruction,
       offset: instruction === 'append' ? plan.offset : 0,
       etag: response.headers.get('etag'),
       totalBytes: total,
       bodyBytes,
+      status: response.status,
       body: carriesContent ? response.body : null,
     };
   }
@@ -811,10 +830,160 @@ export class ContentClient {
    * bytes from a different revision.
    *
    * Holding the result in memory is the caller's budget. A client with a
-   * filesystem should drive `download` and write each body to disk instead.
+   * filesystem should use `downloadTo` to write with backpressure instead.
    */
   collect(assetId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
     return this.collectPath(`/api/v1/files/${encodeURIComponent(assetId)}/content`, options);
+  }
+
+  /** Stream an asset to a destination without collecting its body in memory. */
+  downloadTo(assetId: string, sink: DownloadSink, options: CollectOptions = {}): Promise<void> {
+    return this.downloadToPath(
+      `/api/v1/files/${encodeURIComponent(assetId)}/content`,
+      sink,
+      options,
+    );
+  }
+
+  /** Stream only the typed source endpoint; no descriptor-provided URL is followed. */
+  downloadSourceTo(
+    sourceId: string,
+    sink: DownloadSink,
+    options: CollectOptions = {},
+  ): Promise<void> {
+    return this.downloadToPath(
+      `/api/v1/sources/${encodeURIComponent(sourceId)}/content`,
+      sink,
+      options,
+    );
+  }
+
+  private async downloadToPath(
+    path: string,
+    sink: DownloadSink,
+    options: CollectOptions,
+  ): Promise<void> {
+    const attempts = options.attempts ?? 3;
+    const maxBytes = options.maxBytes ?? Number.MAX_SAFE_INTEGER;
+    let received = 0;
+    let etag: string | undefined;
+    let total: number | null = null;
+    let restart = false;
+    // A destination may have written partially before throwing. Never replay its operations.
+    let consumerFailed = false;
+    const consume = async (operation: () => void | Promise<void>) => {
+      try {
+        await operation();
+      } catch (error) {
+        consumerFailed = true;
+        throw error;
+      }
+    };
+    try {
+      if (
+        !Number.isSafeInteger(maxBytes) ||
+        maxBytes <= 0 ||
+        !Number.isSafeInteger(attempts) ||
+        attempts < 1
+      )
+        throw new RangeError('Invalid download byte limit or attempts');
+      options.signal?.throwIfAborted();
+      await consume(() => sink.reset());
+      for (let attempt = 1; ; attempt++) {
+        try {
+          options.signal?.throwIfAborted();
+          if (restart || (received > 0 && (!etag || !/^"[^"\r\n]*"$/.test(etag)))) {
+            await consume(() => sink.reset());
+            received = 0;
+            etag = undefined;
+            total = null;
+            restart = false;
+          }
+          const response = await this.downloadPath(path, {
+            localBytes: received,
+            etag,
+            signal: options.signal,
+          });
+          if (response.status !== 200 && response.status !== 206) {
+            await response.body?.cancel().catch(() => undefined);
+            throw new RangeError('Cannot download a complete representation from this response');
+          }
+          if (response.totalBytes !== null && response.totalBytes > maxBytes) {
+            await response.body?.cancel().catch(() => undefined);
+            throw new RangeError('Content exceeds maximum byte limit');
+          }
+          if (response.instruction === 'restart') {
+            // A successful full response supersedes the previous prefix, even with the same ETag.
+            try {
+              await consume(() => sink.reset());
+            } catch (error) {
+              await response.body?.cancel().catch(() => undefined);
+              throw error;
+            }
+            received = 0;
+            total = null;
+          }
+          if (received > 0 && total !== null && response.totalBytes !== total) {
+            await response.body?.cancel().catch(() => undefined);
+            throw new RangeError('Content size changed without a changed validator');
+          }
+          total = response.totalBytes;
+          etag = response.etag ?? undefined;
+          let bodyReceived = 0;
+          // Progress callbacks are consumer code too; a thrown callback is not a network failure.
+          try {
+            await consume(() => options.onProgress?.(received, total));
+            for await (const chunk of chunks(response.body, options.signal)) {
+              if (
+                response.bodyBytes !== null &&
+                chunk.byteLength > response.bodyBytes - bodyReceived
+              )
+                throw new RangeError('Content body exceeds the declared range length');
+              if (chunk.byteLength > maxBytes - received)
+                throw new RangeError('Content exceeds maximum byte limit');
+              if (total !== null && chunk.byteLength > total - received)
+                throw new RangeError('Content body exceeds the declared total size');
+              // Views avoid a second body allocation and bound each pending destination write.
+              for (let offset = 0; offset < chunk.byteLength; offset += 64 * 1024) {
+                options.signal?.throwIfAborted();
+                const part = chunk.subarray(offset, offset + 64 * 1024);
+                await consume(() => sink.write(part));
+                received += part.byteLength;
+                await consume(() => options.onProgress?.(received, total));
+              }
+              bodyReceived += chunk.byteLength;
+            }
+          } catch (error) {
+            if (!response.body?.locked) await response.body?.cancel().catch(() => undefined);
+            throw error;
+          }
+          if (response.bodyBytes !== null && bodyReceived !== response.bodyBytes)
+            throw new RangeError('Content body ended before the declared range length');
+          if (total !== null && received !== total)
+            throw new Error('The asset body ended before the size the server stated');
+          options.signal?.throwIfAborted();
+          await consume(() => sink.close());
+          return;
+        } catch (error) {
+          if (
+            consumerFailed ||
+            options.signal?.aborted ||
+            attempt >= attempts ||
+            !isRetryable(error)
+          )
+            throw error;
+          if (error instanceof DownloadChangedError) restart = true;
+        }
+      }
+    } catch (error) {
+      // Preserve the cause even if cleaning up the destination also fails.
+      try {
+        await sink.abort(error);
+      } catch {
+        /* Keep the original failure. */
+      }
+      throw error;
+    }
   }
 
   private async collectPath(path: string, options: CollectOptions): Promise<CollectedAsset> {
@@ -839,14 +1008,19 @@ export class ContentClient {
           received = 0;
           etag = undefined;
         }
-        const response = await this.downloadPath(path, { localBytes: received, etag });
+        options.signal?.throwIfAborted();
+        const response = await this.downloadPath(path, {
+          localBytes: received,
+          etag,
+          signal: options.signal,
+        });
         if (response.instruction === 'not-modified' || response.instruction === 'unsatisfiable') {
           throw new RangeError(
             'Cannot collect a complete representation from a response without a body',
           );
         }
         if (response.totalBytes !== null && response.totalBytes > maxBytes) {
-          await response.body?.cancel();
+          await response.body?.cancel().catch(() => undefined);
           throw new RangeError('Content exceeds maximum byte limit');
         }
         if (response.instruction !== 'append') {
@@ -856,7 +1030,7 @@ export class ContentClient {
         etag = response.etag ?? undefined;
         options.onProgress?.(received, response.totalBytes);
         let bodyReceived = 0;
-        for await (const chunk of chunks(response.body)) {
+        for await (const chunk of chunks(response.body, options.signal)) {
           if (response.bodyBytes !== null && chunk.byteLength > response.bodyBytes - bodyReceived) {
             throw new RangeError('Content body exceeds the declared range length');
           }
@@ -875,7 +1049,7 @@ export class ContentClient {
         }
         return { bytes: concat(held, received), etag: etag ?? null };
       } catch (error) {
-        if (attempt >= attempts || !isRetryable(error)) throw error;
+        if (options.signal?.aborted || attempt >= attempts || !isRetryable(error)) throw error;
       }
     }
   }
@@ -1023,12 +1197,16 @@ export class ContentClient {
   }
 }
 
+class DownloadChangedError extends Error {}
+
 /**
  * Worth another attempt only when the refusal says nothing about the request
  * itself: a dropped connection, a server fault, or an offset that moved under
  * us. A stale revision or a rejected path fails the same way every time.
  */
 function isRetryable(error: unknown): boolean {
+  if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')
+    return false;
   if (error instanceof RangeError) return false;
   if (!(error instanceof ContentError)) return true;
   if (error.status >= 500) return true;
@@ -1060,13 +1238,25 @@ function sizeOf(body: UploadBody): number {
   return body instanceof Uint8Array ? body.byteLength : body.size;
 }
 
-async function* chunks(body: ReadableStream<Uint8Array> | null): AsyncGenerator<Uint8Array> {
-  if (!body) return;
+async function* chunks(
+  body: ReadableStream<Uint8Array> | null,
+  signal?: AbortSignal,
+): AsyncGenerator<Uint8Array> {
+  if (!body) {
+    signal?.throwIfAborted();
+    return;
+  }
   const reader = body.getReader();
   let completed = false;
+  const cancel = () => {
+    void reader.cancel(signal?.reason).catch(() => undefined);
+  };
+  signal?.addEventListener('abort', cancel, { once: true });
   try {
     for (;;) {
+      signal?.throwIfAborted();
       const { done, value } = await reader.read();
+      signal?.throwIfAborted();
       if (done) {
         completed = true;
         return;
@@ -1074,6 +1264,7 @@ async function* chunks(body: ReadableStream<Uint8Array> | null): AsyncGenerator<
       if (value) yield value;
     }
   } finally {
+    signal?.removeEventListener('abort', cancel);
     if (!completed) await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }

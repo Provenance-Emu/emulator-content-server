@@ -35,14 +35,14 @@ The default listens on this computer only. For other devices on the LAN, restart
 
 The current source adds a useful Home with library cards and a direct Create action. An empty library has an Add your first game path; Add games clearly separates uploading device files/folders from scanning files already on the server. Canceling does not create content. Reader help respects permissions. Search stays visible on phones, optional filters collapse, and management actions live under Library tools. Supported games have a prominent Play action; unsupported games explain downloading to an emulator. File downloads have readable phone rows and precise accessible names. Sign-in explains which account to use. An unavailable server offers a working retry instead of asking for a password.
 
-The desktop connection form collapses while browsing. Frontend changes are shared by web and desktop and are included in the 0.1.2 installer refresh. macOS publication requires signing, notarization and a validated stapled ticket. See [design and journey evidence](../superpowers/specs/2026-10-26-approachable-library.md).
+The desktop connection form collapses while browsing. The new UI is included in all published 0.1.2-alpha.1 installers and the portable server. The Apple Silicon DMG is signed, Apple notarized and stapled. Windows and Linux packaging jobs completed and all five installer/archive digests match their published checksums. See [design and journey evidence](../superpowers/specs/2026-10-26-approachable-library.md).
 
 Validation: 62 focused existing/updated browser cases passed, followed by 17 final focused onboarding, player/download, connection recovery and authorization cases. The design agent's 10 desktop/UX browser cases passed. Both Svelte checks report zero errors/warnings; web/tray controller suites, production builds, lint, package boundaries and the secret scan pass. A failed-startup regression reproduced the inert retry before its fix; reconnect coalesces requests and never resumes private discovery after sign-out. Screenshots use disposable generated fixtures, not operator games or user research participants.
 
 ## Known limits for the next pass
 
 - No relay/NAT traversal, arbitrary browser emulator support, or signing/JIT execution. These are separate integrations rather than promises of this build.
-- Browser downloads collect bytes in memory. Device upload queues retain files/retry state only until the page closes.
+- The source follow-up supports direct disk saving in browsers with a secure save picker, with a 256 MiB cap and guidance for buffered fallback downloads. See [downloads](downloads.md) for browser support and release scope. Device upload queues retain files/retry state only until the page closes.
 - Settings → Devices lists your account's app tokens and supports read-only/read-write creation and revocation. Secrets are shown once, in memory. Settings → Access now shows the selected account's current library role and refreshes it after assignment/removal. These UI additions are included in the 0.1.1 update.
 - Cores and CHD decoders are not included. The pinned NES profile has prior real-core acceptance; other profiles need their own acceptance.
 - Native Finder mounting, live VPN/proxy deployment and broader platform interoperability remain manual follow-ups.

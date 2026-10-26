@@ -9,6 +9,7 @@ export {
   type DownloadInstruction,
   type DownloadQuery,
   type DownloadResponse,
+  type DownloadSink,
   interpretDownload,
   type LibraryBrowseQuery,
   type LibraryScope,

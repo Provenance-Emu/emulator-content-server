@@ -8,7 +8,7 @@ Open the DMG and drag **Emulation Server.app** onto **Applications**. Open it fr
 
 The macOS installer targets Apple Silicon and is Developer ID signed and Apple notarized. The current DMG carries a stapled notarization ticket, so Gatekeeper can validate it offline. Intel/universal builds are not a current priority. The bundle identifier, service registration, profiles and stored sessions retain their existing identifiers through the rename from Content Server Status.
 
-The 0.1.1 update includes Settings → Devices for revocable app tokens and shows current library access in Settings → Access. Its higher application version supports upgrading the first 0.1.0 installer.
+The 0.1.2 update includes the new Home, guided Add games, mobile filters and prominent Play controls. It also includes Settings → Devices for revocable app tokens and shows current library access in Settings → Access. Its higher application version supports upgrading the previous installers.
 
 Choose your server address in the library window, such as `http://127.0.0.1:8473`, and select **Connect**. **Use local managed service** requires a service previously installed with `ecs service install`; it does not install or start a new server implicitly. The menu's service controls act only on that fixed local registration.
 
@@ -37,3 +37,5 @@ xcrun stapler validate "$DMG_PATH"
 ```
 
 Only publish after Apple reports Accepted. Regenerate the SHA-256 file after stapling; stapling changes the archive bytes. The 0.1.1-alpha.1 Apple Silicon image was accepted on 2026-10-26, stapled, validated, and the installed app passed Gatekeeper as Notarized Developer ID.
+
+The 0.1.2-alpha.1 installer refresh is published for Apple Silicon macOS, Windows x64 and Linux x64. The Apple Silicon image passed notarization, stapling and Gatekeeper; Windows/Linux native packaging completed successfully. All published installer/archive digests match their SHA-256 files.

@@ -9,11 +9,13 @@
     playerCore,
     ondownload,
     onplay,
+    externalBusy = false,
   }: {
     detailState: DetailState;
     playerCore: PlayerCoreDescriptor | null;
     ondownload: (file: ManifestFile) => void;
     onplay: (href: string) => void;
+    externalBusy?: boolean;
   } = $props();
   let selected = $state('overview');
   const playable = $derived.by(() => {
@@ -35,7 +37,7 @@
     };
     return labels[kind] ?? kindLabel(kind);
   }
-  const busy = $derived(!!detailState.reading || detailState.adopting || detailState.loading);
+  const busy = $derived(externalBusy || !!detailState.reading || detailState.adopting || detailState.loading);
   const kinds = $derived(
     KIND_ORDER.filter((kind) => detailState.files.some((file) => file.kind === kind)),
   );

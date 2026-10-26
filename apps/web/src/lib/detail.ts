@@ -2,6 +2,7 @@ import {
   type Asset,
   type ContentClient,
   ContentError,
+  type DownloadSink,
   type Item,
   type LibraryBrowseEntry,
   type Manifest,
@@ -10,6 +11,7 @@ import {
   type SourceGroupFile,
 } from '@ecs/client';
 import { type Readable, writable } from 'svelte/store';
+import { BUFFERED_DOWNLOAD_GUIDANCE, MAX_BUFFERED_DOWNLOAD_BYTES } from './download-limits.js';
 import { explain } from './problems.js';
 export interface DetailDownload {
   bytes: Uint8Array<ArrayBuffer>;
@@ -37,6 +39,8 @@ export interface DetailController extends Readable<DetailState> {
   load(): Promise<void>;
   download(file?: ManifestFile): Promise<DetailDownload | null>;
   downloadMember(id: string): Promise<DetailDownload | null>;
+  /** Writes only a current manifest/source file. The sink is closed on success, aborted otherwise. */
+  downloadTo(sink: DownloadSink, file?: ManifestFile, memberId?: string): Promise<boolean>;
   downloadBundle(): Promise<Response | null>;
   adopt(): Promise<Asset | null>;
   dispose(): void;
@@ -69,6 +73,7 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
   let sourceDenied = false;
   let pending: Promise<void> | null = null;
   let bundleAbort: AbortController | null = null;
+  let fileAbort: AbortController | null = null;
   const live = (run: number) => !disposed && run === epoch;
   function update(patch: Partial<DetailState>) {
     current = { ...current, ...patch };
@@ -156,7 +161,13 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
     if (source ? source.availability !== 'local' : !selected) return null;
     const id = source?.id ?? selected?.id;
     if (!id) return null;
+    if ((source?.size ?? selected?.size ?? 0) > MAX_BUFFERED_DOWNLOAD_BYTES) {
+      failure(new RangeError(BUFFERED_DOWNLOAD_GUIDANCE));
+      return null;
+    }
     const run = epoch;
+    const abort = new AbortController();
+    fileAbort = abort;
     update({
       reading: { id, received: 0, total: source?.size ?? selected?.size ?? null },
       failure: null,
@@ -164,6 +175,8 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
     });
     try {
       const options = {
+        maxBytes: MAX_BUFFERED_DOWNLOAD_BYTES,
+        signal: abort.signal,
         onProgress(received: number, total: number | null) {
           if (live(run)) update({ reading: { id, received, total } });
         },
@@ -177,9 +190,61 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
         name: source?.name ?? selected?.relativePath.split('/').at(-1) ?? id,
       };
     } catch (error) {
-      if (live(run)) failure(error);
+      if (live(run) && !abort.signal.aborted) failure(error);
       return null;
     } finally {
+      if (fileAbort === abort) fileAbort = null;
+      if (live(run)) update({ reading: null });
+    }
+  }
+  async function downloadTo(
+    sink: DownloadSink,
+    file?: ManifestFile,
+    memberId?: string,
+  ): Promise<boolean> {
+    const source = memberId
+      ? current.sourceFiles.find((row) => row.id === memberId)
+      : current.source;
+    const selected = source
+      ? null
+      : current.files.find((row) => row.id === (file?.id ?? current.asset?.id));
+    const id = source?.id ?? selected?.id;
+    if (
+      !id ||
+      disposed ||
+      !current.entry ||
+      current.loading ||
+      current.reading ||
+      current.adopting ||
+      (memberId && !source) ||
+      (source ? source.availability !== 'local' : !selected)
+    ) {
+      await sink.abort().catch(() => undefined);
+      return false;
+    }
+    const run = epoch;
+    const abort = new AbortController();
+    fileAbort = abort;
+    update({
+      reading: { id, received: 0, total: source?.size ?? selected?.size ?? null },
+      failure: null,
+      status: null,
+    });
+    try {
+      const options = {
+        signal: abort.signal,
+        onProgress(received: number, total: number | null) {
+          if (live(run)) update({ reading: { id, received, total } });
+        },
+      };
+      if (source) await client.downloadSourceTo(id, sink, options);
+      else await client.downloadTo(id, sink, options);
+      return live(run);
+    } catch (error) {
+      if (live(run) && !abort.signal.aborted) failure(error);
+      return false;
+    } finally {
+      if (fileAbort === abort) fileAbort = null;
       if (live(run)) update({ reading: null });
     }
   }
@@ -205,6 +270,7 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
       return pending;
     },
     download: downloadFile,
+    downloadTo,
     downloadMember(id) {
       return downloadFile(undefined, id);
     },
@@ -276,6 +342,7 @@ export function createDetail(client: ContentClient, entry: LibraryBrowseEntry): 
       if (disposed) return;
       disposed = true;
       bundleAbort?.abort();
+      fileAbort?.abort();
       epoch++;
       pending = null;
       update(empty());

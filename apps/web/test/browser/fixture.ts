@@ -161,6 +161,18 @@ async function createFixture() {
   }
 }
 export const test = base.extend<{ fixture: Awaited<ReturnType<typeof createFixture>> }>({
+  page: async ({ page }, use) => {
+    // Most cases exercise normal browser downloads, including browsers without a secure save picker.
+    // Streaming cases install an explicit controlled picker on the already loaded document.
+    await page.addInitScript(() =>
+      Object.defineProperty(window, 'showSaveFilePicker', {
+        configurable: true,
+        writable: true,
+        value: undefined,
+      }),
+    );
+    await use(page);
+  },
   // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a pattern for a fixture with no dependencies.
   fixture: async ({}, use) => {
     const fixture = await createFixture();

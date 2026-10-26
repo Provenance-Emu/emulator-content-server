@@ -336,3 +336,155 @@ test('disc details load only their cached group and refuse downloads outside its
   assert.deepEqual(file?.bytes, new Uint8Array([1, 2, 3]));
   assert.equal(f.requests.length, 2);
 });
+
+test('disk download writes only current files, reports progress and closes after verified bytes', async (t) => {
+  const f = transport((url) =>
+    url.pathname.endsWith('/manifest')
+      ? Response.json({ version: 1, itemId: 'item', revision: 9, files: [file()] })
+      : new Response(new Uint8Array([4, 5, 6]), {
+          headers: { 'content-length': '3', etag: '"generated"' },
+        }),
+  );
+  t.after(f.restore);
+  const d = createDetail(f.client, entry());
+  t.after(() => d.dispose());
+  const state = { bytes: [] as number[], closed: 0, aborted: 0, resets: 0 };
+  const sink = {
+    async write(bytes: Uint8Array) {
+      state.bytes.push(...bytes);
+    },
+    async reset() {
+      state.resets++;
+      state.bytes = [];
+    },
+    async close() {
+      state.closed++;
+    },
+    async abort() {
+      state.aborted++;
+    },
+  };
+  await d.load();
+  assert.equal(await d.downloadTo(sink, file('not-current')), false);
+  assert.equal(f.requests.length, 1);
+  assert.equal(state.closed, 0);
+  assert.equal(state.aborted, 1);
+  const progress: number[] = [];
+  const unsubscribe = d.subscribe((s) => {
+    if (s.reading) progress.push(s.reading.received);
+  });
+  t.after(unsubscribe);
+  assert.equal(await d.downloadTo(sink, file()), true);
+  assert.deepEqual(state.bytes, [4, 5, 6]);
+  assert.equal(state.closed, 1);
+  assert.equal(state.resets, 1);
+  assert.ok(progress.includes(3));
+  assert.equal(get(d).reading, null);
+});
+
+test('disposal aborts a stalled disk download without committing or retaining private detail', async (t) => {
+  const requested = deferred<void>();
+  const f = transport((url, init) => {
+    if (url.pathname.endsWith('/manifest'))
+      return Response.json({ version: 1, itemId: 'item', revision: 9, files: [file()] });
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(stream) {
+          init?.signal?.addEventListener(
+            'abort',
+            () => stream.error(new DOMException('Generated cancellation', 'AbortError')),
+            { once: true },
+          );
+          requested.resolve();
+        },
+      }),
+      { headers: { 'content-length': '3', etag: '"generated"' } },
+    );
+  });
+  t.after(f.restore);
+  const d = createDetail(f.client, entry());
+  t.after(() => d.dispose());
+  await d.load();
+  const state = { closed: 0, aborted: 0 };
+  const pending = d.downloadTo(
+    {
+      async write() {},
+      async reset() {},
+      async close() {
+        state.closed++;
+      },
+      async abort() {
+        state.aborted++;
+      },
+    },
+    file(),
+  );
+  await requested.promise;
+  d.dispose();
+  assert.equal(await pending, false);
+  assert.equal(state.closed, 0);
+  assert.equal(state.aborted, 1);
+  assert.equal(get(d).reading, null);
+  assert.equal(get(d).entry, null);
+  assert.equal(f.requests.length, 2);
+});
+
+for (const status of [401, 403])
+  test(`disk download ${status} aborts its destination and clears private detail`, async (t) => {
+    const f = transport((url) =>
+      url.pathname.endsWith('/manifest')
+        ? Response.json({ version: 1, itemId: 'item', revision: 9, files: [file()] })
+        : problem(status),
+    );
+    t.after(f.restore);
+    const d = createDetail(f.client, entry());
+    t.after(() => d.dispose());
+    await d.load();
+    const state = { writes: 0, closed: 0, aborted: 0 };
+    const result = await d.downloadTo(
+      {
+        async write() {
+          state.writes++;
+        },
+        async reset() {},
+        async close() {
+          state.closed++;
+        },
+        async abort() {
+          state.aborted++;
+        },
+      },
+      file(),
+    );
+    assert.equal(result, false);
+    assert.deepEqual(state, { writes: 0, closed: 0, aborted: 1 });
+    assert.equal(get(d).status, status);
+    assert.equal(get(d).entry, null);
+    assert.deepEqual(get(d).files, []);
+  });
+
+for (const entity of ['item', 'source'])
+  test(`large ${entity} fallback explains direct saving before making a content request`, async (t) => {
+    const e = entry(entity);
+    if (e.source) e.source.size = 256 * 1024 * 1024 + 1;
+    const f = transport((url) => {
+      assert.ok(
+        url.pathname.endsWith('/manifest'),
+        'oversized fallback must not request file bytes',
+      );
+      return Response.json({
+        version: 1,
+        itemId: 'item',
+        revision: 9,
+        files: [{ ...file(), size: 256 * 1024 * 1024 + 1 }],
+      });
+    });
+    t.after(f.restore);
+    const d = createDetail(f.client, e);
+    t.after(() => d.dispose());
+    await d.load();
+    assert.equal(await d.download(entity === 'item' ? file() : undefined), null);
+    assert.match(get(d).failure ?? '', /256 MB.*Chrome or Edge/);
+    assert.equal(get(d).reading, null);
+    assert.ok(get(d).entry, 'size limit must not revoke library access');
+  });

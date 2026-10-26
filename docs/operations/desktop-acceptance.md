@@ -6,6 +6,12 @@ operator catalog. Build the bundled app with `pnpm --filter @ecs/tray tauri buil
 --bundles app`; `pnpm --filter @ecs/tray check` and the Rust fixture tests cover
 controllers and fixed native boundaries separately.
 
+## Installer refresh — 2026-10-26
+
+0.1.2-alpha.1 is published with the new shared library UI. Apple accepted the signed DMG (submission `361ed6f7-84f8-4149-b50c-37b5a06efd6a`); DMG and app tickets validate and Gatekeeper reports Notarized Developer ID. The installed Applications copy reports version 0.1.2. Windows and Linux packaging jobs succeeded; all five published installer/archive digests match their checksum files.
+
+The real installed Mac app was reopened and its new Home, library, empty state, Add games chooser and collapsed connection controls were verified through accessibility. With the local service running, the native Add library folder dialog opened and Cancel returned to an enabled library without confirming a folder. No upload or folder-registration acceptance was performed against the operator catalog in this refresh. The older generated-fixture acceptance below remains distinct evidence.
+
 ## macOS checks — 2026-10-21
 
 The release app was exercised through native accessibility automation, using two

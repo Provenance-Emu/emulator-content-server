@@ -6,6 +6,8 @@
   import { availabilityLabel, systemLabel } from './lib/content-format';
   import { explain } from './lib/problems';
   import { bytes } from './lib/format';
+  import { chooseBrowserDownload } from './lib/browser-download';
+  import { boundedDownloadBlob } from './lib/download-limits';
   import { sourcePlayHref } from './player/links';
   import Files from './Files.svelte';
   import MatchingPanel from './MatchingPanel.svelte';
@@ -46,25 +48,38 @@
   onDestroy(() => {
     disposed = true;
   });
-  async function download(file?: ManifestFile) {
+  let saving = $state(false);
+  let saveFailure = $state<string | null>(null);
+  async function download(file?: ManifestFile, memberId?: string) {
+    if (saving || groupDownloading) return;
     const current = controller;
-    const result = await current.download(file);
-    if (!result || disposed || current !== controller) return;
-    const url = URL.createObjectURL(new Blob([result.bytes], { type: 'application/octet-stream' }));
+    const source = memberId ? $controller.sourceFiles.find(row => row.id === memberId) : $controller.source;
+    const selected = source ? null : $controller.files.find(row => row.id === (file?.id ?? $controller.asset?.id));
+    if ((memberId && !source) || (!source && !selected)) return;
+    const name = source?.name ?? selected?.relativePath.split('/').at(-1) ?? 'download';
+    saving = true;
+    saveFailure = null;
     try {
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = result.name;
-      anchor.click();
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
-  async function downloadMember(id:string) {
-    const opened=controller;const result=await opened.downloadMember(id);
-    if (!result || disposed || opened !== controller) return;
-    const url=URL.createObjectURL(new Blob([result.bytes],{type:'application/octet-stream'}));
-    try {const anchor=document.createElement('a');anchor.href=url;anchor.download=result.name;anchor.click();} finally {URL.revokeObjectURL(url);}
+      const target = await chooseBrowserDownload(name);
+      if (disposed || current !== controller) return;
+      if (target) {
+        const sink = await target.createSink();
+        if (disposed || current !== controller) { await sink.abort().catch(() => undefined); return; }
+        await current.downloadTo(sink, file, memberId);
+        return;
+      }
+      const result = memberId ? await current.downloadMember(memberId) : await current.download(file);
+      if (!result || disposed || current !== controller) return;
+      const url = URL.createObjectURL(new Blob([result.bytes], { type: 'application/octet-stream' }));
+      try {
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = result.name;
+        anchor.click();
+      } finally { URL.revokeObjectURL(url); }
+    } catch (error) {
+      if (!disposed && current === controller && !(error instanceof Error && error.name === 'AbortError')) saveFailure = explain(error);
+    } finally { if (!disposed) saving = false; }
   }
   async function downloadBundle() {
     if(groupDownloading)return;
@@ -79,7 +94,7 @@
       if(!response || disposed || opened !== controller)return;
       if(destination && response.body) await response.body.pipeTo(await destination.createWritable());
       else {
-        const blob=await response.blob();if(disposed || opened !== controller)return;
+        const blob=await boundedDownloadBlob(response);if(disposed || opened !== controller)return;
         const url=URL.createObjectURL(blob);
         try {const anchor=document.createElement('a');anchor.href=url;anchor.download=name;anchor.click();} finally {URL.revokeObjectURL(url);}
       }
@@ -114,13 +129,15 @@
       </button>{/if}
     <button
       type="button"
-      disabled={refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
+      disabled={saving || refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
       onclick={onrefresh}
     >
       Refresh details
     </button>
   </div>
 </header>
+{#if saveFailure}<p class="problem" role="alert">{saveFailure}</p>{/if}
+{#if saving && !$controller.reading}<p role="status">Choose where to save the file…</p>{/if}
 {#if $controller.failure}<p class="problem" role="alert">
     {$controller.failure}
   </p>{/if}
@@ -136,7 +153,7 @@
       {#if play}<button class="primary" type="button" onclick={() => context.openPlayer(play)}>Play</button>{/if}
       <button
         type="button"
-        disabled={$controller.source.availability !== 'local' || !!$controller.reading}
+        disabled={saving || $controller.source.availability !== 'local' || !!$controller.reading}
         onclick={() => {
           void download();
         }}
@@ -147,10 +164,10 @@
     {#if $controller.groupError}<p class="problem">{$controller.groupError} Rescan this library folder after fixing its disc files.</p>{/if}
     {#if $controller.sourceFiles.length > 1}
       <h2>Disc set · {$controller.sourceFiles.length} files</h2>
-      <button type="button" disabled={groupDownloading || !!$controller.reading || !!$controller.groupError} onclick={()=>void downloadBundle()}>{groupDownloading ? 'Downloading ZIP…' : 'Download complete set as ZIP'}</button>
+      <button type="button" disabled={saving || groupDownloading || !!$controller.reading || !!$controller.groupError} onclick={()=>void downloadBundle()}>{groupDownloading ? 'Downloading ZIP…' : 'Download complete set as ZIP'}</button>
       <p class="dim">The ZIP keeps the original folder layout so CUE and playlist references work.</p>
       {#if groupFailure}<p class="problem" role="alert">{groupFailure}</p>{/if}
-      <ul>{#each $controller.sourceFiles as file (file.id)}<li>{file.name} · {bytes(file.size)} <button type="button" disabled={groupDownloading || !!$controller.reading || file.availability !== 'local'} onclick={()=>void downloadMember(file.id)}>Download file</button></li>{/each}</ul>
+      <ul>{#each $controller.sourceFiles as file (file.id)}<li>{file.name} · {bytes(file.size)} <button type="button" disabled={saving || groupDownloading || !!$controller.reading || file.availability !== 'local'} onclick={()=>void download(undefined, file.id)}>Download file</button></li>{/each}</ul>
     {/if}
     {#if $controller.source.availability !== 'local'}<p class="dim">
         This file is unavailable while its server folder is offline.
@@ -159,6 +176,7 @@
 
 {:else if $controller.item}<Files
     detailState={$controller}
+    externalBusy={saving || groupDownloading}
     {playerCore}
     ondownload={(file) => {
       void download(file);
