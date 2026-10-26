@@ -1,5 +1,11 @@
 # Handoff
 
+## Product usability and notarization — 2026-10-26
+
+User prioritizes useful, approachable product flows over further distribution work. Design work considers both novice teenagers and nostalgic older users: visible click/tap controls, useful home/empty states, clear import choices and direct Play/download actions. Intel builds are explicitly deprioritized.
+
+Apple accepted the published 0.1.1-alpha.1 Apple Silicon DMG (submission `cdb7b615-748e-44cb-90ad-a60d097cfb77`). DMG and installed app were stapled successfully; Gatekeeper reports accepted / Notarized Developer ID. The existing release DMG and checksum are replaced with the stapled bytes. Reuse the existing local App Store Connect key outside the repository; never print the key or generated tokens.
+
 ## Desktop and deferred pass — 2026-10-26
 
 Published desktop alpha 2 at `4207a79`: macOS Apple Silicon DMG (Developer ID signed, not notarized), Windows x64 MSI and Linux x64 DEB/AppImage. Both manual native artifact jobs succeeded; optional test matrix was skipped as requested. Product/app/window/default-server display names are now Emulation Server; auth realm, bundle ID and fixed service registrations are unchanged. An inert-icon report led to a Rust startup menu independent of hidden webview initialization and a visible error fallback. The installed renamed app is `/Applications/Emulation Server.app`.

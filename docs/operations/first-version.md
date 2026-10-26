@@ -40,7 +40,7 @@ The default listens on this computer only. For other devices on the LAN, restart
 - Native Finder mounting, live VPN/proxy deployment and broader platform interoperability remain manual follow-ups.
 - The release Docker build and live health/UI/asset smoke check passed on ARM64 Linux through the existing Colima VM. The smoke check uses a random loopback port and a disposable container, so it does not collide with a running server. The VM was returned to its stopped state and the original Docker context restored.
 - Desktop browser teardown is fixed: browser keep-alive sockets survived page navigation, so the test now closes its browser context before API teardown and verifies completed download bytes. All nine focused desktop/access/player cases pass.
-- [Desktop installers](desktop-install.md) are published under the name Emulation Server: Apple Silicon DMG, Windows x64 MSI, Linux x64 DEB and AppImage. macOS Developer ID signing works; notarization, Intel builds and registry publication remain follow-ups. npm publication requires registry authentication, which is not configured on this machine.
+- [Desktop installers](desktop-install.md) are published under the name Emulation Server: Apple Silicon DMG, Windows x64 MSI, Linux x64 DEB and AppImage. The Apple Silicon DMG is Developer ID signed, Apple notarized and stapled. Intel builds are deprioritized; registry publication remains a follow-up. npm publication requires registry authentication, which is not configured on this machine.
 - The JavaScript dependency audit is clean. GitHub still reports the moderate upstream `glib::VariantStrIter` Rust advisory in the Linux GTK dependency stack (`glib` 0.18.5 through GTK 0.18.2); updating that stack remains deferred.
 
 ## Desktop shipping pass
