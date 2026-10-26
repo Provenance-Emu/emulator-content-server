@@ -992,6 +992,52 @@ public struct GuestGrantCreated: Codable, Equatable, Sendable {
     }
 }
 
+public struct LibraryMember: Codable, Equatable, Sendable {
+    public var userId: String
+    public var role: String
+
+    public init(userId: String, role: String) {
+        self.userId = userId
+        self.role = role
+    }
+}
+
+public struct LibraryMemberList: Codable, Equatable, Sendable {
+    public var items: [LibraryMember]
+
+    public init(items: [LibraryMember]) {
+        self.items = items
+    }
+}
+
+public struct DeviceToken: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var scopes: [String]
+    public var expiresAt: String?
+    public var createdAt: String
+    public var revokedAt: String?
+    public var lastUsedAt: String?
+
+    public init(id: String, name: String, scopes: [String], expiresAt: String? = nil, createdAt: String, revokedAt: String? = nil, lastUsedAt: String? = nil) {
+        self.id = id
+        self.name = name
+        self.scopes = scopes
+        self.expiresAt = expiresAt
+        self.createdAt = createdAt
+        self.revokedAt = revokedAt
+        self.lastUsedAt = lastUsedAt
+    }
+}
+
+public struct DeviceTokenList: Codable, Equatable, Sendable {
+    public var items: [DeviceToken]
+
+    public init(items: [DeviceToken]) {
+        self.items = items
+    }
+}
+
 public struct DeviceTokenDraft: Codable, Equatable, Sendable {
     public var name: String
     public var scopes: [String]

@@ -495,6 +495,29 @@ export interface GuestGrantCreated {
   expiresAt: string;
 }
 
+export interface LibraryMember {
+  userId: string;
+  role: string;
+}
+
+export interface LibraryMemberList {
+  items: LibraryMember[];
+}
+
+export interface DeviceToken {
+  id: string;
+  name: string;
+  scopes: string[];
+  expiresAt: string | null;
+  createdAt: string;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface DeviceTokenList {
+  items: DeviceToken[];
+}
+
 export interface DeviceTokenDraft {
   name: string;
   scopes: string[];

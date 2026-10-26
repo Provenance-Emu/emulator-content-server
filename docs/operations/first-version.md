@@ -35,12 +35,12 @@ The default listens on this computer only. For other devices on the LAN, restart
 
 - No relay/NAT traversal, arbitrary browser emulator support, or signing/JIT execution. These are separate integrations rather than promises of this build.
 - Browser downloads collect bytes in memory. Device upload queues retain files/retry state only until the page closes.
-- Device token creation/revocation remains available through the API. Membership assignment can be changed in the UI; a complete membership listing/editor remains a follow-up.
+- Settings → Devices lists your account's app tokens and supports read-only/read-write creation and revocation. Secrets are shown once, in memory. Settings → Access now shows the selected account's current library role and refreshes it after assignment/removal. These UI additions are included in the 0.1.1 update.
 - Cores and CHD decoders are not included. The pinned NES profile has prior real-core acceptance; other profiles need their own acceptance.
 - Native Finder mounting, live VPN/proxy deployment and broader platform interoperability remain manual follow-ups.
-- The Docker recipe now bundles the UI; a live container check could not run during this pass because the Docker daemon was unavailable. The isolated deployed CLI/UI regression exercises the shared bundle directly.
+- The release Docker build and live health/UI/asset smoke check passed on ARM64 Linux through the existing Colima VM. The smoke check uses a random loopback port and a disposable container, so it does not collide with a running server. The VM was returned to its stopped state and the original Docker context restored.
 - Desktop browser teardown is fixed: browser keep-alive sockets survived page navigation, so the test now closes its browser context before API teardown and verifies completed download bytes. All nine focused desktop/access/player cases pass.
-- [Desktop installers](desktop-install.md) are the next distribution artifact under the name Emulation Server. macOS Developer ID signing works; notarization, Intel builds, npm publication and hosted container images remain follow-ups.
+- [Desktop installers](desktop-install.md) are published under the name Emulation Server: Apple Silicon DMG, Windows x64 MSI, Linux x64 DEB and AppImage. macOS Developer ID signing works; notarization, Intel builds and registry publication remain follow-ups. npm publication requires registry authentication, which is not configured on this machine.
 
 ## Desktop shipping pass
 

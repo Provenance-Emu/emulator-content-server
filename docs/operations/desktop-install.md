@@ -8,6 +8,8 @@ Open the DMG and drag **Emulation Server.app** onto **Applications**. Open it fr
 
 The first macOS installer targets Apple Silicon and its app is signed with Developer ID. It is not notarized: notarization credentials were unavailable for this pass. Intel/universal builds and notarization remain follow-ups. The bundle identifier, service registration, profiles and stored sessions retain their existing identifiers through the rename from Content Server Status.
 
+The 0.1.1 update includes Settings → Devices for revocable app tokens and shows current library access in Settings → Access. Its higher application version supports upgrading the first 0.1.0 installer.
+
 Choose your server address in the library window, such as `http://127.0.0.1:8473`, and select **Connect**. **Use local managed service** requires a service previously installed with `ecs service install`; it does not install or start a new server implicitly. The menu's service controls act only on that fixed local registration.
 
 ## Windows

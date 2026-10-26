@@ -371,6 +371,16 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     return reply.status(201).send(library);
   });
 
+  app.get('/api/v1/libraries/:libraryId/members', async (request, reply) => {
+    const actor = requireUser(request, 'admin');
+    const { libraryId } = request.params as { libraryId: string };
+    libraryDecision(catalog, actor, libraryId, 'admin');
+    if (!catalog.getLibrary(libraryId))
+      throw new DomainError('not-found', 404, 'Library not found');
+    reply.header('cache-control', 'no-store');
+    return { items: catalog.listLibraryMembers(libraryId) };
+  });
+
   app.put('/api/v1/libraries/:libraryId/members/:userId', async (request, reply) => {
     const actor = requireUser(request, 'admin');
     const { libraryId, userId } = request.params as { libraryId: string; userId: string };
@@ -815,6 +825,12 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       throw new DomainError('not-found', 404, 'Guest grant not found');
     }
     return reply.status(204).send();
+  });
+
+  app.get('/api/v1/device-tokens', async (request, reply) => {
+    const actor = requireUser(request, 'admin');
+    reply.header('cache-control', 'no-store');
+    return { items: catalog.listDeviceTokens(actor.userId) };
   });
 
   app.post('/api/v1/device-tokens', async (request, reply) => {

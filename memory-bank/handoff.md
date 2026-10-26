@@ -1,5 +1,13 @@
 # Handoff
 
+## Desktop and deferred pass — 2026-10-26
+
+Published desktop alpha 2 at `4207a79`: macOS Apple Silicon DMG (Developer ID signed, not notarized), Windows x64 MSI and Linux x64 DEB/AppImage. Both manual native artifact jobs succeeded; optional test matrix was skipped as requested. Product/app/window/default-server display names are now Emulation Server; auth realm, bundle ID and fixed service registrations are unchanged. An inert-icon report led to a Rust startup menu independent of hidden webview initialization and a visible error fallback. The installed renamed app is `/Applications/Emulation Server.app`.
+
+The deferred desktop browser teardown is fixed by closing browser contexts before server fixture teardown; completed download bytes are now checked. Nine focused desktop/access/player browser cases, 26 Rust fixtures, 23 tray controller tests and 29 server/CLI cases passed. Fastify/fast-uri/esbuild were updated and the audit reports zero vulnerabilities. Docker was built from the release commit and passed live health/UI/assets checks in a disposable container with an ephemeral port. Colima was started only for that check and then stopped; Docker's original default context was restored. npm publication is blocked by missing registry login. macOS notarization and Intel builds remain deferred.
+
+Follow-on 0.1.1 adds safe per-user device token listing/creation/revocation and current library membership display/editing through additive API routes and generated TS/Swift models. No migration. Credentials are shown once and read-only reconciliation retries prevent duplicate token creation after a lost refresh. Swift's default PATH resolves an obsolete 5.3 toolchain; use `/usr/bin/xcrun swift test --package-path clients/swift` (Xcode Swift 6.4), which passed seven tests.
+
 ## First-version shipping pass — 2026-10-26
 
 User direction: no prompts/confirmations, push directly to main, skip CI, use focused local TDD, and record slow/blocking work for a later pass. Use subagents sparingly and reuse a session for related work. Complete one fast pass before expanding scope.

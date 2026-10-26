@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { ContentError, type AccessPolicy, type ContentClient, type Library, type User } from '@ecs/client';
+  import { ContentError, type AccessPolicy, type ContentClient, type Library, type LibraryMember, type User } from '@ecs/client';
   import { explain } from './lib/problems';
 
   let { client, libraries, onrejected, onchange }: {
@@ -16,6 +16,14 @@
   let userId = $state('');
   let libraryId = $state('');
   let role = $state('reader');
+  let members = $state<LibraryMember[]>([]);
+  let membershipSelection = $state('');
+  let membershipWorking = $state(false);
+  let membershipFailure = $state<string | null>(null);
+  let membershipGeneration = 0;
+  const selectedOwner = $derived(users.some(user => user.id === userId && user.isOwner));
+  const membershipCurrent = $derived(membershipSelection === `${libraryId}:${userId}` && !membershipWorking);
+  const currentRole = $derived(members.find(member => member.userId === userId)?.role ?? null);
   let replacement = $state('');
   let working = $state(false);
   let loaded = $state(false);
@@ -67,6 +75,33 @@
     const secret = replacement; replacement = '';
     return act(() => client.setPassword(userId, secret), 'Password changed. Other sessions for this account were revoked.');
   }
+  async function loadMembership(selectedLibrary: string, selectedUser: string) {
+    const run = ++membershipGeneration;
+    membershipWorking = true; membershipFailure = null; membershipSelection = ''; members = [];
+    try {
+      const result = await client.libraryMembers(selectedLibrary);
+      if (disposed || run !== membershipGeneration || libraryId !== selectedLibrary || userId !== selectedUser) return;
+      members = result.items;
+      role = members.find(member => member.userId === selectedUser)?.role ?? 'reader';
+      membershipSelection = `${selectedLibrary}:${selectedUser}`;
+    } catch (error) {
+      if (disposed || run !== membershipGeneration || libraryId !== selectedLibrary || userId !== selectedUser) return;
+      membershipFailure = explain(error);
+      if (error instanceof ContentError && (error.status === 401 || error.status === 403)) reject(error);
+    } finally { if (!disposed && run === membershipGeneration) membershipWorking = false; }
+  }
+  async function changeMembership(remove = false) {
+    const selectedLibrary = libraryId; const selectedUser = userId; const selectedRole = role;
+    if (!membershipCurrent || selectedOwner) return;
+    await act(async () => {
+      if (remove) await client.removeMember(selectedLibrary, selectedUser);
+      else await client.assignMember(selectedLibrary, selectedUser, selectedRole);
+      if (!disposed) await loadMembership(selectedLibrary, selectedUser);
+    }, remove ? 'Library access removed.' : 'Library access saved.');
+  }
+  $effect(() => {
+    if (loaded && libraryId && userId) void loadMembership(libraryId, userId);
+  });
   onMount(() => { void load(); });
 </script>
 
@@ -107,12 +142,19 @@
     <h3>Library access</h3>
     <p class="dim">Readers can browse and download. Editors can also upload. Server owners retain access to every library.</p>
     {#if libraries.length}
-      <form onsubmit={(event) => { event.preventDefault(); void act(() => client.assignMember(libraryId, userId, role), 'Library access saved.'); }}>
-        <fieldset disabled={working || !userId || users.some(user => user.id === userId && user.isOwner)}>
-          <label for="account-library">Account library</label><select id="account-library" bind:value={libraryId}>{#each libraries as library (library.id)}<option value={library.id}>{library.name}</option>{/each}</select>
-          <label for="account-role">Library role</label><select id="account-role" bind:value={role}><option value="reader">Reader</option><option value="editor">Editor</option></select>
+      <label for="account-library">Account library</label><select id="account-library" bind:value={libraryId} disabled={working}>{#each libraries as library (library.id)}<option value={library.id}>{library.name}</option>{/each}</select>
+      {#if selectedOwner}<p role="status">Current access: Server owner · retains access to every library.</p>
+      {:else if membershipWorking || !membershipCurrent && !membershipFailure}<p role="status">Loading current access…</p>
+      {:else if membershipFailure}<p class="problem" role="alert">{membershipFailure}</p><button type="button" disabled={working} onclick={() => void loadMembership(libraryId, userId)}>Retry library access</button>
+      {:else}<p role="status">Current access: {currentRole === 'owner' ? 'Library owner' : currentRole === 'editor' ? 'Editor' : currentRole === 'reader' ? 'Reader' : 'No access'}</p>{/if}
+      <form onsubmit={(event) => { event.preventDefault(); void changeMembership(); }}>
+        <fieldset disabled={working || !userId || selectedOwner || !membershipCurrent}>
+          <label for="account-role">Library role</label><select id="account-role" bind:value={role}>
+            {#if currentRole === 'owner'}<option value="owner">Library owner</option>{/if}
+            <option value="reader">Reader</option><option value="editor">Editor</option>
+          </select>
           <button type="submit">Save library access</button>
-          <button type="button" onclick={() => void act(() => client.removeMember(libraryId, userId), 'Library access removed.')}>Remove library access</button>
+          <button type="button" disabled={!currentRole} onclick={() => void changeMembership(true)}>Remove library access</button>
         </fieldset>
       </form>
     {:else}<p class="dim">Create a library to assign access.</p>{/if}

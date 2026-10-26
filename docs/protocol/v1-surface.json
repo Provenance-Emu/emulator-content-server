@@ -17,6 +17,7 @@
     "GET /api/v1/browse-libraries",
     "GET /api/v1/capabilities",
     "GET /api/v1/changes",
+    "GET /api/v1/device-tokens",
     "GET /api/v1/files/:assetId",
     "GET /api/v1/files/:assetId/content",
     "GET /api/v1/files/:assetId/entries",
@@ -27,6 +28,7 @@
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
     "GET /api/v1/libraries",
+    "GET /api/v1/libraries/:libraryId/members",
     "GET /api/v1/matching/plugins",
     "GET /api/v1/player/core",
     "GET /api/v1/root-summaries",
@@ -1030,6 +1032,52 @@
         "expiresAt",
         "id",
         "token"
+      ]
+    },
+    "LibraryMember": {
+      "properties": [
+        "role",
+        "userId"
+      ],
+      "required": [
+        "role",
+        "userId"
+      ]
+    },
+    "LibraryMemberList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "DeviceToken": {
+      "properties": [
+        "createdAt",
+        "expiresAt",
+        "id",
+        "lastUsedAt",
+        "name",
+        "revokedAt",
+        "scopes"
+      ],
+      "required": [
+        "createdAt",
+        "expiresAt",
+        "id",
+        "lastUsedAt",
+        "name",
+        "revokedAt",
+        "scopes"
+      ]
+    },
+    "DeviceTokenList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
       ]
     },
     "DeviceTokenDraft": {

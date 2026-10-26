@@ -1811,6 +1811,14 @@ export class CatalogDatabase {
     return true;
   }
 
+  listLibraryMembers(libraryId: string): Array<{ userId: string; role: LibraryRole }> {
+    return this.db
+      .prepare(
+        'SELECT user_id AS userId,role FROM memberships WHERE library_id = ? ORDER BY user_id',
+      )
+      .all(libraryId) as unknown as Array<{ userId: string; role: LibraryRole }>;
+  }
+
   membership(userId: string, libraryId: string): LibraryRole | null {
     const row = this.one<{ role: LibraryRole }>(
       'SELECT role FROM memberships WHERE user_id = ? AND library_id = ?',
@@ -2647,6 +2655,34 @@ export class CatalogDatabase {
     if (result.changes === 0) return false;
     this.insertAudit(userId, 'revoke-webdav-credential', 'webdav-credential', id, {});
     return true;
+  }
+
+  listDeviceTokens(userId: string): Array<{
+    id: string;
+    name: string;
+    scopes: ItemPermission[];
+    expiresAt: string | null;
+    createdAt: string;
+    revokedAt: string | null;
+    lastUsedAt: string | null;
+  }> {
+    const rows = this.db
+      .prepare(`SELECT id,name,scopes_json AS scopesJson,
+      expires_at AS expiresAt,created_at AS createdAt,revoked_at AS revokedAt,
+      last_used_at AS lastUsedAt FROM device_tokens WHERE user_id = ? ORDER BY created_at,id`)
+      .all(userId) as unknown as Array<{
+      id: string;
+      name: string;
+      scopesJson: string;
+      expiresAt: string | null;
+      createdAt: string;
+      revokedAt: string | null;
+      lastUsedAt: string | null;
+    }>;
+    return rows.map(({ scopesJson, ...metadata }) => ({
+      ...metadata,
+      scopes: JSON.parse(scopesJson) as ItemPermission[],
+    }));
   }
 
   createDeviceToken(input: {

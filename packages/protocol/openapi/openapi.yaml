@@ -204,6 +204,15 @@ paths:
       responses:
         '201':
           description: Library created.
+  /api/v1/libraries/{libraryId}/members:
+    get:
+      operationId: listLibraryMembers
+      responses:
+        '200':
+          description: Library membership metadata, visible to library administrators.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryMemberList' }
   /api/v1/libraries/{libraryId}/members/{userId}:
     put:
       operationId: putMember
@@ -713,6 +722,14 @@ paths:
         '204':
           description: Guest grant revoked.
   /api/v1/device-tokens:
+    get:
+      operationId: listDeviceTokens
+      responses:
+        '200':
+          description: Acting user's device token metadata, never hashes or token secrets.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceTokenList' }
     post:
       operationId: createDeviceToken
       responses:
@@ -1360,6 +1377,39 @@ components:
         id: { type: string }
         token: { type: string }
         expiresAt: { type: string }
+    LibraryMember:
+      type: object
+      required: [userId, role]
+      properties:
+        userId: { type: string }
+        role: { type: string }
+    LibraryMemberList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/LibraryMember' }
+    DeviceToken:
+      type: object
+      required: [id, name, scopes, expiresAt, createdAt, revokedAt, lastUsedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        expiresAt: { type: [string, 'null'] }
+        createdAt: { type: string }
+        revokedAt: { type: [string, 'null'] }
+        lastUsedAt: { type: [string, 'null'] }
+    DeviceTokenList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DeviceToken' }
     DeviceTokenDraft:
       type: object
       required: [name, scopes]

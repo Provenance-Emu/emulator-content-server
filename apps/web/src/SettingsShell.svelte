@@ -7,6 +7,7 @@
   import Grants from './Grants.svelte';
   import Accounts from './Accounts.svelte';
   import WebDav from './WebDav.svelte';
+  import DeviceTokens from './DeviceTokens.svelte';
   import Audit from './Audit.svelte';
   import Status from './Status.svelte';
   let {
@@ -26,7 +27,7 @@
   } = $props();
   let selected = $state('Libraries');
   let noted = $state(0);
-  const sections = ['Libraries', 'Upload storage', 'Access', 'WebDAV', 'Activity', 'Server status'];
+  const sections = ['Libraries', 'Upload storage', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status'];
   const visibleSections = $derived(sections.filter(name => name === 'WebDAV'
     ? appState.capabilities?.features.webdav && appState.hasSession
     : appState.owner || name === 'Server status'));
@@ -61,7 +62,7 @@
       <Grants
         {client}
         onchange={() => noted++}
-      />{:else if selected === 'WebDAV' && visibleSections.includes('WebDAV')}<WebDav {client} origin={context.origin} {onrejected} />{:else if appState.owner && selected === 'Activity'}<h1>Activity</h1>
+      />{:else if appState.owner && selected === 'Devices'}<DeviceTokens {client} {onrejected} />{:else if selected === 'WebDAV' && visibleSections.includes('WebDAV')}<WebDav {client} origin={context.origin} {onrejected} />{:else if appState.owner && selected === 'Activity'}<h1>Activity</h1>
       <Audit {client} {noted} />{:else}<h1>Server status</h1>
       <Status capabilities={appState.capabilities} reachable={appState.reachable === true} />{/if}
   </div>

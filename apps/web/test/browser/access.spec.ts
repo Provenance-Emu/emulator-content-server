@@ -18,9 +18,20 @@ test('web owner creates an account, grants and removes library access, and chang
   if (!user) throw new Error('Created account missing');
   await page.getByLabel('Account', { exact: true }).selectOption(user.id);
   await page.getByLabel('Account library', { exact: true }).selectOption(fixture.library.id);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Current access: No access' }),
+  ).toBeVisible();
   await page.getByLabel('Library role', { exact: true }).selectOption('reader');
   await page.getByRole('button', { name: 'Save library access', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Library access saved' })).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Current access: Reader' }),
+  ).toBeVisible();
+  await page.getByLabel('Library role', { exact: true }).selectOption('editor');
+  await page.getByRole('button', { name: 'Save library access', exact: true }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Current access: Editor' }),
+  ).toBeVisible();
   const reader = new ContentClient(fixture.origin);
   await reader.login('new-reader', 'generated-password-123');
   expect((await reader.libraries()).items.map((entry) => entry.id)).toEqual([fixture.library.id]);
@@ -34,6 +45,12 @@ test('web owner creates an account, grants and removes library access, and chang
   await expect(
     page.getByRole('status').filter({ hasText: 'Library access removed' }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Current access: No access' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Remove library access', exact: true }),
+  ).toBeDisabled();
   expect((await reader.libraries()).items).toEqual([]);
 });
 

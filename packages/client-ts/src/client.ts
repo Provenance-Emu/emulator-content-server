@@ -9,6 +9,9 @@ import type {
   ContentRootList,
   ContentRootScan,
   ContentRootSummaryList,
+  DeviceTokenCreated,
+  DeviceTokenDraft,
+  DeviceTokenList,
   FolderListing,
   FolderWatchPolicy,
   FolderWatchPolicyDraft,
@@ -22,6 +25,7 @@ import type {
   LibraryBrowsePage,
   LibraryDraft,
   LibraryList,
+  LibraryMemberList,
   Manifest,
   MatchingOptions,
   MatchingPluginList,
@@ -312,6 +316,10 @@ export class ContentClient {
     return this.remove(`/api/v1/guest-grants/${encodeURIComponent(grantId)}`);
   }
 
+  libraryMembers(libraryId: string): Promise<LibraryMemberList> {
+    return this.getJson(`/api/v1/libraries/${encodeURIComponent(libraryId)}/members`);
+  }
+
   assignMember(libraryId: string, userId: string, role: string): Promise<void> {
     return this.putEmpty(
       `/api/v1/libraries/${encodeURIComponent(libraryId)}/members/${encodeURIComponent(userId)}`,
@@ -368,6 +376,18 @@ export class ContentClient {
   }
 
   /** Owner-only storage administration. Paths are on the server, not the client. */
+  deviceTokens(): Promise<DeviceTokenList> {
+    return this.getJson('/api/v1/device-tokens');
+  }
+
+  createDeviceToken(draft: DeviceTokenDraft): Promise<DeviceTokenCreated> {
+    return this.post('/api/v1/device-tokens', draft);
+  }
+
+  revokeDeviceToken(id: string): Promise<void> {
+    return this.remove(`/api/v1/device-tokens/${encodeURIComponent(id)}`);
+  }
+
   webdavCredentials(): Promise<WebDavCredentialList> {
     return this.getJson('/api/v1/webdav-credentials');
   }
