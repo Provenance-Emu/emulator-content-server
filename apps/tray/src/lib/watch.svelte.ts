@@ -5,7 +5,7 @@ import { AccessDesk } from './access.svelte';
 import type { DesktopSelection } from './application';
 
 /** A suggested manual address only. Never evidence that this is the managed service endpoint. */
-export const DEFAULT_ORIGIN = 'http://127.0.0.1:7878';
+export const DEFAULT_ORIGIN = 'http://127.0.0.1:8473';
 export class ServerWatch {
   context = $state<ServerContext | null>(null);
   desk = $state<AccessDesk | null>(null);

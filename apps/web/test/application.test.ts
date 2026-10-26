@@ -700,3 +700,41 @@ test('context disposal clears the client bearer before it can be reused', async 
     f.restore();
   }
 });
+
+test('manual reconnect retries a failed startup once and never restores private access after sign-out', async () => {
+  const f = serverFixture();
+  const transport = globalThis.fetch;
+  let offline = true;
+  globalThis.fetch = async (...args) => {
+    if (offline) throw new TypeError('generated offline transport');
+    return transport(...args);
+  };
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    assert.equal(get(app).reachable, false);
+    assert.equal(get(app).signedIn, false);
+    offline = false;
+    await Promise.all([app.revalidate(), app.revalidate()]);
+    assert.equal(get(app).reachable, true);
+    assert.equal(get(app).signedIn, true);
+    assert.equal(get(app).failure, null);
+    assert.equal(f.requests.filter(({ path }) => path === '/api/v1/capabilities').length, 1);
+    assert.equal(f.scheduler.pending, 1);
+    await app.signOut();
+    const privateReads = f.requests.filter(
+      ({ path }) => path === '/api/v1/browse-libraries',
+    ).length;
+    await app.revalidate();
+    assert.equal(get(app).signedIn, false);
+    assert.deepEqual(get(app).libraries, []);
+    assert.equal(
+      f.requests.filter(({ path }) => path === '/api/v1/browse-libraries').length,
+      privateReads,
+    );
+    assert.equal(f.scheduler.pending, 1);
+  } finally {
+    app.dispose();
+    f.restore();
+  }
+});

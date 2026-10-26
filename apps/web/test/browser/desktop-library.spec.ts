@@ -9,7 +9,7 @@ test('bundled desktop library shares sign-out across windows and downloads via t
   page,
   context,
   fixture,
-}) => {
+}, testInfo) => {
   const root = resolve('../tray/dist');
   const server = createServer(async (request, response) => {
     const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
@@ -46,6 +46,14 @@ test('bundled desktop library shares sign-out across windows and downloads via t
     await page.getByLabel('Username', { exact: true }).fill('browser-owner');
     await page.getByLabel('Password', { exact: true }).fill(fixture.password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    const connection = page.locator('.connection-details');
+    await expect(connection).not.toHaveAttribute('open');
+    await expect(page.getByLabel('Server address', { exact: true })).not.toBeVisible();
+    await expect(page.locator('.connection-summary')).toContainText(fixture.origin);
+    await connection.getByText('Change connection', { exact: true }).click();
+    await expect(page.getByLabel('Server address', { exact: true })).toHaveValue(fixture.origin);
+    await connection.getByText('Change connection', { exact: true }).click();
+    await page.screenshot({ path: testInfo.outputPath('desktop-connection.png') });
     await page.getByRole('button', { name: 'Arcade', exact: true }).click();
     await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();
     const downloaded = page.waitForEvent('download');

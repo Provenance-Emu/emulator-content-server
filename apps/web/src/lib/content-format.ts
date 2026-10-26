@@ -24,7 +24,7 @@ const KIND_LABELS: Record<string, string> = {
   system_file: 'System file',
 };
 const AVAILABILITY_LABELS: Record<string, string> = {
-  local: 'On this machine',
+  local: 'On the server',
   evicted: 'Not downloaded',
   offline: 'Disk offline',
 };

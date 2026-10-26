@@ -54,19 +54,21 @@
   }
 </script>
 
-<section>
-  <h2>{setup ? 'Create the owner' : 'Sign in'}</h2>
+<section class="sign-in-panel">
+  <h2>{setup ? 'Set up your library' : 'Sign in'}</h2>
   {#if setup}
     <p class="dim">
-      The token was printed when the server started and saved as bootstrap.token in the data
-      directory.
+      Create an account to add games and manage this library. Use the setup code shown when
+      Emulation Server first started. It is also saved in the server’s data folder as bootstrap.token.
     </p>
+  {:else}
+    <p class="sign-in-intro">Sign in to browse your games, download them to an emulator, or play supported games in your browser.</p>
   {/if}
-  <form onsubmit={submit}>
+  <form class="stack sign-in-form" onsubmit={submit} aria-busy={working}>
     {#if setup}
       <label>
-        Bootstrap token
-        <input bind:value={token} autocomplete="off" required />
+        Setup code (bootstrap token)
+        <input type="password" bind:value={token} autocomplete="off" required disabled={working} />
       </label>
     {/if}
     {#if !setup && useToken}
@@ -74,7 +76,7 @@
       <p class="dim">Paste a guest or device token. This browser remembers it for up to one day; the server still enforces its expiration and permissions.</p>
     {:else}<label>
       Username
-      <input bind:value={username} autocomplete="username" required />
+      <input bind:value={username} autocomplete="username" required disabled={working} autocapitalize="none" spellcheck="false" />
     </label>
     <label>
       Password
@@ -83,14 +85,16 @@
         bind:value={password}
         autocomplete={setup ? 'new-password' : 'current-password'}
         required
+        disabled={working}
       />
     </label>{/if}
-    <button type="submit" disabled={working}>
-      {working ? 'Working' : setup ? 'Create owner' : useToken ? 'Connect with token' : 'Sign in'}
+    <button type="submit" class="primary" disabled={working}>
+      {working ? (setup ? 'Creating your account…' : 'Signing in…') : setup ? 'Create owner' : useToken ? 'Connect with token' : 'Sign in'}
     </button>
   </form>
   {#if !setup}
-    <button type="button" disabled={working} onclick={() => { useToken = !useToken; token = ''; password = ''; failure = null; }}>{useToken ? 'Use username and password' : 'Use an access token'}</button>
+    <p class="sign-in-help dim">Use the account provided by the person who manages this library. If this is your library, use the account you created during setup.</p>
+    <button class="text-button" type="button" disabled={working} onclick={() => { useToken = !useToken; token = ''; password = ''; failure = null; }}>{useToken ? 'Use username and password' : 'Use an access token'}</button>
     <p class="dim">This browser stays signed in until the session expires or you sign out.</p>
   {/if}
   {#if failure}

@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { expect, signIn, test } from './fixture';
+import { expect, libraryTool, signIn, test } from './fixture';
 
 for (const bulk of [false, true])
   test(`${bulk ? 'library' : 'game'} matching cannot start with only disabled online providers selected`, async ({
@@ -10,7 +10,7 @@ for (const bulk of [false, true])
     await fixture.legacy();
     await signIn(page, fixture);
     await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
-    if (bulk) await page.getByRole('button', { name: 'Match library', exact: true }).click();
+    if (bulk) await libraryTool(page, 'Match library');
     else await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
     const panel = bulk
       ? page.getByRole('dialog', { name: 'Match library', exact: true })
@@ -90,7 +90,7 @@ for (const bulk of [false, true])
     });
     await signIn(page, fixture);
     await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
-    if (bulk) await page.getByRole('button', { name: 'Match library', exact: true }).click();
+    if (bulk) await libraryTool(page, 'Match library');
     else await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
     const panel = bulk
       ? page.getByRole('dialog', { name: 'Match library', exact: true })

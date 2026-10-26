@@ -38,7 +38,7 @@ export interface ApplicationState {
 
 export interface ApplicationController extends Readable<ApplicationState> {
   start(): Promise<void>;
-  /** Coalesce a fresh authenticated discovery cycle after any current cycle. */
+  /** Coalesce a fresh connection/discovery cycle after any current cycle. Signed-out users only refresh public status. */
   revalidate(): Promise<void>;
   signOut(): Promise<void>;
   dispose(): void;
@@ -122,7 +122,7 @@ export function createApplication(
   async function publicStatus(run: number) {
     try {
       const capabilities = await context.client.capabilities();
-      if (live(run)) update({ capabilities, reachable: true });
+      if (live(run)) update({ capabilities, reachable: true, failure: null });
     } catch (error) {
       if (live(run)) update({ reachable: false, failure: explain(error) });
     }
@@ -260,12 +260,12 @@ export function createApplication(
     },
     revalidate() {
       const run = epoch;
-      if (!live(run) || !current.signedIn) return Promise.resolve();
+      if (!live(run)) return Promise.resolve();
       if (revalidation?.run === run) return revalidation.promise;
       clearTimer();
       const previous = activeCycle?.run === run ? activeCycle.promise : Promise.resolve();
       const promise = previous.then(() => {
-        if (!live(run) || !current.signedIn) return;
+        if (!live(run)) return;
         // The preceding cycle may have scheduled its next timeout while we waited.
         clearTimer();
         return cycle(run);

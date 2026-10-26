@@ -42,7 +42,7 @@
       }
     }
   });
-  function choose(next: LibraryScope) {
+  function choose(next: LibraryScope | null) {
     rootIntent++;
     scope = next;
     rootId = '';
@@ -115,6 +115,8 @@
             owner={$application.owner}
             libraries={$application.libraries}
             onsettings={() => (settings = true)}
+            onchoose={choose}
+            oncreate={() => (editing = null)}
           />
         </div>
         {#if settings}<SettingsShell
@@ -139,7 +141,11 @@
   {:else}<main class="login-content">
       <p class="eyebrow">{context.label}</p>
       <h1>Emulation Server</h1>
-      {#if $application.settled}{#key $application.authEpoch}{@const expectedEpoch =
+      {#if $application.settled && $application.reachable === false}
+        <h2>Can't reach your library</h2>
+        <p>The server is unreachable. Check that Emulation Server is running and that this device is connected to the same network, or check the server address.</p>
+        <button class="primary" type="button" onclick={() => void application.revalidate()}>Try connecting again</button>
+      {:else if $application.settled}{#key $application.authEpoch}{@const expectedEpoch =
             $application.authEpoch}<Login
             client={context.client}
             origin={context.origin}
@@ -150,7 +156,7 @@
             }}
           />{/key}{:else}<p role="status">Connecting to server…</p>{/if}
       {#if signingIn}<button type="button" onclick={() => signingIn = false}>Back to library</button>{/if}
-      {#if $application.failure}<p
+      {#if $application.failure && $application.reachable !== false}<p
           class="problem"
           role="alert"
         >
@@ -165,6 +171,7 @@
       <strong>{context.label}</strong>
       <span class="dim">{$application.owner ? 'Owner' : 'Library access'}</span>
     </div>
+    <button type="button" aria-current={!scope && !settings ? 'page' : undefined} onclick={() => choose(null)}>Home</button>
     <p class="nav-label">Libraries</p>
     {#if $application.owner}<button type="button" onclick={() => { editing = null; drawer = false; }}>Add library</button>{/if}
     {#each $application.libraries as library (library.id)}<button

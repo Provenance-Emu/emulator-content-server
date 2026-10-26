@@ -184,3 +184,25 @@ export async function signIn(
   );
   await page.goto(`${fixture.origin}/ui/`);
 }
+
+/** Follow the same visible import choices a user sees; never click hidden controls. */
+export async function openAddContent(
+  page: import('@playwright/test').Page,
+  choice: 'Upload files' | 'Upload folder' | 'Add server folder' = 'Upload files',
+) {
+  await page.getByRole('button', { name: /^Add (games|files)$/ }).click();
+  await page
+    .getByRole('dialog', { name: /^Add (games|files)$/ })
+    .getByRole('button', { name: choice, exact: true })
+    .click();
+}
+
+export async function libraryTool(
+  page: import('@playwright/test').Page,
+  name: 'Match library' | 'Refresh',
+) {
+  const tools = page.locator('.library-tools');
+  if (!(await tools.evaluate((element) => (element as HTMLDetailsElement).open)))
+    await tools.locator('summary').click();
+  await tools.getByRole('button', { name, exact: true }).click();
+}

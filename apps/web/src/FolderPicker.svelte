@@ -42,7 +42,7 @@
   onDestroy(() => { disposed = true; generation++; });
 </script>
 <section aria-label={title} class="picker">
-  <p class="dim">Choose a server folder, or enter its absolute path.</p>
+  <p class="dim">Choose a folder on the computer running Emulation Server. Files stay in that folder; we scan it to find your games. To copy files from this device instead, close this window and choose Upload files.</p>
   <form onsubmit={submit}>
     <label>Server folder path<input bind:value={path} required disabled={busy} placeholder="/Volumes/Games" oninput={() => { generation++; reading = false; }} /></label>
     <button type="button" disabled={busy || reading || !path.trim()} onclick={() => void open(path.trim())}>Browse path</button>

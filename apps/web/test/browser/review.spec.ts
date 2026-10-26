@@ -1,4 +1,4 @@
-import { expect, signIn, test } from './fixture';
+import { expect, libraryTool, signIn, test } from './fixture';
 
 const problem = (status: number) => ({
   status,
@@ -223,7 +223,7 @@ for (const status of [401, 403] as const)
     await expect(page.locator(`option[value="${root.id}"]`)).toHaveCount(1);
     await page.route('**/api/v1/root-summaries?**', (route) => route.fulfill(problem(status)));
     if (status === 403) await page.route('**/api/v1/roots', (route) => route.fulfill(problem(403)));
-    await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await libraryTool(page, 'Refresh');
     await expect(page.locator(`option[value="${root.id}"]`)).toHaveCount(0);
     if (status === 401)
       await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
@@ -246,7 +246,7 @@ test('folder option transient errors retain the selected folder and other filter
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('external');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await page.route('**/api/v1/root-summaries?**', (route) => route.fulfill(problem(503)));
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await libraryTool(page, 'Refresh');
   await expect(page.getByRole('alert')).toContainText('Access denied');
   await expect(page.getByRole('combobox', { name: 'Library folder', exact: true })).toHaveValue(
     root.id,
@@ -283,7 +283,7 @@ test('a completed page refresh preserves an unsubmitted search draft and submits
   const returned = page.waitForResponse(
     (response) => new URL(response.url()).pathname === '/api/v1/browse',
   );
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await libraryTool(page, 'Refresh');
   await started;
   try {
     await page.getByRole('searchbox', { name: 'Search collection' }).fill('external');

@@ -39,10 +39,12 @@
                   };
                 }}
               />{:else}<span class="title-placeholder" aria-hidden="true">
-                {entry.name.slice(0, 2).toUpperCase()}
+                <span class="placeholder-system">{systemLabel(entry.systemId, systems)}</span>
+                <span class="placeholder-title">{entry.name}</span>
               </span>{/if}
           </span>
           <strong>{entry.name}</strong>
+          {#if entry.parentItem}<span class="game-parent dim">{entry.parentItem.title}</span>{/if}
           <span class="dim">{systemLabel(entry.systemId, systems)}</span>
           {#if entry.source}<span class="availability">
               {availabilityLabel(entry.source.availability)}{#if (entry.source.groupFileCount ?? 0) > 1} · {entry.source.groupFileCount} files{/if}
@@ -66,7 +68,7 @@
             <td>
               <button
                 type="button"
-                class="text-button"
+                class="text-button collection-name"
                 data-entry-key={entryKey(entry)}
                 aria-label={`Open ${entry.name}`}
                 onclick={() => onopen(entry)}

@@ -37,6 +37,8 @@
     owner,
     libraries,
     onsettings,
+    onchoose,
+    oncreate,
   }: {
     context: ServerContext;
     application: ApplicationController;
@@ -47,6 +49,8 @@
     owner: boolean;
     libraries: Library[];
     onsettings: () => void;
+    onchoose: (scope: LibraryScope) => void;
+    oncreate: () => void;
   } = $props();
   const browser = untrack(() => createLibraryBrowser(context.client, null));
   const authEpoch = untrack(() => get(application).authEpoch);
@@ -64,6 +68,7 @@
   let folders = $state<ContentRootSummary[]>([]);
   let playerCore = $state<PlayerCoreDescriptor | null>(null);
   let playerRequested = false;
+  let addChoices = $state(false);
   let upload = $state(false);
   let uploadMode = $state<'files'|'folder'>('files');
   let uploading = $state(false);
@@ -119,6 +124,7 @@
     bulk.dispose();
     folderAdder?.dispose();
     addingFolder=false;
+    addChoices = false;
     bulkOpen = false;
     browser.dispose();
     upload = false;
@@ -229,6 +235,7 @@
       folderAdder?.dispose();
       folderAdder = null;
       upload = false;
+      addChoices = false;
       void browser.selectScope(selected);
       void browser.setQuery({ rootId: root });
     });
@@ -303,6 +310,8 @@
       'libraryId' in scope &&
       libraries.some((library) => library.id === scope.libraryId && library.canCreateItems),
   );
+  const filtered = $derived(!!($browser.filters.search || $browser.filters.systemId || $browser.filters.systemIds.length || $browser.filters.rootId));
+  const canAdd = $derived(!!(canCreate || (owner && scope && 'libraryId' in scope)));
   function open(entry: LibraryBrowseEntry) {
     browser.open(entry, {
       scrollTop: window.scrollY,
@@ -336,14 +345,32 @@
 </script>
 
 <div bind:this={region} class="library-region">
-  {#if !scope}<header class="page-heading">
-      <div>
-        <p class="eyebrow">Library</p>
-        <h1>Your libraries</h1>
-        <p class="dim">Choose a library in the navigation to browse games and their files.</p>
-      </div>
-    </header>
-    {#if !libraries.length}<p>No libraries are available to this account.</p>{/if}
+  {#if !scope}<section class="library-home">
+      <header class="page-heading">
+        <div>
+          <p class="eyebrow">Your collection, together</p>
+          <h1>{libraries.length || !owner ? 'Your libraries' : 'Welcome to your game library'}</h1>
+          <p class="dim">Keep your games in one place. Open a library to play supported games in your browser, download files, or use them in your emulator.</p>
+        </div>
+        {#if owner}<button class="primary" type="button" onclick={oncreate}>{libraries.length ? 'Create a library' : 'Create your first library'}</button>{/if}
+      </header>
+      {#if libraries.length}
+        <div class="library-choice-grid" aria-label="Choose a library">
+          {#each libraries as library (library.id)}
+            <button type="button" class="library-choice" aria-label={`Open library ${library.name}`} onclick={() => onchoose({ libraryId: library.id })}>
+              <span class="eyebrow">Game library</span><strong>{library.name}</strong><span>Open library →</span>
+            </button>
+          {/each}
+        </div>
+        {#if owner}<p class="dim">A library is a collection you name, such as “My games” or “Family favorites”. You choose who can access it in Settings.</p>{/if}
+      {:else if owner}
+        <ol class="welcome-steps">
+          <li><strong>Create a library</strong><p>Give your collection a name. You can change it later.</p></li>
+          <li><strong>Add your games</strong><p>Upload files from this device, or choose a folder on the server computer. We don't supply game files.</p></li>
+          <li><strong>Play or download</strong><p>Open a game for Play when supported, or Download to use it in your emulator.</p></li>
+        </ol>
+      {:else}<div class="empty-state"><h2>No libraries shared yet</h2><p>Ask the person who runs this server to give your account access to a library. Shared libraries will appear here.</p></div>{/if}
+    </section>
   {:else if detail}<LibraryDetail
       controller={detail}
       onauthorization={rejectUploadAccess}
@@ -351,6 +378,7 @@
       {owner}
       {context}
       {playerCore}
+      {systems}
       refreshing={$browser.loading}
       onrefresh={() => void refreshDetails()}
       onback={() => void back()}
@@ -364,22 +392,16 @@
         <p class="eyebrow">Library</p>
         <h1>{title}</h1>
       </div>
-      <div class="actions" role="group" aria-label="Add content and library actions">
-        {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>{['discovering','running'].includes($bulk.phase) ? 'Matching library…' : $bulk.phase==='idle' ? 'Match library' : 'Matching results'}</button>{/if}
-        {#if canCreate}<button type="button" onclick={() => { uploadMode='files'; upload=true; }}>
-            Upload files
-          </button><button type="button" onclick={() => { uploadMode='folder'; upload=true; }}>Upload folder</button>{/if}{#if owner && scope && 'libraryId' in scope}<button type="button" disabled={addingFolderBusy || $folderAdder?.busy} onclick={() => void addServerFolder()}>Add server folder</button>{/if}{#if owner}<button type="button" onclick={onsettings}>
-            Library settings
-          </button>{/if}
-        <button
-          type="button"
-          disabled={$browser.loading}
-          onclick={() => {
-            refreshCollection();
-          }}
-        >
-          Refresh
-        </button>
+      <div class="actions" role="group" aria-label="Library actions">
+        {#if canAdd}<button class="primary" type="button" disabled={addingFolderBusy || $folderAdder?.busy} onclick={() => (addChoices = true)}>{$browser.filters.category === 'games' ? 'Add games' : 'Add files'}</button>{/if}
+        <details class="library-tools">
+          <summary>Library tools</summary>
+          <div class="actions">
+            {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>{['discovering','running'].includes($bulk.phase) ? 'Matching library…' : $bulk.phase==='idle' ? 'Match library' : 'Matching results'}</button>
+              <button type="button" onclick={onsettings}>Library settings</button>{/if}
+            <button type="button" disabled={$browser.loading} onclick={refreshCollection}>Refresh</button>
+          </div>
+        </details>
       </div>
     </header>
     <CategoryTabs
@@ -408,13 +430,12 @@
         loading={$browser.loading}
         failure={$browser.failure}
         empty={$browser.items.length === 0}
-        filtered={!!(
-          $browser.filters.search ||
-          $browser.filters.systemId ||
-          $browser.filters.systemIds.length ||
-          $browser.filters.rootId
-        )}
+        {filtered}
+        canAdd={canAdd}
       />
+      {#if !$browser.loading && !$browser.failure && !$browser.items.length && !filtered && canAdd}
+        <button class="primary" type="button" onclick={() => (addChoices = true)}>{$browser.filters.category === 'games' ? 'Add your first game' : 'Add your first file'}</button>
+      {/if}
       {#if $browser.requiresRefresh}<p>
           The saved page is no longer valid. Use Refresh to return to the first page with these
           filters.
@@ -427,7 +448,7 @@
         onopen={open}
       />
     </div>
-    <nav class="pagination" aria-label="Collection pages">
+    {#if $browser.items.length || $browser.hasPrevious || $browser.hasNext}<nav class="pagination" aria-label="Collection pages">
       <button
         type="button"
         aria-label="Previous page"
@@ -449,24 +470,21 @@
       >
         Next
       </button>
-    </nav>
+    </nav>{/if}
   {/if}
   {#if folderAdder && owner && scope && 'libraryId' in scope}
     {#each Object.entries($folderAdder?.scanFailures??{}) as [id,message]}<p class="problem" role="alert">Folder saved. Scan failed: {message} <button type="button" onclick={()=>void folderAdder?.retryScan(id)}>Retry scan</button></p>{/each}
     {#if owner && !addingFolder && (folderSelectionFailure || $folderAdder?.failure)}<p class="problem" role="alert">{folderSelectionFailure || $folderAdder?.failure}</p>{/if}
-    {#if addingFolder && owner}<Modal title="Add server folder" busy={addingFolderBusy || $folderAdder?.busy} onclose={()=>addingFolder=false}>
-      <FolderPicker client={context.client} contextKey={context.key} origin={context.origin} title="Add server folder" submitLabel="Add folder" onbusy={busy=>addingFolderBusy=busy} oncancel={()=>addingFolder=false} onsubmit={async selection=>{if(!folderAdder)return false;const saved=await folderAdder.add(selection);if(!saved)throw new Error(get(folderAdder).failure??'Folder could not be added.');return true;}} />
-    </Modal>{/if}
   {/if}
   {#if bulkOpen && owner && scope}<Modal title="Match library" onclose={() => { bulkOpen = false; refreshCollection(); }}>
     <BulkMatching {context} controller={bulk} {scope} onchanged={refreshCollection} />
   </Modal>{/if}
-  {#if upload && canCreate && scope && 'libraryId' in scope}<Modal
-      title="Upload files"
-      busy={uploading}
-      onclose={() => (upload = false)}
+  {#if scope && 'libraryId' in scope && ((addChoices && canAdd) || (upload && canCreate) || (addingFolder && owner))}<Modal
+      title={upload ? 'Upload files' : addingFolder ? 'Add server folder' : $browser.filters.category === 'games' ? 'Add games' : 'Add files'}
+      busy={uploading || addingFolderBusy || !!$folderAdder?.busy}
+      onclose={() => { addChoices = false; upload = false; addingFolder = false; }}
     >
-      <Upload
+      {#if upload && canCreate}<Upload
         onbusy={(busy) => (uploading = busy)}
         client={context.client}
         libraryId={scope.libraryId}
@@ -474,9 +492,19 @@
         mode={uploadMode}
         category={$browser.filters.category}
         onauthorization={rejectUploadAccess}
-        oncomplete={() => {
-          void browser.refresh();
-        }}
+        oncomplete={() => { void browser.refresh(); }}
       />
+      {:else if addingFolder && owner}<FolderPicker client={context.client} contextKey={context.key} origin={context.origin} title="Add server folder" submitLabel="Add folder" onbusy={busy=>addingFolderBusy=busy} oncancel={()=>{addingFolder=false;addChoices=false;}} onsubmit={async selection=>{if(!folderAdder)return false;const saved=await folderAdder.add(selection);if(!saved)throw new Error(get(folderAdder).failure??'Folder could not be added.');return true;}} />
+      {:else}<p>Where are the files you want to add?</p>
+        <div class="add-games-options">
+          {#if canCreate}
+            <section class="add-games-option"><h3>On this device</h3><p>Copy game files from your phone or computer into this library. Choose the system before uploading.</p>
+              <div class="actions"><button class="primary" type="button" onclick={() => { uploadMode='files';upload=true;addChoices=false; }}>Upload files</button>
+              <button type="button" onclick={() => { uploadMode='folder';upload=true;addChoices=false; }}>Upload folder</button></div>
+            </section>
+          {/if}
+          {#if owner}<section class="add-games-option"><h3>Already on the server</h3><p>Files stay on the server computer. Nothing is copied.</p><button type="button" onclick={() => { void addServerFolder(); addChoices=false; }}>Add server folder</button></section>{/if}
+        </div>
+      {/if}
     </Modal>{/if}
 </div>

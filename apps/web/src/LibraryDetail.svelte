@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Item, ManifestFile, PlayerCoreDescriptor, SourceFile } from '@ecs/client';
+  import type { Item, ManifestFile, PlayerCoreDescriptor, SourceFile, SystemSummary } from '@ecs/client';
   import { onDestroy } from 'svelte';
   import type { ServerContext } from './lib/application';
   import type { DetailController } from './lib/detail';
@@ -16,6 +16,7 @@
     controller,
     context,
     playerCore,
+    systems,
     owner,
     selectedSource,
     refreshing = false,
@@ -27,6 +28,7 @@
     controller: DetailController;
     context: ServerContext;
     playerCore: PlayerCoreDescriptor | null;
+    systems: SystemSummary[];
     owner: boolean;
     selectedSource:SourceFile|null;
     refreshing?: boolean;
@@ -100,8 +102,7 @@
       {$controller.entry?.name ?? 'File unavailable'}
     </h1>
     <p class="dim">
-      {systemLabel($controller.entry?.systemId ?? null)}{#if $controller.revision !== null}
-        · Revision {$controller.revision}{/if}
+      {systemLabel($controller.entry?.systemId ?? null, systems)}
     </p>
   </div>
   <div class="actions">
@@ -125,13 +126,14 @@
   </p>{/if}
 {#if $controller.loading}<p role="status">Reading file details…</p>{/if}
 {#if $controller.source}<section>
-    <h2>Overview</h2>
-    <p>{$controller.source.name}</p>
+    {#if play}<h2>Ready to play</h2><p>Play here in your browser, or download the game file to use in your emulator.</p>
+    {:else if $controller.source.kind === 'rom' && $controller.source.availability === 'local'}<h2>Take this game to your emulator</h2><p>Browser play is not available for this game on this server. Download it and open it in an emulator that supports this console.</p>
+    {:else}<h2>File download</h2>{/if}
     <p>
       {bytes($controller.source.size)} · {availabilityLabel($controller.source.availability)}
     </p>
     <div class="actions">
-      {#if play}<button type="button" onclick={() => context.openPlayer(play)}>Play</button>{/if}
+      {#if play}<button class="primary" type="button" onclick={() => context.openPlayer(play)}>Play</button>{/if}
       <button
         type="button"
         disabled={$controller.source.availability !== 'local' || !!$controller.reading}

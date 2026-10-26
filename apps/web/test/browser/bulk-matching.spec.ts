@@ -1,4 +1,4 @@
-import { expect, signIn, test } from './fixture';
+import { expect, libraryTool, signIn, test } from './fixture';
 
 test('partial provider failures stay reviewable and can retry from the failed filter', async ({
   page,
@@ -22,7 +22,7 @@ test('partial provider failures stay reviewable and can retry from the failed fi
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Match library', exact: true }).click();
+  await libraryTool(page, 'Match library');
   const panel = page.getByRole('dialog', { name: 'Match library', exact: true });
   await panel.getByRole('button', { name: 'Start library matching' }).click();
   await expect(panel.getByRole('button', { name: 'Needs review (1)', exact: true })).toBeVisible();
@@ -73,7 +73,7 @@ test('unmatched games retry in place without a new library run', async ({ page, 
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Match library', exact: true }).click();
+  await libraryTool(page, 'Match library');
   const panel = page.getByRole('dialog', { name: 'Match library', exact: true });
   await panel.getByRole('button', { name: 'Start library matching' }).click();
   await expect(panel.getByRole('button', { name: 'No match (1)', exact: true })).toBeVisible();
@@ -109,7 +109,7 @@ test('review saves each category then advances to the next unresolved game with 
   await fixture.client.scanRoot(root.id);
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Match library', exact: true }).click();
+  await libraryTool(page, 'Match library');
   const panel = page.getByRole('dialog', { name: 'Match library', exact: true });
   await panel.getByText('Providers and manager', { exact: true }).click();
   await panel.getByRole('checkbox', { name: 'Include online providers', exact: true }).uncheck();

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { expect, signIn, test } from './fixture';
+import { expect, openAddContent, signIn, test } from './fixture';
 
 const generated = (name: string) => ({
   name,
@@ -16,7 +16,7 @@ test('folder review preserves relative paths and the queue retains successful re
   await writeFile(join(folder, 'nested', 'Folder game.nes'), Buffer.from([1, 2, 3]));
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload folder', exact: true }).click();
+  await openAddContent(page, 'Upload folder');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog.getByLabel('Folder', { exact: true }).setInputFiles(folder);
   await expect(
@@ -37,7 +37,7 @@ test('missing metadata blocks upload and unsupported folders explain the files f
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await expect(dialog.getByText(/Folder selection is unavailable/)).toBeVisible();
   await dialog
@@ -53,7 +53,7 @@ test('missing metadata blocks upload and unsupported folders explain the files f
 test('large selections render only fifty review entries', async ({ page, fixture }) => {
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog.getByLabel('File', { exact: true }).evaluate((input) => {
     const data = new DataTransfer();
@@ -88,7 +88,7 @@ test('stop after current completes one file and leaves later entries waiting', a
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog
     .getByLabel('File', { exact: true })
@@ -129,7 +129,7 @@ test('authorization loss stops later uploads and removes private UI', async ({ p
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog
     .getByLabel('File', { exact: true })
@@ -145,7 +145,7 @@ test('library saves require an explicit managed target selected from bounded ite
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
   await page.getByRole('tab', { name: 'Saves', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog.getByLabel('File', { exact: true }).setInputFiles(generated('chosen.sav'));
   await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeDisabled();
@@ -177,7 +177,7 @@ test('Add content offers server folders only to owners and registers in the sele
   await writeFile(join(folder, 'generated.nes'), Buffer.from([78, 69, 83, 26]));
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Add server folder', exact: true }).click();
+  await openAddContent(page, 'Add server folder');
   const dialog = page.getByRole('dialog', { name: 'Add server folder', exact: true });
   await dialog.getByLabel('Server folder path', { exact: true }).fill(folder);
   await dialog.getByRole('button', { name: 'Add folder', exact: true }).click();

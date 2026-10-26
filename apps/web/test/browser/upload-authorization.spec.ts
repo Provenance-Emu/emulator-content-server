@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { expect, signIn, test } from './fixture';
+import { expect, openAddContent, signIn, test } from './fixture';
 
 const generated = (name: string) => ({
   name,
@@ -41,7 +41,7 @@ for (const phase of ['review', 'reconciliation']) {
       await signIn(page, fixture);
       await page.getByRole('button', { name: 'Arcade', exact: true }).click();
       if (phase === 'review') await page.getByRole('tab', { name: 'Saves', exact: true }).click();
-      await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+      await openAddContent(page, 'Upload files');
       const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
       await dialog
         .getByLabel('File', { exact: true })
@@ -65,9 +65,12 @@ for (const phase of ['review', 'reconciliation']) {
       ).toHaveCount(0);
       if (status === 403) {
         await expect.poll(() => accessReads).toBeGreaterThan(baseline);
-        await expect(page.getByRole('button', { name: 'Upload files', exact: true })).toHaveCount(
-          0,
-        );
+        await page.getByRole('button', { name: /^Add (games|files)$/ }).click();
+        await expect(
+          page
+            .getByRole('dialog', { name: /^Add (games|files)$/ })
+            .getByRole('button', { name: 'Upload files', exact: true }),
+        ).toHaveCount(0);
       } else
         await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toHaveCount(0);
     });
@@ -102,7 +105,7 @@ test('queue 403 closes private upload immediately and revalidates creation permi
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog
     .getByLabel('File', { exact: true })
@@ -114,7 +117,12 @@ test('queue 403 closes private upload immediately and revalidates creation permi
     page.getByRole('button', { name: 'Retry unfinished uploads', exact: true }),
   ).toHaveCount(0);
   await expect.poll(() => accessReads).toBeGreaterThan(baseline);
-  await expect(page.getByRole('button', { name: 'Upload files', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add games', exact: true }).click();
+  await expect(
+    page
+      .getByRole('dialog', { name: 'Add games', exact: true })
+      .getByRole('button', { name: 'Upload files', exact: true }),
+  ).toHaveCount(0);
   expect(opens).toBe(1);
   expect(creates).toBe(1);
 });
@@ -136,7 +144,7 @@ test('Games folder upload keeps saves associated with an explicit target instead
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload folder', exact: true }).click();
+  await openAddContent(page, 'Upload folder');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog.getByLabel('Folder', { exact: true }).setInputFiles(folder);
   await dialog

@@ -55,8 +55,8 @@
   onDestroy(() => { disposed = true; editor.dispose(); });
 </script>
 <Modal {title} busy={$editor.busy || pickerBusy || choosing} {onclose}>
-  <label>Library name<input value={$editor.name} maxlength="120" disabled={$editor.busy || (!!$editor.libraryId && !library)} oninput={(event) => editor.setName(event.currentTarget.value)} /></label>
-  {#if !library}<p class="dim">A library can be empty. Files in selected server folders stay where they are.</p>
+  <label>Library name<input value={$editor.name} maxlength="80" disabled={$editor.busy || (!!$editor.libraryId && !library)} oninput={(event) => editor.setName(event.currentTarget.value)} /></label>
+  {#if !library}<p class="dim">Give your collection a name, such as “My games” or “Family favorites”. Create it now and add games next. If your games are already on the server computer, you can optionally select that folder here; the files stay where they are.</p>
     <ul>{#each $editor.folders as folder, index (folder.selection.path)}<li>
       <span class="path">{folder.selection.path}</span>
       {#if folder.scanned}<span> Scanned</span>{:else if folder.rootId}<span> Folder saved</span>{/if}
@@ -73,6 +73,6 @@
   {/if}
   {#if $editor.failure || failure}<p class="problem" role="alert">{$editor.failure || failure}</p>{/if}
   <div class="actions"><button type="button" disabled={$editor.busy || pickerBusy || choosing} onclick={onclose}>Cancel</button>
-    <button type="button" disabled={$editor.busy || pickerBusy || choosing || picking || $editor.reconciliationRequired || !$editor.name.trim()} onclick={() => void submit()}>{library ? 'Save name' : $editor.libraryId ? 'Retry remaining steps' : 'Create library'}</button>
+    <button class="primary" type="button" disabled={$editor.busy || pickerBusy || choosing || picking || $editor.reconciliationRequired || !$editor.name.trim()} onclick={() => void submit()}>{library ? 'Save name' : $editor.libraryId ? 'Retry remaining steps' : 'Create library'}</button>
   </div>
 </Modal>

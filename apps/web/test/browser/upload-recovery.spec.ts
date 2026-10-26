@@ -1,4 +1,4 @@
-import { expect, signIn, test } from './fixture';
+import { expect, openAddContent, signIn, test } from './fixture';
 
 test('uploads work on an ordinary LAN HTTP origin without randomUUID', async ({
   page,
@@ -20,7 +20,7 @@ test('uploads work on an ordinary LAN HTTP origin without randomUUID', async ({
   await page.goto(`${origin}/ui/`);
   expect(await page.evaluate(() => typeof crypto.randomUUID)).toBe('undefined');
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files' });
   await dialog.getByLabel('File', { exact: true }).setInputFiles({
     name: 'LAN game.nes',
@@ -62,7 +62,7 @@ test('retrying a failed upload retains its created game and transfer key', async
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files' });
   await dialog.getByLabel('File', { exact: true }).setInputFiles({
     name: 'Retry game.nes',
@@ -99,7 +99,7 @@ test('a lost game-creation response requires checking the library rather than bl
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files' });
   await dialog.getByLabel('File', { exact: true }).setInputFiles({
     name: 'Uncertain game.nes',
@@ -145,7 +145,7 @@ test('manual retry replays a committed upload after all completion responses wer
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files' });
   await dialog.getByLabel('File', { exact: true }).setInputFiles({
     name: 'Committed game.nes',

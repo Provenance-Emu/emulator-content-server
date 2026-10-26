@@ -1,5 +1,5 @@
 import { readFile, rm } from 'node:fs/promises';
-import { expect, signIn, test } from './fixture';
+import { expect, libraryTool, openAddContent, signIn, test } from './fixture';
 
 test('all games remain reachable in a bounded collection and detail back restores focus', async ({
   page,
@@ -80,7 +80,7 @@ test('restricted readers see permitted libraries and no owner or upload actions'
     0,
   );
   await expect(page.getByRole('button', { name: 'Empty shelf', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Upload files', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add games', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Download sample.nes' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add a file', exact: true })).toHaveCount(0);
@@ -100,7 +100,7 @@ test('narrow navigation supports keyboard, contained dialog focus and explicit u
   await expect(drawer).toBeVisible();
   await drawer.getByRole('button', { name: 'Arcade', exact: true }).click();
   await expect(drawer).not.toBeVisible();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('combobox', { name: 'System', exact: true })).toHaveValue('');
@@ -108,7 +108,7 @@ test('narrow navigation supports keyboard, contained dialog focus and explicit u
   await expect(dialog.locator(':focus')).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
-  await expect(page.getByRole('button', { name: 'Upload files', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Add games', exact: true })).toBeFocused();
   await page.screenshot({ path: testInfo.outputPath('library-narrow.png') });
   await page.getByRole('tab', { name: 'Games', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
@@ -226,7 +226,7 @@ for (const status of [401, 403] as const)
         });
       else await route.continue();
     });
-    await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await libraryTool(page, 'Refresh');
     if (status === 401)
       await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
     else await expect(page.getByRole('alert')).toContainText('Try again');
@@ -242,7 +242,7 @@ test('upload waits for an explicit system and keeps its dialog open while sendin
 }) => {
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload files', exact: true }).click();
+  await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files' });
   await dialog.getByLabel('File', { exact: true }).setInputFiles({
     name: 'Uploaded game.nes',
@@ -307,7 +307,7 @@ test('a denied source download clears detail until a fresh bounded page authoriz
   await expect(page.getByRole('heading', { name: 'external.nes', exact: true })).toHaveCount(0);
   await expect(page.getByRole('alert')).toContainText('Try again');
   await page.unroute('**/api/v1/browse?**');
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await libraryTool(page, 'Refresh');
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'external.nes', exact: true })).toBeVisible();
   expect(fixture.requests.some((request) => request === 'GET /api/v1/sources')).toBe(false);
@@ -345,7 +345,7 @@ test('an expired browse session signs out immediately and clears private navigat
     headers: { authorization: `Bearer ${fixture.session.token}` },
   });
   expect(revoked.status).toBe(204);
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await libraryTool(page, 'Refresh');
   await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Arcade', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Open Game / })).toHaveCount(0);

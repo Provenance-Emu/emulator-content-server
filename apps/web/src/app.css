@@ -18,10 +18,14 @@ body {
   background: var(--paper);
   color: var(--ink);
   font:
-    15px / 1.5 ui-sans-serif,
+    16px / 1.5 ui-sans-serif,
     -apple-system,
     system-ui,
     sans-serif;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 main {
@@ -38,17 +42,16 @@ h1 {
 }
 
 h3 {
-  font-size: 0.82rem;
+  font-size: 1rem;
   font-weight: 600;
   margin: 1rem 0 0.35rem;
 }
 
 h2 {
-  font-size: 0.78rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
+  letter-spacing: -0.015em;
+  color: var(--ink);
   margin: 0 0 0.75rem;
 }
 
@@ -83,6 +86,11 @@ td {
   vertical-align: top;
 }
 
+.game-files td {
+  padding-block: 0.8rem;
+  vertical-align: middle;
+}
+
 tr:last-child td {
   border-bottom: none;
 }
@@ -102,16 +110,33 @@ button {
   background: #121416;
   border: 1px solid var(--line);
   border-radius: 7px;
-  padding: 0.45rem 0.6rem;
+  padding: 0.6rem 0.8rem;
 }
 
+button,
+input:not([type="radio"]):not([type="checkbox"]),
+select,
+summary {
+  min-height: 2.75rem;
+}
+button,
+a,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
 button {
   background: #24282c;
   cursor: pointer;
+  transition:
+    background-color 140ms,
+    border-color 140ms;
 }
-
 button:hover:not(:disabled) {
+  background-color: #303a42;
   border-color: var(--accent);
+}
+button:active:not(:disabled) {
+  background-color: #354854;
 }
 
 button:disabled {
@@ -141,7 +166,7 @@ label {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--ink-dim);
 }
 
@@ -248,7 +273,7 @@ summary:focus-visible {
   display: none;
 }
 .application-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 15rem minmax(0, 1fr);
 }
@@ -265,7 +290,7 @@ summary:focus-visible {
   background: #121416;
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
 }
 .library-sidebar nav,
@@ -316,7 +341,7 @@ button[aria-current="page"],
 }
 .login-content {
   grid-column: 1 / -1;
-  width: min(100%, 42rem);
+  width: min(100%, 38rem);
 }
 .page-heading {
   display: flex;
@@ -411,7 +436,7 @@ dialog label {
   flex-direction: column;
   align-items: stretch;
   text-align: left;
-  padding: 0 0 0.6rem;
+  padding: 0.4rem 0.4rem 0.8rem;
   background: transparent;
   border: 1px solid transparent;
   width: 100%;
@@ -427,6 +452,7 @@ dialog label {
   display: grid;
   place-items: center;
   aspect-ratio: 4 / 5;
+  width: 100%;
   background: linear-gradient(145deg, #26353f, #1c242a);
   border: 1px solid #35424b;
   border-radius: 0.45rem;
@@ -439,9 +465,15 @@ dialog label {
   object-fit: cover;
 }
 .title-placeholder {
-  font-size: 2.3rem;
-  color: #8ca0ad;
-  font-weight: 300;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  align-self: stretch;
+  width: 100%;
+  padding: 1rem;
+  color: #e0e8ed;
+  text-wrap: pretty;
 }
 .availability {
   font-size: 0.8rem;
@@ -455,9 +487,11 @@ dialog label {
   margin-top: 2rem;
 }
 .empty-state {
-  border: 1px dashed var(--line);
-  padding: 3rem 1.25rem;
-  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 2rem clamp(1rem, 3vw, 2rem);
+  background: var(--panel);
+  text-align: left;
 }
 .empty-state h3 {
   font-size: 1.15rem;
@@ -635,4 +669,337 @@ dialog input[type="file"] {
   margin-left: 0.4rem;
   font-variant-numeric: tabular-nums;
   opacity: 0.7;
+}
+
+/* Clear actions and readable controls across web and desktop. */
+button.primary,
+button.play-action {
+  background: #a4cee8;
+  border-color: #a4cee8;
+  color: #142532;
+  font-weight: 650;
+}
+button.primary:hover:not(:disabled) {
+  background: #c0e2f5;
+  border-color: #c0e2f5;
+}
+button.secondary {
+  background: transparent;
+}
+.empty-state p,
+.game-launch p,
+.sign-in-panel p {
+  max-width: 65ch;
+}
+.sign-in-panel {
+  margin-top: 1.5rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+.sign-in-panel h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.sign-in-intro {
+  color: var(--ink-dim);
+  margin: 0 0 1.5rem;
+}
+.sign-in-form {
+  gap: 1rem;
+}
+.sign-in-form label {
+  font-size: 1rem;
+  color: var(--ink);
+}
+.sign-in-form input {
+  width: 100%;
+}
+.sign-in-form > button {
+  margin-top: 0.25rem;
+}
+.sign-in-help {
+  margin-top: 1.5rem;
+}
+.collection-toolbar {
+  gap: 0.65rem;
+}
+.collection-toolbar form {
+  flex-basis: 100%;
+}
+.collection-options {
+  width: 100%;
+}
+.collection-options summary,
+.library-tools summary {
+  width: fit-content;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  cursor: pointer;
+  color: var(--ink-dim);
+}
+.collection-options summary:hover,
+.library-tools summary:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.collection-option-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  padding-top: 0.75rem;
+}
+.collection-option-fields .system-filter {
+  flex: 1 1 18rem;
+}
+.system-chips button {
+  border-radius: 0.5rem;
+}
+.system-chips button[aria-pressed="true"] {
+  background: #263945;
+  border-color: #89bfe2;
+}
+.filter-count {
+  margin-left: 0.4rem;
+  color: var(--accent);
+}
+.view-switch {
+  padding: 0;
+  border: 0;
+  gap: 0.35rem;
+}
+.view-switch label {
+  min-height: 2.75rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+.view-switch label:has(input:checked) {
+  background: #263945;
+  border-color: #89bfe2;
+  color: var(--ink);
+}
+.view-switch label:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.placeholder-system {
+  color: #b4c5d1;
+  font-size: 0.85rem;
+}
+.placeholder-title {
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  font-weight: 650;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.game-card strong {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.game-card > .dim {
+  font-size: 0.9rem;
+}
+.game-parent {
+  overflow-wrap: anywhere;
+}
+.game-card:hover:not(:disabled) {
+  background: var(--panel);
+}
+.collection-name {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  font-weight: 600;
+}
+.game-launch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+  border-color: #3d596b;
+  background: #1c2a33;
+}
+.game-launch p {
+  margin: 0;
+  color: #c7d4dd;
+}
+.game-launch > div {
+  flex: 1 1 20rem;
+}
+.play-action {
+  min-width: 8rem;
+}
+.game-files {
+  margin-top: 1rem;
+}
+.collection-loading {
+  padding: 1.5rem;
+  background: var(--panel);
+  border-radius: 0.65rem;
+}
+.welcome-steps p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-dim);
+}
+.add-games-option p {
+  margin: 0.5rem 0 1rem;
+  color: var(--ink-dim);
+}
+.library-home > p,
+.library-home header p {
+  max-width: 65ch;
+  color: var(--ink-dim);
+}
+.library-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.library-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  text-align: left;
+  padding: 1.25rem;
+  border-color: #435969;
+  min-height: 8rem;
+  background: #202b33;
+  overflow-wrap: anywhere;
+}
+.library-choice strong {
+  font-size: 1.2rem;
+}
+.library-choice span,
+.library-choice small {
+  color: var(--ink-dim);
+}
+.welcome-steps {
+  display: grid;
+  gap: 1.25rem;
+  padding-left: 1.5rem;
+  max-width: 60ch;
+}
+.welcome-steps li::marker {
+  color: var(--accent);
+  font-weight: 650;
+}
+.welcome-steps strong {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 0.25rem;
+}
+.library-tools > .actions {
+  padding-top: 0.75rem;
+}
+.add-games-options {
+  display: grid;
+  gap: 1rem;
+}
+.add-games-option {
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: #171d22;
+}
+.add-games-option h3,
+.add-games-option h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.4rem;
+}
+@media (min-width: 761px) {
+  .collection-options[open] > summary {
+    min-height: 0;
+    padding: 0.25rem 0;
+    border: 0;
+    font-size: 0.9rem;
+  }
+}
+@media (max-width: 760px) {
+  .collection-toolbar {
+    margin-bottom: 1rem;
+  }
+  .collection-toolbar form {
+    gap: 0.5rem;
+  }
+  .collection-options summary {
+    width: 100%;
+  }
+  .collection-option-fields > label {
+    flex: 1 1 10rem;
+  }
+  .game-grid {
+    gap: 1rem 0.5rem;
+  }
+  .game-card {
+    padding: 0.2rem 0.2rem 0.65rem;
+  }
+  .title-placeholder {
+    padding: 0.9rem;
+  }
+  .game-launch {
+    padding: 1.1rem;
+  }
+  .game-launch .play-action {
+    width: 100%;
+  }
+  .game-files table,
+  .game-files tbody {
+    display: block;
+    width: 100%;
+  }
+  .game-files thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .game-files tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    padding: 1rem 0;
+    gap: 0.5rem 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .game-files tr:last-child {
+    border: 0;
+  }
+  .game-files td {
+    display: block;
+    padding: 0;
+    border: 0;
+    font-size: 0.95rem;
+  }
+  .game-files .file-name,
+  .game-files td[data-label="Actions"] {
+    grid-column: 1 / -1;
+  }
+  .game-files .file-name {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .game-files td[data-label="Type"],
+  .game-files td[data-label="Size"] {
+    color: var(--ink-dim);
+  }
+  .game-files td[data-label="Actions"] {
+    padding-top: 0.25rem;
+  }
+  .game-files td[data-label="Actions"] button {
+    flex: 1;
+  }
+  .game-launch + .detail-tabs {
+    margin-bottom: 1rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }

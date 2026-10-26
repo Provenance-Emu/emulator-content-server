@@ -90,9 +90,16 @@ test('desktop native adapter cancels without fallback, registers once, and recov
     await page.getByLabel('Password', { exact: true }).fill(fixture.password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click({ noWaitAfter: true });
     await page.getByRole('button', { name: 'Arcade', exact: true }).click();
-    const quickAdd = page.getByRole('button', { name: 'Add server folder', exact: true });
+    const quickAdd = page.getByRole('button', { name: 'Add games', exact: true });
+    async function addServerFolder() {
+      await quickAdd.click();
+      await page
+        .getByRole('dialog', { name: 'Add games', exact: true })
+        .getByRole('button', { name: 'Add server folder', exact: true })
+        .click();
+    }
     fixture.requests.length = 0;
-    await quickAdd.click();
+    await addServerFolder();
     await expect
       .poll(() =>
         page.evaluate(
@@ -114,7 +121,7 @@ test('desktop native adapter cancels without fallback, registers once, and recov
       (window as unknown as { __nativeFolders: { choice: string } }).__nativeFolders.choice =
         choice;
     }, quickFolder);
-    await quickAdd.click();
+    await addServerFolder();
     await expect(
       page
         .getByRole('combobox', { name: /^Library folder/ })
@@ -128,7 +135,7 @@ test('desktop native adapter cancels without fallback, registers once, and recov
     await page.evaluate(() => {
       (window as unknown as { __nativeFolders: { valid: boolean } }).__nativeFolders.valid = false;
     });
-    await quickAdd.click();
+    await addServerFolder();
     await expect(page.getByRole('alert')).toContainText('Use local managed service');
     expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
     await page.evaluate(() => {
@@ -145,7 +152,7 @@ test('desktop native adapter cancels without fallback, registers once, and recov
       (window as unknown as { __nativeFolders: { pending: boolean } }).__nativeFolders.pending =
         true;
     });
-    await quickAdd.click();
+    await addServerFolder();
     await expect(quickAdd).toBeDisabled();
     await page.getByRole('button', { name: 'Library', exact: true }).click();
     await page.getByRole('button', { name: 'Arcade', exact: true }).click();
@@ -200,6 +207,7 @@ test('desktop native adapter cancels without fallback, registers once, and recov
     await add.click();
     await expect(page.getByRole('alert')).toContainText('Use local managed service');
     expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
+    await page.getByText('Change connection', { exact: true }).click();
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'Add folder to Arcade', exact: true }).click();
@@ -226,6 +234,7 @@ test('desktop unavailable native verification uses the actual server chooser for
     await page.goto(`${desktop}/library.html`);
     await page.getByLabel('Server address', { exact: true }).fill(fixture.origin);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
+    await page.getByText('Change connection', { exact: true }).click();
     await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
     await expect(
       page.getByRole('status').filter({ hasText: 'verification is unavailable' }),
@@ -237,12 +246,7 @@ test('desktop unavailable native verification uses the actual server chooser for
     fixture.requests.length = 0;
     await page.getByRole('button', { name: 'Add folder to Arcade', exact: true }).click();
     const chooser = page.getByRole('dialog', { name: 'Add library folder', exact: true });
-    await expect(
-      page.getByText(
-        `Browsing ${fixture.origin}. Browser playback may ask you to sign in separately.`,
-        { exact: true },
-      ),
-    ).toBeVisible();
+    await expect(page.locator('.connection-summary')).toContainText(fixture.origin);
     await chooser.getByRole('textbox', { name: 'Server folder path', exact: true }).fill(folder);
     await chooser.getByRole('button', { name: 'Add folder', exact: true }).click();
     await expect(chooser).toHaveCount(0);
@@ -336,9 +340,14 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
       });
       const reverify = page.getByRole('button', { name: 'Use local managed service', exact: true });
       // Exercise the same transition with a staged modal too; modal focus normally blocks its header.
-      if (action === 'library-editor')
+      const connection = page.getByText('Change connection', { exact: true });
+      if (action === 'library-editor') {
+        await connection.evaluate((summary: HTMLElement) => summary.click());
         await reverify.evaluate((button: HTMLButtonElement) => button.click());
-      else await reverify.click();
+      } else {
+        await connection.click();
+        await reverify.click();
+      }
       await expect(
         page.getByRole('status').filter({ hasText: 'verification is unavailable' }),
       ).toBeVisible();

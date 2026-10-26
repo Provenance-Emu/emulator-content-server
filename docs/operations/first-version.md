@@ -31,6 +31,14 @@ The default listens on this computer only. For other devices on the LAN, restart
 | App integration | Generated TypeScript/Swift clients; emulator adapters belong to each app repository |
 | Installation | Portable production directory with bundled web UI; Docker uses the same bundle |
 
+## Approachable library pass
+
+The current source adds a useful Home with library cards and a direct Create action. An empty library has an Add your first game path; Add games clearly separates uploading device files/folders from scanning files already on the server. Canceling does not create content. Reader help respects permissions. Search stays visible on phones, optional filters collapse, and management actions live under Library tools. Supported games have a prominent Play action; unsupported games explain downloading to an emulator. File downloads have readable phone rows and precise accessible names. Sign-in explains which account to use. An unavailable server offers a working retry instead of asking for a password.
+
+The desktop connection form collapses while browsing. Frontend changes are shared by web and desktop; this source pass does not rebuild the published installers. The existing 0.1.1 Apple Silicon download is now notarized. See [design and journey evidence](../superpowers/specs/2026-10-26-approachable-library.md).
+
+Validation: 62 focused existing/updated browser cases passed, followed by 17 final focused onboarding, player/download, connection recovery and authorization cases. The design agent's 10 desktop/UX browser cases passed. Both Svelte checks report zero errors/warnings; web/tray controller suites, production builds, lint, package boundaries and the secret scan pass. A failed-startup regression reproduced the inert retry before its fix; reconnect coalesces requests and never resumes private discovery after sign-out. Screenshots use disposable generated fixtures, not operator games or user research participants.
+
 ## Known limits for the next pass
 
 - No relay/NAT traversal, arbitrary browser emulator support, or signing/JIT execution. These are separate integrations rather than promises of this build.

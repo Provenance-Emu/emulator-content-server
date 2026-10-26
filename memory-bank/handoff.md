@@ -1,5 +1,15 @@
 # Handoff
 
+## Approachable library implementation — 2026-10-26
+
+Completed the design agent's journey-based UI batch on main: actual Home library cards/Create action, first-library guidance, Add games chooser with device versus server explanations, useful permission-aware empty states, mobile optional filters, identifiable missing covers, top-level supported Play, unsupported download guidance, readable phone download rows, helpful account entry, and collapsed desktop connection controls. Empty collections no longer show useless pagination. Detail headings use actual console names and omit internal revision counters. Native shell/process/service semantics are unchanged; default desktop placeholder is corrected to CLI port 8473.
+
+Manual reconnect now works before sign-in. The controller still gates private discovery on initial/restored authentication work or an established signed-in state, coalesces retries, and rejects obsolete epochs. A meaningful new regression reproduces failed-startup retry and verifies a later sign-out cannot restore private access. Proportionate agent review found no substantive auth/concurrency problem.
+
+Validation: 62 browser cases passed, then 17 final targeted cases passed after strengthening upload-denial assertions to inspect the actual import chooser. Design agent ran 10 desktop/UX cases. Web/tray controller suites, both Svelte checks (0 errors/0 warnings), frontend builds, lint, boundary and secret checks passed. New tests cover phone home-to-library, complete first import, reader permissions, retry, empty-home cancel, and server-folder unsupported play. Real generated-fixture screenshots and journey evidence are in docs/superpowers/specs/2026-10-26-approachable-library.md. These are heuristic design/automated acceptance, not sessions with actual teenage/older participants.
+
+The UI source changes are not yet in published 0.1.1 installers; avoid silently presenting those binaries as containing this later UI. Do not spend the next product pass on another OS matrix. Remaining product limits are browser memory-heavy downloads, upload queues lost on reload, broader emulator/profile acceptance and app-side adapters in their own repositories. npm authentication and Linux upstream GTK/glib advisory remain external/dependency follow-ups; Intel is deprioritized. Primary checkout stays main.
+
 ## Product usability and notarization — 2026-10-26
 
 User prioritizes useful, approachable product flows over further distribution work. Design work considers both novice teenagers and nostalgic older users: visible click/tap controls, useful home/empty states, clear import choices and direct Play/download actions. Intel builds are explicitly deprioritized.
