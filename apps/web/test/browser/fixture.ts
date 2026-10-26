@@ -49,6 +49,7 @@ async function createFixture() {
     uiDir: resolve('dist'),
     localTrust: false,
     logger: false,
+    webdavEnabled: true,
     playerDir,
   }).catch(async (error) => {
     await rm(directory, { recursive: true, force: true });

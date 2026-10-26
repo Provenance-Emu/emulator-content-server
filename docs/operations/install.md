@@ -2,20 +2,21 @@
 
 ## Local
 
-```sh
-pnpm install
-pnpm build
-pnpm ecs init --data ./content-data --name "Living Room"
-pnpm ecs serve --data ./content-data
-```
-
-`init` creates the SQLite database, blob directories, and `bootstrap.token` with mode `0600` where the platform supports it. `serve` repeats init when the data directory is new, then listens on `127.0.0.1:8473`. Additional blob directories are registered with `ecs locations`. See [Storage locations](storage-locations.md). To start that process at login, see [Service](service.md).
+Install Node.js 22.22.2 and pnpm 10.30.1, then build the server and interface:
 
 ```sh
-curl -s -X POST http://127.0.0.1:8473/api/v1/auth/bootstrap \
-  -H 'content-type: application/json' \
-  -d '{"token":"<bootstrap>","username":"owner","password":"<password>"}'
+pnpm install --frozen-lockfile
+pnpm bundle
+node dist/server/dist/src/main.js serve --data ./content-data --name "Living Room"
 ```
+
+Open [http://127.0.0.1:8473/ui/](http://127.0.0.1:8473/ui/) to finish setup and add a collection. `serve` initializes a new data directory automatically. `init` is available separately for scripted setup; it creates the SQLite database, blob directories, and `bootstrap.token` with mode `0600` where the platform supports it.
+
+`pnpm bundle` creates `dist/server` with production dependencies and the built interface. Copy that entire directory to another location on a compatible Node.js host and run `node /path/to/server/dist/src/main.js serve --data /path/to/content-data`; the source checkout and pnpm are not needed there. Use a fresh output directory, or select one with `pnpm bundle /path/to/output`. Keep the data directory outside the bundle so replacing the application preserves your collection.
+
+For development in a checkout, run `pnpm build && pnpm ui` followed by `pnpm ecs serve --data ./content-data`, or use `pnpm dev`. The CLI finds bundled assets first, then the checkout's web build. `--ui <directory>` selects another interface build; `--ui none` disables it. `pnpm test:bundle` builds and checks the deployed CLI, `/health`, `/ui/`, and its referenced JavaScript and CSS assets from an isolated temporary directory.
+
+Additional blob directories are registered with `ecs locations`. See [Storage locations](storage-locations.md). To start the process at login, see [Service](service.md).
 
 Advertise on the LAN after setup:
 
@@ -31,7 +32,7 @@ Before bootstrap, a non-loopback bind also needs `--allow-lan` or `ECS_ALLOW_LAN
 docker compose up --build
 ```
 
-The published sample binds host port 8473 to loopback. Read the bootstrap token from `docker compose logs`. Set a persistent volume before loading a library. Mount a collection beside `/data` and register that path; the image does not copy it.
+The image uses the same portable bundle and includes the interface. Open [http://127.0.0.1:8473/ui/](http://127.0.0.1:8473/ui/). The published sample binds host port 8473 to loopback and persists `/data` in a named volume. When setup asks for the bootstrap token, read it privately with `docker compose exec content-server cat /data/bootstrap.token`; daemon logs omit it. Mount a collection beside `/data` and register that path; the image does not copy it.
 
 Docker presents a published connection as a private bridge address. The sample therefore publishes loopback only. A cloud VM that publishes the port on every interface must set access mode `token` and start with `--public --tls-terminated` behind a TLS proxy. See [Container install](../workstreams/container-install.md).
 

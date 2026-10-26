@@ -1,5 +1,9 @@
 # Active context
 
+## 2026-10-26 update
+
+The user authorized fast completion and direct pushes to main without CI or confirmation prompts. Web account/access management, token sign-in, per-account WebDAV credentials, and portable UI-inclusive deployment now complete the first-version path. See [first-version status](../docs/operations/first-version.md) and [completion evidence](../docs/superpowers/plans/2026-10-26-first-version.md). Historical unverified browser-core statements below are superseded for the single pinned NES profile by the [2026-10-20 acceptance](../docs/operations/browser-playback-acceptance.md); arbitrary systems remain outside that evidence.
+
 ## Current focus
 
 Complete the included 1.0 work and record acceptance. Saved folders, the web/tray

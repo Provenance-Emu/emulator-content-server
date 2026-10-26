@@ -6,19 +6,23 @@ The server is a separate repository from the emulator apps. Apps stay adapters. 
 
 ## Run locally
 
-```sh
-pnpm install
-pnpm ecs init --data ./content-data
-pnpm ecs serve --data ./content-data
-```
-
-The first run prints a one-time bootstrap token and listens on `127.0.0.1:8473`. Create the owner with `POST /api/v1/auth/bootstrap`, then use the returned bearer token.
-
-After the package is published, the same command is:
+Use Node.js 22.22.2 and pnpm 10.30.1:
 
 ```sh
-npx --yes @provenance-content/server serve --data ./content-data
+pnpm install --frozen-lockfile
+pnpm bundle
+node dist/server/dist/src/main.js serve --data ./content-data
 ```
+
+Open [the interface](http://127.0.0.1:8473/ui/). The first run prints a one-time bootstrap token; paste it into setup to create your owner account. Add a library, then add a server folder to scan existing files in place, or upload files from your device. Keep the data directory outside the application bundle when upgrading.
+
+The `dist/server` directory includes production dependencies and the interface. Copy the entire directory to another Node.js host; no pnpm or source checkout is needed there:
+
+```sh
+node /path/to/server/dist/src/main.js serve --data /path/to/content-data
+```
+
+See [installation](docs/operations/install.md) for Docker, LAN access and upgrades. Early builds are available on the [releases page](https://github.com/Provenance-Emu/emulator-content-server/releases).
 
 ## Run in Docker
 
@@ -39,6 +43,8 @@ backend.
 `pnpm ui` builds the web client and `ecs serve` mounts it at `/ui/` on the same origin as the API, which keeps CORS out of the design. The page stores its bearer token so a reload stays signed in, and the assets carry a content policy that allows no other origin, no inline script, and no outbound connection, which is what keeps that token out of reach of injected script. Pass `--ui none` to serve the API alone, or `--ui <dir>` to serve a build from elsewhere.
 
 From the page you can sign in, read status, manage content folders, and move files: opening an item lists the files in its manifest, an upload goes in 4 MB pieces with progress, and a download that is cut short resumes from the bytes that arrived instead of starting over.
+
+**Settings → Access** manages accounts, passwords, library roles, guest grants and which networks need a login. Guests can choose **Use an access token** on the sign-in page. Signed-in accounts can create and revoke Finder/WebDAV app credentials in **Settings → WebDAV** when the server starts with `--webdav`.
 
 Owners can open **Settings → Folder watching** for a registered server folder and enable automatic index updates. Watching starts off and the preference survives a server restart. It detects changes inside nested folders without moving files. For reliable detection of moves in either direction, enable watching on both registered folders in the same library (or both unassigned); verified moves retain the source ID and saved matches. Cross-volume copies remain separate files. Recovery scans every 30 seconds catch missed events, recover offline folders, and provide a fallback when native notifications are unavailable. The dialog shows current status and can turn watching off at any time.
 
@@ -71,4 +77,8 @@ Dependency direction is one-way: protocol and domain, then infrastructure, then 
 
 ## Scope of this foundation
 
-The foundation serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Opt-in CHD v5 decoding is implemented for DVD ISO and the supported CD CUE/BIN subset, alongside the browser player in its separate [workstream](docs/workstreams/web-playback.md). Real browser-core compilation, emulation, rendering, audio, input, and save acceptance remain unverified; see [CHD operations](docs/operations/chd.md) for decoder configuration and limits. Remote relays remain follow-on work. Signing execution, JIT activation, IPA feeds, and NAS or cloud connectors stay out of the content server process and database. They are plugins.
+The early version serves original bytes with single-range reads, resumable uploads, library roles, guest grants, device tokens, a change cursor, mDNS advertisement, and backup. Folder scanning, matching review, optional watching and organization, ZIP access, save-conflict preservation, the web library and desktop companion are implemented.
+
+Opt-in CHD v5 decoding supports DVD ISO and a CD CUE/BIN subset; see [CHD operations](docs/operations/chd.md). Browser playback supports a configured single-file NES/FCEUmm profile, with real rendering, input, WebAudio and save acceptance [recorded for the pinned build](docs/operations/browser-playback-acceptance.md). Cores and decoders are operator-supplied; arbitrary emulator/system compatibility is not claimed.
+
+Provenance, iCube and iFly integrations stay in their app repositories. Remote relays, signing execution and JIT activation remain follow-on work. IPA feeds and NAS/cloud connectors use the separate plugin host; they never run inside the content server. See the [first-version status](docs/operations/first-version.md) for tested scope and follow-ups.

@@ -1,5 +1,13 @@
 # Handoff
 
+## First-version shipping pass — 2026-10-26
+
+User direction: no prompts/confirmations, push directly to main, skip CI, use focused local TDD, and record slow/blocking work for a later pass. Use subagents sparingly and reuse a session for related work. Complete one fast pass before expanding scope.
+
+Web settings now expose account/password/network policy administration and library reader/editor assignment/removal. Guest/device tokens can sign in without URL credentials, including player setup. WebDAV-enabled servers expose per-account app credential issuance/revocation to signed-in accounts. Canceled login responses cannot change the active application credentials. Portable bundling includes the UI and protects existing output directories even with ambient force settings; Docker uses the same bundler.
+
+See [first-version status](../docs/operations/first-version.md) and the [completion evidence](../docs/superpowers/plans/2026-10-26-first-version.md). The portable alpha is the initial downloadable artifact; npm, signed native installers and hosted images remain follow-ups. The existing desktop browser test completed assertions but timed out in fixture teardown. Docker daemon was unavailable. Do not delay this iteration for the full CI/native/Swift matrix or revisit already accepted pinned NES playback from stale notes below.
+
 ## Current checkpoint — 2026-10-21
 
 The sections below this checkpoint are historical. Scanning, the library browser,

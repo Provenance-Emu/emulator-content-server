@@ -19,6 +19,7 @@
   let rootIntent = $state(0);
   let settings = $state(false);
   let drawer = $state(false);
+  let signingIn = $state(false);
   let editing = $state<Library | null | undefined>(undefined);
   const unsubscribe = application.subscribe((state) => {
     if (!state.signedIn) {
@@ -92,7 +93,7 @@
     {/if}
     <span>{context.label}</span>
   </header>
-  {#if $application.signedIn}
+  {#if $application.signedIn && !signingIn}
     <aside class="library-sidebar">{@render navigation()}</aside>
     {#if drawer}<Modal title="Library navigation" navigation onclose={() => (drawer = false)}>
         {@render navigation()}
@@ -141,11 +142,15 @@
       {#if $application.settled}{#key $application.authEpoch}{@const expectedEpoch =
             $application.authEpoch}<Login
             client={context.client}
+            origin={context.origin}
             setup={$application.capabilities?.bootstrapped === false}
             onsignin={(session) => {
+              signingIn = false;
               void application.adoptSession(session, expectedEpoch);
             }}
-          />{/key}{:else}<p role="status">Connecting to server…</p>{/if}{#if $application.failure}<p
+          />{/key}{:else}<p role="status">Connecting to server…</p>{/if}
+      {#if signingIn}<button type="button" onclick={() => signingIn = false}>Back to library</button>{/if}
+      {#if $application.failure}<p
           class="problem"
           role="alert"
         >
@@ -196,7 +201,7 @@
           }}
         >
           Sign out
-        </button>{:else}<p class="dim">This network allows access without a password.</p>{/if}
+        </button>{:else}<p class="dim">This network allows access without a password.</p><button type="button" onclick={() => { signingIn = true; drawer = false; }}>Sign in</button>{/if}
     </div>
   </nav>
 {/snippet}

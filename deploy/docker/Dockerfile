@@ -6,12 +6,14 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json tsconfig.json ./
 COPY apps ./apps
 COPY packages ./packages
+COPY scripts/bundle.mjs ./scripts/bundle.mjs
+COPY LICENSE ./LICENSE
+COPY docs/operations/first-version.md ./docs/operations/first-version.md
 
 # pnpm 10 deploy requires injected workspace packages. --legacy copies the built
 # workspace graph into /opt/ecs without dropping production links.
 RUN CI=true pnpm install --frozen-lockfile \
-  && pnpm build \
-  && CI=true pnpm --filter @provenance-content/server deploy --prod --legacy /opt/ecs
+  && pnpm bundle /opt/ecs
 
 WORKDIR /opt/ecs
 ENV NODE_ENV=production

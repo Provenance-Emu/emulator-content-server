@@ -225,12 +225,17 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
  */
 async function webAssets(override: string | undefined): Promise<string | null> {
   if (override === 'none') return null;
-  const candidate = override
-    ? resolve(override)
-    : fileURLToPath(new URL('../../../web/dist', import.meta.url));
-  const found = await stat(join(candidate, 'index.html')).catch(() => null);
-  if (found?.isFile()) return candidate;
-  if (override) throw new Error(`No built interface at ${candidate}`);
+  const candidates = override
+    ? [resolve(override)]
+    : [
+        fileURLToPath(new URL('../../ui', import.meta.url)),
+        fileURLToPath(new URL('../../../web/dist', import.meta.url)),
+      ];
+  for (const candidate of candidates) {
+    const found = await stat(join(candidate, 'index.html')).catch(() => null);
+    if (found?.isFile()) return candidate;
+  }
+  if (override) throw new Error(`No built interface at ${candidates[0]}`);
   return null;
 }
 

@@ -91,8 +91,8 @@
   {#if core}
     <p>{core.name} · frontend {core.frontendCommit.slice(0, 8)} · core {core.coreCommit.slice(0, 8)}</p>
   {/if}
-  {#if needsSignIn}<Login {client} onsignin={(signedIn) => {
-    saveSession(signedIn); needsSignIn = false; failure = null; void boot();
+  {#if needsSignIn}<Login {client} origin={window.location.origin} onsignin={(signedIn) => {
+    client.setToken(signedIn.token); saveSession(signedIn); needsSignIn = false; failure = null; void boot();
   }} />{/if}
   {#if ready && !attempted}
     <section class="player-selectors">

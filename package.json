@@ -11,6 +11,8 @@
     "dev": "node scripts/dev.mjs",
     "ecs": "pnpm build && node apps/cli/dist/src/main.js",
     "typecheck": "tsc -b --pretty false",
+    "bundle": "pnpm build && pnpm ui && node scripts/bundle.mjs",
+    "test:bundle": "pnpm build && pnpm ui && node --test scripts/test-bundle.mjs",
     "ui": "pnpm --filter @ecs/web build",
     "ui-check": "pnpm --filter @ecs/web check && pnpm --filter @ecs/tray check",
     "tray": "pnpm --filter @ecs/tray tauri build",

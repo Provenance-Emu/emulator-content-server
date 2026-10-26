@@ -319,6 +319,12 @@ export class ContentClient {
     );
   }
 
+  removeMember(libraryId: string, userId: string): Promise<void> {
+    return this.remove(
+      `/api/v1/libraries/${encodeURIComponent(libraryId)}/members/${encodeURIComponent(userId)}`,
+    );
+  }
+
   /** Revokes the token on the server before forgetting it here. */
   async logout(): Promise<void> {
     await this.post<unknown>('/api/v1/auth/logout', {});
