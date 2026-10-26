@@ -15,7 +15,7 @@ function createBrowserContext(): ServerContext {
   return {
     key: `browser-context-${++contextSequence}`,
     origin,
-    label: 'Emulator Content Server',
+    label: 'Emulation Server',
     client: new ContentClient(origin),
     sessions: createSessionStore(origin),
     openPlayer(relativeHref) {

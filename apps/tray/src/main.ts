@@ -1,5 +1,6 @@
 import '@ecs/web/app.css';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { mount } from 'svelte';
 import { createDesktopSelection } from './lib/application';
 import { createServiceControl } from './lib/service';
@@ -32,6 +33,13 @@ if (native) {
     // Without this the menu would simply be absent and nothing would say why,
     // which is the worst way for a menu-bar application to fail.
     trayFailure = error instanceof Error ? error.message : String(error);
+    // The Rust startup menu remains usable; surface the failure instead of
+    // leaving its explanation in an inaccessible hidden status window.
+    const window = getCurrentWindow();
+    await window
+      .show()
+      .then(() => window.setFocus())
+      .catch(() => {});
   }
 }
 

@@ -10,7 +10,7 @@ const version = tag.slice(1);
 const platform = process.platform;
 const suffixes =
   platform === 'win32' ? ['.msi'] : platform === 'linux' ? ['.deb', '.AppImage'] : ['.dmg'];
-const source = resolve('apps/tray/src-tauri/target/release/bundle');
+const source = resolve(process.argv[3] ?? 'apps/tray/src-tauri/target/release/bundle');
 const output = resolve('dist-release/desktop');
 await mkdir(output, { recursive: true });
 
@@ -30,7 +30,8 @@ for (const extension of suffixes) {
   const matches = candidates.filter((file) => extname(file) === extension);
   if (matches.length !== 1)
     throw new Error(`Expected one ${extension} installer, found ${matches.length}`);
-  const name = `emulator-content-server-desktop-${version}-${platform}-${process.arch}${extension}`;
+  const label = platform === 'darwin' ? 'macos' : platform === 'win32' ? 'windows' : platform;
+  const name = `Emulation-Server-${version}-${label}-${process.arch}${extension}`;
   const target = join(output, name);
   await copyFile(matches[0], target);
   checksums.push(

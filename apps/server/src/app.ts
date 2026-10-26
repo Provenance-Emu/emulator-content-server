@@ -73,7 +73,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     player,
     dataDir,
     webdavEnabled: options.webdavEnabled === true,
-    displayName: options.displayName ?? 'Emulator Content Server',
+    displayName: options.displayName ?? 'Emulation Server',
     virtual,
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
     uiDir: options.uiDir ?? null,

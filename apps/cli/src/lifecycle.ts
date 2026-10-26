@@ -61,7 +61,7 @@ export async function doctor(dataDir: string): Promise<{ ok: boolean; lines: str
     const integrity = catalog.integrity();
     lines.push(`integrity ${integrity}`);
     if (integrity !== 'ok') ok = false;
-    const state = catalog.ensureServer('Emulator Content Server');
+    const state = catalog.ensureServer('Emulation Server');
     lines.push(`server ${state.serverId}`);
     lines.push(state.bootstrapped ? 'bootstrap complete' : 'bootstrap pending');
     if (!state.bootstrapped) {
@@ -230,7 +230,7 @@ export async function addLocation(
 
 export function useLocation(dataDir: string, id: string | null): void {
   withCatalog(dataDir, (catalog) => {
-    catalog.ensureServer('Emulator Content Server');
+    catalog.ensureServer('Emulation Server');
     catalog.setWriteLocation(id, CLI_ACTOR);
   });
 }

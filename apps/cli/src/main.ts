@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   }
   const dataDir = value('--data') ?? './content-data';
   if (command === 'init') {
-    await printInit(dataDir, value('--name') ?? 'Emulator Content Server');
+    await printInit(dataDir, value('--name') ?? 'Emulation Server');
     return;
   }
   if (command === 'doctor') {
@@ -153,7 +153,7 @@ async function serve(dataDir: string): Promise<void> {
 }
 
 async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> {
-  const displayName = value('--name') ?? 'Emulator Content Server';
+  const displayName = value('--name') ?? 'Emulation Server';
   const prepared = await printInit(dataDir, displayName, !daemon);
   const logging = daemon ? await captureDaemonLogs(dataDir) : null;
   const listen = listenConfig();

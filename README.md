@@ -1,4 +1,4 @@
-# Emulator Content Server
+# Emulation Server
 
 Headless library server for sharing emulator ROMs, saves, screenshots, artwork, BIOS, and system files between Provenance, iCube, iFly, and future clients.
 
@@ -23,6 +23,8 @@ node /path/to/server/dist/src/main.js serve --data /path/to/content-data
 ```
 
 See [installation](docs/operations/install.md) for Docker, LAN access and upgrades. Early builds are available on the [releases page](https://github.com/Provenance-Emu/emulator-content-server/releases).
+
+For the desktop companion, see [desktop installers](docs/operations/desktop-install.md). Its installed name is **Emulation Server**; it connects to the server above or another server on your network.
 
 ## Run in Docker
 

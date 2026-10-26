@@ -64,7 +64,7 @@ jobs:
           case "$RUNNER_OS" in
             Windows) pnpm --filter @ecs/tray tauri build --ci --bundles msi ;;
             Linux) pnpm --filter @ecs/tray tauri build --ci --bundles deb,appimage ;;
-            macOS) pnpm --filter @ecs/tray tauri build --ci --bundles app,dmg ;;
+            macOS) pnpm --filter @ecs/tray tauri build --ci --bundles app && node scripts/package-macos.mjs ;;
           esac
       - if: inputs.release_tag != ''
         name: Publish desktop installers

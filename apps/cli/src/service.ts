@@ -281,7 +281,7 @@ ${items}
 
 function renderUnit(args: readonly string[], dataDir: string): string {
   return `[Unit]
-Description=Emulator Content Server
+Description=Emulation Server
 After=network.target
 
 [Service]
@@ -301,7 +301,7 @@ function renderTask(args: readonly string[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>Emulator Content Server</Description>
+    <Description>Emulation Server</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>

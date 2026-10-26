@@ -138,7 +138,7 @@
     </main>
   {:else}<main class="login-content">
       <p class="eyebrow">{context.label}</p>
-      <h1>Emulator Content Server</h1>
+      <h1>Emulation Server</h1>
       {#if $application.settled}{#key $application.authEpoch}{@const expectedEpoch =
             $application.authEpoch}<Login
             client={context.client}
@@ -161,7 +161,7 @@
 {#snippet navigation()}
   <nav aria-label="Library navigation">
     <div class="server-identity">
-      <p class="eyebrow">Content server</p>
+      <p class="eyebrow">Emulation Server</p>
       <strong>{context.label}</strong>
       <span class="dim">{$application.owner ? 'Owner' : 'Library access'}</span>
     </div>

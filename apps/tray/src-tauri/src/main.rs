@@ -141,12 +141,63 @@ fn require_status_window(window: &tauri::WebviewWindow) -> Result<(), String> {
     }
 }
 
+// Keep a native menu available even if a hidden webview fails to load or its
+// first IPC request fails. The status page may replace it with live controls.
+fn install_startup_menu(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    let library = MenuItem::with_id(app, "startup-library", "Open library", true, None::<&str>)?;
+    let status = MenuItem::with_id(
+        app,
+        "startup-status",
+        "Server status and settings",
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(app, "startup-quit", "Quit", true, None::<&str>)?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &library,
+            &status,
+            &PredefinedMenuItem::separator(app)?,
+            &quit,
+        ],
+    )?;
+    let tray = app.tray_by_id("status").ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "The configured tray icon is missing",
+        )
+    })?;
+    tray.set_menu(Some(menu))?;
+    tray.set_show_menu_on_left_click(true)?;
+    Ok(())
+}
+
+fn startup_menu_action(app: &tauri::AppHandle, id: &str) {
+    let label = match id {
+        "startup-library" => "library",
+        "startup-status" => "status",
+        "startup-quit" => {
+            app.exit(0);
+            return;
+        }
+        _ => return,
+    };
+    if let Some(window) = app.get_webview_window(label) {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 // Rust remains the native shell: fixed OS service commands, no catalog,
 // data directory, credentials, server address, or arbitrary command execution.
 fn main() {
     tauri::Builder::default()
         .manage(LocalState::default())
+        .on_menu_event(|app, event| startup_menu_action(app, event.id().as_ref()))
         .setup(|app| {
+            install_startup_menu(app)?;
             // Build only the two configured windows, with explicit denial of popup inheritance.
             for config in app.config().app.windows.clone() {
                 tauri::WebviewWindowBuilder::from_config(app, &config)?

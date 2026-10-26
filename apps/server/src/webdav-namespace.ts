@@ -132,7 +132,7 @@ export function createDavNamespace(context: ServerContext, actor: Actor): DavNam
   }
   async function resolve(segments: string[]): Promise<DavResource | null> {
     const [area, libraryOrRoot, itemId, leaf] = segments;
-    if (!area) return collection([], 'Emulator Content Server');
+    if (!area) return collection([], 'Emulation Server');
     if (!['libraries', 'sources'].includes(area)) return null;
     if (!libraryOrRoot) return collection([area], area === 'libraries' ? 'Libraries' : 'Sources');
     if (area === 'libraries') {

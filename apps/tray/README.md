@@ -1,4 +1,8 @@
-# Local login service controls
+# Emulation Server desktop
+
+Installers and first-run instructions: [desktop installation](../../docs/operations/desktop-install.md). The product is named Emulation Server; existing bundle and service identifiers remain unchanged. A native startup menu keeps the library, status and Quit accessible before the frontend is ready. Frontend tray initialization errors reveal the status window.
+
+## Local login service controls
 
 The menu and status window can start and stop the login service registered for
 this user on this computer. The address in **Server** controls HTTP monitoring;

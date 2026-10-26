@@ -27,7 +27,7 @@
 <main>
   <div class="row">
     <div>
-      <h1>Content Server</h1>
+      <h1>Emulation Server</h1>
       <p class="dim">
         {watch.checkedAt ? `Checked ${watch.checkedAt}` : 'Checking'}
       </p>

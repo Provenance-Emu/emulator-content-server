@@ -34,7 +34,6 @@ test('bundled desktop library shares sign-out across windows and downloads via t
     server.listen(5174, '127.0.0.1', done);
   });
   const desktop = 'http://127.0.0.1:5174';
-  let status: import('@playwright/test').Page | undefined;
   try {
     await page.goto(`${desktop}/library.html`);
     await page.evaluate((session) => {
@@ -51,8 +50,12 @@ test('bundled desktop library shares sign-out across windows and downloads via t
     await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();
     const downloaded = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download sample.nes', exact: true }).click();
-    expect((await downloaded).suggestedFilename()).toBe('sample.nes');
-    status = await context.newPage();
+    const download = await downloaded;
+    expect(download.suggestedFilename()).toBe('sample.nes');
+    const downloadedPath = await download.path();
+    expect(downloadedPath).toBeTruthy();
+    expect([...(await readFile(downloadedPath ?? ''))]).toEqual([1, 2, 3, 4]);
+    const status = await context.newPage();
     await status.goto(`${desktop}/index.html`);
     await expect(status.getByText('Signed in to this server in the desktop app.')).toBeVisible();
     await status.getByRole('button', { name: 'Sign out', exact: true }).click();
@@ -61,8 +64,10 @@ test('bundled desktop library shares sign-out across windows and downloads via t
     expect(await page.evaluate(() => localStorage.getItem('ecs.tray.session'))).toBe(null);
     expect(await page.evaluate(() => !!localStorage.getItem('ecs.session'))).toBe(true);
   } finally {
-    await status?.close();
-    await page.goto('about:blank');
+    // The API fixture tears down before Playwright's context fixture. Navigating
+    // away leaves Chromium's cross-origin keep-alive sockets open, so close this
+    // context first rather than letting those sockets hold API shutdown open.
+    await context.close();
     await new Promise<void>((done, reject) => {
       server.close((error) => (error ? reject(error) : done()));
     });

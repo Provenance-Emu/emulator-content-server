@@ -39,8 +39,12 @@ The default listens on this computer only. For other devices on the LAN, restart
 - Cores and CHD decoders are not included. The pinned NES profile has prior real-core acceptance; other profiles need their own acceptance.
 - Native Finder mounting, live VPN/proxy deployment and broader platform interoperability remain manual follow-ups.
 - The Docker recipe now bundles the UI; a live container check could not run during this pass because the Docker daemon was unavailable. The isolated deployed CLI/UI regression exercises the shared bundle directly.
-- One existing desktop browser test completed its assertions but exceeded the server-fixture teardown timeout in the combined browser run. The other 22 cases passed; investigate shutdown/fixture cleanup separately.
-- npm publication, signed desktop installers and hosted container images remain distribution follow-ups. The first downloadable artifact is a portable Node.js server.
+- Desktop browser teardown is fixed: browser keep-alive sockets survived page navigation, so the test now closes its browser context before API teardown and verifies completed download bytes. All nine focused desktop/access/player cases pass.
+- [Desktop installers](desktop-install.md) are the next distribution artifact under the name Emulation Server. macOS Developer ID signing works; notarization, Intel builds, npm publication and hosted container images remain follow-ups.
+
+## Desktop shipping pass
+
+The native shell now installs a menu before the hidden status webview initializes, preventing an inert status icon when frontend startup fails. Startup errors also reveal the status window. App/window/web/default-server display names now use Emulation Server while bundle/service/auth identifiers stay compatible. macOS app compilation, Developer ID signing and simple DMG packaging passed. All 26 Rust fixtures, 23 tray controller tests, nine focused real-browser tests and 29 affected server/CLI regressions pass. Fastify, fast-uri and esbuild dependency updates bring the local dependency audit to zero reported vulnerabilities.
 
 ## Local validation
 
