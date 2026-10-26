@@ -8,6 +8,8 @@ The deferred desktop browser teardown is fixed by closing browser contexts befor
 
 Follow-on 0.1.1 adds safe per-user device token listing/creation/revocation and current library membership display/editing through additive API routes and generated TS/Swift models. No migration. Credentials are shown once and read-only reconciliation retries prevent duplicate token creation after a lost refresh. Swift's default PATH resolves an obsolete 5.3 toolchain; use `/usr/bin/xcrun swift test --package-path clients/swift` (Xcode Swift 6.4), which passed seven tests.
 
+0.1.1 is published as `v0.1.1-alpha.1`, target `c470fd8`, with a tested portable archive and signed Apple Silicon installer; Windows/Linux artifact jobs were dispatched for that release. All eleven focused access/device/membership browser cases, both new API regressions, protocol checks, full web/tray controller/typechecks, seven Swift tests, lint/drift/boundary/secret checks pass. Exact extracted archive startup/UI/assets plus membership/device-token lifecycle pass. The remaining GitHub dependency alert is moderate `glib::VariantStrIter` unsoundness in Linux GTK's glib 0.18.5 (GTK 0.18.2); JavaScript audit remains zero. Do not misreport the JavaScript audit as covering Rust.
+
 ## First-version shipping pass — 2026-10-26
 
 User direction: no prompts/confirmations, push directly to main, skip CI, use focused local TDD, and record slow/blocking work for a later pass. Use subagents sparingly and reuse a session for related work. Complete one fast pass before expanding scope.
