@@ -10,6 +10,8 @@ Follow-on 0.1.1 adds safe per-user device token listing/creation/revocation and 
 
 0.1.1 is published as `v0.1.1-alpha.1`, target `c470fd8`, with a tested portable archive and signed Apple Silicon installer; Windows/Linux artifact jobs were dispatched for that release. All eleven focused access/device/membership browser cases, both new API regressions, protocol checks, full web/tray controller/typechecks, seven Swift tests, lint/drift/boundary/secret checks pass. Exact extracted archive startup/UI/assets plus membership/device-token lifecycle pass. The remaining GitHub dependency alert is moderate `glib::VariantStrIter` unsoundness in Linux GTK's glib 0.18.5 (GTK 0.18.2); JavaScript audit remains zero. Do not misreport the JavaScript audit as covering Rust.
 
+Final 0.1.1 publication: Windows job `40414378561` and Linux job `40414381570` both succeeded. DMG, MSI, DEB, AppImage, portable server and platform SHA-256 files are uploaded. The installed `/Applications/Emulation Server.app` is signed version 0.1.1 and was reopened through Finder; the previous Content Server Status application was moved recoverably to Trash. Profile/session data was preserved. Primary checkout remains on clean main.
+
 ## First-version shipping pass — 2026-10-26
 
 User direction: no prompts/confirmations, push directly to main, skip CI, use focused local TDD, and record slow/blocking work for a later pass. Use subagents sparingly and reuse a session for related work. Complete one fast pass before expanding scope.
