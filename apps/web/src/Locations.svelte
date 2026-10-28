@@ -148,18 +148,9 @@
     <button type="button" disabled={$locations.busy} onclick={() => void locations.select($locations.pendingDestination?.id ?? null)}>Retry destination selection</button>
   {/if}
   {#if picking}<Modal title="Add upload destination" busy={pickerBusy || $locations.busy} onclose={() => void closePicker()}>
-    <label><input type="checkbox" bind:checked={makeWriteTarget} disabled={$locations.busy || !!$locations.pendingDestination} />Make destination for new uploads</label>
+    <label class="check"><input type="checkbox" bind:checked={makeWriteTarget} disabled={$locations.busy || !!$locations.pendingDestination} />Make destination for new uploads</label>
     <FolderPicker {client} contextKey={context.key} origin={context.origin} title="Add upload destination" submitLabel="Add destination"
       onbusy={(busy) => (pickerBusy = busy)} oncancel={() => void closePicker()}
       onsubmit={async (selection) => { const saved = await locations.addDestination(selection, makeWriteTarget); if (!saved) throw new Error(get(locations).failure ?? 'Destination could not be added.'); return saved; }} />
   </Modal>{/if}
 </section>
-
-<style>
-  .table-scroll {
-    overflow-x: auto;
-  }
-  .path {
-    overflow-wrap: anywhere;
-  }
-</style>

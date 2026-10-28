@@ -33,8 +33,8 @@
     : appState.owner || name === 'Server status'));
 </script>
 
-<div class="settings-shell">
-  <nav class="settings-navigation" aria-label="Settings">
+<div class="settings-shell compact-controls">
+  <nav class="settings-navigation ui-navigation" aria-label="Settings">
     <button type="button" onclick={onback}>Back to library</button>
     {#each visibleSections as name}<button
         type="button"

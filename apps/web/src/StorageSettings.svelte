@@ -3,6 +3,7 @@
   import type { FolderContext } from './lib/folder-selection';
   import SettingsLibraries from './SettingsLibraries.svelte';
   import Locations from './Locations.svelte';
+  import Tabs from './components/Tabs.svelte';
   let {
     client, libraries, invalidation, onview, onrejected, context, onrename, onchange = () => {},
   }: {
@@ -21,19 +22,6 @@
     { id: 'remote', label: 'Remote storage' },
   ];
   let selected = $state('folders');
-  function navigate(event: KeyboardEvent, index: number) {
-    let next = index;
-    if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
-    else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = tabs.length - 1;
-    else return;
-    event.preventDefault();
-    const tab = tabs[next];
-    if (tab) selected = tab.id;
-    (event.currentTarget as HTMLElement).parentElement
-      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
-  }
 </script>
 
 <header class="page-heading">
@@ -41,13 +29,7 @@
     <p class="dim">Choose where games come from and where uploaded copies are saved.</p>
   </div>
 </header>
-<div class="category-tabs storage-tabs" role="tablist" aria-label="Storage options">
-  {#each tabs as tab, index}
-    <button type="button" role="tab" id={`storage-${tab.id}`} aria-controls="storage-panel"
-      aria-selected={selected === tab.id} tabindex={selected === tab.id ? 0 : -1}
-      onclick={() => selected = tab.id} onkeydown={event => navigate(event, index)}>{tab.label}</button>
-  {/each}
-</div>
+<Tabs {tabs} {selected} onchange={id => selected = id} label="Storage options" idPrefix="storage" panelId="storage-panel" />
 <div id="storage-panel" role="tabpanel" aria-labelledby={`storage-${selected}`}>
   {#if selected === 'folders'}
     <SettingsLibraries {client} {libraries} {invalidation} {onview} {onrejected} {context} {onrename} mode="folders" />
@@ -69,9 +51,8 @@
 </div>
 <style>
   .page-heading { margin-top: 0; }
-  .storage-tabs { gap: .25rem; }
   .remote-storage { margin-top: 0; }
-  .remote-storage p, .remote-storage ol { max-width: 62ch; }
-  .remote-storage ol { padding-inline-start: 1.4rem; }
-  .remote-storage li { padding: .35rem 0 .35rem .25rem; }
+  .remote-storage p, .remote-storage ol { max-width: var(--content-measure); }
+  .remote-storage ol { padding-inline-start: var(--space-6); }
+  .remote-storage li { padding: var(--space-1) 0 var(--space-1) var(--space-1); }
 </style>

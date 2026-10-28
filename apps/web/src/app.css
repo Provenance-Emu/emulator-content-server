@@ -1,12 +1,69 @@
+/* Theme entrypoint. Change semantic tokens here; legacy names below keep existing screens aligned. */
 :root {
-  --ink: #e8e6e3;
-  --ink-dim: #9a968f;
-  --paper: #16181a;
-  --panel: #1e2124;
-  --line: #2c3034;
-  --accent: #7fb3d5;
-  --warn: #d58f7f;
   color-scheme: dark;
+  --color-text: #e8e6e3;
+  --color-text-muted: #b3b0aa;
+  --color-canvas: #16181a;
+  --color-surface: #1e2124;
+  --color-surface-inset: #121416;
+  --color-surface-muted: #171c20;
+  --color-border: #2c3034;
+  --color-border-strong: #57616a;
+  --color-accent: #89bfe2;
+  --color-danger: #d58f7f;
+  --color-success: #7fd59a;
+  --color-control: #24282c;
+  --color-control-hover: #303a42;
+  --color-control-pressed: #354854;
+  --color-selected: #263945;
+  --color-selected-border: #476b82;
+  --color-selected-text: #edf8ff;
+  --color-primary: #a4cee8;
+  --color-primary-hover: #c0e2f5;
+  --color-primary-pressed: #89bfe2;
+  --color-on-primary: #142532;
+  --color-backdrop: #080a0cd9;
+
+  --font-body: ui-sans-serif, -apple-system, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-body: 1rem;
+  --text-label: 0.9rem;
+  --text-small: 0.8rem;
+  --leading-body: 1.5;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --border-width: 1px;
+  --radius-sm: 0.35rem;
+  --radius-control: 0.4375rem;
+  --radius-panel: 0.625rem;
+  --radius-dialog: 0.75rem;
+  --control-height-touch: 2.75rem;
+  --control-height-desktop: 2.25rem;
+  --control-height: var(--control-height-touch);
+  --control-padding-block: 0.6rem;
+  --control-padding-inline: 0.8rem;
+  --control-font-size: inherit;
+  --focus-width: 3px;
+  --focus-offset: 3px;
+  --focus-color: var(--color-accent);
+  --motion-control: 140ms;
+  --panel-padding: var(--space-5);
+  --content-measure: 65ch;
+
+  --ink: var(--color-text);
+  --ink-dim: var(--color-text-muted);
+  --paper: var(--color-canvas);
+  --panel: var(--color-surface);
+  --line: var(--color-border);
+  --accent: var(--color-accent);
+  --warn: var(--color-danger);
 }
 
 * {
@@ -17,11 +74,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font:
-    16px / 1.5 ui-sans-serif,
-    -apple-system,
-    system-ui,
-    sans-serif;
+  font: var(--text-body) / var(--leading-body) var(--font-body);
 }
 
 p {
@@ -36,20 +89,20 @@ main {
 
 h1 {
   font-size: 1.4rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.01em;
   margin: 0 0 0.25rem;
 }
 
 h3 {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   margin: 1rem 0 0.35rem;
 }
 
 h2 {
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.015em;
   color: var(--ink);
   margin: 0 0 0.75rem;
@@ -57,10 +110,10 @@ h2 {
 
 section {
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin-top: 1.25rem;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-panel);
+  padding: var(--panel-padding);
+  margin-top: var(--space-5);
 }
 
 table {
@@ -78,7 +131,7 @@ td {
 
 th {
   color: var(--ink-dim);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   font-size: 0.82rem;
 }
 
@@ -97,7 +150,7 @@ tr:last-child td {
 
 code,
 .path {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.86em;
 }
 
@@ -107,17 +160,18 @@ textarea,
 button {
   font: inherit;
   color: inherit;
-  background: #121416;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 0.6rem 0.8rem;
+  background: var(--color-surface-inset);
+  font-size: var(--control-font-size);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
+  padding: var(--control-padding-block) var(--control-padding-inline);
 }
 
 button,
 input:not([type="radio"]):not([type="checkbox"]),
 select,
 summary {
-  min-height: 2.75rem;
+  min-height: var(--control-height);
 }
 button,
 a,
@@ -125,18 +179,18 @@ summary {
   -webkit-tap-highlight-color: transparent;
 }
 button {
-  background: #24282c;
+  background: var(--color-control);
   cursor: pointer;
   transition:
-    background-color 140ms,
-    border-color 140ms;
+    background-color var(--motion-control),
+    border-color var(--motion-control);
 }
 button:hover:not(:disabled) {
-  background-color: #303a42;
+  background-color: var(--color-control-hover);
   border-color: var(--accent);
 }
 button:active:not(:disabled) {
-  background-color: #354854;
+  background-color: var(--color-control-pressed);
 }
 
 button:disabled {
@@ -166,7 +220,7 @@ label {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-size: 0.9rem;
+  font-size: var(--text-label);
   color: var(--ink-dim);
 }
 
@@ -189,14 +243,16 @@ label {
 label.check {
   flex-direction: row;
   align-items: center;
+  min-height: var(--control-height);
+  cursor: pointer;
 }
 
 .once {
   margin: 0.75rem 0;
   padding: 0.75rem;
-  background: #121416;
-  border: 1px solid var(--line);
-  border-radius: 7px;
+  background: var(--color-surface-inset);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
 }
 
 .once p {
@@ -224,7 +280,7 @@ label.check {
 }
 
 .dot.up {
-  background: #7fd59a;
+  background: var(--color-success);
 }
 
 .dot.down {
@@ -241,10 +297,10 @@ label.check {
 }
 
 .tags li {
-  border: 1px solid var(--line);
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
   padding: 0.15rem 0.6rem;
-  font-size: 0.8rem;
+  font-size: var(--text-small);
   color: var(--ink-dim);
 }
 
@@ -254,10 +310,6 @@ label.check {
 }
 
 /* Shared library composition: navigation stays separate from the bounded collection. */
-:root {
-  --accent: #89bfe2;
-  --ink-dim: #b3b0aa;
-}
 a {
   color: var(--accent);
 }
@@ -265,9 +317,10 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 summary:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
 }
 [hidden] {
   display: none;
@@ -287,7 +340,7 @@ summary:focus-visible {
 .library-sidebar {
   border-right: 1px solid var(--line);
   padding: 2rem 1rem;
-  background: #121416;
+  background: var(--color-surface-inset);
   position: sticky;
   top: 0;
   height: 100dvh;
@@ -311,9 +364,9 @@ summary:focus-visible {
 }
 button[aria-current="page"],
 .category-tabs button[aria-selected="true"] {
-  background: #263945;
-  border-color: #476b82;
-  color: #edf8ff;
+  background: var(--color-selected);
+  border-color: var(--color-selected-border);
+  color: var(--color-selected-text);
 }
 .server-identity {
   padding: 0 0.8rem 1.8rem;
@@ -360,24 +413,24 @@ h1 {
 }
 .actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
   flex-wrap: wrap;
 }
 .category-tabs,
 .detail-tabs {
   display: flex;
-  gap: 0.35rem;
+  gap: var(--space-1);
   flex-wrap: wrap;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 1.25rem;
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-width) solid var(--line);
+  margin-bottom: var(--space-5);
 }
 .category-tabs button {
   background: transparent;
   border-color: transparent;
-  border-radius: 0.35rem;
-  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-sm);
+  padding-inline: var(--space-3);
 }
 dialog form {
   align-items: end;
@@ -407,7 +460,7 @@ dialog label {
   display: flex;
   gap: 0.6rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--line);
+  border: var(--border-width) solid var(--line);
   border-radius: 0.4rem;
   margin: 0;
 }
@@ -476,7 +529,7 @@ dialog label {
   text-wrap: pretty;
 }
 .availability {
-  font-size: 0.8rem;
+  font-size: var(--text-small);
   color: #d4bb90;
 }
 .pagination {
@@ -487,7 +540,7 @@ dialog label {
   margin-top: 2rem;
 }
 .empty-state {
-  border: 1px solid var(--line);
+  border: var(--border-width) solid var(--line);
   border-radius: 0.75rem;
   padding: 2rem clamp(1rem, 3vw, 2rem);
   background: var(--panel);
@@ -523,16 +576,13 @@ small {
 .settings-shell {
   display: grid;
   grid-template-columns: 12rem minmax(0, 1fr);
-  gap: 2rem;
+  gap: var(--space-8);
 }
 .settings-navigation {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.5rem;
-}
-.settings-navigation button {
-  text-align: left;
+  gap: var(--space-2);
 }
 .settings-content {
   min-width: 0;
@@ -546,15 +596,15 @@ small {
 dialog {
   color: var(--ink);
   background: var(--panel);
-  border: 1px solid #57616a;
-  border-radius: 0.75rem;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-dialog);
   width: min(44rem, calc(100vw - 2rem));
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
   padding: 1.4rem;
 }
 dialog::backdrop {
-  background: #080a0cd9;
+  background: var(--color-backdrop);
 }
 .dialog-heading {
   display: flex;
@@ -636,8 +686,8 @@ dialog input[type="file"] {
   .row {
     flex-wrap: wrap;
   }
-  section {
-    padding: 1rem;
+  :root {
+    --panel-padding: var(--space-4);
   }
 }
 
@@ -674,14 +724,20 @@ dialog input[type="file"] {
 /* Clear actions and readable controls across web and desktop. */
 button.primary,
 button.play-action {
-  background: #a4cee8;
-  border-color: #a4cee8;
-  color: #142532;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
   font-weight: 650;
 }
-button.primary:hover:not(:disabled) {
-  background: #c0e2f5;
-  border-color: #c0e2f5;
+button.primary:hover:not(:disabled),
+button.play-action:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+button.primary:active:not(:disabled),
+button.play-action:active:not(:disabled) {
+  background: var(--color-primary-pressed);
+  border-color: var(--color-primary-pressed);
 }
 button.secondary {
   background: transparent;
@@ -689,7 +745,7 @@ button.secondary {
 .empty-state p,
 .game-launch p,
 .sign-in-panel p {
-  max-width: 65ch;
+  max-width: var(--content-measure);
 }
 .sign-in-panel {
   margin-top: 1.5rem;
@@ -732,7 +788,7 @@ button.secondary {
 .library-tools summary {
   width: fit-content;
   padding: 0.55rem 0.75rem;
-  border: 1px solid var(--line);
+  border: var(--border-width) solid var(--line);
   border-radius: 0.45rem;
   cursor: pointer;
   color: var(--ink-dim);
@@ -756,8 +812,8 @@ button.secondary {
   border-radius: 0.5rem;
 }
 .system-chips button[aria-pressed="true"] {
-  background: #263945;
-  border-color: #89bfe2;
+  background: var(--color-selected);
+  border-color: var(--accent);
 }
 .filter-count {
   margin-left: 0.4rem;
@@ -771,18 +827,18 @@ button.secondary {
 .view-switch label {
   min-height: 2.75rem;
   padding: 0.4rem 0.65rem;
-  border: 1px solid var(--line);
+  border: var(--border-width) solid var(--line);
   border-radius: 0.45rem;
   cursor: pointer;
 }
 .view-switch label:has(input:checked) {
-  background: #263945;
-  border-color: #89bfe2;
+  background: var(--color-selected);
+  border-color: var(--accent);
   color: var(--ink);
 }
 .view-switch label:has(input:focus-visible) {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
 }
 .placeholder-system {
   color: #b4c5d1;
@@ -799,7 +855,7 @@ button.secondary {
   line-height: 1.35;
 }
 .game-card > .dim {
-  font-size: 0.9rem;
+  font-size: var(--text-label);
 }
 .game-parent {
   overflow-wrap: anywhere;
@@ -811,7 +867,7 @@ button.secondary {
   display: block;
   width: 100%;
   min-height: 2.75rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .game-launch {
   display: flex;
@@ -851,7 +907,7 @@ button.secondary {
 }
 .library-home > p,
 .library-home header p {
-  max-width: 65ch;
+  max-width: var(--content-measure);
   color: var(--ink-dim);
 }
 .library-choice-grid {
@@ -903,7 +959,7 @@ button.secondary {
 }
 .add-games-option {
   padding: 1.1rem;
-  border: 1px solid var(--line);
+  border: var(--border-width) solid var(--line);
   border-radius: 0.65rem;
   background: #171d22;
 }
@@ -917,7 +973,7 @@ button.secondary {
     min-height: 0;
     padding: 0.25rem 0;
     border: 0;
-    font-size: 0.9rem;
+    font-size: var(--text-label);
   }
 }
 @media (max-width: 760px) {
@@ -982,7 +1038,7 @@ button.secondary {
   }
   .game-files .file-name {
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
   }
   .game-files td[data-label="Type"],
   .game-files td[data-label="Size"] {
@@ -1004,27 +1060,41 @@ button.secondary {
   }
 }
 
-/* Mouse controls can stay compact; touch screens retain their 44px targets. */
-@media (min-width: 761px) and (pointer: fine) {
-  .settings-navigation button,
-  .settings-content button,
-  .settings-content input:not([type="checkbox"]):not([type="radio"]),
-  .settings-content select,
-  .folder-picker input:not([type="checkbox"]):not([type="radio"]),
-  .collection-toolbar button,
-  .collection-toolbar input,
-  .collection-toolbar select,
-  .library-tools summary,
-  .category-tabs button,
-  .view-switch label {
-    min-height: 2.25rem;
-    padding-block: 0.35rem;
+/* Small composition patterns. Keep layout-specific rules with their component. */
+.ui-navigation button {
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  overflow-wrap: anywhere;
+}
+.ui-navigation button[aria-current] {
+  background: var(--color-selected);
+  border-color: var(--color-selected-border);
+  color: var(--color-selected-text);
+}
+.ui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Opt-in mouse density; hybrid devices with any touch input keep generous targets. */
+@media (min-width: 761px) and (pointer: fine) and (hover: hover) and (not (any-pointer: coarse)) {
+  .compact-controls,
+  .collection-toolbar,
+  .library-tools,
+  .category-tabs,
+  .view-switch {
+    --control-height: var(--control-height-desktop);
+    --control-padding-block: 0.35rem;
+    --control-font-size: var(--text-label);
   }
-  .settings-navigation button,
-  .settings-content button,
-  .collection-toolbar button,
-  .library-tools summary,
-  .category-tabs button {
-    font-size: 0.9rem;
+  .view-switch label,
+  .library-tools summary {
+    min-height: var(--control-height);
+    padding-block: var(--control-padding-block);
+    font-size: var(--control-font-size);
   }
 }

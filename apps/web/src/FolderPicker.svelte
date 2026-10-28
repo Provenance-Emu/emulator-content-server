@@ -41,7 +41,7 @@
   untrack(() => { void open(null); });
   onDestroy(() => { disposed = true; generation++; });
 </script>
-<section aria-label={title} class="picker folder-picker">
+<section aria-label={title} class="picker folder-picker compact-controls">
   <p class="picker-intro dim">Browse folders on the computer running Emulation Server. This does not copy files from your device.</p>
   <form class="picker-form" onsubmit={submit}>
     <div class="picker-path-row">
@@ -50,7 +50,7 @@
     </div>
     {#if listing}
       <div class="folder-browser" aria-busy={reading}>
-        <nav class="folder-places" aria-label="Places on server">
+        <nav class="folder-places ui-navigation" aria-label="Places on server">
           <span class="places-label dim">Places</span>
           {#each listing.places as place (place.path)}
             <button type="button" aria-current={place.path === listing.path ? 'location' : undefined} disabled={busy || reading} onclick={() => void open(place.path)}>{place.label}</button>
@@ -75,44 +75,40 @@
     {#if reading}<p class="picker-status dim" role="status">Reading folders on the server…</p>{/if}
     {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
     <label class="picker-name">Folder name (optional)<input bind:value={name} maxlength="80" disabled={busy} placeholder="Uses the folder name" /></label>
-    <div class="picker-actions">
+    <div class="picker-actions ui-actions">
       <button type="button" disabled={busy} onclick={oncancel}>Cancel</button>
       <button class="primary" type="submit" disabled={busy || !path.trim()}>{busy ? 'Working…' : submitLabel}</button>
     </div>
   </form>
 </section>
 <style>
-  .picker-intro { margin: 0 0 1rem; max-width: 60ch; }
-  .picker-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-  .picker-path-row { display: flex; align-items: end; gap: .5rem; min-width: 0; }
+  .picker-intro { margin: 0 0 var(--space-4); max-width: var(--content-measure); }
+  .picker-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .picker-path-row { display: flex; align-items: end; gap: var(--space-2); min-width: 0; }
   .picker-path-row label { flex: 1; min-width: 0; }
   .picker-path-row input { width: 100%; }
   .picker-path-row button { flex-shrink: 0; }
-  .folder-browser { display: grid; grid-template-columns: 10rem minmax(0, 1fr); border: 1px solid var(--line); border-radius: .5rem; overflow: hidden; }
-  .folder-places { display: flex; flex-direction: column; align-items: stretch; gap: .25rem; padding: .65rem; background: #171c20; border-right: 1px solid var(--line); }
-  .places-label { padding: .25rem .5rem; font-size: .8rem; }
-  .folder-places button { text-align: left; border-color: transparent; background: transparent; padding-inline: .5rem; overflow-wrap: anywhere; }
-  .folder-places button[aria-current="location"] { background: #263945; border-color: #476b82; }
+  .folder-browser { display: grid; grid-template-columns: 10rem minmax(0, 1fr); border: var(--border-width) solid var(--line); border-radius: var(--radius-control); overflow: hidden; }
+  .folder-places { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--space-2); background: var(--color-surface-muted); border-right: var(--border-width) solid var(--line); }
+  .places-label { padding: var(--space-1) var(--space-2); font-size: var(--text-small); }
+  .folder-places button { padding-inline: var(--space-2); }
   .folder-location { min-width: 0; }
-  .folder-location-bar { display: flex; align-items: center; gap: .75rem; padding: .75rem; border-bottom: 1px solid var(--line); }
-  .folder-location-bar > div { display: grid; gap: .15rem; min-width: 0; font-size: .85rem; }
+  .folder-location-bar { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-bottom: var(--border-width) solid var(--line); }
+  .folder-location-bar > div { display: grid; gap: var(--space-1); min-width: 0; font-size: var(--text-label); }
   .folder-location-bar button { flex-shrink: 0; }
-  .folder-entries { list-style: none; padding: .25rem; margin: 0; height: clamp(11rem, 32dvh, 18rem); overflow-y: auto; overscroll-behavior: contain; }
-  .folder-entries button { display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left; border-color: transparent; background: transparent; border-radius: .25rem; padding: .45rem .65rem; }
-  .folder-entries button:hover:not(:disabled) { background: #303a42; }
+  .folder-entries { list-style: none; padding: var(--space-1); margin: 0; height: clamp(11rem, 32dvh, 18rem); overflow-y: auto; overscroll-behavior: contain; }
+  .folder-entries button { display: flex; align-items: center; gap: var(--space-2); width: 100%; text-align: left; border-color: transparent; background: transparent; border-radius: var(--radius-sm); padding-inline: var(--space-3); }
+  .folder-entries button:hover:not(:disabled) { background: var(--color-control-hover); }
   .folder-entries button svg { color: var(--accent); flex-shrink: 0; }
   .folder-entry-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .folder-empty { padding: 1rem; font-size: .9rem; }
+  .folder-empty { padding: var(--space-4); font-size: var(--text-label); }
   .picker-status { margin: 0; }
   .picker-name { width: min(100%, 24rem); }
-  .picker-actions { display: flex; justify-content: flex-end; gap: .5rem; padding-top: .25rem; }
-  @media (min-width: 761px) and (pointer: fine) {
-    button, input { min-height: 2.25rem; font-size: .9rem; padding-block: .35rem; }
-  }
+  .picker-actions { padding-top: var(--space-1); }
   @media (max-width: 760px) {
-    .picker-intro { font-size: .9rem; }
+    .picker-intro { font-size: var(--text-label); }
     .folder-browser { grid-template-columns: minmax(0, 1fr); }
-    .folder-places { flex-direction: row; align-items: center; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: .4rem; }
+    .folder-places { flex-direction: row; align-items: center; overflow-x: auto; border-right: 0; border-bottom: var(--border-width) solid var(--line); }
     .folder-places button { flex-shrink: 0; white-space: nowrap; }
     .places-label { display: none; }
     .folder-entries { height: clamp(9rem, 27dvh, 14rem); }
