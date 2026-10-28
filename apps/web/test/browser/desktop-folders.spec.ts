@@ -418,3 +418,199 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
     });
   });
 }
+
+test('restored managed profile verifies on reload and opens the native folder picker without another click', async ({
+  page,
+  fixture,
+}) => {
+  await page.addInitScript(
+    ({ origin }) => {
+      const commands: string[] = [];
+      Object.assign(window, {
+        __startupCommands: commands,
+        __TAURI_INTERNALS__: {
+          async invoke(command: string) {
+            commands.push(command);
+            if (command === 'managed_endpoint')
+              return { available: true, origin, verificationId: 'generated-startup-verification' };
+            if (command === 'validate_managed_selection') return true;
+            if (command === 'choose_managed_directory') return null;
+            throw new Error('Unexpected privileged command');
+          },
+        },
+      });
+    },
+    { origin: fixture.origin },
+  );
+  await withDesktop(page, async (desktop) => {
+    await page.goto(`${desktop}/library.html`);
+    await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
+    await page.getByLabel('Username', { exact: true }).fill('browser-owner');
+    await page.getByLabel('Password', { exact: true }).fill(fixture.password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Your libraries', exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Your libraries', exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { __startupCommands: string[] }).__startupCommands.filter(
+            (command) => command === 'managed_endpoint',
+          ).length,
+      ),
+    ).toBe(1);
+    await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+    await page.getByRole('button', { name: 'Add games', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Add games', exact: true })
+      .getByRole('button', { name: 'Add server folder', exact: true })
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as unknown as { __startupCommands: string[] }).__startupCommands.filter(
+              (command) => command === 'choose_managed_directory',
+            ).length,
+        ),
+      )
+      .toBe(1);
+    await expect(page.getByRole('dialog', { name: 'Add server folder', exact: true })).toHaveCount(
+      0,
+    );
+  });
+});
+
+test('restored manual loopback profile remains a server-folder fallback even when native verification is available', async ({
+  page,
+  fixture,
+}) => {
+  await page.addInitScript(
+    ({ origin }) => {
+      const commands: string[] = [];
+      Object.assign(window, {
+        __startupCommands: commands,
+        __TAURI_INTERNALS__: {
+          async invoke(command: string) {
+            commands.push(command);
+            if (command === 'managed_endpoint')
+              return { available: true, origin, verificationId: 'generated-manual-verification' };
+            if (command === 'validate_managed_selection') return true;
+            if (command === 'choose_managed_directory') return null;
+            throw new Error('Unexpected privileged command');
+          },
+        },
+      });
+    },
+    { origin: fixture.origin },
+  );
+  await page.route('**/api/v1/folders**', (route) =>
+    route.fulfill({
+      json: {
+        path: fixture.directory,
+        parent: null,
+        places: [],
+        entries: [],
+      },
+    }),
+  );
+  await withDesktop(page, async (desktop) => {
+    await page.goto(`${desktop}/library.html`);
+    await page.getByLabel('Server address', { exact: true }).fill(fixture.origin);
+    await page.getByRole('button', { name: 'Connect', exact: true }).click();
+    await page.getByLabel('Username', { exact: true }).fill('browser-owner');
+    await page.getByLabel('Password', { exact: true }).fill(fixture.password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Your libraries', exact: true })).toBeVisible();
+    await page.reload();
+    await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+    await page.getByRole('button', { name: 'Add games', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Add games', exact: true })
+      .getByRole('button', { name: 'Add server folder', exact: true })
+      .click();
+    await expect(
+      page.getByRole('dialog', { name: 'Add server folder', exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __startupCommands: string[] }).__startupCommands,
+      ),
+    ).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem('ecs.tray.profile') ?? '{}').profileKey,
+      ),
+    ).toBe('manual');
+  });
+});
+
+test('late startup verification cannot replace a manually selected profile', async ({
+  page,
+  fixture,
+}) => {
+  await page.addInitScript(
+    ({ origin, session }) => {
+      localStorage.setItem(
+        'ecs.tray.profile',
+        JSON.stringify({ origin, label: 'Local managed service', profileKey: 'managed-service' }),
+      );
+      localStorage.setItem(
+        `ecs.desktop.session:${encodeURIComponent(origin)}`,
+        JSON.stringify(session),
+      );
+      let finish: ((result: unknown) => void) | undefined;
+      Object.assign(window, {
+        __finishStartup: () =>
+          finish?.({ available: true, origin, verificationId: 'generated-late-verification' }),
+        __TAURI_INTERNALS__: {
+          invoke(command: string) {
+            if (command === 'managed_endpoint')
+              return new Promise((resolve) => {
+                finish = resolve;
+              });
+            throw new Error('Unexpected privileged command');
+          },
+        },
+      });
+    },
+    { origin: fixture.origin, session: fixture.session },
+  );
+  await page.route('**/api/v1/folders**', (route) =>
+    route.fulfill({
+      json: {
+        path: fixture.directory,
+        parent: null,
+        places: [],
+        entries: [],
+      },
+    }),
+  );
+  await withDesktop(page, async (desktop) => {
+    await page.goto(`${desktop}/library.html`);
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Checking local service' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your libraries', exact: true })).toHaveCount(0);
+    await page.getByText('Change connection', { exact: true }).click();
+    await page.getByRole('button', { name: 'Connect', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Your libraries', exact: true })).toBeVisible();
+    await page.evaluate(() =>
+      (window as unknown as { __finishStartup: () => void }).__finishStartup(),
+    );
+    await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+    await page.getByRole('button', { name: 'Add games', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Add games', exact: true })
+      .getByRole('button', { name: 'Add server folder', exact: true })
+      .click();
+    await expect(
+      page.getByRole('dialog', { name: 'Add server folder', exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem('ecs.tray.profile') ?? '{}').profileKey,
+      ),
+    ).toBe('manual');
+  });
+});

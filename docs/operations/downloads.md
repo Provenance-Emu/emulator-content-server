@@ -12,10 +12,10 @@ This needs a browser that exposes the File System Access save picker, usually Ch
 
 Browsers without direct saving keep the normal Download behavior for files up to 256 MiB. Known larger files are rejected before requesting their content, with instructions for using a browser that can save directly. The client also checks headers and actual received bytes, so a missing or inaccurate size cannot create an unlimited allocation. ZIP fallback downloads are bounded too, including streamed ZIP bodies without Content-Length. Leaving a detail cancels its active file request.
 
-This limit applies to the UI's buffered fallback, not API clients writing to their own filesystem or direct browser disk saving. Persistent upload queues are a separate remaining feature; selecting files and retry state still lasts only until the page closes.
+This limit applies to the UI's buffered fallback, not API clients writing to their own filesystem or direct browser disk saving. Opt-in upload recovery stores transfer metadata across reloads. Original files must be reselected and verified before an explicit retry; see [upload recovery](upload-recovery.md).
 
 ## Validation and release scope
 
 The download follow-up passed 92 TypeScript client tests, 207 web controller tests, 22 focused real-server browser cases, both Svelte checks and production frontend builds. Streaming browser cases replace only the save-picker/writer transport; authentication, file requests and byte checks use a real disposable server. They do not establish live OS file-picker acceptance in every browser. Tests cover backpressure, safe resume/restart, changed validators, byte limits, disk errors, canceled/stale pickers, stalled-stream disposal and 401/403 rejection without committing a destination.
 
-These download changes follow the published 0.1.2-alpha.1 installer refresh. That release contains the new library UI; this later source change is intended for the next release.
+Direct saving and bounded fallback downloads are included in the 0.1.3 update, alongside upload recovery and storage/library setup improvements.

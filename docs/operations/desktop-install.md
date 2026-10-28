@@ -39,3 +39,5 @@ xcrun stapler validate "$DMG_PATH"
 Only publish after Apple reports Accepted. Regenerate the SHA-256 file after stapling; stapling changes the archive bytes. The 0.1.1-alpha.1 Apple Silicon image was accepted on 2026-10-26, stapled, validated, and the installed app passed Gatekeeper as Notarized Developer ID.
 
 The 0.1.2-alpha.1 installer refresh is published for Apple Silicon macOS, Windows x64 and Linux x64. The Apple Silicon image passed notarization, stapling and Gatekeeper; Windows/Linux native packaging completed successfully. All published installer/archive digests match their SHA-256 files.
+
+The 0.1.3 update adds Storage tabs, explicit linking/scanning of existing folders, clearer scan retries and a compact server-directory browser. Alpha2 automatically re-verifies a saved managed-service profile when reopening the library window, preserving the native OS folder dialog. Manually entered local or remote server addresses continue to use server-directory browsing. Verification checks the actual fixed local service; a late response cannot override a different server selection.

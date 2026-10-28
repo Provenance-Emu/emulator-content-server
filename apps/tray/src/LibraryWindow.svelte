@@ -1,8 +1,8 @@
 <script lang="ts">
   import App from '@ecs/web/App.svelte';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { folderAdapterFor, managedProfile, nativeFolders, type ManagedEndpoint } from './lib/folders';
-  import type { DesktopSelection } from './lib/application';
+  import type { DesktopContext, DesktopSelection } from './lib/application';
   import { DEFAULT_ORIGIN } from './lib/watch.svelte';
   import { openExternal } from './lib/windows';
   let { selection }: { selection: DesktopSelection } = $props();
@@ -12,25 +12,58 @@
   let verifying = $state(false);
   let connectionOpen = $state(false);
   let disposed = false;
+  let verifiedContext = $state.raw<DesktopContext | null>(null);
+  let checkingContext: DesktopContext | null = null;
+  let verificationGeneration = 0;
+  const awaitingManagedVerification = $derived(
+    $selection?.profile.profileKey === 'managed-service' && $selection !== verifiedContext,
+  );
   const folderSelection = $derived.by(() => { const context = $selection; return context ? folderAdapterFor(selection, endpoint) : undefined; });
-  async function selectManaged() {
-    if (verifying) return;
+  async function selectManaged(context = $selection) {
+    if (verifying && checkingContext === context) return;
+    const run = ++verificationGeneration;
+    checkingContext = context;
     verifying = true; failure = null;
-    const context = $selection;
-    const result = await nativeFolders.managedEndpoint();
-    if (disposed) return;
-    verifying = false;
-    if ($selection !== context) return;
-    endpoint = result;
-    if (result.available) { selection.select(managedProfile(result)); connectionOpen = false; }
-    else if (context?.profile.profileKey === 'managed-service') {
-      // Controllers capture their folder adapter for one context lifetime.
-      // Retire that lifetime and staged native paths before exposing the server chooser.
-      selection.select({ origin: context.origin, label: context.origin, profileKey: 'manual' });
+    try {
+      const result = await nativeFolders.managedEndpoint();
+      if (disposed || run !== verificationGeneration || $selection !== context) return;
+      if (result.available) {
+        // Retire every controller and staged path from the old context before granting an adapter.
+        selection.select(managedProfile(result));
+        verifiedContext = $selection;
+        endpoint = result;
+        connectionOpen = false;
+      } else {
+        endpoint = result;
+        verifiedContext = null;
+        if (context?.profile.profileKey === 'managed-service') {
+          selection.select({ origin: context.origin, label: context.origin, profileKey: 'manual' });
+        }
+      }
+    } catch (error) {
+      if (!disposed && run === verificationGeneration && $selection === context)
+        failure = error instanceof Error ? error.message : String(error);
+    } finally {
+      if (!disposed && run === verificationGeneration) {
+        verifying = false;
+        checkingContext = null;
+      }
     }
   }
+  $effect(() => {
+    const context = $selection;
+    untrack(() => {
+      if (context?.profile.profileKey === 'managed-service') {
+        if (context !== verifiedContext) void selectManaged(context);
+      } else if (verifying && checkingContext !== context) {
+        verificationGeneration++;
+        checkingContext = null;
+        verifying = false;
+      }
+    });
+  });
   $effect(() => { typed = $selection?.origin ?? ''; });
-  onDestroy(() => { disposed = true; selection.dispose(); });
+  onDestroy(() => { disposed = true; verificationGeneration++; selection.dispose(); });
 </script>
 <header class="desktop-server" class:desktop-connect={!$selection}>
   {#if $selection}
@@ -52,12 +85,19 @@
   {#if endpoint && !endpoint.available}<p role="status" class="dim">{endpoint.reason}</p>{/if}
   {#if failure}<p role="alert" class="problem">{failure}</p>{/if}
 </header>
-{#if $selection}<App context={$selection} {folderSelection} />{/if}
+{#if $selection}
+  {#if awaitingManagedVerification}<p class="startup-verification dim" role="status">Checking local service…</p>
+  {:else}<App context={$selection} {folderSelection} />{/if}
+{/if}
 {#snippet connectionForm()}
   <form class:connection-first-run={!$selection} onsubmit={(event) => {
     event.preventDefault();
     try {
       selection.select({ origin: typed, label: typed, profileKey: 'manual' });
+      verificationGeneration++;
+      checkingContext = null;
+      verifying = false;
+      verifiedContext = null;
       endpoint = null; failure = null; connectionOpen = false;
     } catch (error) { failure = error instanceof Error ? error.message : String(error); }
   }}>
@@ -68,6 +108,7 @@
   {#if $selection}<p class="dim">Browser playback may ask you to sign in separately.</p>{/if}
 {/snippet}
 <style>
+  .startup-verification { padding: 1rem; }
   .desktop-server { padding: .6rem 1rem; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
   .desktop-connect { display: block; max-width: 52rem; margin: 2rem auto; padding: 1.5rem; border: 1px solid var(--line); border-radius: .75rem; }
   .desktop-connect h1 { margin: .5rem 0; }

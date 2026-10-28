@@ -1,5 +1,13 @@
 # Handoff
 
+## Installer refresh — 2026-10-27
+
+Published v0.1.3-alpha.1 at 1466d1c with notarized/stapled Apple Silicon DMG and portable Node22 archive; digests match GitHub. Notary 6ca0ab99-6cb3-4fb9-adb5-bacb0c404bc2 Accepted. Windows/Linux packaging runs 40617312157/40617311759 both succeeded; all five installer/archive digests match published SHA-256 files. Installed /Applications/Emulation Server.app 0.1.3 passes Gatekeeper and actual Storage/native-dialog open/cancel acceptance. Local LaunchAgent now points to dist-release/0.1.3/server and retains the same content-data and 127.0.0.1:8473. Doctor reports integrity ok. Preserve both ignored deployments and operator data.
+
+Remaining startup UX bug found during live acceptance: a restored managed-service profile starts with no fresh native receipt, causing the server-folder fallback until Use local managed service is clicked. Fixed automatic native verification on restore with stale-context/manual-profile protections. Managed controllers wait until verification and a fresh context retires old adapters before enabling the native dialog. Three new reload/manual-switch regressions plus five existing desktop-folder browser cases pass; tray Svelte and frontend build pass. This follow-up will use v0.1.3-alpha.2 without changing numeric versions. First frozen release artifacts are not replaced.
+
+Validation: 220 web tests; both Svelte checks 0/0; 23 tray tests and one platform-specific skip; 30/32 combined browser cases passed initially, two desktop cases passed on immediate targeted rerun, followed by all 5 desktop-folder tests passing after closing context in test teardown. New orphan/scan failure regressions pass. Portable production startup/UI/assets test 3/3; boundaries/secret scan/diffcheck pass.
+
 ## Storage/library UX pass — 2026-10-27
 
 Implemented Storage tabs (server folders/uploaded files/mounted remote storage), compact desktop folder chooser/controls with touch sizing retained, explicit orphan-folder linking on home/empty library/settings, automatic scanning after assignment, duplicate-path reconciliation, native duplicate-orphan action, always-available per-folder scan, and a never-scanned library callout. Failed scans after linking remain visible and can be retried in the destination library without registering/assigning again. A reused design agent reviewed desktop/mobile visuals, tab keyboard/focus behavior, no writes on browsing, and assignment lifecycle.
