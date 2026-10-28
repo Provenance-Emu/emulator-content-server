@@ -182,7 +182,13 @@ export const importIsolatedRuntime: RuntimeImporter = async (
         }));
         await rpc(
           'init',
-          { loader: script, wasm, assets, commands: context.profile?.saveCompletion !== 'none' },
+          {
+            loader: script,
+            wasm,
+            assets,
+            maxContentBytes: context.profile?.maxContentBytes ?? LIMIT,
+            commands: context.profile?.saveCompletion !== 'none',
+          },
           [script, wasm, ...assets.map((asset) => asset.bytes)],
         );
         const runtime: PlayerRuntime = {
@@ -191,7 +197,13 @@ export const importIsolatedRuntime: RuntimeImporter = async (
               await rpc('mkdir', path);
             },
             writeFile: async (path, bytes) => {
-              if (bytes.byteLength > LIMIT) throw new Error('Virtual file exceeds limit');
+              if (
+                bytes.byteLength >
+                (path.startsWith('/ecs/content/game.')
+                  ? (context.profile?.maxContentBytes ?? LIMIT)
+                  : LIMIT)
+              )
+                throw new Error('Virtual file exceeds limit');
               const buffer = new Uint8Array(bytes).buffer;
               await rpc('write', { path, bytes: buffer }, [buffer]);
             },

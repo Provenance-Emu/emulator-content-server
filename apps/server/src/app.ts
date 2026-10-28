@@ -14,6 +14,7 @@ import {
 } from '@ecs/storage';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { PlayerManager, registerPlayerManagement } from './player-manager.js';
 import './actor.js';
 import type { ServerContext } from './context.js';
 import { registerFolderWatchRoutes } from './folder-watch-routes.js';
@@ -85,6 +86,14 @@ export async function openServer(options: OpenServerOptions): Promise<{
     uiDir: options.uiDir ?? null,
     localTrust: options.localTrust !== false,
   };
+  context.playerManager = new PlayerManager(context, profiles.items);
+  try {
+    await context.playerManager.initialize();
+  } catch (error) {
+    catalog.close();
+    await virtual.close();
+    throw error;
+  }
   let app: FastifyInstance;
   try {
     // Startup owns this catalog under the single-server ownership assumption:
@@ -224,6 +233,7 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
   registerFolderWatchRoutes(app, context, folderWatcher);
   registerWebDav(app, context);
   registerRoutes(app, context);
+  registerPlayerManagement(app, context);
   registerPlayerAssets(app, context);
   registerWebDavCredentials(app, context);
   return app;

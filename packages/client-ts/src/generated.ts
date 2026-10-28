@@ -84,6 +84,34 @@ export interface WebPlayerDescriptor {
   assets: WebPlayerAsset[];
 }
 
+export interface PlayerConfiguration {
+  enabled?: boolean;
+  default?: boolean;
+}
+
+export interface PlayerInstallation {
+  profile: WebPlayerDescriptor;
+  enabled: boolean;
+  source: string;
+  removable: boolean;
+}
+
+export interface PlayerCatalogEntry {
+  id: string;
+  name: string;
+  systems: string[];
+  description: string;
+  available: boolean;
+  reason: string | null;
+  downloadBytes: number | null;
+}
+
+export interface PlayerManagement {
+  items: PlayerInstallation[];
+  defaultProfileId: string | null;
+  available: PlayerCatalogEntry[];
+}
+
 export interface WebPlayerCatalog {
   items: WebPlayerDescriptor[];
   defaultProfileId: string | null;

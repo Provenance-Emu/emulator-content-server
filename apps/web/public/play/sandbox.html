@@ -4,6 +4,7 @@
   const nonce = location.hash.slice(1);
   if (!/^[a-f0-9]{32}$/.test(nonce) || parent === window) return;
   const LIMIT = 64 * 1024 * 1024;
+  let contentLimit = LIMIT;
   const canvas = document.querySelector('canvas');
   let port, runtime, closed = false, initializing = false, tail = Promise.resolve();
   const urls = new Set();
@@ -27,6 +28,8 @@
       if (initializing || runtime) throw Error('Runtime already initialized');
       initializing = true;
       const spec = message.value;
+      contentLimit = spec.maxContentBytes ?? LIMIT;
+      if (!Number.isSafeInteger(contentLimit) || contentLimit < 1 || contentLimit > 512*1024*1024) throw Error('Invalid content limit');
       const loader = byteArray(spec.loader,8*1024*1024), wasm = byteArray(spec.wasm);
       if (!Array.isArray(spec.assets) || spec.assets.length > 16) throw Error('Invalid runtime resources');
       const resources = new Map(), binaries = new Map();
@@ -59,7 +62,7 @@
     const value = message.value;
     switch (message.op) {
       case 'mkdir': await runtime.FS.mkdirTree(path(value)); return null;
-      case 'write': await runtime.FS.writeFile(path(value.path),byteArray(value.bytes)); return null;
+      case 'write': await runtime.FS.writeFile(path(value.path),byteArray(value.bytes,value.path.startsWith('/ecs/content/game.') ? contentLimit : LIMIT)); return null;
       case 'read': {
         const bytes = await runtime.FS.readFile(path(value));
         if (!(bytes instanceof Uint8Array) || bytes.byteLength > LIMIT) throw Error('Runtime output exceeds limit');

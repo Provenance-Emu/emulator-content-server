@@ -18,6 +18,7 @@
   let rootId = $state('');
   let rootIntent = $state(0);
   let settings = $state(false);
+  let playerEpoch = $state(0);
   let drawer = $state(false);
   let signingIn = $state(false);
   let editing = $state<Library | null | undefined>(undefined);
@@ -106,7 +107,7 @@
       {#key `${context.key}:${$application.authEpoch}`}
         {@const expectedEpoch = $application.authEpoch}
         <div hidden={settings}>
-          <LibraryBrowser
+          {#key playerEpoch}<LibraryBrowser
             {context}
             {application}
             folderContext={actionContext(expectedEpoch)}
@@ -118,9 +119,10 @@
             onsettings={() => (settings = true)}
             onchoose={choose}
             oncreate={() => (editing = null)}
-          />
+          />{/key}
         </div>
         {#if settings}<SettingsShell
+            onplayerschange={async () => { await application.revalidate(); playerEpoch++; }}
             client={context.client}
             appState={$application}
             onback={() => (settings = false)}

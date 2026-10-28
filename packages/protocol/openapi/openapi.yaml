@@ -45,6 +45,97 @@ paths:
           description: Read permission required.
         '404':
           description: Browser playback is not configured.
+  /api/v1/player/management:
+    get:
+      operationId: getPlayerManagement
+      description: Owner bearer only. Installed emulators and trusted installation catalog without server paths.
+      responses:
+        '200':
+          description: Emulator installation state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerManagement' }
+        '401': { description: Authentication required. }
+        '403': { description: Owner sign-in required. }
+  /api/v1/player/management/install:
+    post:
+      operationId: installPlayerPackage
+      description: Owner bearer only. Bounded ECS player package with hash-verified data-only manifest and resources. Activates atomically without restart.
+      requestBody:
+        required: true
+        content:
+          application/vnd.ecs.player-package:
+            schema: { type: string, format: binary }
+      responses:
+        '200':
+          description: Installed and activated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerManagement' }
+        '400': { description: Invalid or incompatible package. }
+        '409': { description: Already installed or registry limit reached. }
+  /api/v1/player/management/install/{id}:
+    post:
+      operationId: installCatalogPlayer
+      description: Owner bearer only. Install one pinned trusted catalog entry; arbitrary URLs are not accepted.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Installed and activated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerManagement' }
+        '404': { description: Catalog entry is not available. }
+        '409': { description: Already installed. }
+  /api/v1/player/management/{id}/system/{name}:
+    put:
+      operationId: installPlayerSystemFile
+      description: Owner bearer only. Add or replace operator-provided awbios.zip on the managed Dreamcast/arcade core. ZIP must contain bios0.ic23 (131072bytes). Shared with admitted players; firmware is never downloaded for the operator.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string, enum: [awbios.zip] } }
+      requestBody:
+        required: true
+        content:
+          application/vnd.ecs.player-system-file:
+            schema: { type: string, format: binary }
+      responses:
+        '200':
+          description: Installed for the next launch without changing games or saves.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerManagement' }
+        '400': { description: Invalid system-file archive or size. }
+        '403': { description: Owner sign-in or managed emulator required. }
+  /api/v1/player/management/{id}:
+    patch:
+      operationId: configurePlayer
+      description: Owner bearer only. Enable, disable or select the default emulator. Existing sessions keep their loaded bytes.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlayerConfiguration' }
+      responses:
+        '200':
+          description: Updated installation state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerManagement' }
+    delete:
+      operationId: removePlayer
+      description: Owner bearer only. Remove a managed emulator installation. Operator-configured files are read-only; games and saves are preserved.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Updated installation state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerManagement' }
   /api/v1/player/profiles:
     get:
       operationId: listPlayerProfiles
@@ -914,11 +1005,43 @@ components:
         threaded: { type: boolean, enum: [false] }
         saveCompletion: { type: string, enum: [none, command-reply-v1] }
         contentExtensions: { type: array, items: { type: string }, minItems: 1, maxItems: 32 }
-        maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 67108864 }
+        maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 536870912 }
         buildVersion: { type: string, maxLength: 128 }
         loader: { $ref: '#/components/schemas/PlayerCoreResource' }
         wasm: { $ref: '#/components/schemas/PlayerCoreResource' }
         assets: { type: array, items: { $ref: '#/components/schemas/WebPlayerAsset' }, maxItems: 16 }
+    PlayerConfiguration:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled: { type: boolean }
+        default: { type: boolean }
+    PlayerInstallation:
+      type: object
+      required: [profile, enabled, source, removable]
+      properties:
+        profile: { $ref: '#/components/schemas/WebPlayerDescriptor' }
+        enabled: { type: boolean }
+        source: { type: string, enum: [managed, operator] }
+        removable: { type: boolean }
+    PlayerCatalogEntry:
+      type: object
+      required: [id, name, systems, description, available, reason, downloadBytes]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        systems: { type: array, items: { type: string } }
+        description: { type: string }
+        available: { type: boolean }
+        reason: { type: [string, 'null'] }
+        downloadBytes: { type: [integer, 'null'] }
+    PlayerManagement:
+      type: object
+      required: [items, defaultProfileId, available]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PlayerInstallation' } }
+        defaultProfileId: { type: [string, 'null'] }
+        available: { type: array, items: { $ref: '#/components/schemas/PlayerCatalogEntry' } }
     WebPlayerCatalog:
       type: object
       required: [items, defaultProfileId]

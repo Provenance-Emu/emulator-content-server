@@ -91,7 +91,7 @@ export function validateProfile(core: BrowserCore): void {
       core.contentExtensions.some((extension) => !/^[a-z0-9]{1,16}$/.test(extension)) ||
       !Number.isSafeInteger(core.maxContentBytes) ||
       core.maxContentBytes < 1 ||
-      core.maxContentBytes > 64 * 1024 * 1024 ||
+      core.maxContentBytes > 512 * 1024 * 1024 ||
       !Array.isArray(core.assets) ||
       core.assets.length > 16
     )

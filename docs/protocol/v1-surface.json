@@ -6,6 +6,7 @@
     "DELETE /api/v1/items/:itemId",
     "DELETE /api/v1/items/:itemId/access/:userId",
     "DELETE /api/v1/libraries/:libraryId/members/:userId",
+    "DELETE /api/v1/player/management/:id",
     "DELETE /api/v1/roots/:rootId",
     "DELETE /api/v1/sources/:sourceId/matches/selections/:kind",
     "DELETE /api/v1/storage-locations/:locationId",
@@ -31,6 +32,7 @@
     "GET /api/v1/libraries/:libraryId/members",
     "GET /api/v1/matching/plugins",
     "GET /api/v1/player/core",
+    "GET /api/v1/player/management",
     "GET /api/v1/player/profiles",
     "GET /api/v1/player/profiles/:id",
     "GET /api/v1/root-summaries",
@@ -59,6 +61,7 @@
     "HEAD /api/v1/sources/:sourceId/content",
     "PATCH /api/v1/items/:itemId",
     "PATCH /api/v1/libraries/:libraryId",
+    "PATCH /api/v1/player/management/:id",
     "PATCH /api/v1/users/:userId",
     "POST /api/v1/auth/bootstrap",
     "POST /api/v1/auth/login",
@@ -68,6 +71,8 @@
     "POST /api/v1/guest-grants",
     "POST /api/v1/items",
     "POST /api/v1/libraries",
+    "POST /api/v1/player/management/install",
+    "POST /api/v1/player/management/install/:id",
     "POST /api/v1/roots",
     "POST /api/v1/roots/:rootId/scan",
     "POST /api/v1/sources/:sourceId/matches",
@@ -81,6 +86,7 @@
     "PUT /api/v1/access",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
+    "PUT /api/v1/player/management/:id/system/:name",
     "PUT /api/v1/roots/:rootId/library",
     "PUT /api/v1/roots/:rootId/organization-policy",
     "PUT /api/v1/roots/:rootId/watching-policy",
@@ -250,6 +256,59 @@
         "systems",
         "threaded",
         "wasm"
+      ]
+    },
+    "PlayerConfiguration": {
+      "properties": [
+        "default",
+        "enabled"
+      ],
+      "required": []
+    },
+    "PlayerInstallation": {
+      "properties": [
+        "enabled",
+        "profile",
+        "removable",
+        "source"
+      ],
+      "required": [
+        "enabled",
+        "profile",
+        "removable",
+        "source"
+      ]
+    },
+    "PlayerCatalogEntry": {
+      "properties": [
+        "available",
+        "description",
+        "downloadBytes",
+        "id",
+        "name",
+        "reason",
+        "systems"
+      ],
+      "required": [
+        "available",
+        "description",
+        "downloadBytes",
+        "id",
+        "name",
+        "reason",
+        "systems"
+      ]
+    },
+    "PlayerManagement": {
+      "properties": [
+        "available",
+        "defaultProfileId",
+        "items"
+      ],
+      "required": [
+        "available",
+        "defaultProfileId",
+        "items"
       ]
     },
     "WebPlayerCatalog": {

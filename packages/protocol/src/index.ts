@@ -35,8 +35,12 @@ export {
   openApiFile,
 } from './openapi.js';
 export type {
+  PlayerCatalogEntry,
+  PlayerConfiguration,
   PlayerCoreDescriptor,
   PlayerCoreResource,
+  PlayerInstallation,
+  PlayerManagement,
   WebPlayerAsset,
   WebPlayerCatalog,
   WebPlayerDescriptor,

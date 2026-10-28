@@ -42,7 +42,7 @@ for (const patch of [
   { runtime: 'native' },
   { saveCompletion: 'observer' },
   { contentExtensions: ['../rom'] },
-  { maxContentBytes: 67108865 },
+  { maxContentBytes: 536870913 },
   { assets: Array(17).fill({ ...file, name: 'a', file: 'a' }) },
   { loader: { ...file, file: '../secret' } },
 ]) {
@@ -61,3 +61,11 @@ for (const name of ['CON', 'nul.bin', 'trailing.', '../escape', 'core.wasm']) {
     assert.throws(() => parseManifest(m));
   });
 }
+
+test('disc profiles may declare up to512MiB content without increasing binary resource limits', () => {
+  const value = manifest();
+  value.player.web.maxContentBytes = 512 * 1024 * 1024;
+  assert.equal(parseManifest(value).player?.web?.maxContentBytes, 512 * 1024 * 1024);
+  value.player.web.maxContentBytes++;
+  assert.throws(() => parseManifest(value), /content size/i);
+});

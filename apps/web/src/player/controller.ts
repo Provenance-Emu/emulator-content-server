@@ -125,7 +125,13 @@ export async function startPlayer(
       throw new Error('Unsupported core: MEMFS and callMain exports are required');
     for (const dir of ['/ecs', '/ecs/content', '/ecs/saves', '/ecs/states', '/ecs/system'])
       await runtime.FS.mkdirTree(dir);
-    for (const asset of extra) await runtime.FS.writeFile(`/ecs/system/${asset.name}`, asset.bytes);
+    for (const asset of extra) {
+      await runtime.FS.writeFile(`/ecs/system/${asset.name}`, asset.bytes);
+      if (prepared.core.id === 'org.libretro.parallel-dc' && asset.name === 'awbios.zip') {
+        await runtime.FS.mkdirTree('/ecs/system/dc');
+        await runtime.FS.writeFile('/ecs/system/dc/awbios.zip', asset.bytes);
+      }
+    }
     await runtime.FS.writeFile(paths.config, new TextEncoder().encode(config));
     await runtime.FS.writeFile(
       contentPath(prepared.core, prepared.contentExtension),

@@ -326,7 +326,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
   if (
     !Number.isSafeInteger(r.maxContentBytes) ||
     Number(r.maxContentBytes) <= 0 ||
-    Number(r.maxContentBytes) > 64 * 1024 * 1024
+    Number(r.maxContentBytes) > 512 * 1024 * 1024
   )
     throw new PluginError('invalid-manifest', 'Invalid web player content size limit');
   const buildVersion = shortText(stringField(r, 'buildVersion'), 'buildVersion', 128);

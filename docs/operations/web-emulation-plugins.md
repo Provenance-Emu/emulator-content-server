@@ -4,6 +4,8 @@ The server supports multiple installed browser emulators through versioned, data
 
 ## Install a player
 
+For normal setup use **Settings → Emulators**: one-click trusted installs or a native `.ecsplayer` file picker, enable/disable, default and managed removal. See [emulator management](emulator-management.md). The manual directory instructions below remain available to operators.
+
 1. Copy the [installation template](../../examples/plugins/player-web/) into an operator-owned absolute directory, for example `/opt/ecs-players/my-emulator/`.
 2. Put the self-contained Emscripten ES-module loader, WASM binary and any declared data files beside `plugin.json`. Set the supported system identifiers, content extensions, build version and content size limit to match that build.
 3. Replace the template's zero SHA-256 values with hashes of the actual artifacts. For example, `shasum -a 256 loader.js core.wasm` prints the two digests.
@@ -38,7 +40,7 @@ The frame's content policy blocks network reads and workers; its sandbox blocks 
 | Loader / WASM | 8 MiB / 64 MiB per profile |
 | Declared extra assets | 16 files, 32 MiB total per profile |
 | Startup snapshots | 256 MiB across the registry |
-| Game / selected or captured save | 64 MiB each, or the profile's smaller game limit |
+| Game / selected or captured save | Plugin game up to512MiB; saves64MiB; legacy NES64MiB, or a smaller declared game limit |
 | Systems / extensions | 64 / 32 per profile |
 | Pending runtime operations | 32 |
 

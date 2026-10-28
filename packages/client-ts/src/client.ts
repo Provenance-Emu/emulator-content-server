@@ -29,8 +29,10 @@ import type {
   Manifest,
   MatchingOptions,
   MatchingPluginList,
+  PlayerConfiguration,
   PlayerCoreDescriptor,
   PlayerCoreResource,
+  PlayerManagement,
   Problem,
   SessionResponse,
   SourceFileList,
@@ -255,6 +257,76 @@ export class ContentClient {
       maxBytes: 64 * 1024 * 1024,
     });
     return { loader, wasm };
+  }
+
+  playerManagement(): Promise<PlayerManagement> {
+    return this.getJson('/api/v1/player/management', 'error');
+  }
+  installPlayer(id: string): Promise<PlayerManagement> {
+    validatePlayerId(id);
+    return this.playerInstallRequest(id);
+  }
+  private async playerInstallRequest(id: string): Promise<PlayerManagement> {
+    const response = await fetch(this.url(`/api/v1/player/management/install/${id}`), {
+      method: 'POST',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: '{}',
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+    return response.json() as Promise<PlayerManagement>;
+  }
+  configurePlayer(id: string, configuration: PlayerConfiguration): Promise<PlayerManagement> {
+    validatePlayerId(id);
+    return this.playerConfigurationRequest(id, configuration);
+  }
+  private async playerConfigurationRequest(
+    id: string,
+    body: PlayerConfiguration,
+  ): Promise<PlayerManagement> {
+    const response = await fetch(this.url(`/api/v1/player/management/${id}`), {
+      method: 'PATCH',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+    return response.json() as Promise<PlayerManagement>;
+  }
+  async removePlayer(id: string): Promise<PlayerManagement> {
+    validatePlayerId(id);
+    const response = await fetch(this.url(`/api/v1/player/management/${id}`), {
+      method: 'DELETE',
+      headers: this.headers(),
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+    return response.json() as Promise<PlayerManagement>;
+  }
+  async installPlayerSystemFile(id: string, name: string, file: Blob): Promise<PlayerManagement> {
+    validatePlayerId(id);
+    if (name !== 'awbios.zip' || file.size < 22 || file.size > 32 * 1024 * 1024)
+      throw new Error('Select awbios.zip (up to32MiB)');
+    const response = await fetch(this.url(`/api/v1/player/management/${id}/system/${name}`), {
+      method: 'PUT',
+      headers: { ...this.headers(), 'content-type': 'application/vnd.ecs.player-system-file' },
+      body: file,
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+    return response.json() as Promise<PlayerManagement>;
+  }
+  async installPlayerPackage(file: Blob): Promise<PlayerManagement> {
+    if (file.size < 4 || file.size > 104 * 1024 * 1024 + 65540)
+      throw new Error('Emulator package exceeds supported size');
+    const response = await fetch(this.url('/api/v1/player/management/install'), {
+      method: 'POST',
+      headers: { ...this.headers(), 'content-type': 'application/vnd.ecs.player-package' },
+      body: file,
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+    return response.json() as Promise<PlayerManagement>;
   }
 
   async playerProfiles(): Promise<WebPlayerCatalog> {
@@ -1498,7 +1570,7 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     p.buildVersion.length > 128 ||
     !Number.isSafeInteger(p.maxContentBytes) ||
     p.maxContentBytes <= 0 ||
-    p.maxContentBytes > 67108864
+    p.maxContentBytes > 536870912
   )
     throw new Error('Unsupported player profile');
   if (

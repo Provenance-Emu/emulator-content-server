@@ -8,6 +8,7 @@
   import Accounts from './Accounts.svelte';
   import WebDav from './WebDav.svelte';
   import DeviceTokens from './DeviceTokens.svelte';
+  import EmulatorSettings from './EmulatorSettings.svelte';
   import Audit from './Audit.svelte';
   import Status from './Status.svelte';
   let {
@@ -16,7 +17,7 @@
     onback,
     onview,
     onrejected,
-    context, onrename,
+    context, onrename, onplayerschange,
   }: {
     client: ContentClient;
     appState: ApplicationState;
@@ -24,10 +25,11 @@
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
     context: FolderContext; onrename: (library: Library) => void;
+    onplayerschange?: () => void | Promise<void>;
   } = $props();
   let selected = $state('Libraries');
   let noted = $state(0);
-  const sections = ['Libraries', 'Storage', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status'];
+  const sections = ['Libraries', 'Storage', 'Emulators', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status'];
   const visibleSections = $derived(sections.filter(name => name === 'WebDAV'
     ? appState.capabilities?.features.webdav && appState.hasSession
     : appState.owner || name === 'Server status'));
@@ -58,7 +60,7 @@
         invalidation={appState.invalidation}
         {onview} {onrejected} {context} {onrename}
         onchange={() => noted++}
-      />{:else if appState.owner && selected === 'Access'}<h1>Access</h1>
+      />{:else if appState.owner && selected === 'Emulators'}<EmulatorSettings {client} {onrejected} onchange={onplayerschange ?? context.onchanged ?? (() => {})} />{:else if appState.owner && selected === 'Access'}<h1>Access</h1>
       <Accounts {client} libraries={appState.libraries} {onrejected} onchange={context.onchanged ?? (() => {})} />
       <Grants
         {client}

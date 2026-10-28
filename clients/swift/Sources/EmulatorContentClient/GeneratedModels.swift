@@ -170,6 +170,62 @@ public struct WebPlayerDescriptor: Codable, Equatable, Sendable {
     }
 }
 
+public struct PlayerConfiguration: Codable, Equatable, Sendable {
+    public var enabled: Bool?
+    public var default: Bool?
+
+    public init(enabled: Bool? = nil, default: Bool? = nil) {
+        self.enabled = enabled
+        self.default = default
+    }
+}
+
+public struct PlayerInstallation: Codable, Equatable, Sendable {
+    public var profile: WebPlayerDescriptor
+    public var enabled: Bool
+    public var source: String
+    public var removable: Bool
+
+    public init(profile: WebPlayerDescriptor, enabled: Bool, source: String, removable: Bool) {
+        self.profile = profile
+        self.enabled = enabled
+        self.source = source
+        self.removable = removable
+    }
+}
+
+public struct PlayerCatalogEntry: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var systems: [String]
+    public var description: String
+    public var available: Bool
+    public var reason: String?
+    public var downloadBytes: Int?
+
+    public init(id: String, name: String, systems: [String], description: String, available: Bool, reason: String? = nil, downloadBytes: Int? = nil) {
+        self.id = id
+        self.name = name
+        self.systems = systems
+        self.description = description
+        self.available = available
+        self.reason = reason
+        self.downloadBytes = downloadBytes
+    }
+}
+
+public struct PlayerManagement: Codable, Equatable, Sendable {
+    public var items: [PlayerInstallation]
+    public var defaultProfileId: String?
+    public var available: [PlayerCatalogEntry]
+
+    public init(items: [PlayerInstallation], defaultProfileId: String? = nil, available: [PlayerCatalogEntry]) {
+        self.items = items
+        self.defaultProfileId = defaultProfileId
+        self.available = available
+    }
+}
+
 public struct WebPlayerCatalog: Codable, Equatable, Sendable {
     public var items: [WebPlayerDescriptor]
     public var defaultProfileId: String?
