@@ -1,9 +1,27 @@
 import { spawnSync } from 'node:child_process';
-import { cp, lstat, readdir, stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { copyFile, cp, lstat, readdir, rename, rm, stat } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
+
+// pnpm deploy may hardlink source build output. A running installation must be a snapshot.
+async function detachBuildFiles(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) await detachBuildFiles(path);
+    else if (entry.isFile() && (await lstat(path)).nlink > 1) {
+      const temporary = `${path}.ecs-copy-${randomUUID()}`;
+      try {
+        await copyFile(path, temporary);
+        await rename(temporary, path);
+      } finally {
+        await rm(temporary, { force: true });
+      }
+    }
+  }
+}
 
 /** Deploy the already built production graph and its first-party web interface. */
 export async function bundle(destination, stdio = 'inherit') {
@@ -32,6 +50,7 @@ export async function bundle(destination, stdio = 'inherit') {
   );
   if (deployed.error) throw deployed.error;
   if (deployed.status !== 0) throw new Error(`Production deployment failed (${deployed.status})`);
+  await detachBuildFiles(target);
   await cp(web, resolve(target, 'ui'), { recursive: true });
   await cp(resolve(root, 'LICENSE'), resolve(target, 'LICENSE'));
   await cp(resolve(root, 'docs/operations/first-version.md'), resolve(target, 'FIRST-VERSION.md'));

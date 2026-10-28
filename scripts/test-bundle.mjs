@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -45,6 +45,13 @@ test('isolated production bundle serves health, interface and its JS/CSS assets'
   let child;
   try {
     const deployed = await bundle(join(temporary, 'server'), 'ignore');
+    for (const path of ['dist/src/main.js', 'node_modules/@ecs/server/dist/src/app.js']) {
+      assert.equal(
+        (await stat(join(deployed, path))).nlink,
+        1,
+        'A later source build must never mutate the production snapshot through a hardlink',
+      );
+    }
     const reserve = createServer();
     reserve.listen(0, '127.0.0.1');
     await once(reserve, 'listening');

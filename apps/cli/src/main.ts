@@ -35,7 +35,7 @@ const DEFAULT_PORT = 8473;
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  if (!command || command === '--help' || command === 'help') {
+  if (!command || has('--help') || has('-h') || command === 'help') {
     printHelp();
     return;
   }

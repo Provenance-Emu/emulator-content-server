@@ -1,5 +1,15 @@
 # Handoff
 
+## Real core and installer refresh — 2026-10-28
+
+Real patched pinned RetroArch/FCEUmm built externally under ~/.cache/ecs-web-player-build-20261028; reused web_player_backend agent for build and a bounded read-only loader investigation. Exact pins/actual hashes and final clean headed Chromium145 acceptance are in docs/operations/browser-playback-plugin-acceptance.md. Production first-party bootstrap/core bytes unmodified in final passing run: rendering, keyboard counter1→2, nonzero audio225buffers/peak0.198225, SRAM8192bytes fresh restore2→3, state restores2, Stop disposes iframe, zero unhandled runtime errors. Headless GL failed; headed browser works without relaxing sandbox. Test uses keyboard battery/Stop activation for macOS pointer-focus instability. Normal runs skip the opt-in real-core test.
+
+Added scripts/browser-core/install-plugin.mjs validating and copying pinned bytes into a new external registry; refuses existing installs and repository output. Two installer tests pass. Fixed CLI --help at any argument position before side effects (red/green regression across init/service/backup/roots). Fixed scripts/bundle.mjs detaching pnpm hardlinks so source builds cannot mutate deployments (red nlink8→green nlink1; production startup/UI/assets3tests pass). Web226tests, tray23+one existing platform skip, both Svelte0/0, lint/drift/boundaries/secret/diff checks pass.
+
+Installed real org.libretro.fceumm profile in ~/Library/Application Support/Emulation Server/players/fceumm. Local LaunchAgent now points at ignored dist-release/0.1.4/server/dist/src/main.js with --player-plugins pointing at its players parent; same content-data/127.0.0.1:8473, health/integrity/bootstrap pass, actual HTTP loader/WASM SHA checks pass. No test game/save was added to operator catalog. Preserve this detached deployment, stable operator player registry and original data. Previous plist is /tmp/ecs-service-before-014.plist. No emulator binary is embedded in installers.
+
+Numeric desktop/CLI version0.1.4 prepared. Desktop packaging/publication for v0.1.4-alpha.1 follows this frozen source. Update this checkpoint after signing/notarization, installer jobs, digest verification and native installation complete. Remaining backlog: native streaming destinations, deepmerge advisory, additional core/gamepad/browser/platform acceptance. The CLI-help and deployment-hardlink issues from the preceding handoff are now fixed.
+
 ## Emscripten/WASM plugins and reusable forms — 2026-10-28
 
 Implemented multi-profile browser playback. Data-only `player.web` manifests declare runtime/MEMFS, supported systems/extensions, build version, save completion, hash-pinned loader/WASM and optional assets. CLI/service accept `--player-plugins` or `ECS_PLAYER_PLUGINS`. Startup snapshots bounded regular files without executing plugins; additive authenticated profile/catalog/resource routes and TS client byte/hash verification preserve the legacy pinned NES API. Regenerated OpenAPI clients and intentional v1 surface. No schema migration, emulator download, ROM fixture or operator profile installation.
