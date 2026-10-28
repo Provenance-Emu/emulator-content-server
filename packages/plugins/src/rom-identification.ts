@@ -1033,6 +1033,7 @@ export async function identifyRom(
         }
       },
       runTool(tool, args, limits) {
+        if (activeTools.size) throw failure('tool-busy');
         if (++calls > 48) throw failure('tool-call-limit');
         const owned = nativeTool(request, tool, args, limits, limited, charge).finally(() => {
           activeTools.delete(owned);

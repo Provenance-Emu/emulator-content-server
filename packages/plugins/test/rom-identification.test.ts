@@ -323,3 +323,47 @@ test('NES declared payload permits only bounded uniform padding and retains the 
     }
   }
 });
+
+test('reader plugins cannot fan out multiple native processes', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-identify-serial-tools-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const path = join(directory, 'generated.data');
+  await writeFile(path, Buffer.from([1, 2, 3, 4]));
+  let blocked = false;
+  await identifyRom(
+    {
+      path,
+      name: 'generated.data',
+      size: 4,
+      systemId: null,
+      tools: { sevenZip: process.execPath },
+    },
+    undefined,
+    [
+      {
+        id: 'test.serial.tools',
+        supports: () => true,
+        async identify(_request, reader) {
+          const first = reader.runTool('sevenZip', ['-e', 'setTimeout(()=>{},25)'], {
+            maxStdoutBytes: 1024,
+          });
+          try {
+            reader.runTool('sevenZip', ['-e', 'process.exit(0)'], { maxStdoutBytes: 1024 });
+          } catch (error) {
+            blocked = error instanceof Error && error.message.includes('tool-busy');
+          }
+          await first;
+          return {
+            version: 1,
+            pluginIds: [],
+            hashes: [],
+            identifiers: [],
+            names: [],
+            warnings: [],
+          };
+        },
+      },
+    ],
+  );
+  assert.equal(blocked, true);
+});
