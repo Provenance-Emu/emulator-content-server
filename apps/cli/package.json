@@ -1,6 +1,6 @@
 {
   "name": "@provenance-content/server",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "bin": {
     "ecs": "./dist/src/main.js",

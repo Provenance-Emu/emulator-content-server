@@ -1,0 +1,174 @@
+diff --git a/core/hw/mem/_vmem.cpp b/core/hw/mem/_vmem.cpp
+index fb0ac69..1877ec4 100644
+--- a/core/hw/mem/_vmem.cpp
++++ b/core/hw/mem/_vmem.cpp
+@@ -1,4 +1,5 @@
+ #include "_vmem.h"
++#include <retro_atomic.h>
+ #include "hw/aica/aica_if.h"
+ #include "hw/sh4/dyna/blockmanager.h"
+ #include "hw/pvr/pvr_mem.h"
+diff --git a/core/hw/naomi/naomi_m3comm.cpp b/core/hw/naomi/naomi_m3comm.cpp
+index 43db476..ef91dba 100644
+--- a/core/hw/naomi/naomi_m3comm.cpp
++++ b/core/hw/naomi/naomi_m3comm.cpp
+@@ -30,7 +30,9 @@ void NaomiM3Comm::closeNetwork()
+ 	network.shutdown();
+ 	if (thread != nullptr)
+ 	{
++#ifndef TARGET_NO_THREADS
+ 		sthread_join(thread);
++#endif
+ 		thread = nullptr;
+ 	}
+ 	// The network thread is gone: its sockets can be closed from here.
+@@ -408,8 +410,10 @@ void NaomiM3Comm::startThread()
+ 	if (!settings.network.ActAsServer && settings.network.server.empty())
+ 		return;
+ 	// The socket shutdown() ends the network thread's waits with
++#ifndef TARGET_NO_THREADS
+ 	network.armWake();
+ 	thread = sthread_create(threadEntry, this);
++#endif
+ }
+ 
+ void NaomiM3Comm::threadEntry(void *self)
+diff --git a/core/hw/sh4/sh4_core_regs.cpp b/core/hw/sh4/sh4_core_regs.cpp
+index 7e57653..a98eff5 100644
+--- a/core/hw/sh4/sh4_core_regs.cpp
++++ b/core/hw/sh4/sh4_core_regs.cpp
+@@ -152,6 +152,9 @@ static void setHostRoundingMode()
+                 : "r"(off_mask), "r"(on_mask)
+                 : "x10"
+             );
++#elif defined(__EMSCRIPTEN__)
++        /* WebAssembly has fixed host rounding/subnormal behavior.
++         * This interpreter build cannot emulate native FP control registers. */
+ #else
+ 	#error "SetFloatStatusReg: Unsupported platform"
+ #endif
+diff --git a/core/imgread/chd.cpp b/core/imgread/chd.cpp
+index 622ce57..7a48d34 100644
+--- a/core/imgread/chd.cpp
++++ b/core/imgread/chd.cpp
+@@ -73,9 +73,11 @@ struct CHDDisc : Disc
+ 		const u32 in   = (fad_offs % sph) * (2352 + 96);
+ 		const u8* ptr;
+ 
++		#ifndef TARGET_NO_THREADS
+ 		if (streams[stream].p
+ 				&& vfs_prefetch_view(streams[stream].p, (uint64_t)hunk * hunkbytes + in, &ptr) > 0)
+ 			return ptr;
++		#endif
+ 		if (hunk != old_hunk)
+ 			hunk_read_sync(hunk);
+ 		return hunk_mem + in;
+@@ -84,12 +86,15 @@ struct CHDDisc : Disc
+ 	/* The stream's thread starts on @hunk now, ahead of the reads. */
+ 	void stream_aim(unsigned stream, u32 hunk)
+ 	{
++#ifndef TARGET_NO_THREADS
+ 		if (streams[stream].p)
+ 			vfs_prefetch_seek(streams[stream].p, (uint64_t)hunk * hunkbytes);
++	#endif
+ 	}
+ 
+ 	void start_streams(const char* file)
+ 	{
++#ifndef TARGET_NO_THREADS
+ 		for (unsigned i = 0; i < CHD_STREAMS; i++)
+ 		{
+ 			Stream& st = streams[i];
+@@ -103,10 +108,12 @@ struct CHDDisc : Disc
+ 				st.chd = nullptr;
+ 			}
+ 		}
++	#endif
+ 	}
+ 
+ 	void stop_streams()
+ 	{
++#ifndef TARGET_NO_THREADS
+ 		for (unsigned i = 0; i < CHD_STREAMS; i++)
+ 		{
+ 			vfs_prefetch_free(streams[i].p);
+@@ -114,6 +121,7 @@ struct CHDDisc : Disc
+ 			chd_image_close(streams[i].chd);
+ 			streams[i].chd = nullptr;
+ 		}
++	#endif
+ 	}
+ 
+ 	CHDDisc()
+diff --git a/core/libretro/libretro.cpp b/core/libretro/libretro.cpp
+index a38ed92..7f1b99c 100644
+--- a/core/libretro/libretro.cpp
++++ b/core/libretro/libretro.cpp
+@@ -65,7 +65,9 @@ char* strdup(const char *str)
+ #include <retro_atomic.h>
+ #include <retro_timers.h>
+ #include "emulator.h"
++#if !defined(TARGET_NO_THREADS)
+ #include "emu_baton.h"
++#endif
+ #include "input_latch.h"
+ #include "../rend/rend.h"
+ #include "../hw/sh4/sh4_mem.h"
+@@ -325,11 +327,11 @@ char game_dir_no_slash[1024];
+ char vmu_dir_no_slash[PATH_MAX];
+ char content_name[PATH_MAX];
+ char g_roms_dir[PATH_MAX];
++static int threading_pending;
+ #if !defined(TARGET_NO_THREADS)
+ static void *emu_thread_func(void *);
+ static retro_atomic_int_t emu_thread_leaves_machine;
+ /* The Threaded Rendering option changed while the game runs: +1 on, -1 off (libretro thread only) */
+-static int threading_pending;
+ static void apply_threading(void);
+ static cThread emu_thread(&emu_thread_func, 0);
+ static bool emu_thread_started = false;   /* libretro thread only */
+diff --git a/core/rend/CustomTexture.cpp b/core/rend/CustomTexture.cpp
+index abfc299..6f50008 100644
+--- a/core/rend/CustomTexture.cpp
++++ b/core/rend/CustomTexture.cpp
+@@ -38,6 +38,7 @@
+ extern const char *retro_get_system_directory();
+ 
+ CustomTexture custom_texture;
++#ifndef TARGET_NO_THREADS
+ 
+ /* Loader thread: load the custom image for one queued texture. Requests
+  * that arrive for it meanwhile are not queued again (the count is not
+@@ -348,3 +349,5 @@ void CustomTexture::LoadMap()
+ 	retro_closedir(dir);
+ 	retro_atomic_store_release_int(&custom_textures_available, !texture_map.empty());
+ }
++
++#endif // TARGET_NO_THREADS
+diff --git a/core/rend/CustomTexture.h b/core/rend/CustomTexture.h
+index ac40fdf..f49b8a8 100644
+--- a/core/rend/CustomTexture.h
++++ b/core/rend/CustomTexture.h
+@@ -26,6 +26,16 @@
+ #include <vector>
+ #include <map>
+ 
++#ifdef TARGET_NO_THREADS
++// Browser profiles cannot load thread-backed replacement textures.
++class CustomTexture {
++public:
++ u8* LoadCustomTexture(u32, int&, int&) { return NULL; }
++ void LoadCustomTextureAsync(BaseTextureCacheData*) {}
++ void DumpTexture(u32, int, int, TextureType, void*) {}
++ void Terminate() {}
++};
++#else
+ class CustomTexture {
+ public:
+ 	CustomTexture() : loader_thread(loader_thread_func, this)
+@@ -66,4 +76,5 @@ private:
+ 	std::map<u32, std::string> texture_map;
+ };
+ 
++#endif
+ extern CustomTexture custom_texture;
