@@ -6,6 +6,14 @@ operator catalog. Build the bundled app with `pnpm --filter @ecs/tray tauri buil
 --bundles app`; `pnpm --filter @ecs/tray check` and the Rust fixture tests cover
 controllers and fixed native boundaries separately.
 
+## Installer refresh — 2026-10-28
+
+Published [v0.1.4-alpha.1](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.4-alpha.1) from frozen source `2f1c869`. The Mac arm64 app/DMG are Developer ID signed; Apple accepted notary submission `f415818f-ae5c-4bb2-b89f-d70f44b354a9`. App and DMG tickets validate, and Gatekeeper reports Notarized Developer ID. The installed Applications copy reports 0.1.4 and its ticket validates; the previous app was moved recoverably to Trash. The installed app reopened with the existing local server profile, rendered Home and the existing 935-game library, and showed the new shared category/navigation controls. No test upload, folder registration, metadata selection or save was made against that catalog.
+
+Windows packaging run `40637200521` and Linux packaging run `40637203044` both succeeded from the same tag. DMG, MSI, DEB, AppImage and portable Node22 archive are published; all five GitHub artifact digests match the downloaded platform/server checksum files. These are installer build checks, not live Windows/Linux GUI acceptance. Native Rust logic was unchanged apart from the version; both UI typechecks, 23 tray tests (one existing platform skip), 226 web tests and the focused UI/real-player checks pass.
+
+The separately installed `org.libretro.fceumm` profile passed [real browser plugin acceptance](browser-playback-plugin-acceptance.md). No emulator or content binaries are embedded in the installers. The local LaunchAgent now uses the independent `dist-release/0.1.4/server` deployment and the stable operator player registry; data, profiles and sessions remain intact. The bundle script now detaches pnpm hardlinks before activation, preventing subsequent source builds from changing an installed snapshot. CLI help is also side-effect-free before service/data operations.
+
 ## Installer refresh — 2026-10-26
 
 0.1.2-alpha.1 is published with the new shared library UI. Apple accepted the signed DMG (submission `361ed6f7-84f8-4149-b50c-37b5a06efd6a`); DMG and app tickets validate and Gatekeeper reports Notarized Developer ID. The installed Applications copy reports version 0.1.2. Windows and Linux packaging jobs succeeded; all five published installer/archive digests match their checksum files.
