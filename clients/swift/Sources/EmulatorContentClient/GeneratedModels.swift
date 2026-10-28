@@ -122,6 +122,64 @@ public struct PlayerCoreDescriptor: Codable, Equatable, Sendable {
     }
 }
 
+public struct WebPlayerAsset: Codable, Equatable, Sendable {
+    public var name: String
+    public var url: String
+    public var sha256: String
+    public var sizeBytes: Int64
+
+    public init(name: String, url: String, sha256: String, sizeBytes: Int64) {
+        self.name = name
+        self.url = url
+        self.sha256 = sha256
+        self.sizeBytes = sizeBytes
+    }
+}
+
+public struct WebPlayerDescriptor: Codable, Equatable, Sendable {
+    public var profileVersion: Int
+    public var id: String
+    public var name: String
+    public var systems: [String]
+    public var runtime: String
+    public var filesystem: String
+    public var threaded: Bool
+    public var saveCompletion: String
+    public var contentExtensions: [String]
+    public var maxContentBytes: Int64
+    public var buildVersion: String
+    public var loader: PlayerCoreResource
+    public var wasm: PlayerCoreResource
+    public var assets: [WebPlayerAsset]
+
+    public init(profileVersion: Int, id: String, name: String, systems: [String], runtime: String, filesystem: String, threaded: Bool, saveCompletion: String, contentExtensions: [String], maxContentBytes: Int64, buildVersion: String, loader: PlayerCoreResource, wasm: PlayerCoreResource, assets: [WebPlayerAsset]) {
+        self.profileVersion = profileVersion
+        self.id = id
+        self.name = name
+        self.systems = systems
+        self.runtime = runtime
+        self.filesystem = filesystem
+        self.threaded = threaded
+        self.saveCompletion = saveCompletion
+        self.contentExtensions = contentExtensions
+        self.maxContentBytes = maxContentBytes
+        self.buildVersion = buildVersion
+        self.loader = loader
+        self.wasm = wasm
+        self.assets = assets
+    }
+}
+
+public struct WebPlayerCatalog: Codable, Equatable, Sendable {
+    public var items: [WebPlayerDescriptor]
+    public var defaultProfileId: String?
+
+    public init(items: [WebPlayerDescriptor], defaultProfileId: String? = nil) {
+        self.items = items
+        self.defaultProfileId = defaultProfileId
+    }
+}
+
 public struct Limits: Codable, Equatable, Sendable {
     public var maxUploadBytes: Int64
     public var maxPageSize: Int

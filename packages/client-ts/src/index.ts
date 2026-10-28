@@ -94,4 +94,9 @@ export type {
   WebDavCredentialCreated,
   WebDavCredentialDraft,
   WebDavCredentialList,
+  WebPlayerAsset,
+  WebPlayerCatalog,
+  WebPlayerDescriptor,
 } from './generated.js';
+
+export { sha256Bytes } from './sha256.js';

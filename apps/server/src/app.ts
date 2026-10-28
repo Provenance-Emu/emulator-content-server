@@ -21,6 +21,7 @@ import { FolderWatcher } from './folder-watcher.js';
 import { sendProblem } from './http.js';
 import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
 import { loadPlayerAssets, registerPlayerAssets } from './player-assets.js';
+import { loadPlayerProfiles } from './player-profiles.js';
 import { registerRoutes } from './routes.js';
 import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
 import { registerWebDavCredentials } from './webdav-credentials.js';
@@ -38,6 +39,8 @@ export interface OpenServerOptions {
   uiDir?: string | null;
   /** Trusted static browser core directory; absent means no playback or filesystem probe. */
   playerDir?: string;
+  /** Data-only browser player plugin registry. Nothing is executed by the server. */
+  playerPluginsDir?: string;
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
   loginLimit?: number;
@@ -52,6 +55,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
 }> {
   const player =
     options.playerDir === undefined ? undefined : await loadPlayerAssets(options.playerDir);
+  const profiles = await loadPlayerProfiles(options.playerPluginsDir, player);
   await ensureLayout(options.dataDir);
   const dataDir = await realpath(options.dataDir);
   const virtual = new VirtualProviderRegistry([
@@ -71,6 +75,8 @@ export async function openServer(options: OpenServerOptions): Promise<{
     catalog,
     ...(options.matchingPluginsDir ? { matchingPluginsDir: options.matchingPluginsDir } : {}),
     player,
+    playerProfiles: profiles.items,
+    defaultPlayerProfileId: profiles.defaultProfileId,
     dataDir,
     webdavEnabled: options.webdavEnabled === true,
     displayName: options.displayName ?? 'Emulation Server',

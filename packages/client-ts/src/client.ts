@@ -30,6 +30,7 @@ import type {
   MatchingOptions,
   MatchingPluginList,
   PlayerCoreDescriptor,
+  PlayerCoreResource,
   Problem,
   SessionResponse,
   SourceFileList,
@@ -52,7 +53,10 @@ import type {
   WebDavCredentialCreated,
   WebDavCredentialDraft,
   WebDavCredentialList,
+  WebPlayerCatalog,
+  WebPlayerDescriptor,
 } from './generated.js';
+import { sha256Bytes } from './sha256.js';
 
 export type LibraryScope = { libraryId: string } | { unassigned: true };
 export type BrowseCategory = 'games' | 'saves' | 'media' | 'system_files';
@@ -251,6 +255,56 @@ export class ContentClient {
       maxBytes: 64 * 1024 * 1024,
     });
     return { loader, wasm };
+  }
+
+  async playerProfiles(): Promise<WebPlayerCatalog> {
+    const catalog = await this.getJson<WebPlayerCatalog>('/api/v1/player/profiles', 'error');
+    if (!catalog || !Array.isArray(catalog.items) || catalog.items.length > 16)
+      throw new Error('Invalid player catalog');
+    for (const p of catalog.items) validatePlayerProfile(p, p.id);
+    const ids = new Set(catalog.items.map((p) => p.id));
+    if (
+      ids.size !== catalog.items.length ||
+      (catalog.defaultProfileId !== null && !ids.has(catalog.defaultProfileId))
+    )
+      throw new Error('Invalid player catalog default or duplicate identifier');
+    return catalog;
+  }
+
+  async playerProfile(id: string): Promise<WebPlayerDescriptor> {
+    validatePlayerId(id);
+    const descriptor = await this.getJson<WebPlayerDescriptor>(
+      `/api/v1/player/profiles/${id}`,
+      'error',
+    );
+    validatePlayerProfile(descriptor, id);
+    return descriptor;
+  }
+
+  /** Fetch only fixed authenticated routes, verify every byte, and never follow descriptor URLs. */
+  async playerProfileAssets(id: string): Promise<{
+    loader: CollectedAsset;
+    wasm: CollectedAsset;
+    assets: { name: string; bytes: Uint8Array<ArrayBuffer> }[];
+  }> {
+    const p = await this.playerProfile(id);
+    const base = `/play/plugins/${id}`;
+    const read = async (resource: PlayerCoreResource, path: string) => {
+      const asset = await this.collectPath(path, { maxBytes: resource.sizeBytes, attempts: 1 });
+      const sha256 = await sha256Bytes(asset.bytes);
+      if (asset.bytes.byteLength !== resource.sizeBytes || sha256 !== resource.sha256)
+        throw new Error('Player resource size or SHA-256 mismatch');
+      return asset;
+    };
+    const loader = await read(p.loader, `${base}/loader.js`);
+    const wasm = await read(p.wasm, `${base}/core.wasm`);
+    const assets = [];
+    for (const spec of p.assets)
+      assets.push({
+        name: spec.name,
+        bytes: (await read(spec, `${base}/assets/${spec.name}`)).bytes,
+      });
+    return { loader, wasm, assets };
   }
 
   /** Reads only a typed source endpoint, with the same resume guarantees as assets. */
@@ -1416,4 +1470,88 @@ function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage 
     )
       return fail();
   }
+}
+
+function validatePlayerId(id: string): void {
+  if (
+    typeof id !== 'string' ||
+    id.length > 120 ||
+    !/^(?:[a-z0-9][a-z0-9_-]{0,63}|[a-z0-9]+(?:\.[a-z0-9-]+)+)$/.test(id)
+  )
+    throw new Error('Invalid player profile identifier');
+}
+function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
+  validatePlayerId(id);
+  if (
+    !p ||
+    p.id !== id ||
+    p.profileVersion !== 1 ||
+    !['emscripten-esm-v1', 'retroarch-emscripten-esm'].includes(p.runtime) ||
+    p.filesystem !== 'memfs' ||
+    p.threaded !== false ||
+    !['none', 'command-reply-v1'].includes(p.saveCompletion) ||
+    typeof p.name !== 'string' ||
+    !p.name.length ||
+    p.name.length > 80 ||
+    typeof p.buildVersion !== 'string' ||
+    !p.buildVersion.length ||
+    p.buildVersion.length > 128 ||
+    !Number.isSafeInteger(p.maxContentBytes) ||
+    p.maxContentBytes <= 0 ||
+    p.maxContentBytes > 67108864
+  )
+    throw new Error('Unsupported player profile');
+  if (
+    !Array.isArray(p.systems) ||
+    !p.systems.length ||
+    p.systems.length > 64 ||
+    new Set(p.systems).size !== p.systems.length ||
+    p.systems.some(
+      (x) =>
+        typeof x !== 'string' || x.length > 120 || !/^[A-Za-z0-9]+(?:\.[A-Za-z0-9_-]+)+$/.test(x),
+    )
+  )
+    throw new Error('Invalid player systems');
+  if (
+    !Array.isArray(p.contentExtensions) ||
+    !p.contentExtensions.length ||
+    p.contentExtensions.length > 32 ||
+    new Set(p.contentExtensions).size !== p.contentExtensions.length ||
+    p.contentExtensions.some((x) => typeof x !== 'string' || !/^[a-z0-9]{1,16}$/.test(x))
+  )
+    throw new Error('Invalid player extensions');
+  const base = `/play/plugins/${id}`;
+  const resource = (r: PlayerCoreResource, path: string, cap: number) => {
+    if (
+      !r ||
+      r.url !== path ||
+      typeof r.sha256 !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(r.sha256) ||
+      !Number.isSafeInteger(r.sizeBytes) ||
+      r.sizeBytes <= 0 ||
+      r.sizeBytes > cap
+    )
+      throw new Error('Invalid player resource path, size, or hash');
+  };
+  resource(p.loader, `${base}/loader.js`, 8388608);
+  resource(p.wasm, `${base}/core.wasm`, 67108864);
+  if (!Array.isArray(p.assets) || p.assets.length > 16) throw new Error('Invalid player assets');
+  const names = new Set<string>();
+  let total = 0;
+  for (const a of p.assets) {
+    if (
+      !a ||
+      typeof a.name !== 'string' ||
+      !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(a.name) ||
+      a.name.endsWith('.') ||
+      /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(a.name) ||
+      /^(?:loader\.js|core\.wasm|plugin\.json)$/i.test(a.name) ||
+      names.has(a.name.toLowerCase())
+    )
+      throw new Error('Invalid player asset name');
+    names.add(a.name.toLowerCase());
+    resource(a, `${base}/assets/${a.name}`, 33554432);
+    total += a.sizeBytes;
+  }
+  if (total > 33554432) throw new Error('Player assets exceed total byte limit');
 }

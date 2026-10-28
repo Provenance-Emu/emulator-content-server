@@ -1,44 +1,50 @@
-import type { Item, ManifestFile, PlayerCoreDescriptor, SourceFile } from '@ecs/client';
-import { validateProfile } from './runtime.js';
-
-function supports(
-  core: PlayerCoreDescriptor | null,
+import type { Item, ManifestFile, SourceFile } from '@ecs/client';
+import { type BrowserCore, contentExtensions, validateProfile } from './runtime.js';
+export type PlayableCores = BrowserCore | readonly BrowserCore[] | null;
+function supported(
+  cores: PlayableCores,
   system: string | null,
   name: string,
   kind: string,
   size: number,
-): boolean {
-  if (!core) return false;
-  try {
-    validateProfile(core);
-  } catch {
-    return false;
-  }
-  return (
-    kind === 'rom' &&
-    system !== null &&
-    core.systems.includes(system) &&
-    name.toLowerCase().endsWith('.nes') &&
-    size > 0 &&
-    size <= core.maxContentBytes
-  );
-}
-export function assetPlayHref(
-  core: PlayerCoreDescriptor | null,
-  item: Item,
-  file: ManifestFile,
-): string | null {
-  if (!supports(core, item.systemIdentifier, file.relativePath, file.kind, file.size)) return null;
-  return `/play/?item=${encodeURIComponent(item.id)}&asset=${encodeURIComponent(file.id)}`;
-}
-export function sourcePlayHref(
-  core: PlayerCoreDescriptor | null,
-  source: SourceFile,
-): string | null {
+): BrowserCore | undefined {
   if (
-    source.availability !== 'local' ||
-    !supports(core, source.systemId, source.name, source.kind, source.size)
+    !cores ||
+    system === null ||
+    kind !== 'rom' ||
+    size <= 0 ||
+    /\.(cue|gdi|ccd|m3u)$/i.test(name)
   )
-    return null;
-  return `/play/?source=${encodeURIComponent(source.id)}`;
+    return;
+  for (const core of Array.isArray(cores) ? cores : [cores as BrowserCore]) {
+    try {
+      validateProfile(core);
+    } catch {
+      continue;
+    }
+    if (
+      core.systems.includes(system) &&
+      contentExtensions(core).some((extension) => name.toLowerCase().endsWith(`.${extension}`)) &&
+      size <= core.maxContentBytes
+    )
+      return core;
+  }
+}
+function profileQuery(core: BrowserCore): string {
+  return 'profileVersion' in core && core.id.includes('.')
+    ? `&profile=${encodeURIComponent(core.id)}`
+    : '';
+}
+export function assetPlayHref(cores: PlayableCores, item: Item, file: ManifestFile): string | null {
+  const core = supported(cores, item.systemIdentifier, file.relativePath, file.kind, file.size);
+  return core
+    ? `/play/?item=${encodeURIComponent(item.id)}&asset=${encodeURIComponent(file.id)}${profileQuery(core)}`
+    : null;
+}
+export function sourcePlayHref(cores: PlayableCores, source: SourceFile): string | null {
+  const core =
+    source.availability === 'local' && (source.groupFileCount ?? 1) <= 1
+      ? supported(cores, source.systemId, source.name, source.kind, source.size)
+      : undefined;
+  return core ? `/play/?source=${encodeURIComponent(source.id)}${profileQuery(core)}` : null;
 }

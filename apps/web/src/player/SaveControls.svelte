@@ -1,7 +1,7 @@
 <script lang="ts">
   import { explain } from '../lib/problems';
   import type { SaveKind, SaveSynchronizer } from './saves.js';
-  let { saves, hasState }: { saves: SaveSynchronizer | null; hasState: boolean } = $props();
+  let { saves, hasState, coreName='FCEUmm', supportsSaves=true }: { saves: SaveSynchronizer | null; hasState: boolean; coreName?:string;supportsSaves?:boolean } = $props();
   let working = $state(false);
   let pending = $state<SaveSynchronizer['pending']>(null);
   let failure = $state<string | null>(null);
@@ -35,7 +35,7 @@
 <section aria-label="Save synchronization">
   <h2>Saves</h2>
   {#if saves}
-    <p class="dim">States use FCEUmm ac0d00a7 / RetroArch 4d4bfc0f, slot 0. Save explicitly before leaving.</p>
+    <p class="dim">Saves belong to {coreName} and this profile’s build. Save explicitly before leaving.</p>
     <div class="player-controls">
       <button type="button" disabled={working || pending !== null} onclick={() => save('battery_save')}>Save battery</button>
       <button type="button" disabled={working || pending !== null} onclick={() => save('save_state')}>Save state</button>
@@ -53,6 +53,7 @@
     {/if}
     {#if message}<p role="status">{message}</p>{/if}
     {#if failure}<p role="alert" class="problem">{failure}</p>{/if}
+  {:else if !supportsSaves}<p>This emulator profile does not provide save synchronization.</p>
   {:else}
     <p>Playback has no save target. Stop and select an item in the source’s library and system to load or upload saves.</p>
   {/if}

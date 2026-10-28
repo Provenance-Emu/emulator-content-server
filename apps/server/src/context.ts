@@ -1,11 +1,13 @@
 import type { RateLimiter } from '@ecs/auth';
 import type { CatalogDatabase } from '@ecs/database';
 import type { VirtualProviderRegistry } from '@ecs/storage';
-
 import type { PlayerAssets } from './player-assets.js';
+import type { PlayerProfileAssets } from './player-profiles.js';
 
 export interface ServerContext {
   player?: PlayerAssets;
+  playerProfiles: ReadonlyMap<string, PlayerProfileAssets>;
+  defaultPlayerProfileId: string | null;
   matchingPluginsDir?: string;
   catalog: CatalogDatabase;
   dataDir: string;

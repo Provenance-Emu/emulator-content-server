@@ -66,7 +66,7 @@ function listen(storage: Storage, events: EventTarget, key: string, change: () =
 export function playerUrl(origin: string, href: string): string {
   const base = canonicalServerOrigin(origin);
   const url = new URL(href, base);
-  const allowed = new Set(['source', 'item', 'asset']);
+  const allowed = new Set(['source', 'item', 'asset', 'profile']);
   if (
     !href.startsWith('/play/') ||
     url.origin !== base ||

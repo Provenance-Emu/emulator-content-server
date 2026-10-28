@@ -179,3 +179,72 @@ test('the asset collector enforces the same explicit memory budget', async (t) =
     /limit|maximum|large/i,
   );
 });
+
+test('profile assets validate fixed routes, declared bounds, and cryptographic hashes', async (t) => {
+  const loader = new TextEncoder().encode('export default 1');
+  const wasm = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+  const data = new Uint8Array([3, 4]);
+  const digest = async (b: Uint8Array<ArrayBuffer>) =>
+    Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b)), (x) =>
+      x.toString(16).padStart(2, '0'),
+    ).join('');
+  const base = '/play/plugins/org.example.player';
+  const resource = async (name: string, b: Uint8Array<ArrayBuffer>) => ({
+    url: `${base}/${name}`,
+    sha256: await digest(b),
+    sizeBytes: b.length,
+  });
+  const profile = {
+    profileVersion: 1,
+    id: 'org.example.player',
+    name: 'Fixture',
+    systems: ['com.provenance.nes'],
+    runtime: 'emscripten-esm-v1',
+    filesystem: 'memfs',
+    threaded: false,
+    saveCompletion: 'none',
+    contentExtensions: ['nes'],
+    maxContentBytes: 1024,
+    buildVersion: '1',
+    loader: await resource('loader.js', loader),
+    wasm: await resource('core.wasm', wasm),
+    assets: [{ name: 'support.data', ...(await resource('assets/support.data', data)) }],
+  };
+  const paths: string[] = [];
+  let corrupt = false;
+  t.mock.method(globalThis, 'fetch', async (url: URL, init: RequestInit) => {
+    paths.push(url.pathname);
+    assert.equal(init.redirect, 'error');
+    assert.equal((init.headers as Record<string, string>).authorization, 'Bearer fixture-bearer');
+    if (url.pathname.startsWith('/api/')) return Response.json(profile);
+    return new Response(
+      corrupt
+        ? new Uint8Array([9])
+        : url.pathname.endsWith('loader.js')
+          ? loader
+          : url.pathname.endsWith('core.wasm')
+            ? wasm
+            : data,
+    );
+  });
+  const result = await client().playerProfileAssets(profile.id);
+  assert.deepEqual(result.assets[0]?.bytes, data);
+  assert.deepEqual(paths, [
+    '/api/v1/player/profiles/org.example.player',
+    `${base}/loader.js`,
+    `${base}/core.wasm`,
+    `${base}/assets/support.data`,
+  ]);
+  corrupt = true;
+  await assert.rejects(client().playerProfileAssets(profile.id), /size|hash|SHA-256/);
+  const count = paths.length;
+  profile.loader.url = 'https://evil.example/stolen';
+  await assert.rejects(client().playerProfileAssets(profile.id), /path|resource/);
+  assert.equal(paths.length, count + 1);
+  profile.loader.url = `${base}/loader.js`;
+  const firstAsset = profile.assets[0];
+  assert.ok(firstAsset);
+  firstAsset.name = '../escape';
+  await assert.rejects(client().playerProfileAssets(profile.id), /name/);
+  await assert.rejects(client().playerProfileAssets('../escape'), /identifier/);
+});

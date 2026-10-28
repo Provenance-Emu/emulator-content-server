@@ -1,10 +1,10 @@
 <script lang="ts">
+  import { ContentError } from '@ecs/client';
   import type {
     ContentRootSummary,
     Library,
     LibraryBrowseEntry,
     LibraryScope,
-    PlayerCoreDescriptor,
     SystemSummary,
   } from '@ecs/client';
   import { get } from 'svelte/store';
@@ -67,7 +67,7 @@
   let detailSubscription: (() => void) | null = null;
   let systems = $state<SystemSummary[]>([]);
   let folders = $state<ContentRootSummary[]>([]);
-  let playerCore = $state<PlayerCoreDescriptor | null>(null);
+  let playerCore = $state<import('./player/links').PlayableCores>(null);
   let playerRequested = false;
   let addChoices = $state(false);
   let upload = $state(false);
@@ -219,11 +219,11 @@
       if (state.capabilities?.features.webPlayback && !playerRequested) {
         playerRequested = true;
         void context.client
-          .playerCore()
-          .then((core) => {
-            if (!disposed) playerCore = core;
+          .playerProfiles()
+          .then((profiles) => {
+            if (!disposed) playerCore = profiles.items;
           })
-          .catch(() => {});
+          .catch(async(error) => { if(error instanceof ContentError && error.status===404) { try { const core=await context.client.playerCore(); if(!disposed)playerCore=core; } catch {} } });
       }
     }),
   );

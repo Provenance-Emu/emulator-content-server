@@ -1,10 +1,12 @@
 # Browser playback
 
-Build the first-party interface with `pnpm ui`, then run the content server with `--player-dir /absolute/path/to/trusted-browser-core`. With no player directory, playback is disabled and the UI explains the setup requirement. `/play/` is a separate document; `/ui/` keeps its existing content policy. The player restores the same `ecs.session` bearer session used by `/ui/`. Sign in there, then follow Play from a supported file. Trusted LAN admission follows the existing server policy. For a reverse proxy use token mode and the documented public/TLS settings; never put tokens in URLs or proxy-generated peer headers.
+Build the first-party interface with `pnpm ui`, then run the content server with `--player-dir /absolute/path/to/trusted-browser-core`. For multiple emulators, configure `--player-plugins /absolute/registry` instead or alongside it; see [player plugin installation](web-emulation-plugins.md). With neither configured, playback is disabled and the UI explains the setup requirement. `/play/` is a separate document; `/ui/` keeps its existing content policy. The player restores the same `ecs.session` bearer session used by `/ui/`. Sign in there, then follow Play from a supported file. Trusted LAN admission follows the existing server policy. For a reverse proxy use token mode and the documented public/TLS settings; never put tokens in URLs or proxy-generated peer headers.
 
-Only trust core JavaScript you would trust with this origin’s account. It executes in the browser with access to same-origin storage, including the bearer session. Artifact hashes pin bytes and catch changed files; CSP does not sandbox a deliberately malicious core. The server never evaluates this JavaScript.
+The authenticated player host collects and verifies bytes, then runs core JavaScript inside an opaque-origin sandboxed frame. The core has no app storage, parent document or privileged API bridge. A private MessagePort carries bounded virtual filesystem and command operations. Artifact hashes pin bytes; they do not establish build compatibility. The server never evaluates core JavaScript. See the [isolation and limits](web-emulation-plugins.md#isolation-and-limits).
 
-## Restricted build profile
+## Legacy pinned build profile
+
+The following instructions describe the legacy `--player-dir` adapter. Plugin profiles declare their own supported systems, extensions and build versions; the framework does not imply those builds have passed console-specific acceptance.
 
 The supported configuration is a single-thread, self-contained ES-module RetroArch/FCEUmm loader/WASM pair:
 
@@ -65,7 +67,7 @@ await writeFile(join(directory, 'core.json'), JSON.stringify({
 JS
 ```
 
-The server verifies hashes at startup and retains immutable byte snapshots. Restart it to install a new pair. The protected descriptor/core routes require API read admission; core responses are private/no-store. The public first-party `/play/` shell and `/ui/assets` bundles contain no operator code. Only `/play/` receives Blob/WASM permissions and COOP/COEP; JavaScript eval, inline scripts and workers remain disallowed. LAN HTTP is not made a secure context by these headers, and this single-thread profile does not use SharedArrayBuffer.
+The server verifies hashes at startup and retains immutable byte snapshots. Restart it to install a new pair. The protected descriptor/core routes require API read admission; core responses are private/no-store. The public first-party `/play/` shell and `/ui/assets` bundles contain no operator code. The authenticated `/play/` host has COOP/COEP and frame permission, without Blob/WASM execution. Only the first-party `/play/sandbox.html` opaque frame permits its bootstrap, Blob module and WASM execution. Its CSP blocks network reads and workers. LAN HTTP is not made a secure context by these headers, and this single-thread profile does not use SharedArrayBuffer.
 
 ## Content, saves and controls
 
@@ -75,7 +77,7 @@ Asset play already identifies the item. Source play offers an explicit existing 
 
 Select only a battery save whose raw single-file format is known compatible with this FCEUmm build. `.sav` is mapped to the internal `.srm` path without conversion. Select states only from the exact compatible frontend/core pair, slot 0. The UI requires compatibility confirmation and labels conflict copies; none is automatically adopted. No arbitrary emulator-state interoperability is claimed. Browser-created state display names identify the pinned pair. Split SRAM/RTC/EEPROM companions require another adapter.
 
-Start collects complete game and selected save bytes before importing the authenticated loader Blob and passes already fetched `wasmBinary` with `noInitialRun`/`noExitRuntime`. The session stages fixed `/ecs/content/game.nes`, `/ecs/saves/game.srm`, `/ecs/states/game.state` and generated config paths, independently of catalog filenames. SRAM is staged before main; a selected state also runs the completed `LOAD_STATE_SLOT 0` command after main.
+Start collects complete game and selected save bytes before transferring them to the isolated runtime. The frame imports the loader Blob and passes already fetched `wasmBinary` with `noInitialRun`/`noExitRuntime`. The session stages fixed `/ecs/content/game.nes`, `/ecs/saves/game.srm`, `/ecs/states/game.state` and generated config paths, independently of catalog filenames. SRAM is staged before main; a selected state also runs the completed `LOAD_STATE_SLOT 0` command after main.
 
 Focus the canvas for keyboard input. Save battery and Save state send fixed direct commands and wait asynchronously for exact completed acknowledgements before reading expected MEMFS bytes. No file observer, native void `_cmd_*` shortcut or `FS.syncfs` substitutes for completion. A failed command never uploads old bytes. A 30-second timeout quarantines commands until a fresh document; unsupported replies fail closed too. Failed/partial startup requires reload. Stop navigates away to dispose the document; there is no promised generic in-document native shutdown/restart API.
 
@@ -85,6 +87,6 @@ A failed upload retains copied bytes, one idempotency key and the original base 
 
 ## Acceptance and operator validation
 
-Generated tests exercise transport, API authorization, byte staging, minimal valid WASM instantiation, delayed fake command completion, retry and real API keep-both. They do **not** execute a native NES core or establish rendering, audio, input, actual state restoration or cross-emulator save compatibility. The separate [2026-10-20 local acceptance](browser-playback-acceptance.md) executes the pinned patched pair with an original generated program; it does not establish cross-emulator compatibility.
+Generated tests exercise transport, API authorization, byte staging, minimal valid WASM instantiation in the opaque frame, storage/parent/network isolation, cancellation, delayed fake command completion, retry and real API keep-both. They do **not** execute a native NES core or establish rendering, audio, input, actual state restoration or cross-emulator save compatibility. The separate [2026-10-20 local acceptance](browser-playback-acceptance.md) executed the pinned patched pair with an original generated program before the isolated launcher was introduced; repeat it for this launcher. It does not establish cross-emulator compatibility.
 
 Before calling a particular artifact pair verified, build the exact profile, record its actual hashes and successful SDK, then use a lawful NES test program to verify rendering/audio/input, real SRAM save/reload and slot-0 state save/load. Repeat through a bearer-only reverse proxy, including read-only export, phone/browser stale-save conflicts, failed startup and timed-out command recovery. No core binaries, ROMs, real saves or nightly downloads belong in this repository.

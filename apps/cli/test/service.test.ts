@@ -263,10 +263,12 @@ test('CHD decoder and player directory coexist in every service argument array',
       ...spec('/fixture', '/fixture/data', platform),
       chdmanPath: '/opt/decoder folder/chdman',
       playerDir: '/opt/player folder',
+      playerPluginsDir: '/opt/player plugins',
     };
     const args = serveArguments(configured);
     assert.equal(args[args.indexOf('--chdman') + 1], configured.chdmanPath);
     assert.equal(args[args.indexOf('--player-dir') + 1], configured.playerDir);
+    assert.equal(args[args.indexOf('--player-plugins') + 1], configured.playerPluginsDir);
     const registration = renderRegistration(configured);
     assert.match(registration, /--chdman/);
     assert.match(registration, /--player-dir/);

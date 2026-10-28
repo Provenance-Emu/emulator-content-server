@@ -125,6 +125,21 @@ test('configured core exposes only immutable verified buffers and a path-free de
   }
 });
 
+test('legacy core also exposes the portable profile contract as the default', async (t) => {
+  const { app, owner } = await setup(t);
+  const catalog = (await app.inject({ url: '/api/v1/player/profiles', headers: owner })).json();
+  assert.equal(catalog.defaultProfileId, 'fceumm');
+  assert.equal(catalog.items[0].runtime, 'retroarch-emscripten-esm');
+  assert.deepEqual(catalog.items[0].contentExtensions, ['nes']);
+  assert.deepEqual(catalog.items[0].assets, []);
+  assert.equal(catalog.items[0].loader.url, '/play/plugins/fceumm/loader.js');
+  assert.match(catalog.items[0].buildVersion, /3\.1\.46/);
+  assert.equal(
+    (await app.inject({ url: '/play/plugins/fceumm/loader.js', headers: owner })).body,
+    loader,
+  );
+});
+
 test('core metadata and bytes require read permission and never query credentials', async (t) => {
   const { app, owner } = await setup(t);
   const device = await app.inject({
@@ -146,7 +161,13 @@ test('core metadata and bytes require read permission and never query credential
     },
   });
   assert.equal(guest.statusCode, 201);
-  for (const url of paths) {
+  for (const url of [
+    ...paths,
+    '/api/v1/player/profiles',
+    '/api/v1/player/profiles/fceumm',
+    '/play/plugins/fceumm/loader.js',
+    '/play/plugins/fceumm/core.wasm',
+  ]) {
     assert.equal(
       (await app.inject({ url, headers: { 'x-forwarded-for': '127.0.0.1' } })).statusCode,
       401,

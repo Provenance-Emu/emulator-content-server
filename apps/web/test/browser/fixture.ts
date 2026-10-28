@@ -44,6 +44,49 @@ async function createFixture() {
     await rm(directory, { recursive: true, force: true });
     throw error;
   });
+  // Generated WASM fixture executes a tiny integer function; it is not an emulator/ROM.
+  const pluginsDir = join(directory, 'players'),
+    pluginDir = join(pluginsDir, 'generated');
+  await mkdir(pluginDir, { recursive: true });
+  const pluginWasm = new Uint8Array([
+    0, 97, 115, 109, 1, 0, 0, 0, 1, 6, 1, 96, 1, 127, 1, 127, 3, 2, 1, 0, 7, 8, 1, 4, 116, 105, 99,
+    107, 0, 0, 10, 9, 1, 7, 0, 32, 0, 65, 1, 106, 11,
+  ]);
+  const pluginLoader = `export default async options=>{ const {instance}=await WebAssembly.instantiate(options.wasmBinary); const packageBytes=new Uint8Array(options.getPreloadedPackage('support.data')); if(packageBytes[0]!==4)throw Error('missing package'); const files=new Map(); return {FS:{mkdirTree(){},writeFile(path,bytes){files.set(path,new Uint8Array(bytes));},readFile(path){return files.get(path);}},callMain(args){const content=files.get(args[0]);options.print('WASM tick: '+instance.exports.tick(content[0]));const ctx=options.canvas.getContext('2d');ctx.fillStyle='#79b6d9';ctx.fillRect(0,0,320,240);}}; };`;
+  const support = new Uint8Array([4, 5]);
+  await Promise.all([
+    writeFile(join(pluginDir, 'loader.js'), pluginLoader),
+    writeFile(join(pluginDir, 'core.wasm'), pluginWasm),
+    writeFile(join(pluginDir, 'support.data'), support),
+    writeFile(
+      join(pluginDir, 'plugin.json'),
+      JSON.stringify({
+        id: 'org.example.generated-gba',
+        name: 'Generated WASM test',
+        kind: 'player',
+        version: '1',
+        engine: 'ecs.plugin/1',
+        apps: ['org.example.test'],
+        player: {
+          systems: ['com.provenance.gba'],
+          module: 'core.wasm',
+          web: {
+            profileVersion: 1,
+            runtime: 'emscripten-esm-v1',
+            filesystem: 'memfs',
+            threaded: false,
+            saveCompletion: 'none',
+            contentExtensions: ['gba'],
+            maxContentBytes: 1024,
+            buildVersion: 'generated-test',
+            loader: { file: 'loader.js', sha256: hash(pluginLoader) },
+            wasm: { file: 'core.wasm', sha256: hash(pluginWasm) },
+            assets: [{ name: 'support.data', file: 'support.data', sha256: hash(support) }],
+          },
+        },
+      }),
+    ),
+  ]);
   const server = await openServer({
     dataDir: join(directory, 'data'),
     uiDir: resolve('dist'),
@@ -51,6 +94,7 @@ async function createFixture() {
     logger: false,
     webdavEnabled: true,
     playerDir,
+    playerPluginsDir: pluginsDir,
   }).catch(async (error) => {
     await rm(directory, { recursive: true, force: true });
     throw error;

@@ -1,0 +1,37 @@
+{
+  "id": "org.example.web-player",
+  "name": "Example Emscripten player",
+  "kind": "player",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "apps": [
+    "org.provenance-emu.provenance"
+  ],
+  "player": {
+    "systems": [
+      "com.provenance.nes"
+    ],
+    "module": "core.wasm",
+    "web": {
+      "profileVersion": 1,
+      "runtime": "emscripten-esm-v1",
+      "filesystem": "memfs",
+      "threaded": false,
+      "saveCompletion": "none",
+      "contentExtensions": [
+        "nes"
+      ],
+      "maxContentBytes": 67108864,
+      "buildVersion": "replace-with-your-build-version",
+      "loader": {
+        "file": "loader.js",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "wasm": {
+        "file": "core.wasm",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "assets": []
+    }
+  }
+}

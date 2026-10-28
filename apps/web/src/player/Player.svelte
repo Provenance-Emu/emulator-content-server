@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { ContentClient, type Item, type ManifestFile, type PlayerCoreDescriptor, type SourceFile } from '@ecs/client';
+  import { ContentClient, type Item, type ManifestFile, type SourceFile } from '@ecs/client';
   import { onMount } from 'svelte';
+  import { ContentError } from '@ecs/client';
   import Login from '../Login.svelte';
   import { explain, isUnauthorized } from '../lib/problems';
   import { clearSession, loadSession, saveSession } from '../lib/session';
   import { startPlayer, type PlayerSelection } from './controller.js';
   import { allItems } from './preflight.js';
-  import { importBrowserRuntime, validateProfile } from './runtime.js';
+  import { type BrowserCore, contentExtensions, importBrowserRuntime, validateProfile } from './runtime.js';
   import SaveControls from './SaveControls.svelte';
 
   const client = new ContentClient(window.location.origin, loadSession()?.token);
@@ -14,7 +15,12 @@
   const sourceId = query.get('source');
   const assetId = query.get('asset');
   let targetId = $state(query.get('item') ?? '');
-  let core = $state<PlayerCoreDescriptor | null>(null);
+  let core = $state<BrowserCore | null>(null);
+  let profiles = $state<BrowserCore[]>([]);
+  let profileId = $state(query.get('profile') ?? '');
+  const lifetime = new AbortController();
+  let disposed=false;
+  let generation=0;
   let source = $state<SourceFile | null>(null);
   let targets = $state<Item[]>([]);
   let files = $state<ManifestFile[]>([]);
@@ -32,37 +38,52 @@
 
   async function loadSaves(): Promise<void> {
     files = []; batteryId = ''; stateId = ''; compatible = false;
-    if (targetId) files = (await client.manifest(targetId)).files;
+    if (targetId && core?.saveCompletion!=='none') files = (await client.manifest(targetId)).files;
   }
   async function changeTarget(): Promise<void> {
     working = true; failure = null;
     try { await loadSaves(); } catch (error) { failure = explain(error); }
     finally { working = false; }
   }
+  function chooseProfile(): void {
+    core = profiles.find(profile=>profile.id===profileId) ?? null;
+    void changeTarget();
+  }
   async function boot(): Promise<void> {
+    const run=++generation;ready=false;
     try {
-      if ((!sourceId && (!assetId || !targetId)) || (sourceId && assetId)) throw new Error('Open Play from a NES file in the library or a local source folder.');
-      if (!(await client.capabilities()).features.webPlayback) throw new Error('Browser playback is unavailable. Ask the operator to configure --player-dir.');
-      const descriptor = await client.playerCore();
-      validateProfile(descriptor);
-      core = descriptor;
+      if ((!sourceId && (!assetId || !targetId)) || (sourceId && assetId)) throw new Error('Open Play from a game file in your library.');
+      if (!(await client.capabilities()).features.webPlayback) throw new Error('Browser playback is unavailable. Configure an emulator profile on the server.');
+      let available:BrowserCore[]=[];let defaultId:string|null=null;
+      try { const catalog=await client.playerProfiles();available=catalog.items;defaultId=catalog.defaultProfileId; }
+      catch(error) { if(!(error instanceof ContentError)||error.status!==404)throw error;const legacy=await client.playerCore();available=[legacy];defaultId=legacy.id; }
       const items = await allItems(client);
+      let system:string|null=null,name='',size=0;
       if (sourceId) {
-        source = (await client.sources()).items.find((file) => file.id === sourceId) ?? null;
-        if (!source || source.availability !== 'local' || !source.systemId || !descriptor.systems.includes(source.systemId)) throw new Error('Source is unavailable or has an unsupported system.');
-        targets = items.filter((item) => item.libraryId === source?.libraryId && item.systemIdentifier === source?.systemId);
-        if (targetId && !targets.some((item) => item.id === targetId)) throw new Error('The selected save target must belong to the source library and system.');
+        source = (await client.sources()).items.find(file=>file.id===sourceId) ?? null;
+        if (!source || source.availability!=='local' || (source.groupFileCount??1)>1 || !source.systemId) throw new Error('Source is unavailable or needs an unsupported multi-file media profile.');
+        system=source.systemId;name=source.name;size=source.size;
+        targets=items.filter(item=>item.libraryId===source?.libraryId && item.systemIdentifier===system);
+        if(targetId&&!targets.some(item=>item.id===targetId))throw new Error('The selected save target must belong to the source library and system.');
       } else {
-        targets = items.filter((item) => item.id === targetId && descriptor.systems.includes(item.systemIdentifier));
-        if (!targets.length) throw new Error('The selected NES item is unavailable.');
+        const item=items.find(item=>item.id===targetId);
+        if(!item)throw new Error('The selected item is unavailable.');
+        const file=(await client.manifest(item.id)).files.find(file=>file.id===assetId && file.kind==='rom');
+        if(!file)throw new Error('The selected game file is unavailable.');
+        system=item.systemIdentifier;name=file.relativePath;size=file.size;targets=[item];
       }
+      if(/\.(cue|gdi|ccd|m3u)$/i.test(name))throw new Error('Multi-file disc layouts need a compatible media profile.');
+      const compatible=available.filter(profile=>{try{validateProfile(profile);return profile.systems.includes(system??'') && size>0 && size<=profile.maxContentBytes && contentExtensions(profile).some(extension=>name.toLowerCase().endsWith(`.${extension}`));}catch{return false;}});
+      if(!compatible.length)throw new Error('No installed emulator supports this game file. Download it to use another emulator.');
+      if(profileId&&!compatible.some(profile=>profile.id===profileId))throw new Error('The selected emulator profile does not support this game.');
+      if(disposed||run!==generation)return;
+      profiles=compatible;profileId=profileId || compatible.find(profile=>profile.id===defaultId)?.id || compatible[0]?.id || '';core=compatible.find(profile=>profile.id===profileId)??null;
       await loadSaves();
-      ready = true;
-    } catch (error) {
-      if (isUnauthorized(error)) {
-        clearSession(); client.setToken(undefined); needsSignIn = true;
-        failure = 'Sign in to this server in your browser to continue playback.';
-      } else failure = explain(error);
+      if(!disposed&&run===generation)ready=true;
+    } catch(error) {
+      if(disposed||run!==generation)return;
+      if(isUnauthorized(error)){clearSession();client.setToken(undefined);needsSignIn=true;failure='Sign in to this server in your browser to continue playback.';}
+      else failure=explain(error);
     }
   }
   async function start(): Promise<void> {
@@ -71,25 +92,26 @@
     const selection: PlayerSelection = sourceId ? { kind: 'source', sourceId, ...(targetId ? { itemId: targetId } : {}) } : { kind: 'asset', itemId: targetId, assetId: assetId! };
     try {
       session = await startPlayer(client, selection, {
-        canvas, importer: importBrowserRuntime, batteryAssetId: batteryId || undefined, stateAssetId: stateId || undefined, compatibleSaves: compatible,
+        canvas, importer: importBrowserRuntime, ...('profileVersion' in (core??{}) ? {profileId}:{}), expectedProfile:core??undefined, signal:lifetime.signal, batteryAssetId: batteryId || undefined, stateAssetId: stateId || undefined, compatibleSaves: compatible,
         log(text) { logs = [...logs.slice(-7), text.slice(0, 300)]; },
       });
-      canvas.focus();
-    } catch (error) { failure = `${explain(error)} Reload this page before starting again.`; }
+      if(disposed){session?.releaseLoader();return;}
+      if(session.runtime.focus)await session.runtime.focus();else canvas.focus();
+    } catch (error) { if(!disposed)failure = `${explain(error)} Reload this page before starting again.`; }
     finally { working = false; }
   }
   onMount(() => {
     void boot();
-    const release = () => session?.releaseLoader();
+    const release = () => { disposed=true;generation++;lifetime.abort();session?.releaseLoader(); };
     window.addEventListener('pagehide', release, { once: true });
-    return () => window.removeEventListener('pagehide', release);
+    return () => {window.removeEventListener('pagehide',release);release();};
   });
 </script>
 <main>
   <div class="row"><h1>Browser player</h1><a href="/ui/">{session ? 'Stop and return to library' : 'Library / sign in'}</a></div>
-  <p class="dim">Single-file NES · trusted FCEUmm core · keyboard focus on canvas</p>
+  <p class="dim">Installed emulator profiles · single-file games · keyboard focus in the game display</p>
   {#if core}
-    <p>{core.name} · frontend {core.frontendCommit.slice(0, 8)} · core {core.coreCommit.slice(0, 8)}</p>
+    <p>{core.name} · {'profileVersion' in core ? core.buildVersion : `frontend ${core.frontendCommit.slice(0,8)} · core ${core.coreCommit.slice(0,8)}`}</p>
   {/if}
   {#if needsSignIn}<Login {client} origin={window.location.origin} onsignin={(signedIn) => {
     client.setToken(signedIn.token); saveSession(signedIn); needsSignIn = false; failure = null; void boot();
@@ -97,6 +119,8 @@
   {#if ready && !attempted}
     <section class="player-selectors">
       <h2>Session setup</h2>
+      <label>Emulator<select bind:value={profileId} onchange={chooseProfile} disabled={working}>{#each profiles as profile (profile.id)}<option value={profile.id}>{profile.name}</option>{/each}</select></label>
+      {#if core?.saveCompletion==='none'}<p class="dim">This profile supports playback without synchronized saves.</p>{/if}
       {#if sourceId}
         <p>Source: {source?.name}. Choose a save target explicitly; matching titles do not create an association.</p>
         <label>Save target
@@ -106,7 +130,7 @@
           </select>
         </label>
       {/if}
-      {#if targetId}
+      {#if targetId && core?.saveCompletion!=='none'}
         <label>Compatible battery save
           <select bind:value={batteryId} disabled={working}>
             <option value="">Start without a battery save</option>
@@ -128,11 +152,11 @@
       <button type="button" onclick={start} disabled={working || (!!(batteryId || stateId) && !compatible)}>Start</button>
     </section>
   {/if}
-  <canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="NES game display; focus for keyboard input"></canvas>
+  <canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas>
   {#if working}<p role="status">Preparing complete content and core bytes…</p>{/if}
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
   {#if attempted && !session && !working}<p><a href={window.location.href}>Reload player</a></p>{/if}
-  {#if session}<SaveControls saves={session.saves} hasState={!!session.prepared.state} />{/if}
+  {#if session}<SaveControls saves={session.saves} hasState={!!session.prepared.state} coreName={session.prepared.core.name} supportsSaves={session.prepared.core.saveCompletion!=='none'} />{/if}
   {#if logs.length}<details><summary>Runtime messages</summary><pre class="player-log">{logs.join('\n')}</pre></details>{/if}
   <p class="dim">Stop leaves this document. Failed startup or command timeout requires reload. Pending uploads are lost when leaving; retry or export first. No background save on close.</p>
 </main>

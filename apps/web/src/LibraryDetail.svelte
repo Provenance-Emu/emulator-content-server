@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Item, ManifestFile, PlayerCoreDescriptor, SourceFile, SystemSummary } from '@ecs/client';
+  import type { Item, ManifestFile, SourceFile, SystemSummary } from '@ecs/client';
   import { onDestroy } from 'svelte';
   import type { ServerContext } from './lib/application';
   import type { DetailController } from './lib/detail';
@@ -29,7 +29,7 @@
   }: {
     controller: DetailController;
     context: ServerContext;
-    playerCore: PlayerCoreDescriptor | null;
+    playerCore: import('./player/links').PlayableCores;
     systems: SystemSummary[];
     owner: boolean;
     selectedSource:SourceFile|null;

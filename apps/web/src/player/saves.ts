@@ -5,6 +5,9 @@ import { SAVE_LIMIT } from './preflight.js';
 import { type PlayerRuntime, paths } from './runtime.js';
 export type SaveKind = 'battery_save' | 'save_state';
 export interface SaveTarget {
+  profileId?: string;
+  coreName?: string;
+  buildVersion?: string;
   libraryId: string;
   itemId: string;
   revision: number;
@@ -74,21 +77,24 @@ export class SaveSynchronizer {
     try {
       await this.commands.run(kind === 'battery_save' ? 'SAVE_FILES' : 'SAVE_STATE_SLOT 0');
       // Only the exact completed acknowledgement permits reading the expected file.
-      const file = this.runtime.FS.readFile(paths[kind]);
+      const file = await this.runtime.FS.readFile(paths[kind]);
       if (!(file instanceof Uint8Array) || file.byteLength <= 0 || file.byteLength > SAVE_LIMIT)
         throw new Error('Completed save is missing or exceeds the save size limit');
       const body = new Uint8Array(file);
       const relativePath =
         (kind === 'battery_save' ? this.target.batteryPath : this.target.statePath) ??
-        `browser-fceumm/game.${kind === 'battery_save' ? 'srm' : 'state'}`;
+        `browser-${this.target.profileId?.replace(/[^a-z0-9_.-]/gi, '_') ?? 'fceumm'}/game.${kind === 'battery_save' ? 'srm' : 'state'}`;
       this.request = {
         libraryId: this.target.libraryId,
         itemId: this.target.itemId,
         kind,
         displayName:
           kind === 'save_state'
-            ? 'FCEUmm ac0d00a7 / RetroArch 4d4bfc0f slot 0'
-            : 'FCEUmm battery save',
+            ? `${this.target.buildVersion ?? 'FCEUmm ac0d00a7 / RetroArch 4d4bfc0f'} slot 0`.slice(
+                0,
+                240,
+              )
+            : `${this.target.coreName ?? 'FCEUmm'} battery save`.slice(0, 240),
         relativePath,
         baseRevision: this.baseline,
         body,
@@ -126,7 +132,7 @@ export class SaveSynchronizer {
       throw new Error('No compatible state was selected before Start');
     this.working = true;
     try {
-      this.runtime.FS.writeFile(paths.save_state, this.target.selectedState);
+      await this.runtime.FS.writeFile(paths.save_state, this.target.selectedState);
       await this.commands.run('LOAD_STATE_SLOT 0');
     } finally {
       this.working = false;

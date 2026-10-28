@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Isolated emulator</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}canvas{display:block;width:100%;height:100%;object-fit:contain}canvas:focus-visible{outline:2px solid #89bfe2;outline-offset:-2px}</style></head><body><canvas width="640" height="480" tabindex="0" aria-label="Game display"></canvas><script>
+'use strict';
+(() => {
+  const nonce = location.hash.slice(1);
+  if (!/^[a-f0-9]{32}$/.test(nonce) || parent === window) return;
+  const LIMIT = 64 * 1024 * 1024;
+  const canvas = document.querySelector('canvas');
+  let port, runtime, closed = false, initializing = false, tail = Promise.resolve();
+  const urls = new Set();
+  const byteArray = (value, limit = LIMIT) => {
+    if (!(value instanceof ArrayBuffer) || value.byteLength > limit) throw Error('Invalid runtime bytes');
+    return new Uint8Array(value);
+  };
+  const path = (value) => {
+    if (typeof value !== 'string' || value.length > 256 || !/^\/ecs(?:\/[A-Za-z0-9_.-]+)*$/.test(value) || value.split('/').some(part => part === '..' || part === '.')) throw Error('Invalid virtual path');
+    return value;
+  };
+  let logStart = Date.now(), logCount = 0;
+  const log = (value) => {
+    if (closed || !port) return;
+    if (Date.now() - logStart > 1000) { logStart = Date.now(); logCount = 0; }
+    if (++logCount <= 30) port.postMessage({type:'log',text:String(value).slice(0,500)});
+  };
+  const blob = (bytes,type) => { const url = URL.createObjectURL(new Blob([bytes],{type})); urls.add(url); return url; };
+  async function operation(message) {
+    if (message.op === 'init') {
+      if (initializing || runtime) throw Error('Runtime already initialized');
+      initializing = true;
+      const spec = message.value;
+      const loader = byteArray(spec.loader,8*1024*1024), wasm = byteArray(spec.wasm);
+      if (!Array.isArray(spec.assets) || spec.assets.length > 16) throw Error('Invalid runtime resources');
+      const resources = new Map(), binaries = new Map();
+      let total = 0;
+      for (const entry of spec.assets) {
+        if (!entry || typeof entry.name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(entry.name) || resources.has(entry.name)) throw Error('Invalid resource name');
+        const bytes = byteArray(entry.bytes,32*1024*1024); total += bytes.byteLength;
+        if (total > 32*1024*1024) throw Error('Runtime resources exceed limit');
+        binaries.set(entry.name,bytes); resources.set(entry.name,blob(bytes,'application/octet-stream'));
+      }
+      const wasmUrl = blob(wasm,'application/wasm');
+      const module = await import(blob(loader,'text/javascript'));
+      if (typeof module.default !== 'function') throw Error('An Emscripten ES-module factory is required');
+      runtime = await module.default({
+        wasmBinary:wasm,canvas,noInitialRun:true,noExitRuntime:true,
+        locateFile(name) {
+          const short = String(name).replace(/^\.\//,'');
+          if (resources.has(short)) return resources.get(short);
+          if (/^[A-Za-z0-9_.-]+\.wasm$/.test(short)) return wasmUrl;
+          throw Error('Undeclared runtime resource');
+        },
+        getPreloadedPackage(name) { const bytes=binaries.get(String(name).replace(/^\.\//,'')); if (!bytes) throw Error('Undeclared data package'); return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength); },
+        print:log,printErr:log,
+      });
+      if (!runtime?.FS || typeof runtime.FS.mkdirTree !== 'function' || typeof runtime.FS.writeFile !== 'function' || typeof runtime.FS.readFile !== 'function' || typeof runtime.callMain !== 'function') throw Error('Runtime needs MEMFS and callMain exports');
+      if (spec.commands && (typeof runtime.EmscriptenSendCommand !== 'function' || typeof runtime.EmscriptenReceiveCommandReply !== 'function')) throw Error('Runtime needs command/reply save exports');
+      return null;
+    }
+    if (!runtime) throw Error('Runtime is not initialized');
+    const value = message.value;
+    switch (message.op) {
+      case 'mkdir': await runtime.FS.mkdirTree(path(value)); return null;
+      case 'write': await runtime.FS.writeFile(path(value.path),byteArray(value.bytes)); return null;
+      case 'read': {
+        const bytes = await runtime.FS.readFile(path(value));
+        if (!(bytes instanceof Uint8Array) || bytes.byteLength > LIMIT) throw Error('Runtime output exceeds limit');
+        return new Uint8Array(bytes).buffer;
+      }
+      case 'main': if (!Array.isArray(value) || value.length > 16 || value.some(arg => typeof arg !== 'string' || arg.length > 256)) throw Error('Invalid runtime arguments'); await runtime.callMain(value); return null;
+      case 'send': if (!['SAVE_FILES','SAVE_STATE_SLOT 0','LOAD_STATE_SLOT 0'].includes(value)) throw Error('Invalid save command'); await runtime.EmscriptenSendCommand(value); return null;
+      case 'receive': {
+        const reply = await runtime.EmscriptenReceiveCommandReply();
+        if (reply !== undefined && (typeof reply !== 'string' || reply.length > 4096)) throw Error('Invalid command reply');
+        return reply;
+      }
+      case 'focus': canvas.focus(); return null;
+      default: throw Error('Unknown runtime operation');
+    }
+  }
+  function connect(event) {
+    if (event.source !== parent || !event.data || event.data.type !== 'ecs-player-connect' || event.data.nonce !== nonce || event.ports.length !== 1 || port) return;
+    removeEventListener('message',connect);
+    port = event.ports[0];
+    port.onmessage = event => {
+      const message = event.data;
+      if (!message || !Number.isSafeInteger(message.id) || message.id < 1 || typeof message.op !== 'string' || closed) return;
+      tail = tail.then(async () => {
+        try { const value = await operation(message); if (!closed) port.postMessage({type:'result',id:message.id,value},value instanceof ArrayBuffer ? [value] : []); }
+        catch { if (!closed) port.postMessage({type:'result',id:message.id,error:'Emulator operation failed or returned unsupported data'}); }
+      });
+    };
+    port.start();
+    port.postMessage({type:'connected'});
+  }
+  addEventListener('message',connect);
+  addEventListener('pagehide',()=>{closed=true;port?.close();for(const url of urls)URL.revokeObjectURL(url);},{once:true});
+  parent.postMessage({type:'ecs-player-ready',nonce},'*');
+})();
+</script></body></html>

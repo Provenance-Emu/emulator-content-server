@@ -34,7 +34,13 @@ export {
   type OpenApiDocument,
   openApiFile,
 } from './openapi.js';
-export type { PlayerCoreDescriptor, PlayerCoreResource } from './player-core.js';
+export type {
+  PlayerCoreDescriptor,
+  PlayerCoreResource,
+  WebPlayerAsset,
+  WebPlayerCatalog,
+  WebPlayerDescriptor,
+} from './player-core.js';
 export { type Problem, problem, problemType } from './problem.js';
 export {
   etagMatches,

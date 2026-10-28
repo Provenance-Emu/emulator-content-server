@@ -175,12 +175,47 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     app.get('/ui', async (_request, reply) => reply.redirect('/ui/', 308));
     // A second first-party document shares /ui/assets; no operator HTML is served.
     app.get('/play', async (_request, reply) => reply.redirect('/play/', 308));
+    // Fixed first-party bootstrap only. Operator loader bytes arrive through a private port.
+    app.get('/play/sandbox.html', async (_request, reply) => {
+      reply.header(
+        'content-security-policy',
+        [
+          "default-src 'none'",
+          "script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'",
+          "style-src 'unsafe-inline'",
+          'connect-src blob:',
+          'img-src blob: data:',
+          'media-src blob:',
+          "worker-src 'none'",
+          "base-uri 'none'",
+          "form-action 'none'",
+          "frame-ancestors 'self'",
+          'sandbox allow-scripts',
+        ].join('; '),
+      );
+      reply.header('cross-origin-embedder-policy', 'require-corp');
+      reply.header('cross-origin-resource-policy', 'cross-origin');
+      reply.header('origin-agent-cluster', '?1');
+      reply.header('referrer-policy', 'no-referrer');
+      reply.header('x-content-type-options', 'nosniff');
+      reply.header(
+        'permissions-policy',
+        'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()',
+      );
+      try {
+        return reply.type('text/html').send(await readFile(join(uiDir, 'play', 'sandbox.html')));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return reply.code(404).send();
+        throw error;
+      }
+    });
     app.get('/play/', async (_request, reply) => {
       reply.header(
         'content-security-policy',
         [
           "default-src 'none'",
-          "script-src 'self' blob: 'wasm-unsafe-eval'",
+          "script-src 'self'",
+          "frame-src 'self'",
           "style-src 'self'",
           "img-src 'self' data:",
           "connect-src 'self'",
@@ -218,7 +253,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       bootstrapped: catalog.server().bootstrapped,
       lanOpen: context.localTrust && policy.mode !== 'token',
       webdavEnabled: context.webdavEnabled,
-      webPlayback: context.player !== undefined,
+      webPlayback: Boolean(context.player || context.playerProfiles.size),
     });
   });
 

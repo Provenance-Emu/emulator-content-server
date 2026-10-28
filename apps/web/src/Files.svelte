@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ManifestFile, PlayerCoreDescriptor } from '@ecs/client';
+  import type { ManifestFile } from '@ecs/client';
   import type { DetailState } from './lib/detail';
   import { KIND_ORDER, kindLabel, saveGroups } from './lib/content-format';
   import { bytes } from './lib/format';
@@ -12,7 +12,7 @@
     externalBusy = false,
   }: {
     detailState: DetailState;
-    playerCore: PlayerCoreDescriptor | null;
+    playerCore: import('./player/links').PlayableCores;
     ondownload: (file: ManifestFile) => void;
     onplay: (href: string) => void;
     externalBusy?: boolean;

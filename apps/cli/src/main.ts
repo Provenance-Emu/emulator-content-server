@@ -171,6 +171,7 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       logger: true,
       uiDir,
       playerDir: playerDirectory(),
+      playerPluginsDir: selectedAbsolutePath('--player-plugins', 'ECS_PLAYER_PLUGINS', 'directory'),
       webdavEnabled: listen.webdavEnabled,
       // A public bind sits behind a proxy on loopback, so the socket address
       // cannot decide who is local.
@@ -280,6 +281,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
     home: homedir(),
     dataDir: absolute,
     playerDir: playerDirectory(),
+    playerPluginsDir: selectedAbsolutePath('--player-plugins', 'ECS_PLAYER_PLUGINS', 'directory'),
     executable: process.execPath,
     script: process.argv[1] ?? fileURLToPath(import.meta.url),
     host: listen.host,
@@ -354,7 +356,7 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>] [--matching-plugins <dir>]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>] [--player-plugins <absolute-path>] [--matching-plugins <dir>]
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
@@ -366,7 +368,7 @@ ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]
-ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--chdman <absolute-path>] [--player-dir <absolute-path>]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--chdman <absolute-path>] [--player-dir <absolute-path>] [--player-plugins <absolute-path>]
 ecs service uninstall --data ./content-data
 ecs service status --data ./content-data`);
 }

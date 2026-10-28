@@ -45,6 +45,78 @@ paths:
           description: Read permission required.
         '404':
           description: Browser playback is not configured.
+  /api/v1/player/profiles:
+    get:
+      operationId: listPlayerProfiles
+      description: Browser runtime profiles. Requires read permission.
+      responses:
+        '200':
+          description: Configured profiles, empty when playback is disabled.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebPlayerCatalog' }
+        '401': { description: Authentication required. }
+        '403': { description: Read permission required. }
+  /api/v1/player/profiles/{id}:
+    get:
+      operationId: getPlayerProfile
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Immutable verified profile without operator paths.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebPlayerDescriptor' }
+        '401': { description: Authentication required. }
+        '403': { description: Read permission required. }
+        '404': { description: Profile is not configured. }
+  /play/plugins/{id}/loader.js:
+    get:
+      operationId: getPlayerProfileLoader
+      description: Authenticated immutable startup snapshot; requires read permission.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Hash-verified declared profile resource.
+          content:
+            text/javascript:
+              schema: { type: string, format: binary }
+        '401': { description: Authentication required. }
+        '403': { description: Read permission required. }
+        '404': { description: Profile or resource is not configured. }
+  /play/plugins/{id}/core.wasm:
+    get:
+      operationId: getPlayerProfileWasm
+      description: Authenticated immutable startup snapshot; requires read permission.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Hash-verified declared profile resource.
+          content:
+            application/wasm:
+              schema: { type: string, format: binary }
+        '401': { description: Authentication required. }
+        '403': { description: Read permission required. }
+        '404': { description: Profile or resource is not configured. }
+  /play/plugins/{id}/assets/{name}:
+    get:
+      operationId: getPlayerProfileAsset
+      description: Authenticated immutable startup snapshot; requires read permission.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Hash-verified declared profile resource.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { description: Authentication required. }
+        '403': { description: Read permission required. }
+        '404': { description: Profile or resource is not configured. }
   /api/v1/systems:
     get:
       operationId: listSystems
@@ -821,6 +893,38 @@ components:
         maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 67108864 }
         loader: { $ref: '#/components/schemas/PlayerCoreResource' }
         wasm: { $ref: '#/components/schemas/PlayerCoreResource' }
+    WebPlayerAsset:
+      type: object
+      required: [name, url, sha256, sizeBytes]
+      properties:
+        name: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$' }
+        url: { type: string }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        sizeBytes: { type: integer, format: int64, minimum: 1, maximum: 33554432 }
+    WebPlayerDescriptor:
+      type: object
+      required: [profileVersion, id, name, systems, runtime, filesystem, threaded, saveCompletion, contentExtensions, maxContentBytes, buildVersion, loader, wasm, assets]
+      properties:
+        profileVersion: { type: integer, enum: [1] }
+        id: { type: string, maxLength: 120, pattern: '^(?:[a-z0-9][a-z0-9_-]{0,63}|[a-z0-9]+(?:\.[a-z0-9-]+)+)$' }
+        name: { type: string, maxLength: 80 }
+        systems: { type: array, items: { type: string }, minItems: 1, maxItems: 64 }
+        runtime: { type: string, enum: [emscripten-esm-v1, retroarch-emscripten-esm] }
+        filesystem: { type: string, enum: [memfs] }
+        threaded: { type: boolean, enum: [false] }
+        saveCompletion: { type: string, enum: [none, command-reply-v1] }
+        contentExtensions: { type: array, items: { type: string }, minItems: 1, maxItems: 32 }
+        maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 67108864 }
+        buildVersion: { type: string, maxLength: 128 }
+        loader: { $ref: '#/components/schemas/PlayerCoreResource' }
+        wasm: { $ref: '#/components/schemas/PlayerCoreResource' }
+        assets: { type: array, items: { $ref: '#/components/schemas/WebPlayerAsset' }, maxItems: 16 }
+    WebPlayerCatalog:
+      type: object
+      required: [items, defaultProfileId]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/WebPlayerDescriptor' }, maxItems: 16 }
+        defaultProfileId: { type: [string, 'null'] }
     Limits:
       type: object
       required: [maxUploadBytes, maxPageSize]

@@ -81,13 +81,18 @@ test('player URLs resolve at the selected server and never allow external creden
   const context = createDesktopContext(profile('https://a.test'), f.dependencies);
   context.sessions.save(session);
   context.openPlayer('/play/?item=one&asset=two');
-  assert.deepEqual(f.opened, ['https://a.test/play/?item=one&asset=two']);
+  context.openPlayer('/play/?source=one&profile=org.example.handheld');
+  assert.deepEqual(f.opened, [
+    'https://a.test/play/?item=one&asset=two',
+    'https://a.test/play/?source=one&profile=org.example.handheld',
+  ]);
   for (const href of [
     'https://evil.test/play/',
     '//evil.test/play/',
     '/ui/',
     '/play/?token=secret',
     '/play/?source=one&authorization=secret',
+    '/play/?source=one&profile=org.example.handheld&token=secret',
   ]) {
     assert.throws(() => context.openPlayer(href));
   }

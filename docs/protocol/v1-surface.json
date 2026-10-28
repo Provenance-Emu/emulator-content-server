@@ -31,6 +31,8 @@
     "GET /api/v1/libraries/:libraryId/members",
     "GET /api/v1/matching/plugins",
     "GET /api/v1/player/core",
+    "GET /api/v1/player/profiles",
+    "GET /api/v1/player/profiles/:id",
     "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
     "GET /api/v1/roots/:rootId/organization-policy",
@@ -49,6 +51,9 @@
     "GET /api/v1/webdav-credentials",
     "GET /health",
     "GET /openapi.yaml",
+    "GET /play/plugins/:id/assets/:name",
+    "GET /play/plugins/:id/core.wasm",
+    "GET /play/plugins/:id/loader.js",
     "HEAD /api/v1/files/:assetId/content",
     "HEAD /api/v1/files/:assetId/entries/:entryId/content",
     "HEAD /api/v1/sources/:sourceId/content",
@@ -197,6 +202,64 @@
         "threaded",
         "version",
         "wasm"
+      ]
+    },
+    "WebPlayerAsset": {
+      "properties": [
+        "name",
+        "sha256",
+        "sizeBytes",
+        "url"
+      ],
+      "required": [
+        "name",
+        "sha256",
+        "sizeBytes",
+        "url"
+      ]
+    },
+    "WebPlayerDescriptor": {
+      "properties": [
+        "assets",
+        "buildVersion",
+        "contentExtensions",
+        "filesystem",
+        "id",
+        "loader",
+        "maxContentBytes",
+        "name",
+        "profileVersion",
+        "runtime",
+        "saveCompletion",
+        "systems",
+        "threaded",
+        "wasm"
+      ],
+      "required": [
+        "assets",
+        "buildVersion",
+        "contentExtensions",
+        "filesystem",
+        "id",
+        "loader",
+        "maxContentBytes",
+        "name",
+        "profileVersion",
+        "runtime",
+        "saveCompletion",
+        "systems",
+        "threaded",
+        "wasm"
+      ]
+    },
+    "WebPlayerCatalog": {
+      "properties": [
+        "defaultProfileId",
+        "items"
+      ],
+      "required": [
+        "defaultProfileId",
+        "items"
       ]
     },
     "Limits": {

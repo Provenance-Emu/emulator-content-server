@@ -7,6 +7,7 @@ import type { PlayerCoreDescriptor } from '@ecs/protocol';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireActor } from './http.js';
+import { registerPlayerProfiles } from './player-profiles.js';
 
 const LOADER = 'fceumm_libretro.js';
 const WASM = 'fceumm_libretro.wasm';
@@ -120,7 +121,7 @@ async function artifact(root: string, spec: Record<string, unknown>, file: strin
   return { bytes, sha256 };
 }
 
-async function readRegular(root: string, file: string, cap: number): Promise<Buffer> {
+export async function readRegular(root: string, file: string, cap: number): Promise<Buffer> {
   const path = join(root, file);
   if (!(await lstat(path)).isFile())
     throw new Error('player core files must be regular files, not symlinks');
@@ -152,6 +153,7 @@ function requireRead(request: FastifyRequest): void {
 }
 
 export function registerPlayerAssets(app: FastifyInstance, context: ServerContext): void {
+  registerPlayerProfiles(app, context);
   app.get('/api/v1/player/core', async (request, reply) => {
     if (!context.player)
       throw new DomainError('not-found', 404, 'Browser playback is not configured');

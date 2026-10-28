@@ -18,12 +18,15 @@ export {
   MOUNT_SCHEMES,
   PLUGIN_ENGINE,
   PLUGIN_KINDS,
+  type PlayerConfig,
   type PluginKind,
   type PluginManifest,
   PROVIDER_CAPABILITIES,
   type ProviderCapability,
   type ProviderConfig,
   parseManifest,
+  type WebPlayerConfig,
+  type WebPlayerFile,
 } from './manifest.js';
 export { openMount } from './mount.js';
 export { type OpenOptions, openConnector } from './open.js';

@@ -31,6 +31,8 @@ async function harness(probes?: BrowseProbes) {
       webdavEnabled: false,
       localTrust: false,
       uiDir: null,
+      playerProfiles: new Map(),
+      defaultPlayerProfileId: null,
       limiter: new RateLimiter(100, 1000),
       virtual: new VirtualProviderRegistry([]),
     },

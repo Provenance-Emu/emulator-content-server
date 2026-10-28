@@ -60,6 +60,35 @@ export interface PlayerCoreDescriptor {
   wasm: PlayerCoreResource;
 }
 
+export interface WebPlayerAsset {
+  name: string;
+  url: string;
+  sha256: string;
+  sizeBytes: number;
+}
+
+export interface WebPlayerDescriptor {
+  profileVersion: number;
+  id: string;
+  name: string;
+  systems: string[];
+  runtime: string;
+  filesystem: string;
+  threaded: boolean;
+  saveCompletion: string;
+  contentExtensions: string[];
+  maxContentBytes: number;
+  buildVersion: string;
+  loader: PlayerCoreResource;
+  wasm: PlayerCoreResource;
+  assets: WebPlayerAsset[];
+}
+
+export interface WebPlayerCatalog {
+  items: WebPlayerDescriptor[];
+  defaultProfileId: string | null;
+}
+
 export interface Limits {
   maxUploadBytes: number;
   maxPageSize: number;

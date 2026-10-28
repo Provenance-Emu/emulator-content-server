@@ -1,25 +1,31 @@
-import type { ContentClient } from '@ecs/client';
+import { type CollectedAsset, type ContentClient, sha256Bytes } from '@ecs/client';
 import { CommandChannel } from './commands.js';
 import { preparePlayer } from './preflight.js';
-import { paths, type RuntimeImporter, validateCoreBytes } from './runtime.js';
+import { contentPath, paths, type RuntimeImporter, validateCoreBytes } from './runtime.js';
 import { SaveSynchronizer } from './saves.js';
 export type PlayerSelection =
   | { kind: 'asset'; itemId: string; assetId: string }
   | { kind: 'source'; sourceId: string; itemId?: string };
-export type PlayerClient = Pick<
-  ContentClient,
-  | 'capabilities'
-  | 'playerCore'
-  | 'playerCoreAssets'
-  | 'libraries'
-  | 'items'
-  | 'sources'
-  | 'manifest'
-  | 'collect'
-  | 'collectSource'
-  | 'upload'
->;
+export type PlayerClient = Partial<
+  Pick<ContentClient, 'playerProfile' | 'playerProfiles' | 'playerProfileAssets'>
+> &
+  Pick<
+    ContentClient,
+    | 'capabilities'
+    | 'playerCore'
+    | 'playerCoreAssets'
+    | 'libraries'
+    | 'items'
+    | 'sources'
+    | 'manifest'
+    | 'collect'
+    | 'collectSource'
+    | 'upload'
+  >;
 export interface StartOptions {
+  expectedProfile?: import('./runtime.js').BrowserCore;
+  profileId?: string;
+  signal?: AbortSignal;
   canvas: HTMLCanvasElement;
   importer: RuntimeImporter;
   batteryAssetId?: string;
@@ -50,9 +56,42 @@ export async function startPlayer(
   options: StartOptions,
 ) {
   const prepared = await preparePlayer(client, selection, options);
-  const assets = await client.playerCoreAssets(prepared.core.id);
+  const assets:
+    | {
+        loader: CollectedAsset;
+        wasm: CollectedAsset;
+        assets?: { name: string; bytes: Uint8Array<ArrayBuffer> }[];
+      }
+    | undefined =
+    'profileVersion' in prepared.core
+      ? await client.playerProfileAssets?.(prepared.core.id)
+      : await client.playerCoreAssets(prepared.core.id);
+  if (!assets) throw new Error('Selected emulator resources are unavailable');
+  options.signal?.throwIfAborted();
+  const extra = assets.assets ?? [];
+  if ('profileVersion' in prepared.core) {
+    if (
+      (await sha256Bytes(assets.loader.bytes)) !== prepared.core.loader.sha256 ||
+      (await sha256Bytes(assets.wasm.bytes)) !== prepared.core.wasm.sha256 ||
+      extra.length !== prepared.core.assets.length
+    )
+      throw new Error('Emulator profile changed; reload before starting');
+    for (const spec of prepared.core.assets) {
+      const file = extra.find((asset) => asset.name === spec.name);
+      if (
+        !file ||
+        file.bytes.byteLength !== spec.sizeBytes ||
+        (await sha256Bytes(file.bytes)) !== spec.sha256
+      )
+        throw new Error('Emulator resource changed; reload before starting');
+    }
+  }
   validateCoreBytes(prepared.core, assets);
-  const loaded = await options.importer(assets.loader.bytes);
+  const loaded = await options.importer(assets.loader.bytes, {
+    profile: prepared.core,
+    assets: extra,
+    signal: options.signal,
+  });
   try {
     const log = (text: string) => options.log?.(String(text).slice(0, 500));
     const runtime = await loaded.factory({
@@ -61,7 +100,12 @@ export async function startPlayer(
       noInitialRun: true,
       noExitRuntime: true,
       locateFile(path) {
-        if (path === 'fceumm_libretro.wasm') return path;
+        if (
+          path === 'fceumm_libretro.wasm' ||
+          ('profileVersion' in prepared.core &&
+            (/^[a-zA-Z0-9_.-]+\.wasm$/.test(path) || extra.some((asset) => asset.name === path)))
+        )
+          return path;
         throw new Error(
           'Unsupported build: secondary worker/worklet/relative dependencies are forbidden',
         );
@@ -69,7 +113,8 @@ export async function startPlayer(
       print: log,
       printErr: log,
     });
-    const commands = new CommandChannel(runtime);
+    const commands =
+      prepared.core.saveCompletion === 'command-reply-v1' ? new CommandChannel(runtime) : null;
     if (
       typeof runtime.callMain !== 'function' ||
       !runtime.FS ||
@@ -79,18 +124,33 @@ export async function startPlayer(
     )
       throw new Error('Unsupported core: MEMFS and callMain exports are required');
     for (const dir of ['/ecs', '/ecs/content', '/ecs/saves', '/ecs/states', '/ecs/system'])
-      runtime.FS.mkdirTree(dir);
-    runtime.FS.writeFile(paths.config, new TextEncoder().encode(config));
-    runtime.FS.writeFile(paths.content, prepared.content);
-    if (prepared.battery) runtime.FS.writeFile(paths.battery_save, prepared.battery.bytes);
-    if (prepared.state) runtime.FS.writeFile(paths.save_state, prepared.state.bytes);
-    runtime.callMain(['-c', paths.config, paths.content]);
+      await runtime.FS.mkdirTree(dir);
+    for (const asset of extra) await runtime.FS.writeFile(`/ecs/system/${asset.name}`, asset.bytes);
+    await runtime.FS.writeFile(paths.config, new TextEncoder().encode(config));
+    await runtime.FS.writeFile(
+      contentPath(prepared.core, prepared.contentExtension),
+      prepared.content,
+    );
+    if (prepared.battery) await runtime.FS.writeFile(paths.battery_save, prepared.battery.bytes);
+    if (prepared.state) await runtime.FS.writeFile(paths.save_state, prepared.state.bytes);
+    options.signal?.throwIfAborted();
+    await runtime.callMain(
+      prepared.core.runtime === 'retroarch-emscripten-esm'
+        ? ['-c', paths.config, contentPath(prepared.core, prepared.contentExtension)]
+        : [contentPath(prepared.core, prepared.contentExtension)],
+    );
     const saves =
-      prepared.item && prepared.revision !== null
+      commands && prepared.item && prepared.revision !== null
         ? new SaveSynchronizer(client, runtime, commands, {
             libraryId: prepared.item.libraryId,
             itemId: prepared.item.id,
             revision: prepared.revision,
+            profileId: prepared.core.id,
+            coreName: prepared.core.name,
+            buildVersion:
+              'profileVersion' in prepared.core
+                ? prepared.core.buildVersion
+                : 'FCEUmm ac0d00a7 / RetroArch 4d4bfc0f',
             batteryPath: prepared.battery?.file.relativePath,
             statePath: prepared.state?.file.relativePath,
             selectedState: prepared.state?.bytes,

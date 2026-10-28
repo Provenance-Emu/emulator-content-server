@@ -22,6 +22,7 @@ export interface ServiceSpec {
   webdavEnabled?: boolean;
   chdmanPath?: string;
   playerDir?: string;
+  playerPluginsDir?: string;
   allowLan: boolean;
   publicInternet: boolean;
   tlsTerminated: boolean;
@@ -64,6 +65,11 @@ export function serveArguments(spec: ServiceSpec): string[] {
   if (spec.playerDir !== undefined) {
     if (!isAbsolute(spec.playerDir)) throw new Error('Player directory must be absolute');
     args.push('--player-dir', spec.playerDir);
+  }
+  if (spec.playerPluginsDir !== undefined) {
+    if (!isAbsolute(spec.playerPluginsDir))
+      throw new Error('Player plugins directory must be absolute');
+    args.push('--player-plugins', spec.playerPluginsDir);
   }
   if (spec.allowLan) args.push('--allow-lan');
   if (spec.publicInternet) args.push('--public');

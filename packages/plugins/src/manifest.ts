@@ -78,6 +78,25 @@ export interface ConnectorConfig {
 export interface PlayerConfig {
   systems: string[];
   module: string;
+  web?: WebPlayerConfig;
+}
+
+export interface WebPlayerFile {
+  file: string;
+  sha256: string;
+}
+export interface WebPlayerConfig {
+  profileVersion: 1;
+  runtime: 'emscripten-esm-v1' | 'retroarch-emscripten-esm';
+  filesystem: 'memfs';
+  threaded: false;
+  saveCompletion: 'none' | 'command-reply-v1';
+  contentExtensions: string[];
+  maxContentBytes: number;
+  buildVersion: string;
+  loader: WebPlayerFile;
+  wasm: WebPlayerFile;
+  assets: (WebPlayerFile & { name: string })[];
 }
 
 export interface SignerConfig {
@@ -230,7 +249,7 @@ function parseConnector(value: unknown, entry: string | undefined): ConnectorCon
 
 function parsePlayer(value: unknown): PlayerConfig {
   const record = object(value, 'player');
-  rejectUnknown(record, ['systems', 'module'], 'player');
+  rejectUnknown(record, ['systems', 'module', 'web'], 'player');
   const systems = stringArray(record.systems, 'systems');
   if (systems.length === 0) throw new PluginError('invalid-manifest', 'A player lists its systems');
   for (const system of systems) {
@@ -242,7 +261,126 @@ function parsePlayer(value: unknown): PlayerConfig {
   if (!module.endsWith('.wasm')) {
     throw new PluginError('invalid-manifest', 'A player module is a .wasm file');
   }
-  return { systems, module };
+  if (systems.length > 64 || new Set(systems).size !== systems.length)
+    throw new PluginError('invalid-manifest', 'A player lists at most 64 unique systems');
+  return {
+    systems,
+    module,
+    ...(record.web === undefined ? {} : { web: parseWebPlayer(record.web, module) }),
+  };
+}
+
+function portableWebPlayerName(value: string): boolean {
+  return (
+    /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value) &&
+    !value.endsWith('.') &&
+    !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(value)
+  );
+}
+
+function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
+  const r = object(value, 'player.web');
+  rejectUnknown(
+    r,
+    [
+      'profileVersion',
+      'runtime',
+      'filesystem',
+      'threaded',
+      'saveCompletion',
+      'contentExtensions',
+      'maxContentBytes',
+      'buildVersion',
+      'loader',
+      'wasm',
+      'assets',
+    ],
+    'player.web',
+  );
+  if (r.profileVersion !== 1 || r.filesystem !== 'memfs' || r.threaded !== false)
+    throw new PluginError(
+      'invalid-manifest',
+      'Unsupported web player version, filesystem, or threading',
+    );
+  const runtime = oneOf(
+    stringField(r, 'runtime'),
+    ['emscripten-esm-v1', 'retroarch-emscripten-esm'] as const,
+    'runtime',
+  );
+  const saveCompletion = oneOf(
+    stringField(r, 'saveCompletion'),
+    ['none', 'command-reply-v1'] as const,
+    'saveCompletion',
+  );
+  const contentExtensions = stringArray(r.contentExtensions, 'contentExtensions');
+  if (
+    !contentExtensions.length ||
+    contentExtensions.length > 32 ||
+    new Set(contentExtensions).size !== contentExtensions.length ||
+    contentExtensions.some((x) => !/^[a-z0-9]{1,16}$/.test(x))
+  )
+    throw new PluginError(
+      'invalid-manifest',
+      'Web player extensions must be unique portable extensions',
+    );
+  if (
+    !Number.isSafeInteger(r.maxContentBytes) ||
+    Number(r.maxContentBytes) <= 0 ||
+    Number(r.maxContentBytes) > 64 * 1024 * 1024
+  )
+    throw new PluginError('invalid-manifest', 'Invalid web player content size limit');
+  const buildVersion = shortText(stringField(r, 'buildVersion'), 'buildVersion', 128);
+  const parseFile = (v: unknown): WebPlayerFile => {
+    const f = object(v, 'web player file');
+    rejectUnknown(f, ['file', 'sha256'], 'web player file');
+    const file = relativeFile(stringField(f, 'file'));
+    if (!portableWebPlayerName(file) || file === 'plugin.json')
+      throw new PluginError('invalid-manifest', 'Web player files must be flat portable filenames');
+    const sha256 = stringField(f, 'sha256');
+    if (!/^[a-f0-9]{64}$/.test(sha256))
+      throw new PluginError('invalid-manifest', 'Web player file needs SHA-256');
+    return { file, sha256 };
+  };
+  const loader = parseFile(r.loader);
+  const wasm = parseFile(r.wasm);
+  if (!/\.(?:mjs|js)$/.test(loader.file) || wasm.file !== module)
+    throw new PluginError(
+      'invalid-manifest',
+      'Web player loader must be JavaScript and WASM must match module',
+    );
+  if (!Array.isArray(r.assets) || r.assets.length > 16)
+    throw new PluginError('invalid-manifest', 'Web player lists at most 16 assets');
+  const assets = r.assets.map((a) => {
+    const f = object(a, 'web player asset');
+    rejectUnknown(f, ['name', 'file', 'sha256'], 'web player asset');
+    const name = stringField(f, 'name');
+    if (!portableWebPlayerName(name) || /^(?:loader\.js|core\.wasm|plugin\.json)$/i.test(name))
+      throw new PluginError('invalid-manifest', 'Invalid web player asset name');
+    return { name, ...parseFile({ file: f.file, sha256: f.sha256 }) };
+  });
+  if (
+    new Set(assets.map((a) => a.name.toLowerCase())).size !== assets.length ||
+    new Set([
+      loader.file.toLowerCase(),
+      wasm.file.toLowerCase(),
+      ...assets.map((a) => a.file.toLowerCase()),
+    ]).size !==
+      assets.length + 2
+  )
+    throw new PluginError('invalid-manifest', 'Web player files and names must be unique');
+  return {
+    profileVersion: 1,
+    runtime,
+    filesystem: 'memfs',
+    threaded: false,
+    saveCompletion,
+    contentExtensions,
+    maxContentBytes: Number(r.maxContentBytes),
+    buildVersion,
+    loader,
+    wasm,
+    assets,
+  };
 }
 
 function parseSigner(value: unknown): SignerConfig {
