@@ -13,6 +13,7 @@ export function createLibraryJobs(
   client: Pick<
     ContentClient,
     | 'libraryJobs'
+    | 'libraryJob'
     | 'libraryJobItems'
     | 'createLibraryJob'
     | 'cancelLibraryJob'
@@ -27,6 +28,7 @@ export function createLibraryJobs(
     selectedId: string | null;
     items: LibraryJobItem[];
     nextCursor: string | null;
+    nextJobsCursor: string | null;
     loading: boolean;
     failure: string | null;
   } = {
@@ -34,6 +36,7 @@ export function createLibraryJobs(
     selectedId: null,
     items: [],
     nextCursor: null,
+    nextJobsCursor: null,
     loading: false,
     failure: null,
   };
@@ -42,6 +45,7 @@ export function createLibraryJobs(
     denied = false,
     refreshing = false,
     timer: ReturnType<typeof setTimeout> | undefined;
+  let historyExpanded = false;
   let itemEpoch = 0,
     status: string | undefined = 'review',
     cursor: string | undefined;
@@ -91,9 +95,25 @@ export function createLibraryJobs(
         result.jobs.find((j) => ['queued', 'running'].includes(j.state))?.id ??
         result.jobs[0]?.id ??
         null;
-      const previous = current.jobs.find((j) => j.id === selectedId),
-        next = result.jobs.find((j) => j.id === selectedId);
-      update({ jobs: result.jobs, selectedId, failure: null });
+      const previous = current.jobs.find((j) => j.id === selectedId);
+      let next = result.jobs.find((j) => j.id === selectedId);
+      if (selectedId && !next) next = (await client.libraryJob(selectedId)).job;
+      if (disposed || denied) return;
+      const retained = historyExpanded
+        ? current.jobs
+        : current.jobs.filter((job) => job.id === selectedId);
+      const jobs = [
+        ...new Map(
+          [...retained, ...result.jobs, ...(next ? [next] : [])].map((job) => [job.id, job]),
+        ).values(),
+      ];
+      jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+      update({
+        jobs,
+        selectedId,
+        failure: null,
+        ...(!historyExpanded ? { nextJobsCursor: result.nextCursor } : {}),
+      });
       if (previous?.updatedAt !== next?.updatedAt) {
         if (
           (next && previous && next.saved !== previous.saved) ||
@@ -138,6 +158,24 @@ export function createLibraryJobs(
       void poll();
     },
     refresh,
+    async older() {
+      if (disposed || denied || current.loading || !current.nextJobsCursor) return;
+      const before = current.nextJobsCursor;
+      update({ loading: true, failure: null });
+      try {
+        const page = await client.libraryJobs({ limit: 20, cursor: before });
+        if (disposed || denied) return;
+        historyExpanded = true;
+        update({
+          jobs: [...new Map([...current.jobs, ...page.jobs].map((job) => [job.id, job])).values()],
+          nextJobsCursor: page.nextCursor,
+        });
+      } catch (error) {
+        fail(error);
+      } finally {
+        update({ loading: false });
+      }
+    },
     async choose(id: string) {
       itemEpoch++;
       update({ selectedId: id, items: [], nextCursor: null });

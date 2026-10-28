@@ -344,7 +344,12 @@ export function createLibretroProvider(
           ]),
       );
       const identity = verified.size === 1 ? [...verified.values()][0] : undefined;
-      const boxarts = ranked.filter((row) => row.image.kind === 'boxarts');
+      const boxarts = ranked.filter(
+        (row) =>
+          row.image.kind === 'boxarts' &&
+          identity &&
+          canonical(row.image.title) === canonical(identity.title),
+      );
       const onlyCover = boxarts.length === 1 ? boxarts[0] : undefined;
       const canonicalCover =
         !failures.length &&

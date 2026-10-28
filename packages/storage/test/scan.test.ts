@@ -270,3 +270,18 @@ test('macOS network mount classification uses the longest complete mount path', 
   assert.equal(darwinMountType('/Volumes/Games/Extra/ROMs', facts), 'nfs');
   assert.equal(darwinMountType('/Users/player/Games', facts), 'apfs');
 });
+
+test('explicit BIOS filenames are system firmware even inside a games folder', () => {
+  for (const name of [
+    '[BIOS] Atari Jaguar (World).j64',
+    '[BIOS] Atari Jaguar (World)-2.zip',
+    '[bios] Atari Jaguar (World).7z',
+  ]) {
+    assert.deepEqual(inferSource(`Atari Jaguar/${name}`), {
+      kind: 'bios',
+      systemId: 'com.provenance.jaguar',
+    });
+  }
+  assert.equal(inferSource('Atari Jaguar/Biosphere.j64').kind, 'rom');
+  assert.equal(inferSource('Atari Jaguar/Game [BIOS].j64').kind, 'rom');
+});

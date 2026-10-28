@@ -51,7 +51,10 @@ export function inferSource(relativePath: string): { kind: AssetKind; systemId: 
   const extension = extensionOf(base);
   const folders = parts.slice(0, -1).map((part) => part.toLowerCase());
   const hinted = detectRomSystem(relativePath).systemId;
-  if (folders.some((folder) => folder === 'bios' || folder === 'bioses')) {
+  if (
+    /^\[bios\](?:\s|$)/i.test(base) ||
+    folders.some((folder) => folder === 'bios' || folder === 'bioses')
+  ) {
     return { kind: 'bios', systemId: hinted };
   }
   if (extension === 'state' || extension === 'ss') {

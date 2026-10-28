@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { open } from 'node:fs/promises';
-import { DomainError } from '@ecs/domain';
-import { crc32 } from '@ecs/storage';
+import { DomainError, isRomExtension } from '@ecs/domain';
+import { crc32, fingerprintSingleZipEntry } from '@ecs/storage';
 export async function boundedFile(path: string, max: number): Promise<Buffer> {
   const handle = await open(path, 'r');
   try {
@@ -64,6 +64,9 @@ export async function boundedFingerprint(
     const md5 = createHash('md5');
     let crc = 0xffffffff,
       size = 0;
+    // Cancellation can arrive while open/stat await I/O. Do not construct a
+    // ReadStream with an already-aborted signal before its iterator is attached.
+    signal?.throwIfAborted();
     const stream = handle.createReadStream({
       autoClose: false,
       highWaterMark: 64 * 1024,
@@ -106,5 +109,44 @@ export async function boundedFingerprint(
     };
   } finally {
     await handle.close();
+  }
+}
+
+const ZIP_MATCHING_QUOTA = {
+  maxExpandedBytes: 64 * 1024 * 1024,
+  maxCompressionRatio: 100,
+  maxEntries: 256,
+  maxNesting: 1,
+  timeoutMs: 10000,
+};
+const ZIP_UNSUPPORTED_LAYOUT = /\.(zip|7z|rar|chd|cdi|iso|cue|m3u|gdi|ccd)$/i;
+/** Hash exactly one raw cartridge/program; rejected archives retain filename hints. */
+export async function boundedZipFingerprint(
+  path: string,
+  signal?: AbortSignal,
+): Promise<{ md5: string; crc32: string; size: number } | null> {
+  signal?.throwIfAborted();
+  try {
+    const fingerprint = await fingerprintSingleZipEntry(
+      path,
+      ZIP_MATCHING_QUOTA,
+      (names) => {
+        if (names.some((name) => ZIP_UNSUPPORTED_LAYOUT.test(name))) return null;
+        const roms = names.filter((name) => isRomExtension(name));
+        return roms.length === 1 ? (roms[0] ?? null) : null;
+      },
+      signal,
+    );
+    signal?.throwIfAborted();
+    return fingerprint;
+  } catch (error) {
+    signal?.throwIfAborted();
+    if (
+      (error instanceof DomainError &&
+        ['archive-rejected', 'unsupported-entry'].includes(error.code)) ||
+      (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name))
+    )
+      return null;
+    throw error;
   }
 }

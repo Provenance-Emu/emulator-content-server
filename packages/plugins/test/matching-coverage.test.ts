@@ -487,10 +487,9 @@ test('ambiguous checksum titles never corroborate a cover', async () => {
   assert.ok(result.filter((c) => c.kind === 'artwork').every((c) => c.confidence === 'name'));
 });
 
-test('multiple box art versions, title/snap-only indexes, and revision differences stay name hints', async () => {
+test('duplicate canonical covers, title/snap-only indexes, and revision differences stay name hints', async () => {
   for (const paths of [
     ['Named_Boxarts/Orbit Rally (World).png', 'Named_Boxarts/ORBIT RALLY (WORLD).png'],
-    ['Named_Boxarts/Orbit Rally (World).png', 'Named_Boxarts/Orbit Rally (USA).png'],
     ['Named_Titles/Orbit Rally (World).png', 'Named_Snaps/Orbit Rally (World).png'],
     ['Named_Boxarts/Orbit Rally (World) (Rev 1).png'],
   ]) {
@@ -532,5 +531,26 @@ test('partial provider failures preserve canonical cover as a name hint', async 
   assert.ok(result.candidates.some((c) => c.kind === 'artwork'));
   assert.ok(
     result.candidates.filter((c) => c.kind === 'artwork').every((c) => c.confidence === 'name'),
+  );
+});
+
+test('an exact checksum-identified cover is independent of other regional name hints', async () => {
+  const result = await covers([
+    'Named_Boxarts/Orbit Rally (World).png',
+    'Named_Boxarts/Orbit Rally (USA).png',
+    'Named_Boxarts/Orbit Rally (World) (Rev 1).png',
+    'Named_Snaps/Orbit Rally (World).png',
+  ]);
+  const verified = result.filter(
+    (candidate) => candidate.kind === 'artwork' && candidate.confidence === 'checksum',
+  );
+  assert.equal(verified.length, 1);
+  assert.equal(verified[0]?.title, 'Orbit Rally (World)');
+  assert.ok(
+    result
+      .filter(
+        (candidate) => candidate.kind === 'artwork' && candidate.title !== 'Orbit Rally (World)',
+      )
+      .every((candidate) => candidate.confidence === 'name'),
   );
 });

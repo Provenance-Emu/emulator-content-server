@@ -1,4 +1,4 @@
-import { type FSWatcher, realpathSync, watch } from 'node:fs';
+import { type FSWatcher, realpathSync, statSync, watch } from 'node:fs';
 import type { CatalogDatabase } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { enqueueRootScan } from './library-jobs.js';
@@ -15,6 +15,8 @@ interface WatchedFolder {
   watcher?: FSWatcher;
   due: number | null;
   firstEvent?: number;
+  nextAudit: number;
+  watchIdentity?: string;
   status: FolderWatchStatus;
 }
 
@@ -48,7 +50,12 @@ export class FolderWatcher {
     }
     for (const policy of policies) {
       if (this.folders.has(policy.rootId)) continue;
-      const folder: WatchedFolder = { ...policy, due: Date.now(), status: { state: 'polling' } };
+      const folder: WatchedFolder = {
+        ...policy,
+        due: Date.now(),
+        nextAudit: 0,
+        status: { state: 'polling' },
+      };
       this.folders.set(policy.rootId, folder);
       this.attach(folder);
     }
@@ -58,10 +65,13 @@ export class FolderWatcher {
       this.interval = setInterval(() => {
         this.reconcile();
         for (const folder of this.folders.values()) {
-          folder.watcher?.close();
-          folder.watcher = undefined;
-          this.attach(folder);
-          folder.due ??= Date.now();
+          if (folder.watcher && this.identity(folder.rootPath) !== folder.watchIdentity) {
+            folder.watcher.close();
+            folder.watcher = undefined;
+            folder.due ??= Date.now();
+          }
+          if (!folder.watcher) this.attach(folder);
+          if (Date.now() >= folder.nextAudit) folder.due ??= Date.now();
         }
         this.kick();
       }, 30_000);
@@ -73,6 +83,16 @@ export class FolderWatcher {
     this.kick();
   }
 
+  private identity(path: string): string | undefined {
+    try {
+      if (realpathSync(path) !== path) return undefined;
+      const info = statSync(path, { bigint: true });
+      return info.isDirectory() ? `${info.dev}:${info.ino}` : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   private attach(folder: WatchedFolder): void {
     const fallback = () => {
       folder.watcher?.close();
@@ -80,11 +100,12 @@ export class FolderWatcher {
       folder.status = {
         ...folder.status,
         state: 'polling',
-        warning: 'Live notifications unavailable. Checking this folder every 30 seconds.',
+        warning: 'Live notifications unavailable. Checking this folder periodically.',
       };
     };
     try {
-      if (realpathSync(folder.rootPath) !== folder.rootPath) {
+      const identity = this.identity(folder.rootPath);
+      if (!identity) {
         fallback();
         return;
       }
@@ -102,6 +123,7 @@ export class FolderWatcher {
         folder.due ??= Date.now() + 250;
         this.kick();
       });
+      folder.watchIdentity = identity;
       folder.status = { ...folder.status, state: 'watching', warning: undefined };
     } catch {
       fallback();
@@ -142,12 +164,20 @@ export class FolderWatcher {
       folder.due = null;
       folder.firstEvent = undefined;
       folder.status.state = 'scanning';
+      const started = Date.now();
       try {
         const result = await enqueueRootScan(
           this.catalog,
           { id: folder.rootId, path: folder.rootPath },
           folder.enabledBy,
         );
+        // Healthy OS watchers need occasional missed-event recovery, not a full walk
+        // every poll. Slow fallback scans get breathing room proportional to IO cost.
+        folder.nextAudit =
+          Date.now() +
+          (result.online && folder.watcher
+            ? 15 * 60_000
+            : Math.max(30_000, Math.min(5 * 60_000, (Date.now() - started) * 10)));
         folder.status = {
           state: result.online ? (folder.watcher ? 'watching' : 'polling') : 'offline',
           lastScanAt: new Date().toISOString(),
@@ -155,11 +185,12 @@ export class FolderWatcher {
             ? { warning: 'Folder is offline. Retrying every 30 seconds.' }
             : !folder.watcher
               ? {
-                  warning: 'Live notifications unavailable. Checking this folder every 30 seconds.',
+                  warning: 'Live notifications unavailable. Checking this folder periodically.',
                 }
               : {}),
         };
       } catch (error) {
+        folder.nextAudit = Date.now() + 30_000;
         if (
           error instanceof DomainError &&
           ['root-busy', 'library-job-conflict'].includes(error.code)

@@ -1,5 +1,13 @@
 # Desktop acceptance
 
+## 0.1.6 refresh — 2026-10-28
+
+Published [v0.1.6-alpha.1](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.6-alpha.1) from frozen source `2e7705bcd838b21ebaf1f55f4fcb69784f1c9641`. The arm64 Mac app and DMG are Developer ID signed. Apple accepted app submission `03fde68c-8846-4afc-9a9c-748263d05292` and DMG submission `20830ae9-50ae-42fe-b4fb-17f6ead0928d`; both tickets validate and Gatekeeper accepts them. The Applications copy was replaced from that DMG, preserving the prior copy in Trash. Native accessibility inspection verified Home, the existing library and Library activity on the installed app.
+
+Windows build [40746030277](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/40746030277) and Linux build [40746033801](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/40746033801) succeeded from the same source. All five uploaded binary artifact digests match the downloaded platform checksum manifests: DMG, MSI, DEB, AppImage and portable server archive. Windows/Linux GUI acceptance remains separate from packaging success.
+
+The detached portable snapshot activated with the existing schema-18 catalog, roots, profiles, user sessions and saved choices intact. A private integrity-checked schema-15 backup exists for reverting to the older server; old binaries cannot open schema 18. The first shared matching pass completed 935 games in 15.636 seconds, added 29 metadata selections and preserved the existing artwork. ZIP inner-ROM and further coverage improvements are a subsequent main-branch batch, not changes to the frozen release bytes.
+
 Use generated content and a temporary loopback server/catalog for interactive
 checks. Never point an acceptance upload or folder-registration check at an
 operator catalog. Build the bundled app with `pnpm --filter @ecs/tray tauri build

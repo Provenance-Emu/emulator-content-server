@@ -690,3 +690,17 @@ test('bulk auto matching refreshes proposals after automatic move and keeps save
   assert.equal(get(bulk).rows[0]?.saved, 2);
   assert.equal(get(bulk).rows[0]?.status, 'saved');
 });
+
+test('shared matching may request ZIP verification without making the retired per-tab planner trust it', async () => {
+  const { canAttemptChecksum, canChecksum } = await import('../src/lib/bulk-matching.js');
+  const source = entry('source', 'zip').source;
+  assert.ok(source);
+  source.name = 'Game.zip';
+  assert.equal(canAttemptChecksum(source), true);
+  assert.equal(canChecksum(source), false);
+  source.availability = 'evicted';
+  assert.equal(canAttemptChecksum(source), false);
+  source.availability = 'local';
+  source.groupFileCount = 2;
+  assert.equal(canAttemptChecksum(source), false);
+});

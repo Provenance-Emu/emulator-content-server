@@ -25,7 +25,7 @@
   const candidates=$derived($controller.result?.candidates.filter((c)=>c.kind===category) ?? []);
   const activeProviders=$derived(plugins.some((plugin)=>plugin.kind==='provider'&&providerIds.includes(plugin.id)&&(!plugin.network||online)));
   $effect(()=>{onbusy?.($controller.loading || $controller.savedLoading || !!$controller.saving);});
-  const container=$derived(/\.(zip|7z|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(sourceName));
+  const container=$derived(/\.(7z|rar|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(sourceName));
   onMount(()=>{savedReady=controller.load();if(owner)void loadPlugins();});
   async function loadPlugins(){
     if(disposed||registryLoading)return;
@@ -100,9 +100,10 @@
   <h2>Find metadata, artwork, patches & cheats</h2>
   <p class="dim">Find suggestions from files beside this game and your selected providers. Save a choice to keep it with this game. Saving metadata makes its title and details visible to people who can read the game. Your original files stay unchanged.</p>
   <div class="match-options">
-    <label><input type="checkbox" bind:checked={checksum} disabled={container || $controller.loading} /> Verify by checksum (local ROMs up to 64 MB)</label>
+    <label><input type="checkbox" bind:checked={checksum} disabled={container || $controller.loading} /> Verify by checksum (local ROMs or single-ROM ZIPs up to 64 MB)</label>
   </div>
   <p class="dim">Online providers use public Libretro catalogs and cheat indexes. Artwork loads when you choose Preview. ROM bytes and server paths stay on this machine.</p>
+  {#if /\.zip$/i.test(sourceName)}<p class="dim">A ZIP can be verified when it contains one supported ROM. Ambiguous or unsupported archives keep filename suggestions.</p>{/if}
   {#if container}<p class="dim">Disc sets and archives use filename suggestions; a container checksum cannot identify the game inside.</p>{/if}
   <MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={$controller.loading||!!$controller.saving} />
   {#if ready&&!activeProviders}<p class="dim">Select a local provider or enable a selected online provider before matching.</p>{/if}

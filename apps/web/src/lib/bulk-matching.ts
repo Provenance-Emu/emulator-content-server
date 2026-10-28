@@ -45,13 +45,19 @@ export interface BulkMatchingController extends Readable<BulkMatchingState> {
   dispose(): void;
 }
 
-export function canChecksum(source: SourceFile): boolean {
+/** Request eligibility only; the server decides whether an archive really hashed. */
+export function canAttemptChecksum(source: SourceFile): boolean {
   return (
     source.availability === 'local' &&
     source.size <= 64 * 1024 * 1024 &&
     (source.groupFileCount ?? 1) <= 1 &&
-    !/\.(zip|7z|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.name)
+    !/\.(7z|rar|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.name)
   );
+}
+
+// The retired per-tab planner cannot observe inner archive verification evidence.
+export function canChecksum(source: SourceFile): boolean {
+  return canAttemptChecksum(source) && !/\.zip$/i.test(source.name);
 }
 
 /** Trust provider checksum evidence only when this lookup actually hashed the ROM.

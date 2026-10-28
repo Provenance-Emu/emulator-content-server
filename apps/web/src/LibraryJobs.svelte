@@ -3,7 +3,7 @@
   import { onMount, untrack } from 'svelte';
   import type { ServerContext } from './lib/application';
   import { createLibraryJobs } from './lib/library-jobs';
-  import { canChecksum } from './lib/bulk-matching';
+  import { canAttemptChecksum } from './lib/bulk-matching';
   import { explain } from './lib/problems';
   import MatchingProviders from './components/MatchingProviders.svelte';
   import MatchingPanel from './MatchingPanel.svelte';
@@ -64,6 +64,7 @@
   <label>Server activity<select value={$controller.selectedId??''} onchange={event=>void choose(event.currentTarget.value)}>
     {#each $controller.jobs as job(job.id)}<option value={job.id}>{scopeName(job.scope)} · {job.kind==='scan'?'Folder scan':'Artwork and metadata'} · {job.state} · {job.processed}/{job.total} · {new Date(job.createdAt).toLocaleString()}</option>{/each}
   </select></label>
+  {#if $controller.nextJobsCursor}<button type="button" disabled={$controller.loading} onclick={()=>void controller.older()}>Load older activity</button>{/if}
 {:else}<p>No library jobs yet.</p>{/if}
 {#if selected}
   <section aria-label="Library job progress">
@@ -83,7 +84,7 @@
     <button type="button" disabled={reviewBusy} onclick={()=>void nextReview(true)}>Done reviewing this game</button>
     <button type="button" disabled={reviewBusy} onclick={()=>void nextReview(false)}>Next unresolved game</button>
     <h3>{itemName(reviewing)}</h3>
-    {#key reviewing.sourceId}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.sourceId} sourceName={itemName(reviewing)} reviewOptions={{...selected.options,checksum:reviewing.source?canChecksum(reviewing.source):false}} onnext={()=>void nextReview(true)} />{/key}
+    {#key reviewing.sourceId}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.sourceId} sourceName={itemName(reviewing)} reviewOptions={{...selected.options,checksum:reviewing.source?canAttemptChecksum(reviewing.source):false}} onnext={()=>void nextReview(true)} />{/key}
   {:else}
     <label>Results<select bind:value={filter} onchange={()=>void controller.filter(filter)}><option value="review">Needs review</option><option value="failed">Failed</option><option value="unmatched">No match</option><option value="saved">Saved</option><option value="skipped">Skipped</option><option value="">All results</option></select></label>
     <ul class="job-results">

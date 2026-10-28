@@ -205,3 +205,35 @@ test('review saves categories before acknowledging the shared result and updates
     page.getByRole('button', { name: 'Open A matched title', exact: true }).locator('img'),
   ).toBeVisible();
 });
+
+test('older matching results remain reachable after more than one page of folder scans', async ({
+  page,
+  fixture,
+}) => {
+  const root = await fixture.legacy();
+  await fixture.client.assignRoot(root.id, { libraryId: fixture.empty.id });
+  const { job } = await fixture.client.createLibraryJob({
+    kind: 'match',
+    libraryId: fixture.empty.id,
+    options: { online: false, checksum: false },
+  });
+  await expect
+    .poll(async () => (await fixture.client.libraryJob(job.id)).job.state)
+    .toBe('completed');
+  for (let index = 0; index < 21; index++) await fixture.client.scanRoot(root.id);
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
+  const panel = await openActivity(page);
+  const history = panel.getByRole('combobox', { name: 'Server activity', exact: true });
+  await expect(history.locator(`option[value="${job.id}"]`)).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Load older activity', exact: true }).click();
+  await history.selectOption(job.id);
+  await expect(panel.getByRole('region', { name: 'Library job progress' })).toContainText(
+    '1 without a match',
+  );
+  await panel.getByRole('button', { name: 'Refresh activity', exact: true }).click();
+  await expect(history).toHaveValue(job.id);
+  await expect(panel.getByRole('region', { name: 'Library job progress' })).toContainText(
+    '1 without a match',
+  );
+});

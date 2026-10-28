@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { type FileHandle, open } from 'node:fs/promises';
+import { type FileHandle, open, stat } from 'node:fs/promises';
 import { Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createInflateRaw } from 'node:zlib';
@@ -30,6 +30,7 @@ const UINT32_SENTINEL = 0xffffffff;
 const MAX_COMMENT_BYTES = 0xffff;
 const MAX_CENTRAL_DIRECTORY_BYTES = 32 * 1024 * 1024;
 const FLAG_ENCRYPTED = 0x0001;
+const UNSUPPORTED_FINGERPRINT_FLAGS = FLAG_ENCRYPTED | 0x40 | 0x2000;
 const METHOD_STORE = 0;
 const METHOD_DEFLATE = 8;
 const ENTRY_ID = /^\d{1,10}(\.\d{1,10}){0,3}$/;
@@ -43,6 +44,7 @@ interface CentralRecord {
   name: string;
   flags: number;
   method: number;
+  unixMode: number;
   crc: number;
   compressedSize: number;
   uncompressedSize: number;
@@ -137,6 +139,136 @@ export class ZipProvider implements VirtualContentProvider {
     if (!expanded) throw new DomainError('not-found', 404, 'Archive entry not found');
     return expanded;
   }
+}
+
+export interface ZipEntryFingerprint {
+  md5: string;
+  crc32: string;
+  size: number;
+}
+
+/** Hash one selected member without extraction or nested expansion. The caller supplies
+ * a bounded archive-wide selection policy; container CRCs never become content hashes. */
+export async function fingerprintSingleZipEntry(
+  filePath: string,
+  quota: MaterializeQuota,
+  selectName: (names: readonly string[]) => string | null,
+  signal?: AbortSignal,
+): Promise<ZipEntryFingerprint | null> {
+  signal?.throwIfAborted();
+  const limited = AbortSignal.any([
+    ...(signal ? [signal] : []),
+    AbortSignal.timeout(quota.timeoutMs),
+  ]);
+  return withArchive(filePath, undefined, async (handle, root) => {
+    const before = await handle.stat({ bigint: true });
+    if (!before.isFile() || before.size > BigInt(quota.maxExpandedBytes))
+      reject('Archive exceeds the matching read limit');
+    limited.throwIfAborted();
+    const records = await readCentralDirectory(handle, root, quota, 1024 * 1024);
+    limited.throwIfAborted();
+    if (!records) return null;
+    const selected = selectName(records.map((record) => record.name));
+    const candidates = records.filter((record) => record.name === selected);
+    if (
+      candidates.length !== 1 ||
+      records.some(
+        (record) =>
+          (record.flags & UNSUPPORTED_FINGERPRINT_FLAGS) !== 0 ||
+          ![METHOD_STORE, METHOD_DEFLATE].includes(record.method),
+      )
+    )
+      return null;
+    const record = candidates[0];
+    if (!record || record.uncompressedSize === 0 || ![0, 0x8000].includes(record.unixMode & 0xf000))
+      return null;
+    checkEntryLimits(record, quota);
+    const start = await dataOffset(handle, root, record);
+    const header = await readAt(handle, root, record.localHeaderOffset, LOCAL_FIXED_SIZE);
+    if ((header.readUInt16LE(6) & UNSUPPORTED_FINGERPRINT_FLAGS) !== 0)
+      reject('Encrypted archive entries are not fingerprinted');
+    const localName = await readAt(
+      handle,
+      root,
+      record.localHeaderOffset + LOCAL_FIXED_SIZE,
+      header.readUInt16LE(26),
+    );
+    if (localName.toString('utf8') !== record.name)
+      reject('Archive local name disagrees with the central directory');
+    limited.throwIfAborted();
+    const md5 = createHash('md5');
+    let crc = 0xffffffff,
+      size = 0;
+    const sink = new Writable({
+      highWaterMark: 64 * 1024,
+      write(chunk, _encoding, callback) {
+        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        size += bytes.length;
+        if (size > Math.min(record.uncompressedSize, quota.maxExpandedBytes)) {
+          callback(
+            new DomainError(
+              'archive-rejected',
+              422,
+              'Archive entry expands past its declared size',
+            ),
+          );
+          return;
+        }
+        md5.update(bytes);
+        crc = crc32(bytes, crc);
+        callback();
+      },
+    });
+    const source = handle.createReadStream({
+      start: root.offset + start,
+      end: root.offset + start + record.compressedSize - 1,
+      autoClose: false,
+      highWaterMark: 64 * 1024,
+    });
+    const inflate =
+      record.method === METHOD_DEFLATE ? createInflateRaw({ chunkSize: 64 * 1024 }) : null;
+    try {
+      if (inflate) await pipeline(source, inflate, sink, { signal: limited });
+      else await pipeline(source, sink, { signal: limited });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error.code === 'Z_DATA_ERROR' || error.code === 'Z_BUF_ERROR')
+      )
+        reject('Archive entry contains invalid DEFLATE data');
+      throw error;
+    }
+    limited.throwIfAborted();
+    if (inflate && inflate.bytesWritten !== record.compressedSize)
+      reject('Archive entry contains trailing bytes after its DEFLATE stream');
+    if (size !== record.uncompressedSize)
+      reject('Archive entry did not expand to its declared size');
+    const checksum = (crc ^ 0xffffffff) >>> 0;
+    if (checksum !== record.crc) reject('Archive entry failed its CRC check');
+    const after = await handle.stat({ bigint: true });
+    let current = after;
+    try {
+      current = await stat(filePath, { bigint: true });
+    } catch {
+      throw new DomainError('archive-changed', 409, 'Archive changed while reading its member');
+    }
+    if (
+      after.dev !== before.dev ||
+      after.ino !== before.ino ||
+      after.size !== before.size ||
+      after.mtimeNs !== before.mtimeNs ||
+      after.ctimeNs !== before.ctimeNs ||
+      current.dev !== before.dev ||
+      current.ino !== before.ino ||
+      current.size !== before.size ||
+      current.mtimeNs !== before.mtimeNs ||
+      current.ctimeNs !== before.ctimeNs
+    )
+      throw new DomainError('archive-changed', 409, 'Archive changed while reading its member');
+    limited.throwIfAborted();
+    return { md5: md5.digest('hex'), crc32: checksum.toString(16).padStart(8, '0'), size };
+  });
 }
 
 function toEntry(record: CentralRecord, entryId: string, path: string): VirtualEntry {
@@ -277,13 +409,14 @@ async function readCentralDirectory(
   handle: FileHandle,
   window: VirtualWindow,
   quota: MaterializeQuota,
+  maxDirectoryBytes = MAX_CENTRAL_DIRECTORY_BYTES,
 ): Promise<CentralRecord[] | null> {
   const end = await readEndRecord(handle, window);
   if (!end) return null;
   if (end.totalEntries > quota.maxEntries) {
     reject('Archive declares more entries than the quota allows');
   }
-  if (end.directorySize > MAX_CENTRAL_DIRECTORY_BYTES) {
+  if (end.directorySize > maxDirectoryBytes) {
     reject('Archive central directory is too large to parse');
   }
   if (end.directoryOffset + end.directorySize > window.length) {
@@ -310,6 +443,7 @@ async function readCentralDirectory(
       name: directory.toString('utf8', nameAt, extraAt),
       flags: directory.readUInt16LE(cursor + 8),
       method: directory.readUInt16LE(cursor + 10),
+      unixMode: directory.readUInt32LE(cursor + 38) >>> 16,
       crc: directory.readUInt32LE(cursor + 16),
       compressedSize: directory.readUInt32LE(cursor + 20),
       uncompressedSize: directory.readUInt32LE(cursor + 24),

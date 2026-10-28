@@ -58,5 +58,5 @@ export {
   probeFile,
   probeRoot,
 } from './volume.js';
-export { ZipProvider } from './zip.js';
+export { fingerprintSingleZipEntry, type ZipEntryFingerprint, ZipProvider } from './zip.js';
 export { streamZip, type ZipMember } from './zip-stream.js';

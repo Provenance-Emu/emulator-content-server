@@ -17,7 +17,12 @@ import { validateSystemIdentifier } from '@ecs/protocol';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
-import { boundedFile, boundedFingerprint, imageType } from './matching-files.js';
+import {
+  boundedFile,
+  boundedFingerprint,
+  boundedZipFingerprint,
+  imageType,
+} from './matching-files.js';
 import { localSource, visibleSource } from './source-groups.js';
 import { sourceMetadata } from './source-metadata.js';
 import { runAutomaticOrganization } from './source-organization.js';
@@ -84,6 +89,7 @@ export function registerSourceMatching(
     expires: number;
     candidates: (MatchCandidate & { providerId: string })[];
     stamps: Map<string, string>;
+    checksummed: boolean;
   };
   const jobs = new Map<string, Job>();
   const inflight = new Map<string, Promise<Awaited<ReturnType<typeof executeMatch>>>>();
@@ -241,10 +247,11 @@ export function registerSourceMatching(
           /* An invalid or unavailable sidecar does not stop the game's other matches. */
         }
       }
+      let checksummed = false;
       if (options.checksum) {
         if (
           source.groupMembers?.length ||
-          /\.(zip|7z|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.displayName)
+          /\.(7z|rar|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.displayName)
         )
           throw new DomainError(
             'matching-container-checksum',
@@ -253,21 +260,30 @@ export function registerSourceMatching(
           );
         const local = await localSource(context, actor, source.id);
         const etag = (await sourceMetadata(local.path, source.id)).etag;
-        let fingerprint = context.catalog.matchingFingerprint(source.id, etag);
+        const zip = /\.zip$/i.test(source.displayName);
+        const cacheStamp = zip ? `zip-v1:${etag}` : etag;
+        let fingerprint = context.catalog.matchingFingerprint(source.id, cacheStamp);
         if (!fingerprint) {
-          fingerprint = await boundedFingerprint(local.path, 64 * 1024 * 1024, signal);
+          fingerprint = zip
+            ? await boundedZipFingerprint(local.path, signal)
+            : await boundedFingerprint(local.path, 64 * 1024 * 1024, signal);
           if ((await sourceMetadata(local.path, source.id)).etag !== etag)
             throw new DomainError(
               'matching-source-changed',
               409,
               'Source changed. Find matches again before saving.',
             );
-          context.catalog.saveMatchingFingerprint(source.id, etag, fingerprint);
+          signal.throwIfAborted();
+          if (fingerprint)
+            context.catalog.saveMatchingFingerprint(source.id, cacheStamp, fingerprint);
         }
         stamps.set(source.id, etag);
-        input.md5 = fingerprint.md5;
-        input.crc32 = fingerprint.crc32;
-        input.size = fingerprint.size;
+        if (fingerprint) {
+          input.md5 = fingerprint.md5;
+          input.crc32 = fingerprint.crc32;
+          input.size = fingerprint.size;
+          checksummed = true;
+        }
       }
       const result = await matchingJob(
         {
@@ -306,6 +322,7 @@ export function registerSourceMatching(
         expires: Date.now() + 15 * 60000,
         candidates,
         stamps,
+        checksummed,
       });
       return { sourceId: source.id, requestId, plugins: result.plugins, candidates, problems };
     } catch (error) {
@@ -495,7 +512,7 @@ export function registerSourceMatching(
         options.checksum &&
         source.size <= 64 * 1024 * 1024 &&
         !source.groupMembers?.length &&
-        !/\.(zip|7z|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.displayName);
+        !/\.(7z|rar|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.displayName);
       let result = await match(actor, sourceId, { ...options, checksum }, signal);
       let saved = context.catalog.sourceMatches(sourceId);
       let count = 0;
@@ -514,7 +531,9 @@ export function registerSourceMatching(
             .filter(Boolean),
         );
         const candidate =
-          checksum && !result.problems.length && systems.size <= 1
+          jobs.get(result.requestId)?.checksummed === true &&
+          !result.problems.length &&
+          systems.size <= 1
             ? remaining.find(
                 (candidate) =>
                   candidate.confidence === 'checksum' &&
