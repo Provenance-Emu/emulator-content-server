@@ -83,16 +83,15 @@ size upgrades the patch association. A different base CRC/size rejects the patch
 No patch is ever applied by matching. Archive and disc-container hashes are not
 used as if they identified an inner ROM; those entries use filename suggestions.
 
-The Libretro provider downloads public no-intro/redump DAT catalogs from the
-[Libretro database](https://github.com/libretro/libretro-database). Its initial
-system mapping covers Jaguar/Jaguar CD, NES, SNES, Game Boy/Color/Advance, N64,
-Genesis, Master System, Game Gear, PlayStation, Saturn, and Dreamcast. Missing
-catalogs yield no suggestions. It compares checksum plus size first, then exact
-edition filenames. Thumbnail candidates use the
-[Libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
-box-art names, offering both the original filename and matched catalog title when they differ. Artwork remains a filename suggestion even when the ROM itself matches a checksum. Existence is checked only when Preview is requested, so some art
-may be unavailable. Lookup sends no ROM bytes, local paths, or server credentials
-to Libretro. A thumbnail request reveals the selected public title to its host.
+The built-in **Game catalogs and artwork** provider keeps its stable `org.ecs.libretro` ID. It reads public No-Intro/Redump catalogs from the [Libretro database](https://github.com/libretro/libretro-database), supplements Jaguar with TOSEC, and supplements Atomiswave with Libretro’s arcade DAT. Naomi, Naomi2 and Atomiswave set IDs and GD-ROM serial aliases come from the public [Flycast game catalog](https://github.com/flyinghead/flycast/blob/master/core/hw/naomi/naomi_roms.cpp). Only scalar identity facts are parsed; upstream C++ is never evaluated. ROM bytes, local paths and server credentials are not sent to those hosts.
+
+Filename suggestions recognize legacy years, language/scene tags, punctuation, leading/trailing articles and alternate localized names. Explicit conflicting regions, revisions and prototype dates remain separate. Equivalent rows with the same displayed title collapse to one suggestion, with checksum evidence preferred. Short arcade set IDs (including duplicate-copy suffixes such as `beachspi-2.zip`) and documented disc serials remain **name** suggestions. Unknown source systems can receive explicit arcade suggestions; ambiguity never silently chooses a board. A name suggestion never becomes a checksum match or an automatic bulk save.
+
+Artwork is looked up independently of metadata in complete public [Libretro thumbnail](https://github.com/libretro-thumbnails/libretro-thumbnails) Git trees, using the repository’s correct branch and a pinned tree revision. Only listed PNG files within size bounds are offered; tiny placeholders are skipped. Box art is preferred, with title screens/screenshots available where covers are missing. Jaguar CD uses the shared Jaguar artwork collection. Preview/save still fetches and validates the selected image through the authenticated server. This avoids guessed nonexistent URLs; a listed file can still be removed or invalid when fetched. Partial upstream failures preserve healthy results and show a provider failure for retry.
+
+Public catalog text and indexes are cached for six hours in `cache/matching-catalogs` inside the data directory; missing files are cached for ten minutes. Atomic cache writes, bounded reads and body digests prevent an incomplete concurrent cache entry from becoming a match. A missing/unwritable cache falls back to a public fetch. Cancellation and size limits still apply. The HTTP process supplies the private cache location; matching/provider execution stays in the separate child process.
+
+Coverage remains limited by the upstream catalogs. Legacy PD/homebrew filenames, unlisted prototypes, patched releases and regional arcade aliases may still have no suggestion. A scan does not fabricate metadata/artwork for those games. Existing saved choices remain preserved until explicitly replaced.
 
 ## Plugin contract
 

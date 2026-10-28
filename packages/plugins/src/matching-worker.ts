@@ -60,7 +60,7 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
   }
   const providers: MatchingProvider[] = [
     localMatchingProvider,
-    createLibretroProvider(),
+    createLibretroProvider(fetch, job.catalogCacheDirectory),
     localCheatsProvider,
     createLibretroCheatsProvider(),
   ];

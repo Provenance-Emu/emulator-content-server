@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { posix } from 'node:path';
+import { join, posix } from 'node:path';
 import { type Actor, DomainError } from '@ecs/domain';
 import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
@@ -239,6 +239,7 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
       const result = await matchingJob(
         {
           operation: 'match',
+          catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
           input,
           ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
           ...(options.providerIds ? { providerIds: options.providerIds } : {}),

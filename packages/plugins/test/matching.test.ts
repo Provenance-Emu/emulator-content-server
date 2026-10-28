@@ -125,7 +125,15 @@ test('online provider reads a bounded official catalog and produces attributed a
   const urls: string[] = [];
   const provider = createLibretroProvider(async (url) => {
     urls.push(String(url));
-    return new Response('game ( name "Game (USA)" rom ( name "Game.rom" size 4 crc 12345678 ) )');
+    return new Response(
+      String(url).includes('/git/trees/')
+        ? JSON.stringify({
+            sha: 'a'.repeat(40),
+            truncated: false,
+            tree: [{ path: 'Named_Boxarts/Game (USA).png', type: 'blob', size: 1000 }],
+          })
+        : 'game ( name "Game (USA)" rom ( name "Game.rom" size 4 crc 12345678 ) )',
+    );
   });
   const result = await matching.runMatching({ ...input, online: true }, [provider]);
   assert.equal(result.candidates[0]?.confidence, 'checksum');
@@ -136,10 +144,10 @@ test('online provider reads a bounded official catalog and produces attributed a
   );
   assert.equal(
     result.candidates.find((c) => c.kind === 'artwork')?.url,
-    'https://raw.githubusercontent.com/libretro-thumbnails/Atari_-_Jaguar/master/Named_Boxarts/Game%20(USA).png',
+    'https://raw.githubusercontent.com/libretro-thumbnails/Atari_-_Jaguar/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Named_Boxarts/Game%20(USA).png',
   );
   await matching.runMatching({ ...input, online: true }, [provider]);
-  assert.equal(urls.length, 1);
+  assert.equal(urls.length, 3);
 });
 
 test('slow providers share one timeout window and do not discard successful results', async () => {
@@ -225,9 +233,18 @@ test('verified BPS/UPS base identity matches a differently named patch, while mi
 test('artwork offers the original filename when a checksum catalog uses a different edition title', async () => {
   const { createLibretroProvider } = await import('../src/libretro-matching.js');
   const provider = createLibretroProvider(
-    async () =>
+    async (url) =>
       new Response(
-        'game ( name "Game (World)" rom ( name "Game (World).rom" size 4 crc 12345678 ) )',
+        String(url).includes('/git/trees/')
+          ? JSON.stringify({
+              sha: 'a'.repeat(40),
+              truncated: false,
+              tree: [
+                { path: 'Named_Boxarts/Game (USA).png', type: 'blob', size: 1000 },
+                { path: 'Named_Boxarts/Game (World).png', type: 'blob', size: 1000 },
+              ],
+            })
+          : 'game ( name "Game (World)" rom ( name "Game (World).rom" size 4 crc 12345678 ) )',
       ),
   );
   const result = await matching.runMatching({ ...input, online: true }, [provider]);

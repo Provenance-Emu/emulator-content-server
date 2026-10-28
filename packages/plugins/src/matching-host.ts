@@ -7,6 +7,7 @@ import { validateCandidates } from './matching.js';
 export interface MatchingJob {
   operation: 'list' | 'match' | 'artwork' | 'cheats';
   artworkUrl?: string;
+  catalogCacheDirectory?: string;
   directory?: string;
   managerId?: string;
   providerIds?: string[];

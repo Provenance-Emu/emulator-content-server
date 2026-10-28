@@ -1,5 +1,6 @@
 import { crc32 } from 'node:zlib';
 import type { ProviderCapability } from './manifest.js';
+import { contentStem, nameMatchScore } from './matching-names.js';
 
 export interface MatchCompanion {
   id: string;
@@ -38,11 +39,21 @@ export interface MatchingResult {
   problems: { providerId: string; code: 'provider-failed' }[];
 }
 export interface DatRecord {
+  aliases?: string[];
+  systemId?: string;
+  source?: string;
   title: string;
   name: string;
   size: number;
   crc32?: string;
   md5?: string;
+}
+
+/** A provider can preserve healthy source results while reporting a failed auxiliary lookup. */
+export class PartialMatchingError extends Error {
+  constructor(readonly candidates: MatchCandidate[]) {
+    super('Part of this provider lookup failed');
+  }
 }
 
 /** A manager coordinates providers; it never turns a filename hint into a verified match. */
@@ -70,8 +81,20 @@ export async function runMatching(
         ]);
         const checked = validateCandidates(result, provider.capabilities);
         candidates.push(...checked.map((candidate) => ({ ...candidate, providerId: provider.id })));
-      } catch {
+      } catch (error) {
         signal?.throwIfAborted();
+        if (error instanceof PartialMatchingError) {
+          try {
+            candidates.push(
+              ...validateCandidates(error.candidates, provider.capabilities).map((candidate) => ({
+                ...candidate,
+                providerId: provider.id,
+              })),
+            );
+          } catch {
+            /* Malformed partial results remain a provider failure. */
+          }
+        }
         problems.push({ providerId: provider.id, code: 'provider-failed' });
       }
     }),
@@ -244,6 +267,7 @@ export function parseLibretroDat(source: string): DatRecord[] {
       if (!title || !fields.name || !Number.isSafeInteger(size) || size < 0) continue;
       records.push({
         title,
+        ...(game.block.fields.id ? { aliases: [game.block.fields.id] } : {}),
         name: fields.name,
         size,
         ...(/^[0-9a-f]{8}$/i.test(fields.crc ?? '')
@@ -264,10 +288,22 @@ export function matchLibretro(input: MatchingInput, records: DatRecord[]): Match
       input.size === record.size &&
       ((!!input.md5 && input.md5.toLowerCase() === record.md5) ||
         (!input.md5 && !!input.crc32 && input.crc32.toLowerCase() === record.crc32));
+    const arcadeAlias = (value: string) =>
+      contentStem(value)
+        .toLowerCase()
+        .replace(/-(?:[2-9][0-9]*|chd)$/, '');
+    const aliasMatch =
+      !!record.systemId &&
+      [record.name, ...(record.aliases ?? [])].some(
+        (alias) =>
+          contentStem(input.name).toLowerCase() === alias.toLowerCase() ||
+          arcadeAlias(input.name) === alias.toLowerCase(),
+      );
     if (
       !checksum &&
-      stem(input.name) !== stem(record.name) &&
-      stem(input.name) !== record.title.normalize('NFC').toLowerCase()
+      !aliasMatch &&
+      !nameMatchScore(input.name, record.name) &&
+      !nameMatchScore(input.name, record.title)
     )
       continue;
     found.push({
@@ -277,14 +313,20 @@ export function matchLibretro(input: MatchingInput, records: DatRecord[]): Match
       confidence: checksum ? 'checksum' : 'name',
       metadata: {
         title: record.title,
-        systemId: input.systemId ?? '',
+        systemId: record.systemId ?? input.systemId ?? '',
         romName: record.name,
-        source: 'Libretro database',
+        source: record.source ?? 'Libretro database',
         ...(record.crc32 ? { crc32: record.crc32 } : {}),
       },
     });
   }
-  return found
+  const unique = new Map<string, MatchCandidate>();
+  for (const candidate of found) {
+    const key = `${candidate.metadata.systemId}\0${candidate.title}`;
+    const existing = unique.get(key);
+    if (!existing || candidate.confidence === 'checksum') unique.set(key, candidate);
+  }
+  return [...unique.values()]
     .sort((a, b) => Number(b.confidence === 'checksum') - Number(a.confidence === 'checksum'))
     .slice(0, 30);
 }
