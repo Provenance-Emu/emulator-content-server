@@ -211,6 +211,7 @@
     onclose={() => (upload = false)}
   >
     <Upload
+      serverContext={context}
       {onauthorization}
       onbusy={(busy) => (uploading = busy)}
       client={context.client}

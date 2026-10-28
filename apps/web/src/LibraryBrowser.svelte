@@ -485,6 +485,7 @@
       onclose={() => { addChoices = false; upload = false; addingFolder = false; }}
     >
       {#if upload && canCreate}<Upload
+        serverContext={context}
         onbusy={(busy) => (uploading = busy)}
         client={context.client}
         libraryId={scope.libraryId}

@@ -8,6 +8,7 @@ import {
 } from './change-watch.js';
 import { explain, isForbidden, isUnauthorized } from './problems.js';
 import type { SessionStore, StoredSession } from './session.js';
+import { clearCredentialUploads } from './upload-journal.js';
 
 export type { SessionStore } from './session.js';
 
@@ -32,6 +33,7 @@ export interface ApplicationState {
   owner: boolean;
   libraries: Library[];
   failure: string | null;
+  localWarning?: string | null;
   /** Refresh the visible bounded page; clear it first if its scope is no longer accessible. */
   invalidation: number;
 }
@@ -62,6 +64,7 @@ export function createApplication(
     owner: false,
     libraries: [],
     failure: null,
+    localWarning: null,
     invalidation: 0,
   };
   const store = writable(current);
@@ -92,6 +95,13 @@ export function createApplication(
     feedChanged = false;
   }
   function forget() {
+    void clearCredentialUploads(context.origin, acceptedToken).catch(() => {
+      if (!disposed && context.key === contextKey)
+        update({
+          localWarning:
+            'Saved upload progress could not be checked or cleared on this device. Clear this site’s stored data to remove it.',
+        });
+    });
     epoch++;
     needsAuthentication = false;
     stopWatch();

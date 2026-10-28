@@ -1,0 +1,11 @@
+# Recovering an upload queue
+
+Signed-in users can choose **Save upload progress on this device** before starting an upload. Recovery stores file names, SHA-256 identities, draft metadata, target IDs, original revision baselines and idempotency keys in IndexedDB. It never stores file contents or authentication credentials. Saving is optional and supports up to 1,000 files per queue; ordinary uploads still support larger selections without recovery.
+
+After closing or reloading, open Upload files for the same library (or the same managed game). Choose Recover uploads and reselect the original files/folder. The entire file must match its saved SHA-256 identity before it becomes eligible for Retry. Files are read in bounded four-MiB pieces; hashing also works on ordinary LAN HTTP without Web Crypto. Re-selecting never sends data by itself. Previously successful files are skipped. Duplicate basenames may require original folder paths.
+
+Recovery is isolated by canonical server origin, current signed-in credential and library/game scope. A new login does not inherit another session's queue. Passwordless network access can upload normally; sign in to enable saved recovery. Logout/revocation retires old journal writers and attempts to purge their local records; a storage-cleanup failure is reported without delaying sign-out. If IndexedDB is blocked, an explicitly chosen temporary queue can still upload; it does not read or alter an earlier saved queue.
+
+The journal commits creation intent before an item POST and its receipt before an upload. An interrupted non-idempotent creation is restored as reconciliation-required; it never automatically creates another game. Existing transfer keys and original save baselines survive recovery. Complete queues clear their recovery metadata. Atomic revisions prevent another tab from overwriting or removing newer progress, including after discard/recreation. Opaque revision counters remain until credential cleanup; they contain no file metadata.
+
+A server request already accepted can still finish after a tab closes or signs out. Recovery preserves that uncertainty and replays existing transfer receipts rather than guessing. Expired server transfers can still require starting a new queue after checking the library. No recovery executes in the background after the app closes.

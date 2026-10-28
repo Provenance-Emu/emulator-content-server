@@ -1,5 +1,13 @@
 # Handoff
 
+## Active continuation — 2026-10-27
+
+Implemented opt-in IndexedDB upload checkpoints, full bounded SHA-256 file verification/reselection, original transfer key/revision preservation, write-ahead creation intent and conservative crash reconciliation. Session/server/library/game scopes use an opaque credential digest; no file contents or raw credentials are serialized. Logout purges records and warns on a failed cleanup. Broken storage has an explicit temporary-queue fallback. Atomic per-key revision counters survive discard/recreate to prevent stale-tab ABA overwrites. See docs/operations/upload-recovery.md. Focused queue/fingerprint tests, real IndexedDB tests and real-server reload/access tests pass; full web controller suite passed 216 tests. Existing target-picker test had assumed a random UUID sorted onto page one; fixed it to navigate bounded pages.
+
+User steering now prioritizes confusing libraries/storage, oversized desktop buttons, poor web folder picker sizing, offering existing unassigned folders instead of duplicate registration, and scanner matching. Agent audience_ux owns FolderPicker/app.css plus SettingsShell/new StorageSettings/Locations copy and relevant navigation-test lines. Parent owns orphan-link prompt, SettingsLibraries mode, folder controller/scan behavior and scanner/provider diagnosis. Do not autoassign or delete operator folders.
+
+Read-only diagnosis found both operator roots already assigned to the default library but never scanned (zero index, unknown scan state). User-requested scans succeeded for both: 1,608 indexed files and 935 game entries across Jaguar/JaguarCD/Dreamcast/Atomiswave/Naomi/Naomi2 (two unknown systems). No ROM file contents were copied or altered. Make assignment scan automatically and expose scanning for existing never-scanned folders, then check metadata/provider matching separately. Active service/deployment from 0.1.2 remains unchanged and must be preserved.
+
 ## Installed UI refresh and download follow-up — 2026-10-26
 
 Published `v0.1.2-alpha.1` from `4492c56`: new UI in macOS arm64 DMG, Windows x64 MSI, Linux x64 DEB/AppImage, and the Node22 portable archive. Manual package jobs `40419078897` (Windows) and `40419082380` (Linux) succeeded. All five installer/archive GitHub digests match the downloaded checksum files. macOS notary submission `361ed6f7-84f8-4149-b50c-37b5a06efd6a` was Accepted; DMG/app stapling and Gatekeeper pass. `/Applications/Emulation Server.app` is now 0.1.2; previous copy moved recoverably to Trash and profiles/sessions retained.

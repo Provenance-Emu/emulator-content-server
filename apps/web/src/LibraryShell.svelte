@@ -99,6 +99,7 @@
         {@render navigation()}
       </Modal>{/if}
     <main id="main-content" class="application-content">
+      {#if $application.localWarning}<p role="status" class="problem">{$application.localWarning}</p>{/if}
       {#if $application.failure}<p class="problem connection-message" role="status">
           {$application.failure}
         </p>{/if}
@@ -139,6 +140,7 @@
       {/key}
     </main>
   {:else}<main class="login-content">
+      {#if $application.localWarning}<p role="status" class="problem">{$application.localWarning}</p>{/if}
       <p class="eyebrow">{context.label}</p>
       <h1>Emulation Server</h1>
       {#if $application.settled && $application.reachable === false}

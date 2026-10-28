@@ -160,7 +160,19 @@ test('Games folder upload keeps saves associated with an explicit target instead
   await dialog
     .getByRole('button', { name: 'Choose target for associated files', exact: true })
     .click();
-  await dialog.getByRole('button', { name: new RegExp(`ID ${fixture.game.id}$`) }).click();
+  const target = dialog.getByRole('button', { name: new RegExp(`ID ${fixture.game.id}$`) });
+  const listed = dialog.getByRole('button').filter({ hasText: '· ID ' });
+  await expect(listed.first()).toBeEnabled();
+  // Managed targets are bounded and sorted by random IDs, so this game can be on any page.
+  for (let pageIndex = 0; pageIndex < 3 && !(await target.count()); pageIndex++) {
+    const loaded = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/items',
+    );
+    await dialog.getByRole('button', { name: 'Next items', exact: true }).click();
+    await loaded;
+    await expect(listed.first()).toBeEnabled();
+  }
+  await target.click();
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog.getByText('3 succeeded · 0 unfinished')).toBeVisible();
   expect(creates).toBe(1);
