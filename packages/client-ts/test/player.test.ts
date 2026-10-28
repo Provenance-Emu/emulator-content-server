@@ -248,3 +248,36 @@ test('profile assets validate fixed routes, declared bounds, and cryptographic h
   await assert.rejects(client().playerProfileAssets(profile.id), /name/);
   await assert.rejects(client().playerProfileAssets('../escape'), /identifier/);
 });
+
+test('a larger installed core catalog accepts 64 unique profiles and rejects 65', async (t) => {
+  let count = 64;
+  const profile = (i: number) => {
+    const id = `org.example.core${i}`,
+      base = `/play/plugins/${id}`;
+    return {
+      profileVersion: 1,
+      id,
+      name: `Generated core ${i}`,
+      systems: ['com.provenance.nes'],
+      runtime: 'emscripten-esm-v1',
+      filesystem: 'memfs',
+      threaded: false,
+      saveCompletion: 'none',
+      contentExtensions: ['nes'],
+      maxContentBytes: 1024,
+      buildVersion: 'generated',
+      loader: { url: `${base}/loader.js`, sha256: 'a'.repeat(64), sizeBytes: 1 },
+      wasm: { url: `${base}/core.wasm`, sha256: 'b'.repeat(64), sizeBytes: 8 },
+      assets: [],
+    };
+  };
+  t.mock.method(globalThis, 'fetch', async () =>
+    Response.json({
+      items: Array.from({ length: count }, (_, i) => profile(i)),
+      defaultProfileId: 'org.example.core0',
+    }),
+  );
+  assert.equal((await client().playerProfiles()).items.length, 64);
+  count = 65;
+  await assert.rejects(client().playerProfiles(), /Invalid player catalog/);
+});

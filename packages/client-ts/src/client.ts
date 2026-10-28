@@ -335,7 +335,7 @@ export class ContentClient {
 
   async playerProfiles(): Promise<WebPlayerCatalog> {
     const catalog = await this.getJson<WebPlayerCatalog>('/api/v1/player/profiles', 'error');
-    if (!catalog || !Array.isArray(catalog.items) || catalog.items.length > 16)
+    if (!catalog || !Array.isArray(catalog.items) || catalog.items.length > 64)
       throw new Error('Invalid player catalog');
     for (const p of catalog.items) validatePlayerProfile(p, p.id);
     const ids = new Set(catalog.items.map((p) => p.id));
