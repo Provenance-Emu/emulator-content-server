@@ -1080,6 +1080,70 @@ button.secondary {
   gap: var(--space-2);
 }
 
+/* FormField and InlineNotice share the same tokens as the rest of Settings. */
+.form-field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 24rem;
+}
+.form-field > input,
+.form-field > select,
+.form-field > textarea {
+  width: 100%;
+  min-width: 0;
+}
+.form-help {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--ink-dim);
+  overflow-wrap: anywhere;
+}
+.settings-form,
+.settings-form > fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+}
+.settings-form {
+  margin-block: var(--space-4);
+}
+.settings-form > fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.settings-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: var(--space-3);
+}
+.settings-form button {
+  justify-self: start;
+}
+.inline-notice {
+  max-width: var(--content-measure);
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-inset);
+  color: var(--ink-dim);
+  overflow-wrap: anywhere;
+}
+.notice-status {
+  color: var(--ink);
+}
+.notice-error {
+  color: var(--warn);
+  border-inline-start: var(--focus-width) solid currentColor;
+}
+
 /* Opt-in mouse density; hybrid devices with any touch input keep generous targets. */
 @media (min-width: 761px) and (pointer: fine) and (hover: hover) and (not (any-pointer: coarse)) {
   .compact-controls,

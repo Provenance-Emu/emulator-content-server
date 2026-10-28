@@ -2,6 +2,8 @@
   import { onDestroy, onMount } from 'svelte';
   import { ContentError, type AccessPolicy, type ContentClient, type Library, type LibraryMember, type User } from '@ecs/client';
   import { explain } from './lib/problems';
+  import FormField from './components/FormField.svelte';
+  import InlineNotice from './components/InlineNotice.svelte';
 
   let { client, libraries, onrejected, onchange }: {
     client: ContentClient; libraries: Library[];
@@ -107,60 +109,64 @@
 
 <section aria-label="Accounts and network access">
   {#if !loaded}
-    {#if working}<p role="status">Loading access settings…</p>{:else}<button type="button" onclick={() => void load()}>Retry access settings</button>{/if}
+    {#if working}<InlineNotice kind="status">Loading access settings…</InlineNotice>{:else}<button type="button" onclick={() => void load()}>Retry access settings</button>{/if}
   {:else}
     <h2>Network access</h2>
     <p class="dim">Trusted devices can use libraries without signing in. Choose Everyone to require credentials on every connection.</p>
     {#if policy && !policy.applies}<p class="dim">This server was started with public access: credentials are required regardless of this setting.</p>{/if}
-    <form onsubmit={(event) => { event.preventDefault(); void act(async () => {
+    <form class="settings-form" onsubmit={(event) => { event.preventDefault(); void act(async () => {
       const next = await client.setAccess({ mode, subnets: mode === 'subnets' ? subnets.split(/\r?\n/).map(line => line.trim()).filter(Boolean) : [] });
       if (!disposed) policy = next;
     }, 'Network access saved.'); }}>
       <fieldset disabled={working}>
-        <label for="network-mode">Who needs a login</label><select id="network-mode" bind:value={mode}><option value="lan">Outside the local network</option><option value="subnets">Outside these networks</option><option value="token">Everyone</option></select>
-        {#if mode === 'subnets'}<label>Trusted networks, one per line<textarea bind:value={subnets} placeholder="192.168.1.0/24"></textarea></label>{/if}
+        <FormField label="Who needs a login" id="network-mode">{#snippet children(attributes)}<select {...attributes} bind:value={mode}><option value="lan">Outside the local network</option><option value="subnets">Outside these networks</option><option value="token">Everyone</option></select>{/snippet}</FormField>
+        {#if mode === 'subnets'}<FormField label="Trusted networks, one per line">{#snippet children(attributes)}<textarea {...attributes} bind:value={subnets} placeholder="192.168.1.0/24"></textarea>{/snippet}</FormField>{/if}
         <button type="submit">Save network access</button>
       </fieldset>
     </form>
 
     <h2>Accounts</h2>
     <ul>{#each users as user (user.id)}<li>{user.username}{user.isOwner ? ' · owner' : ''}</li>{/each}</ul>
-    <form onsubmit={(event) => { event.preventDefault(); void addAccount(); }}>
+    <form class="settings-form" onsubmit={(event) => { event.preventDefault(); void addAccount(); }}>
       <fieldset disabled={working}>
-        <label>New username<input bind:value={username} required autocomplete="off" /></label>
-        <label>New account password<input type="password" bind:value={password} required autocomplete="new-password" /></label>
+        <div class="settings-fields">
+          <FormField label="New username">{#snippet children(attributes)}<input {...attributes} bind:value={username} required autocomplete="off" />{/snippet}</FormField>
+          <FormField label="New account password">{#snippet children(attributes)}<input {...attributes} type="password" bind:value={password} required autocomplete="new-password" />{/snippet}</FormField>
+        </div>
         <button type="submit">Add account</button>
       </fieldset>
     </form>
-    <label for="account-user">Account</label><select id="account-user" bind:value={userId} disabled={working}>{#each users as user (user.id)}<option value={user.id}>{user.username}</option>{/each}</select>
-    <form onsubmit={(event) => { event.preventDefault(); void changePassword(); }}>
+    <FormField label="Account" id="account-user" help="Choose the account you want to manage.">{#snippet children(attributes)}<select {...attributes} bind:value={userId} disabled={working}>{#each users as user (user.id)}<option value={user.id}>{user.username}</option>{/each}</select>{/snippet}</FormField>
+    <form class="settings-form" onsubmit={(event) => { event.preventDefault(); void changePassword(); }}>
       <fieldset disabled={working || !userId}>
-        <label>Replacement password<input type="password" bind:value={replacement} required autocomplete="new-password" /></label>
+        <FormField label="Replacement password" help="Changing this password signs out the account’s other sessions.">{#snippet children(attributes)}<input {...attributes} type="password" bind:value={replacement} required autocomplete="new-password" />{/snippet}</FormField>
         <button type="submit">Change password</button>
       </fieldset>
     </form>
     <h3>Library access</h3>
     <p class="dim">Readers can browse and download. Editors can also upload. Server owners retain access to every library.</p>
     {#if libraries.length}
-      <label for="account-library">Account library</label><select id="account-library" bind:value={libraryId} disabled={working}>{#each libraries as library (library.id)}<option value={library.id}>{library.name}</option>{/each}</select>
-      {#if selectedOwner}<p role="status">Current access: Server owner · retains access to every library.</p>
-      {:else if membershipWorking || !membershipCurrent && !membershipFailure}<p role="status">Loading current access…</p>
-      {:else if membershipFailure}<p class="problem" role="alert">{membershipFailure}</p><button type="button" disabled={working} onclick={() => void loadMembership(libraryId, userId)}>Retry library access</button>
-      {:else}<p role="status">Current access: {currentRole === 'owner' ? 'Library owner' : currentRole === 'editor' ? 'Editor' : currentRole === 'reader' ? 'Reader' : 'No access'}</p>{/if}
-      <form onsubmit={(event) => { event.preventDefault(); void changeMembership(); }}>
+      <FormField label="Account library" id="account-library">{#snippet children(attributes)}<select {...attributes} bind:value={libraryId} disabled={working}>{#each libraries as library (library.id)}<option value={library.id}>{library.name}</option>{/each}</select>{/snippet}</FormField>
+      {#if selectedOwner}<InlineNotice kind="status">Current access: Server owner · retains access to every library.</InlineNotice>
+      {:else if membershipWorking || !membershipCurrent && !membershipFailure}<InlineNotice kind="status">Loading current access…</InlineNotice>
+      {:else if membershipFailure}<InlineNotice kind="error">{membershipFailure}</InlineNotice><button type="button" disabled={working} onclick={() => void loadMembership(libraryId, userId)}>Retry library access</button>
+      {:else}<InlineNotice kind="status">Current access: {currentRole === 'owner' ? 'Library owner' : currentRole === 'editor' ? 'Editor' : currentRole === 'reader' ? 'Reader' : 'No access'}</InlineNotice>{/if}
+      <form class="settings-form" onsubmit={(event) => { event.preventDefault(); void changeMembership(); }}>
         <fieldset disabled={working || !userId || selectedOwner || !membershipCurrent}>
-          <label for="account-role">Library role</label><select id="account-role" bind:value={role}>
+          <FormField label="Library role" id="account-role">{#snippet children(attributes)}<select {...attributes} bind:value={role}>
             {#if currentRole === 'owner'}<option value="owner">Library owner</option>{/if}
             <option value="reader">Reader</option><option value="editor">Editor</option>
-          </select>
-          <button type="submit">Save library access</button>
-          <button type="button" disabled={!currentRole} onclick={() => void changeMembership(true)}>Remove library access</button>
+          </select>{/snippet}</FormField>
+          <div class="actions">
+            <button type="submit">Save library access</button>
+            <button type="button" disabled={!currentRole} onclick={() => void changeMembership(true)}>Remove library access</button>
+          </div>
         </fieldset>
       </form>
-    {:else}<p class="dim">Create a library to assign access.</p>{/if}
+    {:else}<InlineNotice>Create a library to assign access.</InlineNotice>{/if}
   {/if}
-  {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
-  {#if message}<p role="status">{message}</p>{/if}
+  {#if failure}<InlineNotice kind="error">{failure}</InlineNotice>{/if}
+  {#if message}<InlineNotice kind="status">{message}</InlineNotice>{/if}
 </section>
 
-<style>fieldset { border: 0; padding: 0; margin: 0; min-width: 0; } section { margin-bottom: 2rem; }</style>
+<style>section { margin-bottom: var(--space-8); }</style>

@@ -2,6 +2,8 @@
   import { onDestroy, onMount } from 'svelte';
   import { ContentError, type ContentClient, type DeviceToken, type DeviceTokenCreated } from '@ecs/client';
   import { explain } from './lib/problems';
+  import FormField from './components/FormField.svelte';
+  import InlineNotice from './components/InlineNotice.svelte';
 
   let { client, onrejected }: { client: ContentClient; onrejected: (status: 401 | 403) => void } = $props();
   let devices = $state<DeviceToken[]>([]);
@@ -73,18 +75,20 @@
       <td>{device.revokedAt ? 'Revoked' : device.expiresAt && Date.parse(device.expiresAt) <= Date.now() ? 'Expired' : 'Active'}</td>
       <td>{#if !device.revokedAt}<button type="button" disabled={working} aria-label={`Revoke ${device.name}`} onclick={() => void revoke(device.id)}>Revoke</button>{/if}</td>
     </tr>{/each}</tbody>
-  </table></div>{:else}<p class="dim">No device tokens yet.</p>{/if}
-  {#if issued}<section aria-label="New device token">
+  </table></div>{:else}<InlineNotice>No device tokens yet.</InlineNotice>{/if}
+  {#if issued}{@const createdToken = issued}<section aria-label="New device token">
     <p>Copy this token now. It will not be shown again after you leave this page.</p>
-    <label>Device access token<input readonly value={issued.token} autocomplete="off" /></label>
+    <FormField label="Device access token">{#snippet children(attributes)}<input {...attributes} readonly value={createdToken.token} autocomplete="off" />{/snippet}</FormField>
     <button type="button" onclick={() => issued = null}>Hide token</button>
   </section>{/if}
   {#if needsReconciliation}<button type="button" disabled={working} onclick={() => void load()}>Retry device list</button>{/if}
-  <form onsubmit={(event) => { event.preventDefault(); void create(); }}>
-    <label>Device name<input bind:value={name} required maxlength="80" disabled={working} /></label>
-    <label>Device permissions<select bind:value={permission} disabled={working}><option value="read">Read only</option><option value="write">Read and write</option></select></label>
-    <label>Token lifetime<select bind:value={lifetime} disabled={working}><option value="604800">7 days</option><option value="2592000">30 days</option><option value="7776000">90 days</option><option value="31536000">1 year</option></select></label>
+  <form class="settings-form" onsubmit={(event) => { event.preventDefault(); void create(); }}>
+    <div class="settings-fields">
+      <FormField label="Device name" help="Choose a name you’ll recognize, such as Living room tablet.">{#snippet children(attributes)}<input {...attributes} bind:value={name} required maxlength="80" disabled={working} />{/snippet}</FormField>
+      <FormField label="Device permissions" help="Read-only apps can browse and download.">{#snippet children(attributes)}<select {...attributes} bind:value={permission} disabled={working}><option value="read">Read only</option><option value="write">Read and write</option></select>{/snippet}</FormField>
+      <FormField label="Token lifetime" help="Create another token when this one expires.">{#snippet children(attributes)}<select {...attributes} bind:value={lifetime} disabled={working}><option value="604800">7 days</option><option value="2592000">30 days</option><option value="7776000">90 days</option><option value="31536000">1 year</option></select>{/snippet}</FormField>
+    </div>
     <button type="submit" disabled={working || needsReconciliation}>Create device token</button>
   </form>
-{:else if working}<p role="status">Loading devices…</p>{:else}<button type="button" onclick={() => void load()}>Retry devices</button>{/if}
-{#if failure}<p class="problem" role="alert">{failure}</p>{/if}
+{:else if working}<InlineNotice kind="status">Loading devices…</InlineNotice>{:else}<button type="button" onclick={() => void load()}>Retry devices</button>{/if}
+{#if failure}<InlineNotice kind="error">{failure}</InlineNotice>{/if}

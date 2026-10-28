@@ -4,6 +4,7 @@
   import { get } from 'svelte/store';
   import FolderPicker from './FolderPicker.svelte';
   import Modal from './components/Modal.svelte';
+  import InlineNotice from './components/InlineNotice.svelte';
   import { chooseFolder, type FolderContext } from './lib/folder-selection';
   import { explain } from './lib/problems';
   import { createStorageLocations } from './lib/locations';
@@ -131,7 +132,7 @@
       </table>
     </div>
     {#if $locations.listing.items.length === 0}
-      <p class="dim">No additional locations are registered. New uploads use Primary.</p>
+      <InlineNotice>No additional locations are registered. New uploads use Primary.</InlineNotice>
     {/if}
     <p class="dim">
       Removing a destination only removes it from this list. Destinations holding uploaded files
@@ -139,10 +140,10 @@
     </p>
     <button bind:this={addButton} type="button" disabled={$locations.busy || choosing || $locations.denied || !!$locations.pendingDestination} onclick={() => void choose()}>Add destination</button>
   {:else if $locations.busy}
-    <p class="dim" role="status">Reading storage locations…</p>
+    <InlineNotice kind="status">Reading storage locations…</InlineNotice>
   {/if}
   {#if $locations.failure || failure}
-    <p class="problem" role="alert">{$locations.failure || failure}</p>
+    <InlineNotice kind="error">{$locations.failure || failure}</InlineNotice>
   {/if}
   {#if $locations.pendingDestination && !picking}<p>Destination {$locations.pendingDestination.label} was saved. The destination for new uploads has not changed.</p>
     <button type="button" disabled={$locations.busy} onclick={() => void locations.select($locations.pendingDestination?.id ?? null)}>Retry destination selection</button>
