@@ -1,5 +1,11 @@
 # Handoff
 
+## Latest usable build — 2026-10-27
+
+v0.1.3-alpha.2 freezes a8d33d8 (same numeric 0.1.3). Its Mac DMG is signed, notarized (cfbc1ff3-c3fc-4948-a136-5bd6094f3b06 Accepted), stapled and published. Installed binary matches the signed build and Gatekeeper accepts it. Actual reopened app restored its managed profile, opened the native OS folder dialog without clicking Use local managed service, and canceled without data changes. Eight focused desktop-folder tests pass, including three new restore/manual-switch regressions. Mac and portable published digests match. Windows MSI is uploaded; Linux packaging run 40618092177 is still running (Windows 40618089326). Portable server code is unchanged from alpha1 and its verified archive is reused under the alpha2 filename. Local LaunchAgent stays on dist-release/0.1.3/server; its data, profiles, sessions and 935 indexed games remain intact.
+
+Do not spend another pass on installer restructuring. Requested UI/storage/folder behavior is shipped. Remaining product work includes arcade metadata/artwork provider coverage (Atomiswave/Naomi/Naomi2); scanning and existing Dreamcast provider matching were separately verified. New low-severity GitHub alert 50 names deepmerge prototype poisoning; follow up proportionately after the UI batch rather than holding these installers. Source checkout is main; no new branches/worktrees were created.
+
 ## Installer refresh — 2026-10-27
 
 Published v0.1.3-alpha.1 at 1466d1c with notarized/stapled Apple Silicon DMG and portable Node22 archive; digests match GitHub. Notary 6ca0ab99-6cb3-4fb9-adb5-bacb0c404bc2 Accepted. Windows/Linux packaging runs 40617312157/40617311759 both succeeded; all five installer/archive digests match published SHA-256 files. Installed /Applications/Emulation Server.app 0.1.3 passes Gatekeeper and actual Storage/native-dialog open/cancel acceptance. Local LaunchAgent now points to dist-release/0.1.3/server and retains the same content-data and 127.0.0.1:8473. Doctor reports integrity ok. Preserve both ignored deployments and operator data.
