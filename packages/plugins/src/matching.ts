@@ -317,7 +317,7 @@ export function createLibretroMatcher(
     take(`alias:${stem}`);
     take(`alias:${stem.replace(/-(?:[2-9][0-9]*|chd)$/, '')}`);
     if (input.md5) take(`md5:${input.size}:${input.md5.toLowerCase()}`);
-    else if (input.crc32) take(`crc:${input.size}:${input.crc32.toLowerCase()}`);
+    if (input.crc32) take(`crc:${input.size}:${input.crc32.toLowerCase()}`);
     return matchEntries(
       input,
       [...indices]
@@ -337,8 +337,9 @@ function matchEntries(
   for (const [index, record] of records) {
     const checksum =
       input.size === record.size &&
-      ((!!input.md5 && input.md5.toLowerCase() === record.md5) ||
-        (!input.md5 && !!input.crc32 && input.crc32.toLowerCase() === record.crc32));
+      (input.md5 && record.md5
+        ? input.md5.toLowerCase() === record.md5
+        : !!input.crc32 && input.crc32.toLowerCase() === record.crc32);
     const arcadeAlias = (value: string) =>
       contentStem(value)
         .toLowerCase()

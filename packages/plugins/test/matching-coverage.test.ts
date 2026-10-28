@@ -554,3 +554,40 @@ test('an exact checksum-identified cover is independent of other regional name h
       .every((candidate) => candidate.confidence === 'name'),
   );
 });
+
+test('compatible legacy checksum aliases do not block one exact regional cover', async () => {
+  const result = await covers(
+    ['Named_Boxarts/Orbit Rally (World).png', 'Named_Boxarts/Orbit Rally (1995)(Publisher).png'],
+    `${canonicalDat}\ngame ( name "Orbit Rally" rom ( name "legacy.rom" size 4 crc 12345678 ) )`,
+  );
+  const verified = result.filter(
+    (candidate) => candidate.kind === 'artwork' && candidate.confidence === 'checksum',
+  );
+  assert.deepEqual(
+    verified.map((candidate) => candidate.title),
+    ['Orbit Rally (World)'],
+  );
+});
+
+test('conflicting checksum editions or multiple exact alias covers still need review', async () => {
+  for (const [other, paths] of [
+    [
+      'Orbit Rally (USA)',
+      ['Named_Boxarts/Orbit Rally (USA).png', 'Named_Boxarts/Orbit Rally (World).png'],
+    ],
+    ['Orbit Rally (Proto)', ['Named_Boxarts/Orbit Rally (World).png']],
+    ['Orbit Rally (Rev 1)', ['Named_Boxarts/Orbit Rally (World).png']],
+  ] as const) {
+    const dat = 'game ( name "Orbit Rally (Rev 2)" rom ( name "a.rom" size 4 crc 12345678 ) )';
+    const result = await covers(
+      [...paths],
+      (other.includes('Rev') ? dat : canonicalDat) +
+        `\ngame ( name "${other}" rom ( name "b.rom" size 4 crc 12345678 ) )`,
+    );
+    assert.ok(
+      result
+        .filter((candidate) => candidate.kind === 'artwork')
+        .every((candidate) => candidate.confidence === 'name'),
+    );
+  }
+});

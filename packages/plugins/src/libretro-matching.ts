@@ -343,22 +343,28 @@ export function createLibretroProvider(
             candidate,
           ]),
       );
-      const identity = verified.size === 1 ? [...verified.values()][0] : undefined;
+      // Independent DATs may name identical verified bytes using regional and
+      // legacy titles. All aliases must agree on game, system and edition facts.
+      const identities = [...verified.values()];
+      const consistent =
+        identities.length > 0 &&
+        identities.every(
+          (left) =>
+            left.metadata.systemId === systemId &&
+            identities.every((right) => nameMatchScore(left.title, right.title) > 0),
+        );
       const boxarts = ranked.filter(
         (row) =>
           row.image.kind === 'boxarts' &&
-          identity &&
-          canonical(row.image.title) === canonical(identity.title),
+          verified.has(`${systemId}\0${canonical(row.image.title)}`),
       );
       const onlyCover = boxarts.length === 1 ? boxarts[0] : undefined;
+      const identity = onlyCover
+        ? verified.get(`${systemId}\0${canonical(onlyCover.image.title)}`)
+        : undefined;
       const canonicalCover =
-        !failures.length &&
-        identity &&
-        identity.metadata.systemId &&
-        identity.metadata.systemId === systemId &&
-        onlyCover &&
-        canonical(onlyCover.image.title) === canonical(identity.title)
-          ? { index: onlyCover.index, title: identity.title, systemId: identity.metadata.systemId }
+        !failures.length && consistent && onlyCover && identity && systemId
+          ? { index: onlyCover.index, title: identity.title, systemId }
           : undefined;
       const art = ranked.slice(0, 24).map(({ image, index }): MatchCandidate => {
         const corroborated = canonicalCover?.index === index ? canonicalCover : undefined;

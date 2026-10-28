@@ -251,5 +251,28 @@ test('artwork offers the original filename when a checksum catalog uses a differ
   const art = result.candidates.filter((c) => c.kind === 'artwork');
   assert.ok(art.some((c) => c.url?.endsWith('Game%20(USA).png')));
   assert.ok(art.some((c) => c.url?.endsWith('Game%20(World).png')));
-  assert.ok(art.every((c) => c.confidence === 'name'));
+  assert.equal(art.find((c) => c.title === 'Game (USA)')?.confidence, 'name');
+  assert.equal(art.find((c) => c.title === 'Game (World)')?.confidence, 'checksum');
+});
+
+test('MD5 plus CRC can match CRC-only catalogs without downgrading a conflicting MD5', () => {
+  const records: matching.DatRecord[] = [
+    { name: 'CRC only.rom', title: 'CRC only', size: 4, crc32: '12345678' },
+    { name: 'Conflict.rom', title: 'Conflict', size: 4, crc32: '12345678', md5: 'b'.repeat(32) },
+    { name: 'MD5.rom', title: 'MD5', size: 4, crc32: '87654321', md5: 'a'.repeat(32) },
+    { name: 'Wrong size.rom', title: 'Wrong size', size: 5, crc32: '12345678' },
+  ];
+  const renamed = { ...input, name: 'Renamed.rom', md5: 'a'.repeat(32) };
+  for (const search of [
+    (value: matching.MatchingInput) => matching.matchLibretro(value, records),
+    matching.createLibretroMatcher(records),
+  ]) {
+    assert.deepEqual(
+      search(renamed).map((row) => [row.title, row.confidence]),
+      [
+        ['CRC only', 'checksum'],
+        ['MD5', 'checksum'],
+      ],
+    );
+  }
 });
