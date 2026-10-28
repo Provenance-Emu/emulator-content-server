@@ -6,6 +6,12 @@ operator catalog. Build the bundled app with `pnpm --filter @ecs/tray tauri buil
 --bundles app`; `pnpm --filter @ecs/tray check` and the Rust fixture tests cover
 controllers and fixed native boundaries separately.
 
+## Emulator management refresh — 2026-10-28
+
+[v0.1.5-alpha.1](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.5-alpha.1) freezes5098224 with the native Emulators settings UI. Mac arm64 notarization0a66d41c-f866-4c3d-a1bb-a5668ef6fbfe was Accepted; app and DMG are stapled and Gatekeeper accepts the installed0.1.5 application. Windows40647340447 and Linux40647343652 packaging succeeded. All five installer/archive GitHub digests match downloaded checksum files. The previous Applications copy was moved recoverably to Trash.
+
+The installed app restored its existing server profile, opened Home, and displayed Settings→Emulators with Installed/Available tabs and the accurate owner sign-in requirement. No credentials, user firmware, games or saves were entered or changed in this native check. Real-server browser tests separately cover owner package installation/configuration/removal and system-file controls. Verified Jaguar is installed in the local managed registry; the server is healthy with unchanged original catalog. Dreamcast-family runtime remains deferred as described in [management operations](emulator-management.md).
+
 ## Installer refresh — 2026-10-28
 
 Published [v0.1.4-alpha.1](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.4-alpha.1) from frozen source `2f1c869`. The Mac arm64 app/DMG are Developer ID signed; Apple accepted notary submission `f415818f-ae5c-4bb2-b89f-d70f44b354a9`. App and DMG tickets validate, and Gatekeeper reports Notarized Developer ID. The installed Applications copy reports 0.1.4 and its ticket validates; the previous app was moved recoverably to Trash. The installed app reopened with the existing local server profile, rendered Home and the existing 935-game library, and showed the new shared category/navigation controls. No test upload, folder registration, metadata selection or save was made against that catalog.

@@ -35,6 +35,13 @@ payloads requiring GPU-only encrypted initialization. Its transformation script
 contains no removed firmware bytes. Do not distribute an unmodified upstream
 source archive containing those arrays as the BIOS-free corresponding source.
 
+For an already extracted sanitized release archive, the separate
+`rebuild-jaguar-source.mjs EXTRACTED_SOURCE_ROOT NEW_EXTERNAL_OUTPUT` helper uses
+the included source directly, with the original frontend Git version supplied
+explicitly; it needs no BIOS-bearing Git history. Its commands match the tested
+checkout recipe; the standalone helper itself received syntax/lint validation,
+without repeating the full build.
+
 The native loader supports `j64`, `jag`, `rom`, `abs`, `cof`, `bin`, `prg`.
 Standard ten-block (`0xf6`) commercial cartridge layouts are explicitly exempt
 from the GPU-only boot heuristic in `src/core/file.c:JaguarCartNeedsBIOS`.
@@ -84,6 +91,15 @@ expected CRC32 `719b2b0b`). The loader searches CRC first, then member name. A
 bare `awbios.bin` is not that archive contract. No BIOS was downloaded or tested.
 The public playback catalog must withhold Atomiswave until that managed system
 file is present, and must withhold the whole profile until a real boot passes.
+
+The measured WebGL2 attempt on 2026-10-28 loaded the original ELF into WASM RAM,
+then trapped at `wasm-function[862]:0x32f96` before its guest counter advanced.
+The framebuffer errors from the initial WebGL1 build disappeared. An ELF forces
+`UseReios=true` in `libretro.cpp`, regardless of `reicast_use_real_bios`, so a
+missing BIOS/core-option setting does not explain this particular failure. No
+Dreamcast, Naomi, Naomi2 or Atomiswave boot has passed; the trap's precise cause
+remains unconfirmed. Stop at this bounded port attempt until further debugging
+is authorized. Do not present these compiled artifacts as playable support.
 
 `generate-sh4-smoke.mjs` creates original little-endian SH4 ELF and flat
 Naomi/Naomi2 programs that fill a framebuffer green and count in RAM. To run:

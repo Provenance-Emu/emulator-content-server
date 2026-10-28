@@ -23,7 +23,12 @@ for (const path of [root, output]) {
     ? realpathSync(path)
     : join(realpathSync(dirname(path)), path.split(/[\\/]/).at(-1));
   const within = relative(repository, actual);
-  if (within !== '..' && !within.startsWith('../') && !isAbsolute(within))
+  if (
+    existsSync(join(repository, 'packages/protocol/openapi/openapi.yaml')) &&
+    within !== '..' &&
+    !within.startsWith('../') &&
+    !isAbsolute(within)
+  )
     throw new Error('Build outside the repository');
 }
 if (existsSync(output)) throw new Error('Output must be new');

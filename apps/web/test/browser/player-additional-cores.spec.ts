@@ -112,7 +112,7 @@ for (const entry of cases) {
     const directory = await mkdtemp(join(tmpdir(), 'ecs-real-jaguar-'));
     const errors: string[] = [];
     const messages: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
     page.on('console', (message) => messages.push(message.text()));
     let server: Awaited<ReturnType<typeof openServer>> | undefined;
     try {
