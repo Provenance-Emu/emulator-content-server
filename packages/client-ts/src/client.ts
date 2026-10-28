@@ -24,6 +24,10 @@ import type {
   Library,
   LibraryBrowsePage,
   LibraryDraft,
+  LibraryJobDraft,
+  LibraryJobItemList,
+  LibraryJobList,
+  LibraryJobResponse,
   LibraryList,
   LibraryMemberList,
   Manifest,
@@ -575,6 +579,44 @@ export class ContentClient {
   /** Files found by a scan. The response names them and does not include a filesystem path. */
   sources(): Promise<SourceFileList> {
     return this.getJson('/api/v1/sources');
+  }
+
+  createLibraryJob(draft: LibraryJobDraft): Promise<LibraryJobResponse> {
+    return this.post('/api/v1/library-jobs', draft);
+  }
+  libraryJob(id: string): Promise<LibraryJobResponse> {
+    return this.getJson(`/api/v1/library-jobs/${encodeURIComponent(id)}`);
+  }
+  libraryJobs(query: { limit?: number; cursor?: string } = {}): Promise<LibraryJobList> {
+    const search = new URLSearchParams();
+    if (query.limit) search.set('limit', String(query.limit));
+    if (query.cursor) search.set('cursor', query.cursor);
+    return this.getJson(`/api/v1/library-jobs?${search}`);
+  }
+  libraryJobItems(
+    id: string,
+    query: { limit?: number; cursor?: string; status?: string } = {},
+  ): Promise<LibraryJobItemList> {
+    const search = new URLSearchParams();
+    if (query.limit) search.set('limit', String(query.limit));
+    if (query.cursor) search.set('cursor', query.cursor);
+    if (query.status) search.set('status', query.status);
+    return this.getJson(`/api/v1/library-jobs/${encodeURIComponent(id)}/items?${search}`);
+  }
+  reviewLibraryJobItem(id: string, sourceId: string): Promise<LibraryJobResponse> {
+    return this.post(
+      `/api/v1/library-jobs/${encodeURIComponent(id)}/items/${encodeURIComponent(sourceId)}/reviewed`,
+      {},
+    );
+  }
+  cancelLibraryJob(id: string): Promise<LibraryJobResponse> {
+    return this.post(`/api/v1/library-jobs/${encodeURIComponent(id)}/cancel`, {});
+  }
+  resumeLibraryJob(id: string, retry?: 'failed' | 'unmatched'): Promise<LibraryJobResponse> {
+    return this.post(
+      `/api/v1/library-jobs/${encodeURIComponent(id)}/resume`,
+      retry ? { retry } : {},
+    );
   }
 
   async sourceSelections(id: string, signal?: AbortSignal): Promise<SourceMatchSelections> {

@@ -79,7 +79,7 @@ Naomi cabinets and replacement textures. WebAssembly cannot change native host
 FP rounding/subnormal modes; the SH4 interpreter therefore has a numerical
 accuracy limitation. This is not a speed or commercial compatibility claim.
 
-The profile supports single files: `chd`, `cdi`, `elf`, `bin`, `dat`, `zip`, up to
+The profile supports single files: `chd`, `cdi`, `elf`, `zip`, up to
 512 MiB. CUE/GDI/M3U companion layouts, split parent sets and GD-ROM arcade sets
 needing external CHDs are unsupported. The native ROMset loader can identify
 unknown ZIP basenames by internal ROM names/CRCs, so fixed `game.zip` works for
@@ -88,18 +88,15 @@ self-contained identifiable sets; ambiguous merged clones are not guaranteed.
 Dreamcast and Naomi/Naomi2 have upstream HLE boot paths. Atomiswave requires a
 user-provided `/ecs/system/dc/awbios.zip`, containing `bios0.ic23` (131072 bytes;
 expected CRC32 `719b2b0b`). The loader searches CRC first, then member name. A
-bare `awbios.bin` is not that archive contract. No BIOS was downloaded or tested.
+bare `awbios.bin` is not that archive contract. No firmware is bundled; a compatible Atomiswave boot still needs separate acceptance.
 The public playback catalog must withhold Atomiswave until that managed system
 file is present, and must withhold the whole profile until a real boot passes.
 
-The measured WebGL2 attempt on 2026-10-28 loaded the original ELF into WASM RAM,
-then trapped at `wasm-function[862]:0x32f96` before its guest counter advanced.
-The framebuffer errors from the initial WebGL1 build disappeared. An ELF forces
-`UseReios=true` in `libretro.cpp`, regardless of `reicast_use_real_bios`, so a
-missing BIOS/core-option setting does not explain this particular failure. No
-Dreamcast, Naomi, Naomi2 or Atomiswave boot has passed; the trap's precise cause
-remains unconfirmed. Stop at this bounded port attempt until further debugging
-is authorized. Do not present these compiled artifacts as playable support.
+The startup trap was traced with symbolized WASM to `glesrend::Init()` / shader compilation. The proc-address GL version string described a desktop backend, so the core selected GLSL 130 and the WebGL2 browser rejected it. The Emscripten patch explicitly selects GLES3 shader syntax for this WebGL2-only profile. No sandbox exception or firmware workaround is involved.
+
+On 2026-10-28, the final optimized build passed the opaque-player tests for original Dreamcast ELF, Naomi ZIP and Naomi2 ZIP programs: advancing SH4 RAM counters, green compositor frames, and no page errors. Loader SHA-256 `5d37b75f75f6b9e0d97c30afb185e413518b72b983605139441099bc692f1c80`; WASM `7783aa6eae68155b98ce68a69235be8e2abcce0cc293273706683d7a4448d5c4`. This establishes original CPU/framebuffer boot, not commercial-game, sound, input or save compatibility. Atomiswave is still awaiting a real boot test.
+
+Raw Naomi BIN/DAT mapping requires fixed-address mmap, unavailable in this SDK; the accepted tests use one original flat cartridge in ZIP, selecting upstream ArchivedCartridge. Raw BIN/DAT is excluded from this profile. Some operator Atomiswave folders contain Dreamcast-converted, multi-file GDI layouts; those need the companion-media adapter and cannot be treated as self-contained arcade ZIPs.
 
 `generate-sh4-smoke.mjs` creates original little-endian SH4 ELF and flat
 Naomi/Naomi2 programs that fill a framebuffer green and count in RAM. To run:

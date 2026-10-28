@@ -1,7 +1,7 @@
 import { type FSWatcher, realpathSync, watch } from 'node:fs';
 import type { CatalogDatabase } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
-import { scanRoot } from './source-scan.js';
+import { enqueueRootScan } from './library-jobs.js';
 
 export interface FolderWatchStatus {
   state: 'off' | 'watching' | 'polling' | 'offline' | 'scanning' | 'error';
@@ -143,7 +143,7 @@ export class FolderWatcher {
       folder.firstEvent = undefined;
       folder.status.state = 'scanning';
       try {
-        const result = await scanRoot(
+        const result = await enqueueRootScan(
           this.catalog,
           { id: folder.rootId, path: folder.rootPath },
           folder.enabledBy,
@@ -160,7 +160,10 @@ export class FolderWatcher {
               : {}),
         };
       } catch (error) {
-        if (error instanceof DomainError && error.code === 'root-busy') {
+        if (
+          error instanceof DomainError &&
+          ['root-busy', 'library-job-conflict'].includes(error.code)
+        ) {
           folder.status.state = folder.watcher ? 'watching' : 'polling';
           folder.due ??= Date.now() + 500;
         } else {

@@ -9,7 +9,9 @@ export async function scanRoot(
   catalog: CatalogDatabase,
   root: { id: string; path: string },
   actorId: string,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted();
   const registered = catalog.getContentRoot(root.id);
   if (!registered) throw new DomainError('not-found', 404, 'Content root not found');
   const roots = catalog
@@ -22,7 +24,10 @@ export async function scanRoot(
   try {
     catalog.beginRootScan(root.id);
     try {
-      const inspected = await inspectRoot(registered.path, { pinnedRoot: true });
+      const inspected = await inspectRoot(registered.path, {
+        pinnedRoot: true,
+        ...(signal ? { signal } : {}),
+      });
       if (inspected.online)
         inspected.files = await pruneRenamedEntries(registered.path, inspected.files);
       const verifiedMoveSourceIds = inspected.online
@@ -32,6 +37,7 @@ export async function scanRoot(
       // observations. A replaced/missing root must leave the last good index intact.
       if (inspected.online && (await realpath(registered.path)) !== registered.path)
         throw new DomainError('invalid-body', 400, 'Registered folder has changed');
+      signal?.throwIfAborted();
       const count = catalog.applyInspection({
         rootId: root.id,
         actorId,

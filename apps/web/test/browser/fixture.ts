@@ -255,7 +255,7 @@ export async function openAddContent(
 
 export async function libraryTool(
   page: import('@playwright/test').Page,
-  name: 'Match library' | 'Refresh',
+  name: 'Library activity' | 'Refresh',
 ) {
   const tools = page.locator('.library-tools');
   if (!(await tools.evaluate((element) => (element as HTMLDetailsElement).open)))

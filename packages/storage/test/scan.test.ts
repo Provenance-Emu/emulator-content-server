@@ -13,6 +13,7 @@ import {
   probeFile,
   probeRoot,
 } from '../src/index.js';
+import { darwinMountType } from '../src/volume.js';
 
 test('a placeholder on a file provider is evicted and a missing volume is offline', () => {
   assert.equal(
@@ -259,4 +260,13 @@ test('an internal directory cycle finishes and includes each canonical source on
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('macOS network mount classification uses the longest complete mount path', () => {
+  const facts =
+    '/dev/disk1 on / (apfs, local, journaled)\n//player@nas/games on /Volumes/Games (smbfs, nodev, nosuid)\n/dev/disk2 on /Volumes/Games Archive (exfat, local)\n//nas/deeper on /Volumes/Games/Extra (nfs, nodev)';
+  assert.equal(darwinMountType('/Volumes/Games/ROMs', facts), 'smbfs');
+  assert.equal(darwinMountType('/Volumes/Games Archive/ROMs', facts), 'exfat');
+  assert.equal(darwinMountType('/Volumes/Games/Extra/ROMs', facts), 'nfs');
+  assert.equal(darwinMountType('/Users/player/Games', facts), 'apfs');
 });

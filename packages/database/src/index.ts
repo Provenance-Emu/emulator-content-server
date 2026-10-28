@@ -16,4 +16,11 @@ export type {
   ContentRootSummaryRecord,
   RootSummaryFilter,
 } from './library-browse.js';
+export {
+  type LibraryJobItem,
+  type LibraryJobOptions,
+  type LibraryJobRecord,
+  LibraryJobRepository,
+  type LibraryJobScope,
+} from './library-jobs.js';
 export { MIGRATIONS, type Migration, pendingMigrations, SCHEMA_VERSION } from './schema.js';

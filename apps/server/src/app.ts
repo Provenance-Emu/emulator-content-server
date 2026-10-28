@@ -14,6 +14,7 @@ import {
 } from '@ecs/storage';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { stopLibraryJobs } from './library-jobs.js';
 import { PlayerManager, registerPlayerManagement } from './player-manager.js';
 import './actor.js';
 import type { ServerContext } from './context.js';
@@ -228,6 +229,7 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
     folderWatcher.reconcile();
   });
   app.addHook('preClose', async () => {
+    await stopLibraryJobs(context.catalog);
     await folderWatcher.close();
   });
   registerFolderWatchRoutes(app, context, folderWatcher);

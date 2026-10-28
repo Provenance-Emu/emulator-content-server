@@ -139,7 +139,7 @@ const manifest = {
       filesystem: 'memfs',
       threaded: false,
       saveCompletion: 'none',
-      contentExtensions: ['chd', 'cdi', 'elf', 'bin', 'dat', 'zip'],
+      contentExtensions: ['chd', 'cdi', 'elf', 'zip'],
       maxContentBytes: 536870912,
       buildVersion: 'RetroArch 4d4bfc0f / paraLLEl DC 1a678828 experimental / emcc 3.1.46 / WebGL2',
       loader: artifact('parallel_dc_libretro.js', 'loader.js'),

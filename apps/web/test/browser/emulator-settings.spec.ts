@@ -89,6 +89,11 @@ for (const device of [
         path: testInfo.outputPath(`emulators-available-${device.name}.png`),
         fullPage: true,
       });
+      await page.getByRole('searchbox', { name: 'Find an emulator', exact: true }).fill('handheld');
+      await expect(unsupported).toHaveCount(0);
+      await expect(
+        page.getByRole('article', { name: 'Handheld emulator', exact: true }),
+      ).toBeVisible();
       await page.getByRole('button', { name: 'Install Handheld emulator', exact: true }).click();
       await expect(tabs.getByRole('tab', { name: 'Installed', exact: true })).toBeFocused();
       await expect(

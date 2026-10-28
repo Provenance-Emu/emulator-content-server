@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import { open } from 'node:fs/promises';
 import { DomainError } from '@ecs/domain';
+import { crc32 } from '@ecs/storage';
 export async function boundedFile(path: string, max: number): Promise<Buffer> {
   const handle = await open(path, 'r');
   try {
@@ -41,4 +43,68 @@ export function imageType(bytes: Buffer): string | null {
   )
     return 'image/webp';
   return null;
+}
+
+/** Hash in small cancellable chunks; no full-ROM allocation on the HTTP event loop. */
+export async function boundedFingerprint(
+  path: string,
+  max: number,
+  signal?: AbortSignal,
+): Promise<{ md5: string; crc32: string; size: number }> {
+  signal?.throwIfAborted();
+  const handle = await open(path, 'r');
+  try {
+    const before = await handle.stat({ bigint: true });
+    if (!before.isFile() || before.size > BigInt(max))
+      throw new DomainError(
+        'matching-file-too-large',
+        413,
+        'This file exceeds the matching read limit',
+      );
+    const md5 = createHash('md5');
+    let crc = 0xffffffff,
+      size = 0;
+    const stream = handle.createReadStream({
+      autoClose: false,
+      highWaterMark: 64 * 1024,
+      ...(signal ? { signal } : {}),
+    });
+    for await (const chunk of stream) {
+      signal?.throwIfAborted();
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += bytes.length;
+      if (size > max) {
+        stream.destroy();
+        throw new DomainError(
+          'matching-file-too-large',
+          413,
+          'This file exceeds the matching read limit',
+        );
+      }
+      md5.update(bytes);
+      crc = crc32(bytes, crc);
+    }
+    const after = await handle.stat({ bigint: true });
+    if (
+      BigInt(size) !== before.size ||
+      after.size !== before.size ||
+      after.dev !== before.dev ||
+      after.ino !== before.ino ||
+      after.mtimeNs !== before.mtimeNs ||
+      after.ctimeNs !== before.ctimeNs
+    )
+      throw new DomainError(
+        'matching-file-changed',
+        409,
+        'File changed; scan its folder and try again',
+      );
+    signal?.throwIfAborted();
+    return {
+      md5: md5.digest('hex'),
+      crc32: ((crc ^ 0xffffffff) >>> 0).toString(16).padStart(8, '0'),
+      size,
+    };
+  } finally {
+    await handle.close();
+  }
 }

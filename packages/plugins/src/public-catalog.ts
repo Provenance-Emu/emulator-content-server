@@ -8,6 +8,7 @@ const SUCCESS_TTL_MS = 6 * 60 * 60 * 1000;
 const NOT_FOUND_TTL_MS = 10 * 60 * 1000;
 const MAX_METADATA_BYTES = 4096;
 const MAX_MEMORY_ENTRIES = 128;
+const MAX_MEMORY_BYTES = 32 * 1024 * 1024;
 interface CacheEntry {
   url: string;
   status: 200 | 404;
@@ -36,6 +37,7 @@ export function createCatalogLoader(
   cacheDirectory?: string,
 ): CatalogLoader {
   const memoryCache = new Map<string, CacheEntry>();
+  let memoryBytes = 0;
   return { load: (url, signal, maxBytes = DEFAULT_MAX_BYTES) => load(url, signal, maxBytes) };
 
   async function load(
@@ -60,6 +62,8 @@ export function createCatalogLoader(
     const now = Date.now();
     const cached = memoryCache.get(normalizedUrl);
     if (cached && isFresh(cached, now) && cached.bytes <= maxBytes) {
+      memoryCache.delete(normalizedUrl);
+      memoryCache.set(normalizedUrl, cached);
       signal?.throwIfAborted();
       return cached.status === 200 ? cached.body : null;
     }
@@ -133,11 +137,16 @@ export function createCatalogLoader(
   }
 
   function remember(url: string, entry: CacheEntry): void {
+    memoryBytes -= (memoryCache.get(url)?.bytes ?? 0) * 2;
     memoryCache.delete(url);
-    memoryCache.set(url, entry);
-    while (memoryCache.size > MAX_MEMORY_ENTRIES) {
+    if (entry.bytes * 2 <= MAX_MEMORY_BYTES) {
+      memoryCache.set(url, entry);
+      memoryBytes += entry.bytes * 2;
+    }
+    while (memoryCache.size > MAX_MEMORY_ENTRIES || memoryBytes > MAX_MEMORY_BYTES) {
       const oldest = memoryCache.keys().next().value;
       if (oldest === undefined) break;
+      memoryBytes -= (memoryCache.get(oldest)?.bytes ?? 0) * 2;
       memoryCache.delete(oldest);
     }
   }

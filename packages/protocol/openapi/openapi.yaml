@@ -910,6 +910,111 @@ paths:
       responses:
         '200':
           description: Audit events.
+  /api/v1/library-jobs:
+    get:
+      operationId: listLibraryJobs
+      description: Owner-only shared jobs, newest identifier first. Bounded keyset pages.
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 99}}
+        - {name: cursor, in: query, schema: {type: string}}
+      responses:
+        '200':
+          description: Shared jobs.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobList'}
+    post:
+      operationId: createLibraryJob
+      description: Owner-only durable scan or matching job. Reuses covering active work with identical options. Partially overlapping work returns 409. Survives request disconnects. No scope selects all registered roots.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LibraryJobDraft'}
+      responses:
+        '200':
+          description: Existing covering job.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobResponse'}
+        '202':
+          description: Shared job queued.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobResponse'}
+        '409': {description: Overlapping shared work already exists.}
+  /api/v1/library-jobs/{jobId}:
+    parameters:
+      - {name: jobId, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getLibraryJob
+      description: Owner-only progress aggregates, shared by every session.
+      responses:
+        '200':
+          description: Shared job.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobResponse'}
+  /api/v1/library-jobs/{jobId}/items:
+    parameters:
+      - {name: jobId, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: listLibraryJobItems
+      description: Owner-only bounded results for review; sourceId names a root for scan jobs.
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 99}}
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [pending, saved, review, unmatched, failed, skipped, reviewed]}}
+      responses:
+        '200':
+          description: Job results.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobItemList'}
+  /api/v1/library-jobs/{jobId}/cancel:
+    parameters:
+      - {name: jobId, in: path, required: true, schema: {type: string}}
+    post:
+      operationId: cancelLibraryJob
+      description: Owner-only cancel from any owner session. Resume continues pending work; completed results are preserved. Interrupted work requires explicit resume.
+      responses:
+        '200':
+          description: Shared job.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobResponse'}
+  /api/v1/library-jobs/{jobId}/resume:
+    parameters:
+      - {name: jobId, in: path, required: true, schema: {type: string}}
+    post:
+      operationId: resumeLibraryJob
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retry: {type: string, enum: [failed, unmatched]}
+      description: Owner-only resume from any owner session. Resume continues pending work; completed results are preserved. Interrupted work requires explicit resume.
+      responses:
+        '200':
+          description: Shared job.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobResponse'}
+  /api/v1/library-jobs/{jobId}/items/{sourceId}/reviewed:
+    parameters:
+      - {name: jobId, in: path, required: true, schema: {type: string}}
+      - {name: sourceId, in: path, required: true, schema: {type: string}}
+    post:
+      operationId: reviewLibraryJobItem
+      description: Owner-only acknowledgement of a completed result. Shared across sessions; does not select or save any candidate.
+      responses:
+        '200':
+          description: Shared job progress after review.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryJobResponse'}
 components:
   schemas:
     Problem:
@@ -1046,7 +1151,7 @@ components:
       type: object
       required: [items, defaultProfileId]
       properties:
-        items: { type: array, items: { $ref: '#/components/schemas/WebPlayerDescriptor' }, maxItems: 16 }
+        items: { type: array, items: { $ref: '#/components/schemas/WebPlayerDescriptor' }, maxItems: 64 }
         defaultProfileId: { type: [string, 'null'] }
     Limits:
       type: object
@@ -1785,3 +1890,69 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/ContentRootSummary' }
+
+    LibraryJobScope:
+      type: object
+      properties:
+        rootId: {type: string}
+        libraryId: {type: string}
+        unassigned: {type: boolean}
+    LibraryJobDraft:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: {type: string, enum: [scan, match]}
+        rootId: {type: string}
+        libraryId: {type: string}
+        unassigned: {type: boolean}
+        options: {$ref: '#/components/schemas/MatchingOptions'}
+    LibraryJob:
+      type: object
+      required: [id, kind, scope, options, state, total, processed, saved, review, unmatched, failed, skipped, currentSourceId, error, createdAt, updatedAt, interruptedCount]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [scan, match]}
+        scope: {$ref: '#/components/schemas/LibraryJobScope'}
+        options: {$ref: '#/components/schemas/MatchingOptions'}
+        state: {type: string, enum: [queued, running, completed, failed, cancelled, interrupted]}
+        total: {type: integer}
+        processed: {type: integer}
+        saved: {type: integer}
+        review: {type: integer}
+        unmatched: {type: integer}
+        failed: {type: integer}
+        skipped: {type: integer}
+        currentSourceId: {type: [string, 'null']}
+        error: {type: [string, 'null']}
+        createdAt: {type: string}
+        updatedAt: {type: string}
+        interruptedCount: {type: integer}
+    LibraryJobResponse:
+      type: object
+      required: [job]
+      properties:
+        job: {$ref: '#/components/schemas/LibraryJob'}
+        reused: {type: boolean}
+    LibraryJobList:
+      type: object
+      required: [jobs, nextCursor]
+      properties:
+        jobs: {type: array, items: {$ref: '#/components/schemas/LibraryJob'}}
+        nextCursor: {type: [string, 'null']}
+    LibraryJobItem:
+      type: object
+      required: [sourceId, status, saved, suggestions, error]
+      properties:
+        sourceId: {type: string}
+        source: {$ref: '#/components/schemas/SourceFile'}
+        status: {type: string, enum: [pending, saved, review, unmatched, failed, skipped, reviewed]}
+        saved: {type: integer}
+        suggestions: {type: integer}
+        error: {type: [string, 'null']}
+    LibraryJobItemList:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/LibraryJobItem'}}
+        nextCursor: {type: [string, 'null']}

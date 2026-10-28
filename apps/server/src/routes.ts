@@ -74,12 +74,12 @@ import {
   withIdempotency,
 } from './http.js';
 import { registerLibraryBrowse } from './library-browse.js';
+import { enqueueRootScan, registerLibraryJobs } from './library-jobs.js';
 import { accessView } from './local-access.js';
 import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
 import { registerSourceMatching } from './source-matching.js';
 import { registerSourceOrganization } from './source-organization.js';
-import { scanRoot } from './source-scan.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
@@ -98,7 +98,8 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   const { catalog } = context;
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
-  registerSourceMatching(app, context);
+  const matching = registerSourceMatching(app, context);
+  registerLibraryJobs(app, context, matching);
   registerSourceOrganization(app, context);
 
   const uploadMutations = new Set<string>();
@@ -1030,7 +1031,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireUser(request, 'read');
     const { rootId } = request.params as { rootId: string };
     const root = requireVisibleRoot(catalog, actor, rootId);
-    return scanRoot(catalog, root, actor.userId);
+    return enqueueRootScan(catalog, root, actor.userId);
   });
 
   app.get('/api/v1/sources', async (request) => {

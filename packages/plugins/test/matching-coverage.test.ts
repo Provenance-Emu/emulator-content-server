@@ -271,3 +271,266 @@ test('alternate localized titles match without losing region guards', () => {
   assert.equal(matchLibretro(input, records).length, 1);
   assert.equal(matchLibretro({ ...input, name: 'Orbit Athletics (Japan).7z' }, records).length, 0);
 });
+
+test('warm provider reuses the parsed artwork index for subsequent ROMs', async () => {
+  const index = JSON.stringify({
+    sha: 'a'.repeat(40),
+    truncated: false,
+    tree: [{ path: 'Named_Boxarts/Orbit Rally.png', type: 'blob', size: 100 }],
+  });
+  let parses = 0,
+    requests = 0;
+  const original = JSON.parse;
+  JSON.parse = ((text: string, reviver?: (key: string, value: unknown) => unknown) => {
+    if (text === index) parses++;
+    return original(text, reviver);
+  }) as typeof JSON.parse;
+  try {
+    const provider = createLibretroProvider(async (url) => {
+      requests++;
+      return new Response(String(url).includes('/git/trees/') ? index : dat);
+    });
+    const input = {
+      name: 'Orbit Rally.jag',
+      systemId: 'com.provenance.jaguar',
+      companions: [],
+      online: true,
+    };
+    const a = await provider.search(input),
+      b = await provider.search(input);
+    assert.deepEqual(a, b);
+    assert.equal(parses, 1, 'Parsed index should survive the next ROM lookup');
+    assert.equal(requests, 3, 'Fresh public catalog bodies should stay in memory');
+  } finally {
+    JSON.parse = original;
+  }
+});
+
+test('compiled catalog matcher preserves linear evidence, edition guards and candidate IDs', async () => {
+  const { createLibretroMatcher } = await import('../src/matching.js');
+  const records = [
+    ...parseLibretroDat(dat),
+    {
+      title: 'Arcade Orbit',
+      name: 'sample-set',
+      aliases: ['gds-9999'],
+      size: 0,
+      systemId: 'com.provenance.naomi',
+    },
+  ];
+  const match = createLibretroMatcher(records);
+  for (const input of [
+    ...[
+      'Orbit Rally.jag',
+      'Orbit Rally (Japan) (Beta).jag',
+      'Orbit Rally (EU).jag',
+      'gds-9999-2.chd',
+      'unknown.rom',
+    ].map((name) => ({ name, systemId: 'com.provenance.jaguar', companions: [] })),
+    {
+      name: 'renamed.rom',
+      systemId: 'com.provenance.jaguar',
+      companions: [],
+      size: 4,
+      crc32: '12345678',
+    },
+    {
+      name: 'renamed.rom',
+      systemId: 'com.provenance.jaguar',
+      companions: [],
+      size: 4,
+      crc32: '12345678',
+      md5: '0'.repeat(32),
+    },
+  ])
+    assert.deepEqual(match(input), matchLibretro(input, records));
+});
+
+test('compiled matcher does not rescan an unrelated 10000-record catalog per ROM', async () => {
+  const { createLibretroMatcher } = await import('../src/matching.js');
+  let reads = 0;
+  const records = Array.from({ length: 10000 }, (_, index) => ({
+    title: `Game ${index}`,
+    get name() {
+      reads++;
+      return `Game ${index}.rom`;
+    },
+    size: 4,
+    crc32: index === 4321 ? '12345678' : '87654321',
+  }));
+  const match = createLibretroMatcher(records);
+  reads = 0;
+  const result = match({
+    name: 'renamed.rom',
+    systemId: 'com.provenance.nes',
+    companions: [],
+    size: 4,
+    crc32: '12345678',
+  });
+  assert.equal(result[0]?.id, 'dat-4321');
+  assert.equal(result[0]?.confidence, 'checksum');
+  assert.ok(reads < 30, `Unrelated records were rescanned: ${reads}`);
+});
+
+test('parsed provider cache evicts old datasets while retained catalogs stay warm', async () => {
+  const index = tree(['Named_Boxarts/Orbit Rally (World).png']);
+  let parses = 0,
+    requests = 0;
+  const original = JSON.parse;
+  JSON.parse = ((text: string, reviver?: (key: string, value: unknown) => unknown) => {
+    if (text === index) parses++;
+    return original(text, reviver);
+  }) as typeof JSON.parse;
+  try {
+    const provider = createLibretroProvider(async (url) => {
+      requests++;
+      return new Response(String(url).includes('/git/trees/') ? index : dat);
+    });
+    const input = {
+      name: 'Orbit Rally.rom',
+      systemId: 'com.provenance.nes',
+      companions: [],
+      online: true,
+    };
+    for (const systemId of [
+      'com.provenance.nes',
+      'com.provenance.snes',
+      'com.provenance.gb',
+      'com.provenance.gbc',
+      'com.provenance.gba',
+    ])
+      await provider.search({ ...input, systemId });
+    const before = parses;
+    await provider.search({ ...input, systemId: 'com.provenance.gba' });
+    assert.equal(parses, before);
+    await provider.search(input);
+    assert.equal(parses, before + 1);
+    assert.equal(
+      requests,
+      10,
+      'Dataset eviction should reuse fresh catalog bodies without network/stat reload',
+    );
+  } finally {
+    JSON.parse = original;
+  }
+});
+
+test('catalog refresh replaces parsed records and artwork rather than retaining stale identities', async () => {
+  let title = 'Orbit Rally (World)';
+  const provider = createLibretroProvider(
+    async (url) =>
+      new Response(
+        String(url).includes('/git/trees/')
+          ? tree([`Named_Boxarts/${title}.png`])
+          : `game ( name "${title}" rom ( name "test.rom" size 4 crc 12345678 ) )`,
+      ),
+  );
+  const input = {
+    name: 'renamed.rom',
+    systemId: 'com.provenance.nes',
+    companions: [],
+    online: true,
+    size: 4,
+    crc32: '12345678',
+  };
+  assert.equal((await provider.search(input)).find((c) => c.kind === 'metadata')?.title, title);
+  const now = Date.now;
+  title = 'A New Identity (World)';
+  try {
+    const time = now();
+    Date.now = () => time + 6 * 60 * 60 * 1000 + 1;
+    assert.equal((await provider.search(input)).find((c) => c.kind === 'metadata')?.title, title);
+  } finally {
+    Date.now = now;
+  }
+});
+
+const canonicalDat =
+  'game ( name "Orbit Rally (World)" rom ( name "original.rom" size 4 crc 12345678 ) )';
+async function covers(paths: string[], catalog = canonicalDat, checksum = true) {
+  const provider = createLibretroProvider(
+    async (url) => new Response(String(url).includes('/git/trees/') ? tree(paths) : catalog),
+  );
+  return provider.search({
+    name: checksum ? 'renamed.rom' : 'Orbit Rally (World).rom',
+    systemId: 'com.provenance.nes',
+    companions: [],
+    online: true,
+    ...(checksum ? { size: 4, crc32: '12345678' } : {}),
+  });
+}
+
+test('renamed checksum-verified ROM corroborates exactly one canonical box art identity', async () => {
+  const result = await covers([
+    'Named_Boxarts/Orbit Rally (World).png',
+    'Named_Snaps/Orbit Rally (World).png',
+  ]);
+  const cover = result.find((c) => c.metadata.artworkType === 'boxarts');
+  assert.equal(cover?.confidence, 'checksum');
+  assert.equal(cover?.metadata.matchedGame, 'Orbit Rally (World)');
+  assert.equal(cover?.metadata.systemId, 'com.provenance.nes');
+  assert.match(cover?.metadata.verification ?? '', /image checksum not compared/);
+  assert.ok(
+    result
+      .filter((c) => c.metadata.artworkType !== 'boxarts' && c.kind === 'artwork')
+      .every((c) => c.confidence === 'name'),
+  );
+});
+
+test('ambiguous checksum titles never corroborate a cover', async () => {
+  const result = await covers(
+    ['Named_Boxarts/Orbit Rally (World).png'],
+    canonicalDat +
+      '\ngame ( name "Another Identity" rom ( name "other.rom" size 4 crc 12345678 ) )',
+  );
+  assert.ok(result.some((c) => c.kind === 'artwork'));
+  assert.ok(result.filter((c) => c.kind === 'artwork').every((c) => c.confidence === 'name'));
+});
+
+test('multiple box art versions, title/snap-only indexes, and revision differences stay name hints', async () => {
+  for (const paths of [
+    ['Named_Boxarts/Orbit Rally (World).png', 'Named_Boxarts/ORBIT RALLY (WORLD).png'],
+    ['Named_Boxarts/Orbit Rally (World).png', 'Named_Boxarts/Orbit Rally (USA).png'],
+    ['Named_Titles/Orbit Rally (World).png', 'Named_Snaps/Orbit Rally (World).png'],
+    ['Named_Boxarts/Orbit Rally (World) (Rev 1).png'],
+  ]) {
+    const result = await covers(paths);
+    assert.ok(result.some((c) => c.kind === 'artwork'));
+    assert.ok(result.filter((c) => c.kind === 'artwork').every((c) => c.confidence === 'name'));
+  }
+});
+
+test('filename-only matches cannot corroborate a canonical cover', async () => {
+  const result = await covers(['Named_Boxarts/Orbit Rally (World).png'], canonicalDat, false);
+  assert.ok(result.some((c) => c.kind === 'artwork'));
+  assert.ok(result.every((c) => c.confidence === 'name'));
+});
+
+test('partial provider failures preserve canonical cover as a name hint', async () => {
+  const { runMatching } = await import('../src/matching.js');
+  const provider = createLibretroProvider(async (url) =>
+    String(url).includes('/tosec/')
+      ? new Response('unavailable', { status: 503 })
+      : new Response(
+          String(url).includes('/git/trees/')
+            ? tree(['Named_Boxarts/Orbit Rally (World).png'])
+            : canonicalDat,
+        ),
+  );
+  const result = await runMatching(
+    {
+      name: 'renamed.rom',
+      systemId: 'com.provenance.jaguar',
+      companions: [],
+      online: true,
+      size: 4,
+      crc32: '12345678',
+    },
+    [provider],
+  );
+  assert.ok(result.problems.length);
+  assert.ok(result.candidates.some((c) => c.kind === 'artwork'));
+  assert.ok(
+    result.candidates.filter((c) => c.kind === 'artwork').every((c) => c.confidence === 'name'),
+  );
+});

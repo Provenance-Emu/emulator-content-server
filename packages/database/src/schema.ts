@@ -342,6 +342,63 @@ export const MIGRATIONS: readonly Migration[] = [
     );
   `,
   },
+  {
+    version: 16,
+    sql: `
+    CREATE TABLE library_jobs (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK(kind IN ('scan','match')),
+      scope_json TEXT NOT NULL CHECK(json_valid(scope_json)),
+      options_json TEXT NOT NULL CHECK(json_valid(options_json)),
+      state TEXT NOT NULL CHECK(state IN ('queued','running','completed','failed','cancelled','interrupted')),
+      actor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      error TEXT,
+      interrupted_count INTEGER NOT NULL DEFAULT 0,
+      current_id TEXT,
+      total INTEGER NOT NULL DEFAULT 0,
+      processed INTEGER NOT NULL DEFAULT 0,
+      saved INTEGER NOT NULL DEFAULT 0,
+      review INTEGER NOT NULL DEFAULT 0,
+      unmatched INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      skipped INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX library_jobs_queue ON library_jobs(state,created_at,id);
+    CREATE TABLE library_job_items (
+      job_id TEXT NOT NULL REFERENCES library_jobs(id) ON DELETE CASCADE,
+      entity_id TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','saved','review','unmatched','failed','skipped','reviewed')),
+      saved INTEGER NOT NULL DEFAULT 0,
+      suggestions INTEGER NOT NULL DEFAULT 0,
+      result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
+      error TEXT,
+      PRIMARY KEY(job_id,entity_id)
+    );
+    CREATE INDEX library_job_items_queue ON library_job_items(job_id,state,entity_id);
+  `,
+  },
+  {
+    version: 17,
+    sql: `
+    ALTER TABLE source_files ADD COLUMN match_parent TEXT NOT NULL DEFAULT '';
+    ALTER TABLE source_files ADD COLUMN match_stem TEXT NOT NULL DEFAULT '';
+    ALTER TABLE source_files ADD COLUMN match_extension TEXT NOT NULL DEFAULT '';
+    UPDATE source_files SET match_parent=ecs_companion_parent(relative_path),
+      match_stem=ecs_companion_stem(display_name), match_extension=ecs_companion_extension(display_name);
+    CREATE INDEX source_files_match_stem ON source_files(root_id,match_parent,match_stem,relative_path) WHERE missing_at IS NULL;
+    CREATE INDEX source_files_match_extension ON source_files(root_id,match_parent,match_extension,relative_path) WHERE missing_at IS NULL;
+    `,
+  },
+  {
+    version: 18,
+    sql: `CREATE TABLE source_fingerprints (
+      source_id TEXT PRIMARY KEY REFERENCES source_files(id) ON DELETE CASCADE,
+      stamp TEXT NOT NULL, md5 TEXT NOT NULL CHECK(length(md5)=32),
+      crc32 TEXT NOT NULL CHECK(length(crc32)=8), size INTEGER NOT NULL CHECK(size>=0)
+    );`,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

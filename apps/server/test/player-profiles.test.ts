@@ -179,7 +179,7 @@ for (const mode of [
     if (mode === 'asset-oversize') await truncate(join(plugin, 'support.data'), 33554433);
     if (mode === 'duplicate') await f.install('b');
     if (mode === 'too-many')
-      for (let i = 0; i < 16; i++) await f.install(`extra${i}`, manifest(`org.example.p${i}`));
+      for (let i = 0; i < 64; i++) await f.install(`extra${i}`, manifest(`org.example.p${i}`));
     if (mode === 'dir-symlink') await symlink(plugin, join(registry, 'link'));
     if (mode === 'registry-symlink') {
       registry = join(f.dir, 'link');
@@ -198,3 +198,9 @@ for (const mode of [
     );
   });
 }
+
+test('a broad software-core registry can contain 64 profiles', async (t) => {
+  const f = await fixture(t);
+  for (let i = 0; i < 64; i++) await f.install(`core${i}`, manifest(`org.example.core${i}`));
+  assert.equal((await loadPlayerProfiles(f.registry)).items.size, 64);
+});

@@ -6,9 +6,10 @@ import { join, resolve } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { ContentClient } from '@ecs/client';
 import { expect, test } from '@playwright/test';
+import { psxSmokeCode, psxSmokeExe } from '../../../../scripts/browser-core/generate-psx-smoke.mjs';
 import {
   dreamcastSmokeElf,
-  naomiSmokeCartridge,
+  naomiSmokeZip,
   sh4SmokeCode,
 } from '../../../../scripts/browser-core/generate-sh4-smoke.mjs';
 import {
@@ -70,9 +71,22 @@ function centerPixel(png: Buffer): number[] {
 
 const jaguarPlugin = process.env.ECS_ACCEPTANCE_JAGUAR_PLUGIN;
 const parallelPlugin = process.env.ECS_ACCEPTANCE_PARALLEL_DC_PLUGIN;
-if (jaguarPlugin || parallelPlugin)
+const psxPlugin = process.env.ECS_ACCEPTANCE_PSX_PLUGIN;
+if (jaguarPlugin || parallelPlugin || psxPlugin)
   test.use({ headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1' });
 const cases = [
+  {
+    title: 'PlayStation HLE',
+    plugin: psxPlugin,
+    profile: 'org.libretro.pcsx-rearmed',
+    system: 'com.provenance.psx',
+    program: psxSmokeExe(),
+    filename: 'original.exe',
+    needle: psxSmokeCode(),
+    guestAddress: 0x10000,
+    counterAddress: 0x20000,
+    littleEndian: true,
+  },
   ...(['abs', 'cartridge'] as const).map((format) => ({
     title: `BIOS-free Jaguar ${format}`,
     plugin: jaguarPlugin,
@@ -90,9 +104,8 @@ const cases = [
     plugin: parallelPlugin,
     profile: 'org.libretro.parallel-dc',
     system: `com.provenance.${system}`,
-    program:
-      system === 'dreamcast' ? dreamcastSmokeElf() : naomiSmokeCartridge(system === 'naomi2'),
-    filename: system === 'dreamcast' ? 'original.elf' : 'original.bin',
+    program: system === 'dreamcast' ? dreamcastSmokeElf() : naomiSmokeZip(system === 'naomi2'),
+    filename: system === 'dreamcast' ? 'original.elf' : 'original.zip',
     needle: sh4SmokeCode(),
     guestAddress: system === 'dreamcast' ? 0x10000 : 0x20000,
     counterAddress: 0xf800,

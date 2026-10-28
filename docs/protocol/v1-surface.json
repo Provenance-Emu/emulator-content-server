@@ -30,6 +30,9 @@
     "GET /api/v1/items/:itemId/manifest",
     "GET /api/v1/libraries",
     "GET /api/v1/libraries/:libraryId/members",
+    "GET /api/v1/library-jobs",
+    "GET /api/v1/library-jobs/:jobId",
+    "GET /api/v1/library-jobs/:jobId/items",
     "GET /api/v1/matching/plugins",
     "GET /api/v1/player/core",
     "GET /api/v1/player/management",
@@ -71,6 +74,10 @@
     "POST /api/v1/guest-grants",
     "POST /api/v1/items",
     "POST /api/v1/libraries",
+    "POST /api/v1/library-jobs",
+    "POST /api/v1/library-jobs/:jobId/cancel",
+    "POST /api/v1/library-jobs/:jobId/items/:sourceId/reviewed",
+    "POST /api/v1/library-jobs/:jobId/resume",
     "POST /api/v1/player/management/install",
     "POST /api/v1/player/management/install/:id",
     "POST /api/v1/roots",
@@ -1403,6 +1410,112 @@
       ],
       "required": [
         "items"
+      ]
+    },
+    "LibraryJobScope": {
+      "properties": [
+        "libraryId",
+        "rootId",
+        "unassigned"
+      ],
+      "required": []
+    },
+    "LibraryJobDraft": {
+      "properties": [
+        "kind",
+        "libraryId",
+        "options",
+        "rootId",
+        "unassigned"
+      ],
+      "required": [
+        "kind"
+      ]
+    },
+    "LibraryJob": {
+      "properties": [
+        "createdAt",
+        "currentSourceId",
+        "error",
+        "failed",
+        "id",
+        "interruptedCount",
+        "kind",
+        "options",
+        "processed",
+        "review",
+        "saved",
+        "scope",
+        "skipped",
+        "state",
+        "total",
+        "unmatched",
+        "updatedAt"
+      ],
+      "required": [
+        "createdAt",
+        "currentSourceId",
+        "error",
+        "failed",
+        "id",
+        "interruptedCount",
+        "kind",
+        "options",
+        "processed",
+        "review",
+        "saved",
+        "scope",
+        "skipped",
+        "state",
+        "total",
+        "unmatched",
+        "updatedAt"
+      ]
+    },
+    "LibraryJobResponse": {
+      "properties": [
+        "job",
+        "reused"
+      ],
+      "required": [
+        "job"
+      ]
+    },
+    "LibraryJobList": {
+      "properties": [
+        "jobs",
+        "nextCursor"
+      ],
+      "required": [
+        "jobs",
+        "nextCursor"
+      ]
+    },
+    "LibraryJobItem": {
+      "properties": [
+        "error",
+        "saved",
+        "source",
+        "sourceId",
+        "status",
+        "suggestions"
+      ],
+      "required": [
+        "error",
+        "saved",
+        "sourceId",
+        "status",
+        "suggestions"
+      ]
+    },
+    "LibraryJobItemList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
       ]
     }
   }

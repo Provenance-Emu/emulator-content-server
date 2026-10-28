@@ -25,7 +25,14 @@ import {
   type ContentRootSummaryRecord,
   type RootSummaryFilter,
 } from './library-browse.js';
+import { LibraryJobRepository } from './library-jobs.js';
 import { pendingMigrations } from './schema.js';
+import {
+  companionDirectory,
+  companionExtension,
+  companionSelection,
+  companionStem,
+} from './source-companions.js';
 import {
   sourceMatchColumns,
   sourceMatchContent,
@@ -147,6 +154,7 @@ function futureIso(ms: number): string {
 
 export class CatalogDatabase {
   readonly limits: CatalogLimits;
+  readonly libraryJobs: LibraryJobRepository;
   private readonly db: DatabaseSync;
 
   constructor(filename: string, limits: Partial<CatalogLimits> = {}) {
@@ -162,7 +170,17 @@ export class CatalogDatabase {
           .normalize('NFC')
           .toLowerCase(),
       );
+      this.db.function('ecs_companion_parent', { deterministic: true }, (value) =>
+        companionDirectory(String(value ?? '')),
+      );
+      this.db.function('ecs_companion_stem', { deterministic: true }, (value) =>
+        companionStem(String(value ?? '')),
+      );
+      this.db.function('ecs_companion_extension', { deterministic: true }, (value) =>
+        companionExtension(String(value ?? '')),
+      );
       this.migrate();
+      this.libraryJobs = new LibraryJobRepository(this.db);
     } catch (error) {
       this.db.close();
       throw error;
@@ -268,6 +286,24 @@ export class CatalogDatabase {
       mode: input.mode,
       subnets: input.subnets.join(' '),
     });
+  }
+
+  /** Rehydrate current account rights for durable work, without retaining a bearer token. */
+  actorForUser(userId: string): (Actor & { kind: 'user' }) | null {
+    const user = this.one<{ id: string; username: string; is_owner: number }>(
+      'SELECT id,username,is_owner FROM users WHERE id=?',
+      userId,
+    );
+    if (!user) return null;
+    return {
+      kind: 'user',
+      userId: user.id,
+      username: user.username,
+      isOwner: user.is_owner === 1,
+      tokenKind: 'session',
+      deviceId: null,
+      scopes: user.is_owner === 1 ? ['read', 'write', 'admin'] : ['read', 'write'],
+    };
   }
 
   /**
@@ -1203,8 +1239,8 @@ export class CatalogDatabase {
     this.db
       .prepare(`INSERT INTO source_files
       (id,root_id,relative_path,display_name,size,blocks,kind,system_id,availability,scanned_at,
-       group_anchor,group_members_json,group_error,filesystem_identity,mtime_ms)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+       group_anchor,group_members_json,group_error,filesystem_identity,mtime_ms,match_parent,match_stem,match_extension)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(
         id,
         rootId,
@@ -1221,6 +1257,9 @@ export class CatalogDatabase {
         file.groupError ?? null,
         file.filesystemIdentity ?? null,
         file.mtimeMs ?? null,
+        companionDirectory(file.relativePath),
+        companionStem(file.displayName),
+        companionExtension(file.displayName),
       );
   }
 
@@ -1233,7 +1272,7 @@ export class CatalogDatabase {
     this.db
       .prepare(`UPDATE source_files SET root_id=?, relative_path=?, display_name=?, size=?, blocks=?,
       kind=?,system_id=?,availability=?,scanned_at=?,group_anchor=?,group_members_json=?,group_error=?,
-      filesystem_identity=?,mtime_ms=?,missing_at=NULL,original_relative_path=NULL WHERE id=?`)
+      filesystem_identity=?,mtime_ms=?,match_parent=?,match_stem=?,match_extension=?,missing_at=NULL,original_relative_path=NULL WHERE id=?`)
       .run(
         rootId,
         file.relativePath,
@@ -1249,6 +1288,9 @@ export class CatalogDatabase {
         file.groupError ?? null,
         file.filesystemIdentity ?? null,
         file.mtimeMs ?? null,
+        companionDirectory(file.relativePath),
+        companionStem(file.displayName),
+        companionExtension(file.displayName),
         id,
       );
   }
@@ -1619,6 +1661,48 @@ export class CatalogDatabase {
     if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1))
       throw new Error('Invalid source row limit');
     return this.sourceRows(rootId, limit).map((row) => mapSource(row));
+  }
+
+  matchingFingerprint(
+    sourceId: string,
+    stamp: string,
+  ): { md5: string; crc32: string; size: number } | null {
+    return (
+      this.one<{ md5: string; crc32: string; size: number }>(
+        'SELECT md5,crc32,size FROM source_fingerprints WHERE source_id=? AND stamp=?',
+        sourceId,
+        stamp,
+      ) ?? null
+    );
+  }
+  saveMatchingFingerprint(
+    sourceId: string,
+    stamp: string,
+    value: { md5: string; crc32: string; size: number },
+  ): void {
+    if (
+      !/^[a-f0-9]{32}$/.test(value.md5) ||
+      !/^[a-f0-9]{8}$/.test(value.crc32) ||
+      !Number.isSafeInteger(value.size) ||
+      value.size < 0 ||
+      stamp.length > 1024
+    )
+      throw new Error('Invalid fingerprint');
+    this.db
+      .prepare(`INSERT INTO source_fingerprints(source_id,stamp,md5,crc32,size) VALUES(?,?,?,?,?)
+      ON CONFLICT(source_id) DO UPDATE SET stamp=excluded.stamp,md5=excluded.md5,crc32=excluded.crc32,size=excluded.size`)
+      .run(sourceId, stamp, value.md5, value.crc32, value.size);
+  }
+
+  /** Indexed sidecars only: never materialize a whole root for each matching lookup. */
+  matchingCompanions(rootId: string, relativePath: string, checksum: boolean): SourceFileRecord[] {
+    const selection = companionSelection(rootId, relativePath, checksum);
+    const rows = this.db
+      .prepare(`WITH candidates AS (${selection.sql})
+      SELECT s.*,r.library_id,${sourceMatchColumns} FROM candidates c
+      JOIN source_files s ON s.id=c.id JOIN content_roots r ON r.id=s.root_id ORDER BY s.relative_path`)
+      .all(...selection.values) as SourceRow[];
+    return rows.map(mapSource);
   }
 
   /** Internal scanner facts for verifying an organization preview against the indexed file. */

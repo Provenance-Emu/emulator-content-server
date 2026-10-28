@@ -29,8 +29,10 @@ export function sh4SmokeCode() {
   emit(0x4210); // dt r2
   emit(0x8b00 | (((fill - (words.length * 2 + 4)) / 2) & 255)); // bf fill
   load(2, 0x8c00f800);
+  load(0, 0xa5000000);
   emit(0xe300);
   const loop = words.length * 2;
+  emit(0x2012); // Keep the framebuffer dirty after the core updates its write watch.
   emit(0x7301); // add #1,r3
   emit(0x2232); // mov.l r3,@r2
   emit(0xa000 | (((loop - (words.length * 2 + 4)) / 2) & 0xfff));
@@ -58,7 +60,7 @@ export function dreamcastSmokeElf() {
   elf.writeUInt32LE(1, 20);
   elf.writeUInt32LE(0x8c010000, 24);
   elf.writeUInt32LE(52, 28);
-  elf.writeUInt32LE(0x2f, 36); // EF_SH4
+  elf.writeUInt32LE(9, 36); // GNU EF_SH4
   elf.writeUInt16LE(52, 40);
   elf.writeUInt16LE(32, 42);
   elf.writeUInt16LE(1, 44);
@@ -87,4 +89,42 @@ export function naomiSmokeCartridge(naomi2 = false) {
   cart.writeUInt32LE(0x0c020000, 0x424);
   code.copy(cart, 0x1000);
   return cart;
+}
+
+/** One original flat cartridge in ZIP: selects ArchivedCartridge without fixed mmap. */
+export function naomiSmokeZip(naomi2 = false) {
+  const data = naomiSmokeCartridge(naomi2),
+    name = Buffer.from('original.bin');
+  let crc = 0xffffffff;
+  for (const byte of data) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  crc = (crc ^ 0xffffffff) >>> 0;
+  const local = Buffer.alloc(30 + name.length),
+    central = Buffer.alloc(46 + name.length),
+    end = Buffer.alloc(22);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt16LE(0x21, 12); // Stable DOS date: 1980-01-01.
+  local.writeUInt32LE(crc, 14);
+  local.writeUInt32LE(data.length, 18);
+  local.writeUInt32LE(data.length, 22);
+  local.writeUInt16LE(name.length, 26);
+  name.copy(local, 30);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(20, 4);
+  central.writeUInt16LE(20, 6);
+  central.writeUInt16LE(0x21, 14);
+  central.writeUInt32LE(crc, 16);
+  central.writeUInt32LE(data.length, 20);
+  central.writeUInt32LE(data.length, 24);
+  central.writeUInt16LE(name.length, 28);
+  name.copy(central, 46);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(1, 8);
+  end.writeUInt16LE(1, 10);
+  end.writeUInt32LE(central.length, 12);
+  end.writeUInt32LE(local.length + data.length, 16);
+  return Buffer.concat([local, data, central, end]);
 }

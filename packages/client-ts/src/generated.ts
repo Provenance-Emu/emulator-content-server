@@ -682,3 +682,61 @@ export interface ContentRootSummary {
 export interface ContentRootSummaryList {
   items: ContentRootSummary[];
 }
+
+export interface LibraryJobScope {
+  rootId?: string;
+  libraryId?: string;
+  unassigned?: boolean;
+}
+
+export interface LibraryJobDraft {
+  kind: string;
+  rootId?: string;
+  libraryId?: string;
+  unassigned?: boolean;
+  options?: MatchingOptions;
+}
+
+export interface LibraryJob {
+  id: string;
+  kind: string;
+  scope: LibraryJobScope;
+  options: MatchingOptions;
+  state: string;
+  total: number;
+  processed: number;
+  saved: number;
+  review: number;
+  unmatched: number;
+  failed: number;
+  skipped: number;
+  currentSourceId: string | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  interruptedCount: number;
+}
+
+export interface LibraryJobResponse {
+  job: LibraryJob;
+  reused?: boolean;
+}
+
+export interface LibraryJobList {
+  jobs: LibraryJob[];
+  nextCursor: string | null;
+}
+
+export interface LibraryJobItem {
+  sourceId: string;
+  source?: SourceFile;
+  status: string;
+  saved: number;
+  suggestions: number;
+  error: string | null;
+}
+
+export interface LibraryJobItemList {
+  items: LibraryJobItem[];
+  nextCursor: string | null;
+}

@@ -9,6 +9,8 @@ import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
 import { readRegular } from './player-assets.js';
 import { playerCatalog, type TrustedPlayer } from './player-catalog.js';
+import { downloadCatalogPlayer } from './player-download.js';
+import { MAX_PLAYER_PROFILES, MAX_PLAYER_SNAPSHOT_BYTES } from './player-limits.js';
 import { loadPlayerProfiles, type PlayerProfileAssets } from './player-profiles.js';
 
 interface Settings {
@@ -43,7 +45,7 @@ export class PlayerManager {
       );
       if (
         !Array.isArray(s.disabled) ||
-        s.disabled.length > 16 ||
+        s.disabled.length > MAX_PLAYER_PROFILES ||
         s.disabled.some((id: unknown) => typeof id !== 'string' || id.length > 120) ||
         (s.defaultId !== null && typeof s.defaultId !== 'string')
       )
@@ -69,7 +71,7 @@ export class PlayerManager {
     for (const p of all.values())
       bytes +=
         p.loader.length + p.wasm.length + [...p.assets.values()].reduce((n, b) => n + b.length, 0);
-    if (all.size > 16 || bytes > 256 * 1024 * 1024)
+    if (all.size > MAX_PLAYER_PROFILES || bytes > MAX_PLAYER_SNAPSHOT_BYTES)
       throw new DomainError('conflict', 409, 'Emulator installation limit reached');
     return { all, managed: new Set(managed.items.keys()) };
   }
@@ -131,7 +133,7 @@ export class PlayerManager {
         removable: this.managed.has(id),
       })),
       defaultProfileId: this.context.defaultPlayerProfileId,
-      available: this.catalog.map(({ url: _, sha256: __, ...entry }) => entry),
+      available: this.catalog.map(({ url: _, sha256: __, upstream: ___, ...entry }) => entry),
     };
   }
   private serial<T>(operation: () => Promise<T>): Promise<T> {
@@ -346,74 +348,16 @@ export class PlayerManager {
   }
   installCatalog(id: string) {
     return this.serial(async () => {
-      const entry = this.catalog.find((p) => p.id === id && p.available && p.url && p.sha256);
-      if (!entry?.url || !entry.sha256)
+      const entry = this.catalog.find((p) => p.id === id && p.available);
+      if (!entry)
         throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
       if (this.all.has(id)) throw new DomainError('conflict', 409, 'Emulator is already installed');
-      const bytes = await downloadPlayer(entry.url, entry.downloadBytes ?? 0);
-      if (createHash('sha256').update(bytes).digest('hex') !== entry.sha256)
-        throw new DomainError('invalid-request', 400, 'Emulator download checksum mismatch');
-      if (parsePlayerPackage(bytes).manifest.id !== id)
-        throw new DomainError('invalid-request', 400, 'Emulator download identifier mismatch');
+      const bytes = await downloadCatalogPlayer(entry);
       return this.installBytes(bytes);
     });
   }
 }
 
-async function downloadPlayer(initial: string, size: number): Promise<Buffer> {
-  const controller = new AbortController(),
-    timer = setTimeout(() => controller.abort(), 120000);
-  try {
-    let url = initial;
-    for (let redirects = 0; redirects <= 3; redirects++) {
-      const parsed = new URL(url);
-      if (
-        parsed.protocol !== 'https:' ||
-        parsed.username ||
-        parsed.password ||
-        parsed.port ||
-        !['github.com', 'release-assets.githubusercontent.com'].includes(parsed.hostname)
-      )
-        throw new Error('Untrusted emulator download');
-      const response = await fetch(url, {
-        redirect: 'manual',
-        signal: controller.signal,
-        headers: { accept: 'application/octet-stream' },
-      });
-      if ([301, 302, 303, 307, 308].includes(response.status)) {
-        await response.body?.cancel();
-        const location = response.headers.get('location');
-        if (!location) throw new Error('Missing download location');
-        url = new URL(location, url).href;
-        continue;
-      }
-      if (!response.ok || !response.body) throw new Error('Emulator download unavailable');
-      const chunks: Buffer[] = [];
-      let total = 0;
-      for await (const chunk of response.body) {
-        total += chunk.byteLength;
-        if (total > size || total > PLAYER_PACKAGE_LIMIT) {
-          await response.body.cancel().catch(() => {});
-          throw new Error('Emulator download exceeds limit');
-        }
-        chunks.push(Buffer.from(chunk));
-      }
-      if (total !== size) throw new Error('Incomplete emulator download');
-      return Buffer.concat(chunks, total);
-    }
-    throw new Error('Too many redirects');
-  } catch {
-    throw new DomainError(
-      'invalid-request',
-      400,
-      'Emulator download failed; retry later or install a verified package file',
-    );
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** Validate the small ordinary ZIP directory shape; firmware compatibility is still the core's check. */
 function validAtomiswaveArchive(bytes: Buffer) {
   if (bytes.length < 22 || bytes.length > 32 * 1024 * 1024) return false;
   for (let at = bytes.length - 22; at >= Math.max(0, bytes.length - 65557); at--) {

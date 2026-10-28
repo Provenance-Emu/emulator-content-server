@@ -39,7 +39,7 @@ The frame's content policy blocks network reads and workers; its sandbox blocks 
 | Profiles | 16, including a configured legacy player |
 | Loader / WASM | 8 MiB / 64 MiB per profile |
 | Declared extra assets | 16 files, 32 MiB total per profile |
-| Startup snapshots | 256 MiB across the registry |
+| Startup snapshots | 512 MiB across the registry |
 | Game / selected or captured save | Plugin game up to512MiB; saves64MiB; legacy NES64MiB, or a smaller declared game limit |
 | Systems / extensions | 64 / 32 per profile |
 | Pending runtime operations | 32 |

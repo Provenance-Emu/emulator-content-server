@@ -1367,3 +1367,119 @@ public struct ContentRootSummaryList: Codable, Equatable, Sendable {
         self.items = items
     }
 }
+
+public struct LibraryJobScope: Codable, Equatable, Sendable {
+    public var rootId: String?
+    public var libraryId: String?
+    public var unassigned: Bool?
+
+    public init(rootId: String? = nil, libraryId: String? = nil, unassigned: Bool? = nil) {
+        self.rootId = rootId
+        self.libraryId = libraryId
+        self.unassigned = unassigned
+    }
+}
+
+public struct LibraryJobDraft: Codable, Equatable, Sendable {
+    public var kind: String
+    public var rootId: String?
+    public var libraryId: String?
+    public var unassigned: Bool?
+    public var options: MatchingOptions?
+
+    public init(kind: String, rootId: String? = nil, libraryId: String? = nil, unassigned: Bool? = nil, options: MatchingOptions? = nil) {
+        self.kind = kind
+        self.rootId = rootId
+        self.libraryId = libraryId
+        self.unassigned = unassigned
+        self.options = options
+    }
+}
+
+public struct LibraryJob: Codable, Equatable, Sendable {
+    public var id: String
+    public var kind: String
+    public var scope: LibraryJobScope
+    public var options: MatchingOptions
+    public var state: String
+    public var total: Int
+    public var processed: Int
+    public var saved: Int
+    public var review: Int
+    public var unmatched: Int
+    public var failed: Int
+    public var skipped: Int
+    public var currentSourceId: String?
+    public var error: String?
+    public var createdAt: String
+    public var updatedAt: String
+    public var interruptedCount: Int
+
+    public init(id: String, kind: String, scope: LibraryJobScope, options: MatchingOptions, state: String, total: Int, processed: Int, saved: Int, review: Int, unmatched: Int, failed: Int, skipped: Int, currentSourceId: String? = nil, error: String? = nil, createdAt: String, updatedAt: String, interruptedCount: Int) {
+        self.id = id
+        self.kind = kind
+        self.scope = scope
+        self.options = options
+        self.state = state
+        self.total = total
+        self.processed = processed
+        self.saved = saved
+        self.review = review
+        self.unmatched = unmatched
+        self.failed = failed
+        self.skipped = skipped
+        self.currentSourceId = currentSourceId
+        self.error = error
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.interruptedCount = interruptedCount
+    }
+}
+
+public struct LibraryJobResponse: Codable, Equatable, Sendable {
+    public var job: LibraryJob
+    public var reused: Bool?
+
+    public init(job: LibraryJob, reused: Bool? = nil) {
+        self.job = job
+        self.reused = reused
+    }
+}
+
+public struct LibraryJobList: Codable, Equatable, Sendable {
+    public var jobs: [LibraryJob]
+    public var nextCursor: String?
+
+    public init(jobs: [LibraryJob], nextCursor: String? = nil) {
+        self.jobs = jobs
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct LibraryJobItem: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var source: SourceFile?
+    public var status: String
+    public var saved: Int
+    public var suggestions: Int
+    public var error: String?
+
+    public init(sourceId: String, source: SourceFile? = nil, status: String, saved: Int, suggestions: Int, error: String? = nil) {
+        self.sourceId = sourceId
+        self.source = source
+        self.status = status
+        self.saved = saved
+        self.suggestions = suggestions
+        self.error = error
+    }
+}
+
+public struct LibraryJobItemList: Codable, Equatable, Sendable {
+    public var items: [LibraryJobItem]
+    public var nextCursor: String?
+
+    public init(items: [LibraryJobItem], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}

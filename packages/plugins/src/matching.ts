@@ -1,6 +1,6 @@
 import { crc32 } from 'node:zlib';
 import type { ProviderCapability } from './manifest.js';
-import { contentStem, nameMatchScore } from './matching-names.js';
+import { contentStem, nameMatchKeys, nameMatchScore } from './matching-names.js';
 
 export interface MatchCompanion {
   id: string;
@@ -282,8 +282,59 @@ export function parseLibretroDat(source: string): DatRecord[] {
   return records;
 }
 export function matchLibretro(input: MatchingInput, records: DatRecord[]): MatchCandidate[] {
+  return matchEntries(input, records.entries());
+}
+/** Compile once for an immutable parsed catalog, retaining its original candidate IDs. */
+export function createLibretroMatcher(
+  records: readonly DatRecord[],
+): (input: MatchingInput) => MatchCandidate[] {
+  const snapshot = records.slice(),
+    buckets = new Map<string, Set<number>>();
+  const add = (key: string, index: number) => {
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = new Set();
+      buckets.set(key, bucket);
+    }
+    bucket.add(index);
+  };
+  snapshot.forEach((record, index) => {
+    for (const name of [record.name, record.title])
+      for (const key of nameMatchKeys(name)) add(`name:${key}`, index);
+    if (record.systemId)
+      for (const alias of [record.name, ...(record.aliases ?? [])])
+        add(`alias:${alias.toLowerCase()}`, index);
+    if (record.md5) add(`md5:${record.size}:${record.md5}`, index);
+    if (record.crc32) add(`crc:${record.size}:${record.crc32}`, index);
+  });
+  return (input) => {
+    const indices = new Set<number>();
+    const take = (key: string) => {
+      for (const index of buckets.get(key) ?? []) indices.add(index);
+    };
+    for (const key of nameMatchKeys(input.name)) take(`name:${key}`);
+    const stem = contentStem(input.name).toLowerCase();
+    take(`alias:${stem}`);
+    take(`alias:${stem.replace(/-(?:[2-9][0-9]*|chd)$/, '')}`);
+    if (input.md5) take(`md5:${input.size}:${input.md5.toLowerCase()}`);
+    else if (input.crc32) take(`crc:${input.size}:${input.crc32.toLowerCase()}`);
+    return matchEntries(
+      input,
+      [...indices]
+        .sort((a, b) => a - b)
+        .flatMap((index): Array<[number, DatRecord]> => {
+          const record = snapshot[index];
+          return record ? [[index, record]] : [];
+        }),
+    );
+  };
+}
+function matchEntries(
+  input: MatchingInput,
+  records: Iterable<[number, DatRecord]>,
+): MatchCandidate[] {
   const found: MatchCandidate[] = [];
-  for (const [index, record] of records.entries()) {
+  for (const [index, record] of records) {
     const checksum =
       input.size === record.size &&
       ((!!input.md5 && input.md5.toLowerCase() === record.md5) ||

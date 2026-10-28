@@ -85,6 +85,10 @@ function facts(name: string): NameFacts {
   cache.set(name, value);
   return value;
 }
+/** Coarse candidate buckets; callers still use nameMatchScore for edition/region evidence. */
+export function nameMatchKeys(value: string): readonly string[] {
+  return facts(value).bases;
+}
 export function nameMatchScore(left: string, right: string): number {
   const a = facts(left),
     b = facts(right);

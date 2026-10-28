@@ -1,4 +1,4 @@
-import { readdir, realpath, stat } from 'node:fs/promises';
+import { opendir, realpath, stat } from 'node:fs/promises';
 import { basename, relative, resolve, sep } from 'node:path';
 import { type AssetKind, DomainError, detectRomSystem, isRomExtension } from '@ecs/domain';
 import { groupDiscs } from './disc-groups.js';
@@ -25,20 +25,22 @@ export interface ScannedFile {
  */
 export async function inspectRoot(
   rootPath: string,
-  options: { pinnedRoot?: boolean } = {},
+  options: { pinnedRoot?: boolean; signal?: AbortSignal } = {},
 ): Promise<{
   medium: Medium;
   online: boolean;
   files: ScannedFile[];
 }> {
+  options.signal?.throwIfAborted();
   const probe = await probeRoot(rootPath);
   if (!probe.online) return { medium: probe.medium, online: false, files: [] };
   const root = await realpath(rootPath);
   if (options.pinnedRoot && root !== resolve(rootPath))
     throw new DomainError('invalid-body', 400, 'Registered folder has changed');
   const files: ScannedFile[] = [];
-  await walk(root, root, probe.medium, files, new Set<string>());
-  await groupDiscs(root, files);
+  await walk(root, root, probe.medium, files, new Set<string>(), options.signal);
+  options.signal?.throwIfAborted();
+  await groupDiscs(root, files, options.signal);
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   return { medium: probe.medium, online: true, files };
 }
@@ -83,15 +85,28 @@ async function walk(
   medium: Medium,
   files: ScannedFile[],
   visited: Set<string>,
+  signal?: AbortSignal,
 ): Promise<void> {
+  signal?.throwIfAborted();
   const canonical = await realpath(dir);
   if (!contained(root, canonical) || visited.has(canonical)) return;
   visited.add(canonical);
-  const entries = await readdir(canonical, { withFileTypes: true });
-  for (const entry of entries) {
+  // Avoid a second directory-sized allocation and keep metadata IO conservative
+  // on removable/provider volumes; a little overlap helps local/network latency.
+  const concurrency = medium === 'internal' ? 4 : medium === 'network' ? 2 : 1;
+  const batch: (() => Promise<void>)[] = [];
+  const flush = async () => {
+    const results = await Promise.allSettled(batch.splice(0).map((work) => work()));
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') throw failure.reason;
+  };
+  const entries = await opendir(canonical);
+  for await (const entry of entries) {
+    signal?.throwIfAborted();
     if (entry.name.startsWith('.')) continue;
     const full = resolve(canonical, entry.name);
     if (entry.isSymbolicLink()) {
+      await flush();
       let target: string;
       try {
         target = await realpath(full);
@@ -100,17 +115,20 @@ async function walk(
       }
       if (!contained(root, target)) continue;
       const linked = await stat(target);
-      if (linked.isDirectory()) await walk(root, target, medium, files, visited);
-      else if (linked.isFile()) await addFile(root, target, medium, files, visited);
+      if (linked.isDirectory()) await walk(root, target, medium, files, visited, signal);
+      else if (linked.isFile()) await addFile(root, target, medium, files, visited, signal);
       continue;
     }
     if (entry.isDirectory()) {
-      await walk(root, full, medium, files, visited);
+      await flush();
+      await walk(root, full, medium, files, visited, signal);
       continue;
     }
     if (!entry.isFile()) continue;
-    await addFile(root, full, medium, files, visited);
+    batch.push(() => addFile(root, full, medium, files, visited, signal));
+    if (batch.length >= concurrency) await flush();
   }
+  await flush();
 }
 
 async function addFile(
@@ -119,11 +137,15 @@ async function addFile(
   medium: Medium,
   files: ScannedFile[],
   visited: Set<string>,
+  signal?: AbortSignal,
 ): Promise<void> {
+  signal?.throwIfAborted();
   const canonical = await realpath(full);
   if (!contained(root, canonical) || visited.has(canonical)) return;
   visited.add(canonical);
-  files.push(await describe(root, canonical, medium));
+  const file = await describe(root, canonical, medium);
+  signal?.throwIfAborted();
+  files.push(file);
 }
 
 async function describe(root: string, full: string, medium: Medium): Promise<ScannedFile> {

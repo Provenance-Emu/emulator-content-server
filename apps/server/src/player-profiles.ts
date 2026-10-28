@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireActor } from './http.js';
 import { type PlayerAssets, readRegular } from './player-assets.js';
+import { MAX_PLAYER_PROFILES, MAX_PLAYER_SNAPSHOT_BYTES } from './player-limits.js';
 
 export interface PlayerProfileAssets {
   descriptor: WebPlayerDescriptor;
@@ -62,7 +63,7 @@ export async function loadPlayerProfiles(
       const allEntries = await readdir(directory, { withFileTypes: true });
       if (allEntries.some((entry) => entry.isSymbolicLink())) throw new Error();
       const entries = allEntries.filter((entry) => entry.isDirectory());
-      if (entries.length + items.size > 16) throw new Error();
+      if (entries.length + items.size > MAX_PLAYER_PROFILES) throw new Error();
       for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
         if (!entry.isDirectory()) throw new Error();
         const root = join(directory, entry.name);
@@ -81,11 +82,15 @@ export async function loadPlayerProfiles(
           throw new Error();
         const base = `/play/plugins/${manifest.id}`;
         const read = async (spec: { file: string; sha256: string }, cap: number, url: string) => {
-          const bytes = await readRegular(root, spec.file, Math.min(cap, 256 * MiB - totalBytes));
+          const bytes = await readRegular(
+            root,
+            spec.file,
+            Math.min(cap, MAX_PLAYER_SNAPSHOT_BYTES - totalBytes),
+          );
           const sha256 = createHash('sha256').update(bytes).digest('hex');
           if (sha256 !== spec.sha256) throw new Error();
           totalBytes += bytes.length;
-          if (totalBytes > 256 * MiB) throw new Error();
+          if (totalBytes > MAX_PLAYER_SNAPSHOT_BYTES) throw new Error();
           return { bytes, resource: { url, sha256, sizeBytes: bytes.length } };
         };
         const loader = await read(web.loader, 8 * MiB, `${base}/loader.js`);

@@ -16,6 +16,8 @@
   const emulators = untrack(() => createEmulatorSettings(client, () => onchange(), status => onrejected(status)));
   const tabs = [{ id: 'installed', label: 'Installed' }, { id: 'available', label: 'Available' }];
   let selected = $state('installed');
+  let catalogQuery = $state('');
+  const catalogEntries = $derived(($emulators.listing?.available ?? []).filter(entry => `${entry.name} ${entry.systems.join(' ')}`.toLowerCase().includes(catalogQuery.trim().toLowerCase())));
   let removing = $state<string | null>(null);
   let packageFile = $state<File | null>(null);
   let packageInput = $state<HTMLInputElement>();
@@ -124,9 +126,11 @@
     {:else}
       <h2>Available emulators</h2>
       <p class="dim">Install a supported emulator from the server’s trusted catalog.</p>
+      <FormField label="Find an emulator">{#snippet children(attributes)}<input {...attributes} type="search" bind:value={catalogQuery} placeholder="Search name or system" />{/snippet}</FormField>
+      <p class="dim" role="status">{catalogEntries.length} emulator{catalogEntries.length === 1 ? '' : 's'} found</p>
       {#if $emulators.listing.available.length === 0}<InlineNotice>No catalog emulators are available on this server. You can install a .ecsplayer package below.</InlineNotice>{/if}
       <div class="emulator-list">
-        {#each $emulators.listing.available as entry (entry.id)}
+        {#each catalogEntries as entry (entry.id)}
           <article class="emulator-item" aria-labelledby={`available-emulator-${entry.id}`}>
             <div class="emulator-item-heading"><h3 id={`available-emulator-${entry.id}`}>{entry.name}</h3>
               <span class="dim">{systemNames(entry.systems)}</span>

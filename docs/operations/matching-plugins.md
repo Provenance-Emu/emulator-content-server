@@ -2,49 +2,15 @@
 
 ## Bulk library matching
 
-Open a library and choose **Match library** → **Start library matching**. The run
-collects every Games page before saving anything, then processes server-folder
-games one at a time through the same selected provider and manager plugins as
-individual matching. Library search, system and folder filters do not restrict
-the run. Managed uploads and offline source files are listed under **Skipped**.
+Open a library and choose **Library tools → Library activity → Find missing artwork and details**. Choose **Matching providers** to include online catalogs or adjust providers. The server owns the work: closing the panel, reloading, signing out or switching devices does not cancel it. Any signed-in owner session can inspect progress, cancel a job, resume remaining work or retry failed/unmatched outcomes. Folder scans and watchers use the same queue.
 
-For local single ROMs up to 64 MiB, a lookup verifies the checksum. A unique
-checksum candidate per unsaved category is saved automatically. Multiple exact
-candidates, conflicting system IDs (including an existing selected system),
-provider failures, and filename-only suggestions require review. Existing saved
-categories are never replaced by a bulk run. Patch and cheat selections remain
-associations; nothing is applied to a game. Artwork without checksum evidence
-also needs review, even when its game's metadata was verified.
+Equivalent active jobs reuse their work. Overlapping scopes with different options are rejected with a clear conflict rather than starting another disk pass. One worker processes bounded pages; the browser loads aggregate progress and 20 results at a time, not the whole collection. Jobs and review acknowledgements persist in SQLite. A running job interrupted by restart becomes **interrupted** and can be resumed; pending queued jobs start normally. Cancellation checks precede file work and catalog publication, preserving the last good folder index.
 
-**Needs review** opens the shared matching panel with fresh suggestions and the
-same provider options, avoiding expired proposal IDs. Save the choices you want,
-then choose **Done reviewing this game**. In library review, **Save and next
-category** saves the chosen suggestion and opens the next category without a saved
-choice. **Save and next game** finishes the current review and opens the next
-unresolved game. Failed saves stay on the current game. **Next unresolved game**
-skips ahead without resolving the current game; it remains in the queue. Keyboard
-focus follows the next game's heading. Progress separates checked games, games
-reviewed, unresolved games and exact matches auto-saved. Results are paginated, with separate
-filters for failures, unmatched games and skipped files. **Retry failed games**
-loads current selections again; revision conflicts never trigger an automatic
-overwrite. **Retry unmatched games** checks only games currently in **No match**,
-without rediscovering the library or rerunning completed/reviewed games. It reads
-current saved choices before each lookup so choices saved elsewhere are preserved.
-After a disconnected or failed auto-save response, matching reads saved choices:
-a confirmed candidate counts as saved and processing continues; an unconfirmed
-commit stays failed for explicit retry. Partial provider failures appear in both
-**Needs review** and **Failed** and can be retried without repeating healthy games. **Done reviewing this game**
-also removes that game from the retry list. Online cheat indexes are optional in
-bulk runs because anonymous GitHub API limits are small; local cheat matching
-remains selected by default.
+For local single ROMs up to 64 MiB, matching verifies checksums in 64 KiB chunks, with cancellation and file-change checks. Cached hashes are reused only for the same source identity/timestamps. Container hashes do not stand in for inner ROMs. Unique checksum candidates per unsaved category can save automatically. Conflicting systems, ambiguous exact matches, provider failures and filename-only suggestions remain reviewable. Existing saved categories are never replaced. A single box cover can also inherit the ROM's verified game identity when its complete canonical title and system agree with exactly one checksum identity and the provider is healthy. This verifies which game the cover belongs to; it does not compare an image hash to the ROM. Competing covers/editions, title screens, screenshots and filename-only evidence remain reviewable. Matching covers indexed server-folder games; managed uploads are not currently included.
 
-**Pause matching** cancels the active request; **Resume matching** continues
-remaining games. Closing the panel keeps the run going while you browse this
-library. Keep the app open: reloading, signing out, changing servers or leaving
-the library clears the in-memory run and review queue. All selections already
-saved remain in the catalog, and a new run preserves them. The run is limited to
-50,000 entries and uses existing authenticated, revision-checked matching APIs;
-providers never run in the browser.
+**Results** filters review, failed, unmatched, saved and skipped outcomes. **Review** refreshes proposals before a save. **Save and next category** advances through unsaved categories; **Save and next game** or **Done reviewing this game** persists the review acknowledgement for other sessions. Failed saves stay pending. **Next unresolved game** leaves the current game unresolved. Retry actions reuse the durable job and recheck current selections rather than overwriting choices made elsewhere.
+
+The former 50,000-entry lookup/run limit is removed. Companion lookup uses indexed normalized folder/stem/extension facts, backfilled for older catalogs without reading ROM bytes. See [shared library jobs](shared-library-jobs.md) for queue behavior, limits and the generated 100,000-file benchmark.
 
 The owner can open a server-folder game and use **Metadata, artwork & patches**.
 Click **Find matches** for local suggestions, or enable **Include online providers**

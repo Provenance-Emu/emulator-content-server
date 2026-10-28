@@ -172,3 +172,23 @@ index ac40fdf..f49b8a8 100644
  
 +#endif
  extern CustomTexture custom_texture;
+diff --git a/core/rend/gles/gles.cpp b/core/rend/gles/gles.cpp
+index bbd989c..d548623 100644
+--- a/core/rend/gles/gles.cpp
++++ b/core/rend/gles/gles.cpp
+@@ -863,7 +863,15 @@ void findGLVersion()
+ 
+ 	const char *version = (const char *)glGetString(GL_VERSION);
+ 	NOTICE_LOG(RENDERER, "OpenGL version: %s", version);
++	// The browser profile requires WebGL2. A proc-address GL_VERSION string may
++	// describe ANGLE's desktop backend; shader syntax must still be GLSL ES.
++#if defined(__EMSCRIPTEN__)
++	gl.gl_major = 3;
++	gl.gl_minor = 0;
++	if (true)
++#else
+ 	if (!strncmp(version, "OpenGL ES", 9))
++#endif
+ 	{
+ 		gl.is_gles = true;
+ 		if (gl.gl_major >= 3)

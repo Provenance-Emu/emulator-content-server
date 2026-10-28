@@ -6,9 +6,18 @@ import { createLibretroProvider } from './libretro-matching.js';
 import { localMatchingProvider, type MatchingProvider, runMatching } from './matching.js';
 import type { MatchingJob, MatchingPluginDescription, MatchingReply } from './matching-host.js';
 import { pluginFile } from './paths.js';
-import { type LoadedPlugin, loadPluginDirectory } from './registry.js';
+import { type LoadedPlugin, loadPluginDirectory, type PluginLoad } from './registry.js';
 
-async function entry(plugin: LoadedPlugin): Promise<Record<string, unknown>> {
+const modules = new WeakMap<LoadedPlugin, Promise<Record<string, unknown>>>();
+function entry(plugin: LoadedPlugin): Promise<Record<string, unknown>> {
+  let module = modules.get(plugin);
+  if (!module) {
+    module = loadEntry(plugin);
+    modules.set(plugin, module);
+  }
+  return module;
+}
+async function loadEntry(plugin: LoadedPlugin): Promise<Record<string, unknown>> {
   const directory = await realpath(plugin.directory);
   if (!plugin.manifest.entry) throw new Error('Missing entry');
   const path = await realpath(pluginFile(directory, plugin.manifest.entry));
@@ -21,6 +30,39 @@ async function entry(plugin: LoadedPlugin): Promise<Record<string, unknown>> {
   return module.default;
 }
 
+const builtinCache = new Map<string, MatchingProvider[]>();
+const registryCache = new Map<string, { expires: number; loaded: Promise<PluginLoad> }>();
+let activeSearches = 0;
+function builtins(directory?: string): MatchingProvider[] {
+  const key = directory ?? '';
+  let providers = builtinCache.get(key);
+  if (!providers) {
+    providers = [
+      localMatchingProvider,
+      createLibretroProvider(fetch, directory),
+      localCheatsProvider,
+      createLibretroCheatsProvider(),
+    ];
+    builtinCache.set(key, providers);
+    if (builtinCache.size > 2) builtinCache.delete(builtinCache.keys().next().value ?? '');
+  }
+  return [...providers];
+}
+async function installed(directory?: string): Promise<PluginLoad> {
+  if (!directory) return { plugins: [], problems: [] };
+  const cached = registryCache.get(directory);
+  if (cached && cached.expires > performance.now()) return cached.loaded;
+  const loaded = loadPluginDirectory(directory);
+  registryCache.delete(directory);
+  registryCache.set(directory, { loaded, expires: performance.now() + 5000 });
+  if (registryCache.size > 2) registryCache.delete(registryCache.keys().next().value ?? '');
+  try {
+    return await loaded;
+  } catch (error) {
+    registryCache.delete(directory);
+    throw error;
+  }
+}
 export async function executeMatchingJob(job: MatchingJob): Promise<MatchingReply> {
   if (job.operation === 'artwork' || job.operation === 'cheats') {
     const url = new URL(job.artworkUrl ?? '');
@@ -58,16 +100,9 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
       return { plugins: [], file: Buffer.from(normalizeCheats(bytes).text).toString('base64') };
     return { plugins: [], artwork: bytes.toString('base64') };
   }
-  const providers: MatchingProvider[] = [
-    localMatchingProvider,
-    createLibretroProvider(fetch, job.catalogCacheDirectory),
-    localCheatsProvider,
-    createLibretroCheatsProvider(),
-  ];
-  const installed = job.directory
-    ? await loadPluginDirectory(job.directory)
-    : { plugins: [], problems: [] };
-  const managers = installed.plugins.filter((p) => p.manifest.kind === 'manager');
+  const providers = builtins(job.catalogCacheDirectory);
+  const loaded = await installed(job.directory);
+  const managers = loaded.plugins.filter((p) => p.manifest.kind === 'manager');
   const plugins: MatchingPluginDescription[] = [
     ...providers.map((p) => ({
       id: p.id,
@@ -85,7 +120,7 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
     },
   ];
   const ids = new Set(plugins.map((p) => p.id));
-  for (const plugin of installed.plugins) {
+  for (const plugin of loaded.plugins) {
     const manifest = plugin.manifest;
     if (manifest.kind !== 'provider' && manifest.kind !== 'manager') continue;
     if (ids.has(manifest.id)) throw new Error('Duplicate matching plugin id');
@@ -147,13 +182,90 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
         return provider;
       })
     : providers;
-  return { plugins, result: await runMatching(job.input, selected) };
+  return {
+    plugins,
+    result: await runMatching(
+      job.input,
+      selected.map((provider) => ({
+        ...provider,
+        async search(input, signal) {
+          activeSearches++;
+          try {
+            return await provider.search(input, signal);
+          } finally {
+            activeSearches--;
+          }
+        },
+      })),
+    ),
+  };
 }
 
-if (process.send)
-  process.once('message', (job: MatchingJob) => {
+function request(raw: unknown): { id: string; job: MatchingJob } {
+  if (
+    !raw ||
+    typeof raw !== 'object' ||
+    Array.isArray(raw) ||
+    Buffer.byteLength(JSON.stringify(raw)) > 512 * 1024 + 256
+  )
+    throw new Error('Invalid request');
+  const envelope = raw as { id: unknown; job: MatchingJob };
+  const job = envelope.job;
+  if (
+    Object.keys(raw).length !== 2 ||
+    typeof envelope.id !== 'string' ||
+    !/^[a-f0-9-]{36}$/.test(envelope.id) ||
+    !job ||
+    typeof job !== 'object' ||
+    Array.isArray(job) ||
+    !['list', 'match', 'artwork', 'cheats'].includes(job.operation)
+  )
+    throw new Error('Invalid request');
+  for (const path of [job.directory, job.catalogCacheDirectory])
+    if (path !== undefined && (typeof path !== 'string' || path.length > 4096))
+      throw new Error('Invalid directory');
+  if (
+    job.operation === 'match' &&
+    (!job.input || typeof job.input.name !== 'string' || !Array.isArray(job.input.companions))
+  )
+    throw new Error('Invalid input');
+  return { id: envelope.id, job };
+}
+if (process.send) {
+  let busy = false;
+  let scope: string | undefined;
+  process.on('disconnect', () => process.exit(0));
+  process.on('message', (raw: unknown) => {
+    let id: string, job: MatchingJob;
+    try {
+      ({ id, job } = request(raw));
+      const key = JSON.stringify([job.directory ?? null, job.catalogCacheDirectory ?? null]);
+      if (busy || (scope !== undefined && scope !== key))
+        throw new Error('Worker scope/overlap violation');
+      scope = key;
+      busy = true;
+    } catch {
+      process.exit(1);
+    }
     void executeMatchingJob(job).then(
-      (reply) => process.send?.(reply),
+      (reply) => {
+        try {
+          if (
+            Buffer.byteLength(JSON.stringify(reply)) >
+            (job.operation === 'artwork' ? 3 * 1024 * 1024 : 512 * 1024)
+          )
+            throw new Error('Reply too large');
+          // A provider that ignores its own deadline must not run alongside the next job.
+          const recycle = activeSearches > 0;
+          busy = recycle;
+          process.send?.({ id, reply, recycle }, (error) => {
+            if (error) process.exit(1);
+          });
+        } catch {
+          process.exit(1);
+        }
+      },
       () => process.exit(1),
     );
   });
+}

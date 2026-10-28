@@ -1,13 +1,14 @@
 import { parseFlycastCatalog } from './arcade-catalog.js';
 import {
+  createLibretroMatcher,
   type DatRecord,
   type MatchCandidate,
   type MatchingProvider,
-  matchLibretro,
+  type matchLibretro,
   PartialMatchingError,
   parseLibretroDat,
 } from './matching.js';
-import { contentStem, nameMatchScore } from './matching-names.js';
+import { contentStem, nameMatchKeys, nameMatchScore } from './matching-names.js';
 import { createCatalogLoader } from './public-catalog.js';
 
 interface SystemCatalog {
@@ -102,6 +103,105 @@ export function createLibretroProvider(
   cacheDirectory?: string,
 ): MatchingProvider {
   const catalogs = createCatalogLoader(fetcher, cacheDirectory);
+  const emptyRecords: DatRecord[] = [],
+    emptyArt: Artwork[] = [];
+  const parsed = new Map<string, { text: string; value: unknown; weight: number }>();
+  const compiled = new Map<
+    string,
+    {
+      tables: DatRecord[][];
+      match: (input: Parameters<typeof matchLibretro>[0]) => MatchCandidate[];
+    }
+  >();
+  const artBuckets = new WeakMap<Artwork[], Map<string, number[]>>();
+  let parsedBytes = 0;
+  function memo<T extends DatRecord[] | Artwork[]>(key: string, text: string, parser: () => T): T {
+    const cached = parsed.get(key);
+    if (cached?.text === text) {
+      parsed.delete(key);
+      parsed.set(key, cached);
+      return cached.value as T;
+    }
+    if (cached) {
+      parsed.delete(key);
+      parsedBytes -= cached.weight;
+      compiled.clear();
+    }
+    const value = parser();
+    const weight =
+      text.length * 2 +
+      value.reduce(
+        (sum, row) =>
+          sum +
+          512 +
+          row.title.length * 2 +
+          ('name' in row
+            ? row.name.length * 2 + (row.aliases ?? []).join('').length * 2
+            : row.path.length * 2),
+        0,
+      );
+    if (weight <= 64 * 1024 * 1024) {
+      parsed.set(key, { text, value, weight });
+      parsedBytes += weight;
+      while (parsed.size > 8 || parsedBytes > 64 * 1024 * 1024) {
+        const oldest = parsed.keys().next().value;
+        if (oldest === undefined) break;
+        parsedBytes -= parsed.get(oldest)?.weight ?? 0;
+        parsed.delete(oldest);
+        compiled.clear();
+      }
+    }
+    return value;
+  }
+  function match(
+    input: Parameters<typeof matchLibretro>[0],
+    tables: DatRecord[][],
+  ): MatchCandidate[] {
+    const key = input.systemId ?? '<inferred>';
+    let entry = compiled.get(key);
+    if (
+      !entry ||
+      entry.tables.length !== tables.length ||
+      entry.tables.some((table, index) => table !== tables[index])
+    ) {
+      entry = { tables, match: createLibretroMatcher(tables.flat()) };
+      compiled.delete(key);
+      // An index can retain only datasets already accounted for by the parsed LRU.
+      if (
+        tables.every(
+          (table) =>
+            table === emptyRecords || [...parsed.values()].some((cached) => cached.value === table),
+        )
+      )
+        compiled.set(key, entry);
+      if (compiled.size > 8) compiled.delete(compiled.keys().next().value ?? '');
+    }
+    return entry.match(input);
+  }
+  function imagesFor(images: Artwork[], names: string[]): Array<{ image: Artwork; index: number }> {
+    let buckets = artBuckets.get(images);
+    if (!buckets) {
+      buckets = new Map();
+      images.forEach((image, index) => {
+        for (const key of nameMatchKeys(image.title)) {
+          const indices = buckets?.get(key) ?? [];
+          indices.push(index);
+          buckets?.set(key, indices);
+        }
+      });
+      artBuckets.set(images, buckets);
+    }
+    const indices = new Set<number>();
+    for (const name of names)
+      for (const key of nameMatchKeys(name))
+        for (const index of buckets.get(key) ?? []) indices.add(index);
+    return [...indices]
+      .sort((a, b) => a - b)
+      .flatMap((index) => {
+        const image = images[index];
+        return image ? [{ image, index }] : [];
+      });
+  }
   return {
     id: 'org.ecs.libretro',
     name: 'Game catalogs and artwork',
@@ -112,11 +212,13 @@ export function createLibretroProvider(
       let systemId = input.systemId;
       let system = systemId ? LIBRETRO_SYSTEMS[systemId] : undefined;
       let inferred: DatRecord[] | null = null;
+      let inferredText = '';
       if (!system && systemId === null) {
         try {
           const text = await catalogs.load(FLYCAST, signal, 4 * 1024 * 1024);
-          inferred = text ? parseFlycastCatalog(text) : [];
-          const hints = matchLibretro(input, inferred);
+          inferredText = text ?? '';
+          inferred = text ? memo(FLYCAST, text, () => parseFlycastCatalog(text)) : emptyRecords;
+          const hints = match(input, [inferred]);
           const systems = new Set(hints.map((candidate) => candidate.metadata.systemId));
           if (systems.size !== 1) return hints;
           systemId = [...systems][0] ?? null;
@@ -137,19 +239,21 @@ export function createLibretroProvider(
         try {
           const text = await catalogs.load(url, resourceSignal);
           return text
-            ? parseLibretroDat(text).map((record) =>
-                arcade
-                  ? {
-                      ...record,
-                      systemId: systemId ?? undefined,
-                      source: 'Libretro arcade catalog',
-                    }
-                  : record,
+            ? memo(`${url}:${arcade ? systemId : ''}`, text, () =>
+                parseLibretroDat(text).map((record) =>
+                  arcade
+                    ? {
+                        ...record,
+                        systemId: systemId ?? undefined,
+                        source: 'Libretro arcade catalog',
+                      }
+                    : record,
+                ),
               )
-            : [];
+            : emptyRecords;
         } catch (error) {
           failures.push(error);
-          return [];
+          return emptyRecords;
         }
       }
       const tables: Promise<DatRecord[]>[] = [];
@@ -179,13 +283,20 @@ export function createLibretroProvider(
               const text = inferred
                 ? null
                 : await catalogs.load(FLYCAST, resourceSignal, 4 * 1024 * 1024);
-              if (inferred) return inferred.filter((record) => record.systemId === systemId);
+              if (inferred) {
+                const source = inferred;
+                return memo(`${FLYCAST}:${systemId}`, inferredText, () =>
+                  source.filter((record) => record.systemId === systemId),
+                );
+              }
               return text
-                ? parseFlycastCatalog(text).filter((record) => record.systemId === systemId)
-                : [];
+                ? memo(`${FLYCAST}:${systemId}`, text, () =>
+                    parseFlycastCatalog(text).filter((record) => record.systemId === systemId),
+                  )
+                : emptyRecords;
             } catch (error) {
               failures.push(error);
-              return [];
+              return emptyRecords;
             }
           })(),
         );
@@ -196,23 +307,20 @@ export function createLibretroProvider(
             resourceSignal,
             8 * 1024 * 1024,
           );
-          return index ? artworkIndex(index) : [];
+          return index ? memo(`art:${repo}`, index, () => artworkIndex(index)) : emptyArt;
         } catch (error) {
           failures.push(error);
-          return [];
+          return emptyArt;
         }
       })();
-      const [records, artworks] = await Promise.all([
-        Promise.all(tables).then((values) => values.flat()),
-        indexed,
-      ]);
-      const metadata = matchLibretro(lookupInput, records);
+      const [records, artworks] = await Promise.all([Promise.all(tables), indexed]);
+      const metadata = match(lookupInput, records);
       signal?.throwIfAborted();
       // A checksum can establish the public title even when the original file was renamed.
       // Filename-only suggestions stay bounded and region/edition-aware for explicit review.
       const names = [input.name, ...metadata.map((candidate) => candidate.title)];
-      const art = artworks
-        .map((image, index) => ({
+      const ranked = imagesFor(artworks, names)
+        .map(({ image, index }) => ({
           image,
           index,
           score: Math.max(...names.map((name) => nameMatchScore(name, image.title))),
@@ -224,26 +332,55 @@ export function createLibretroProvider(
               ({ boxarts: 0, titles: 1, snaps: 2 }[b.image.kind] ?? 3) ||
             b.score - a.score ||
             a.image.path.localeCompare(b.image.path),
-        )
-        .slice(0, 24)
-        .map(
-          ({ image, index }): MatchCandidate => ({
-            id: `art-${index}`,
-            kind: 'artwork',
-            title: image.title,
-            confidence: 'name',
-            url: `https://raw.githubusercontent.com/libretro-thumbnails/${repo}/${image.sha}/${image.path
-              .split('/')
-              .map((segment) => encodeURIComponent(segment))
-              .join('/')}`,
-            metadata: {
-              source: 'Libretro thumbnails',
-              artworkType: image.kind,
-              matchedGame: contentStem(input.name),
-              availability: 'Listed in public artwork catalog; image checked on preview',
-            },
-          }),
         );
+      // This corroborates game identity, not a checksum of the image bytes.
+      const canonical = (title: string) => title.normalize('NFC').toLowerCase();
+      const verified = new Map(
+        metadata
+          .filter((candidate) => candidate.confidence === 'checksum')
+          .map((candidate) => [
+            `${candidate.metadata.systemId}\0${canonical(candidate.title)}`,
+            candidate,
+          ]),
+      );
+      const identity = verified.size === 1 ? [...verified.values()][0] : undefined;
+      const boxarts = ranked.filter((row) => row.image.kind === 'boxarts');
+      const onlyCover = boxarts.length === 1 ? boxarts[0] : undefined;
+      const canonicalCover =
+        !failures.length &&
+        identity &&
+        identity.metadata.systemId &&
+        identity.metadata.systemId === systemId &&
+        onlyCover &&
+        canonical(onlyCover.image.title) === canonical(identity.title)
+          ? { index: onlyCover.index, title: identity.title, systemId: identity.metadata.systemId }
+          : undefined;
+      const art = ranked.slice(0, 24).map(({ image, index }): MatchCandidate => {
+        const corroborated = canonicalCover?.index === index ? canonicalCover : undefined;
+        return {
+          id: `art-${index}`,
+          kind: 'artwork',
+          title: image.title,
+          confidence: corroborated ? 'checksum' : 'name',
+          url: `https://raw.githubusercontent.com/libretro-thumbnails/${repo}/${image.sha}/${image.path
+            .split('/')
+            .map((segment) => encodeURIComponent(segment))
+            .join('/')}`,
+          metadata: {
+            source: 'Libretro thumbnails',
+            artworkType: image.kind,
+            matchedGame: corroborated?.title ?? contentStem(input.name),
+            ...(corroborated
+              ? {
+                  systemId: corroborated.systemId,
+                  verification:
+                    'Canonical cover for ROM checksum-verified game identity; image checksum not compared',
+                }
+              : {}),
+            availability: 'Listed in public artwork catalog; image checked on preview',
+          },
+        };
+      });
       const candidates = [...metadata, ...art];
       if (failures.length) throw new PartialMatchingError(candidates);
       return candidates;

@@ -9,10 +9,16 @@ const DESCRIPTORS = new Set(['cue', 'm3u', 'gdi', 'ccd']);
 const extension = (path: string) => path.split('.').at(-1)?.toLowerCase() ?? '';
 
 /** Only small local descriptors are opened by an explicit scan, never ROM/track bytes. */
-export async function groupDiscs(root: string, files: ScannedFile[]): Promise<void> {
+export async function groupDiscs(
+  root: string,
+  files: ScannedFile[],
+  signal?: AbortSignal,
+): Promise<void> {
+  signal?.throwIfAborted();
   const byPath = new Map(files.map((file) => [file.relativePath, file]));
   const edges = new Map<string, string[]>();
   for (const file of files) {
+    signal?.throwIfAborted();
     file.groupAnchor = null;
     file.groupMembers = [];
     file.groupError = null;
@@ -49,6 +55,7 @@ export async function groupDiscs(root: string, files: ScannedFile[]): Promise<vo
       });
       edges.set(file.relativePath, [...new Set(paths)]);
     } catch (error) {
+      signal?.throwIfAborted();
       file.groupError =
         error instanceof Error && !('code' in error)
           ? error.message

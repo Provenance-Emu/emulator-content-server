@@ -1,7 +1,13 @@
+import type { PluginManifest } from '@ecs/plugins';
 import type { PlayerCatalogEntry } from '@ecs/protocol';
+import { upstreamPlayerCatalog } from './player-catalog-upstream.js';
 export interface TrustedPlayer extends PlayerCatalogEntry {
   url: string | null;
   sha256: string | null;
+  upstream?: {
+    manifest: PluginManifest;
+    resources: { url: string; file: string; sha256: string; sizeBytes: number }[];
+  };
 }
 export const playerCatalog: readonly TrustedPlayer[] = [
   {
@@ -43,4 +49,5 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     url: null,
     sha256: null,
   },
+  ...upstreamPlayerCatalog,
 ];

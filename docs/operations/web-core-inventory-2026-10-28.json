@@ -1,0 +1,3976 @@
+{
+  "schema": "ecs.libretro-web-core-inventory/v1",
+  "generatedAt": "2026-10-28",
+  "source": {
+    "officialCoreSelector": "https://web.libretro.com/core_list.js",
+    "selectorSha256": "3a9ddc64ac811a0d7b20d7dbed2541d4f57712a6e5d15371b36ddba254056f77",
+    "artifactBase": "https://web.libretro.com/",
+    "artifactPathsMutable": true,
+    "sourceCommitCorrelationAvailable": false,
+    "note": "Artifacts are direct official web-player files pinned by captured SHA-256/size. Git/source URLs and core-info are documented separately; nightly binaries do not publish corresponding source commit pins."
+  },
+  "contract": {
+    "runtime": "default async RetroArch Emscripten ES module factory",
+    "options": ["wasmBinary", "noInitialRun", "noExitRuntime", "canvas", "locateFile"],
+    "requiredExports": ["FS.mkdirTree", "FS.writeFile", "FS.readFile", "callMain"],
+    "disallowed": [
+      "threads",
+      "workers",
+      "worklets",
+      "persistent filesystem",
+      "secondary loader imports"
+    ],
+    "limitsBytes": {
+      "loader": 8388608,
+      "wasm": 67108864,
+      "assetsTotal": 33554432,
+      "content": 536870912
+    },
+    "credentialIsolation": "opaque iframe origin; smoke frames were sandboxed with allow-scripts only"
+  },
+  "summary": {
+    "selectorCoreNames": 88,
+    "underCapPairsSmoked": 87,
+    "passedFactorySmoke": 87,
+    "catalogedCommonSoftwareProfiles": 35,
+    "blockedOverCap": ["scummvm"],
+    "catalogedProfilesAreStartupVerifiedOnly": true
+  },
+  "omissions": {
+    "scummvm": {
+      "loaderBytes": 271351,
+      "wasmBytes": 75686701,
+      "reason": "WASM exceeds 64 MiB policy."
+    },
+    "n64": {
+      "candidate": "parallel_n64",
+      "reason": "Old classic global-Module loader, no ESM default factory; no full compatible artifact pin. mupen64plus_next paths return 404.",
+      "candidateParallelN64": {
+        "loader": {
+          "url": "https://web.libretro.com/parallel_n64_libretro.js",
+          "sizeBytes": 307585,
+          "sha256": "fab15b23ab3946694d7ab7b72c6522c7565996534840a435866c1f7c156446cc",
+          "lastModified": "2019-08-06T21:46:46Z"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/parallel_n64_libretro.wasm",
+          "headStatus": 200,
+          "sizeBytes": 2974008,
+          "sha256": null,
+          "lastModified": "2019-08-06T21:46:47Z",
+          "download": "incomplete; no exact hash accepted"
+        },
+        "abiBlocker": "Classic global Module script, not a default-export ESM factory; factory smoke not run."
+      }
+    },
+    "ps1": {
+      "reason": "PCSX ReARMed direct web pair passed startup smoke, but this task does not publish a duplicate upstream PS1 entry; a separately source-built PS1 profile is being handled by parent."
+    },
+    "ps2_dolphin_azahar": {
+      "reason": "No matching official web.libretro.com JS/WASM pairs at checked paths; both resource paths returned 404."
+    }
+  },
+  "nonSelectorAvailabilityChecks": [
+    {
+      "core": "parallel_n64",
+      "extension": "js",
+      "url": "https://web.libretro.com/parallel_n64_libretro.js",
+      "status": 200,
+      "lastModified": "Tue, 06 Aug 2019 21:46:46 GMT",
+      "bytes": null
+    },
+    {
+      "core": "parallel_n64",
+      "extension": "wasm",
+      "url": "https://web.libretro.com/parallel_n64_libretro.wasm",
+      "status": 200,
+      "lastModified": "Tue, 06 Aug 2019 21:46:47 GMT",
+      "bytes": "2974008"
+    },
+    {
+      "core": "mupen64plus_next",
+      "extension": "js",
+      "url": "https://web.libretro.com/mupen64plus_next_libretro.js",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "mupen64plus_next",
+      "extension": "wasm",
+      "url": "https://web.libretro.com/mupen64plus_next_libretro.wasm",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "pcsx2",
+      "extension": "js",
+      "url": "https://web.libretro.com/pcsx2_libretro.js",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "pcsx2",
+      "extension": "wasm",
+      "url": "https://web.libretro.com/pcsx2_libretro.wasm",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "dolphin",
+      "extension": "js",
+      "url": "https://web.libretro.com/dolphin_libretro.js",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "dolphin",
+      "extension": "wasm",
+      "url": "https://web.libretro.com/dolphin_libretro.wasm",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "azahar",
+      "extension": "js",
+      "url": "https://web.libretro.com/azahar_libretro.js",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "azahar",
+      "extension": "wasm",
+      "url": "https://web.libretro.com/azahar_libretro.wasm",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "beetle_psx",
+      "extension": "js",
+      "url": "https://web.libretro.com/beetle_psx_libretro.js",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    },
+    {
+      "core": "beetle_psx",
+      "extension": "wasm",
+      "url": "https://web.libretro.com/beetle_psx_libretro.wasm",
+      "status": 404,
+      "lastModified": null,
+      "bytes": null
+    }
+  ],
+  "cores": [
+    {
+      "core": "2048",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/2048_libretro.js",
+          "sizeBytes": 270600,
+          "sha256": "012d244ada1d78b36adc1c0d754bfde24629656bc9b776b9e2e31476c2ba3a75",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/2048_libretro.wasm",
+          "sizeBytes": 3331675,
+          "sha256": "f60a556719a865be8cb36e2765dd8f43b6de1516f2eba91354fe6d917a681be9",
+          "lastModified": "Tue, 27 Oct 2026 02:00:31 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "2048",
+        "systemname": "2048 Game Clone",
+        "systemid": "2048",
+        "supported_extensions": "",
+        "license": "Public Domain",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "DoubleCherryGB",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/DoubleCherryGB_libretro.js",
+          "sizeBytes": 274143,
+          "sha256": "f5e34b1a1dbca2e3b1d7171c9720bc4b54c52b2a1faf1efac958f982551215f2",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/DoubleCherryGB_libretro.wasm",
+          "sizeBytes": 3978345,
+          "sha256": "66502bc565afdd66ba48d1a5f4207ad343a8e95b060d50992833660b6dabc6e7",
+          "lastModified": "Tue, 27 Oct 2026 02:00:31 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": "No matching libretro-super core info file found"
+    },
+    {
+      "core": "anarch",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/anarch_libretro.js",
+          "sizeBytes": 270608,
+          "sha256": "ca0daf8057fe1f3d7b661600fbf805ded2f24ae6f498a42ea4f4755475c4d20e",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/anarch_libretro.wasm",
+          "sizeBytes": 3479888,
+          "sha256": "25ccf72cdbb3016bba44332e57f116dc45c1e8bcccc4a1948c6993e3c18c94ec",
+          "lastModified": "Tue, 27 Oct 2026 02:00:31 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Anarch",
+        "systemname": "Anarch",
+        "systemid": "anarch",
+        "license": "CC0",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "ardens",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/ardens_libretro.js",
+          "sizeBytes": 272206,
+          "sha256": "80b4e84cf2c2f578fc4e30aa065f61f71f26bfc6ce36ca36978b45bf065daeb4",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/ardens_libretro.wasm",
+          "sizeBytes": 3882670,
+          "sha256": "bfc56716e765438d5dd96a7bd9f4a34f5d2998bbf919d3b63d37a1a1981985e4",
+          "lastModified": "Tue, 27 Oct 2026 02:00:31 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Arduboy (Ardens)",
+        "systemname": "Arduboy",
+        "systemid": "arduboy",
+        "supported_extensions": "hex|arduboy",
+        "license": "MIT",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "arduous",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/arduous_libretro.js",
+          "sizeBytes": 272105,
+          "sha256": "a21830424dd5c449aa4d7839efd383ff4f6878796400fee0b8d35b1aec10b224",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/arduous_libretro.wasm",
+          "sizeBytes": 3548024,
+          "sha256": "16efa9bb3f49f87bff8b6147312df3da5e62faf599d5d233ac1d843885c37d96",
+          "lastModified": "Tue, 27 Oct 2026 02:00:31 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Arduboy (Arduous)",
+        "systemname": "Arduboy",
+        "systemid": "arduboy",
+        "supported_extensions": "hex",
+        "license": "GPLv3",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "bk",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/bk_libretro.js",
+          "sizeBytes": 270592,
+          "sha256": "d4f036ab3ea689c9c606274d472d102f9217c87b25f99810be7f8172cc9a152f",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/bk_libretro.wasm",
+          "sizeBytes": 3380611,
+          "sha256": "aa684fd6e0ee210f75f24f7c3260a22d80dfc3d8fb0a0fad4323f606db69c117",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Elektronika - BK-0010/BK-0011(M)",
+        "systemname": "BK-0010/BK-0011(M)",
+        "supported_extensions": "bin",
+        "license": "HPND",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) Homepage: http://www.mailcom.com/bk0010/index_en.shtml"
+      }
+    },
+    {
+      "core": "chailove",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/chailove_libretro.js",
+          "sizeBytes": 272691,
+          "sha256": "4ae4c33e454f68364d38864750bd36779cde82dc573c14d04ead08fc52ba86f4",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/chailove_libretro.wasm",
+          "sizeBytes": 5232525,
+          "sha256": "68f4f25b400677da689354656828e2a0a774d16b15eadf101fad3215cbae750e",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "ChaiLove",
+        "systemname": "ChaiLove",
+        "systemid": "chailove",
+        "supported_extensions": "chai|chailove",
+        "license": "MIT",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "clownmdemu",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/clownmdemu_libretro.js",
+          "sizeBytes": 271216,
+          "sha256": "a41414c4ba990d8e7eb80846967ce418a225a45b3bd3021fd5662c8b55bb3586",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/clownmdemu_libretro.wasm",
+          "sizeBytes": 3993604,
+          "sha256": "c8295b87580980ae17451784bd19ce91190b110f9de74cc0a6709c559a1cc837",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Sega - MD/CD (ClownMDEmu)",
+        "systemname": "Sega Genesis",
+        "systemid": "mega_drive",
+        "supported_extensions": "bin|md|gen|cue|iso|chd",
+        "license": "AGPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "true"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.clownmdemu",
+        "systems": ["com.provenance.genesis"],
+        "extensions": ["md", "gen", "bin"],
+        "source": "https://github.com/Clownacy/clownmdemu-libretro",
+        "docs": "https://docs.libretro.com/library/clownmdemu/",
+        "license": "AGPLv3"
+      }
+    },
+    {
+      "core": "craft",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/craft_libretro.js",
+          "sizeBytes": 275473,
+          "sha256": "15d2029d4de0188afb7afcd7ed9f03549efef370fe5fcee1588f7492af6db6a3",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/craft_libretro.wasm",
+          "sizeBytes": 4203353,
+          "sha256": "1f2b8de58804d416c7cac78da4b944fb741fb8f0c76d41070e4b79191962e0a3",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Minecraft (Craft)",
+        "systemname": "Minecraft Game Clone",
+        "systemid": "craft",
+        "supported_extensions": "",
+        "license": "MIT",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "dice",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/dice_libretro.js",
+          "sizeBytes": 270698,
+          "sha256": "492c0698269584a67f08a34e8f574f6cbc1b79cea9e7de750432306731906a82",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/dice_libretro.wasm",
+          "sizeBytes": 4260780,
+          "sha256": "b7f4b4a8b845a6f29c340b03e573465f3b38bc19e06cf2869c0db1d0d35c8cf6",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Arcade (DICE)",
+        "systemname": "Arcade (various)",
+        "systemid": "dice",
+        "supported_extensions": "zip|dmy|k1|a1|6c|c6|d2|s1|f4|a4|1da|da1|C4|4c|4d|d7|d4",
+        "license": "GPLv3",
+        "needs_fullpath": "true"
+      }
+    },
+    {
+      "core": "ecwolf",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/ecwolf_libretro.js",
+          "sizeBytes": 272012,
+          "sha256": "0bf1595c01b8d21232868ed40e74d31ee88e37bd73d70ea884bc51408cc99cfa",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/ecwolf_libretro.wasm",
+          "sizeBytes": 4485172,
+          "sha256": "4ed08e02b820ee26b10e2bc76b202331edcd8839e6c4a8a574e3c6bc12c75239",
+          "lastModified": "Tue, 27 Oct 2026 02:00:31 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Wolfenstein 3D (ECWolf)",
+        "systemname": "Wolfenstein 3D Game Engine",
+        "systemid": "wolfenstein3d",
+        "supported_extensions": "wl6|n3d|sod|sdm|wl1|pk3|exe",
+        "license": "BSD|LGPL",
+        "notes": "(!) ecwolf.pk3 (md5): c011b428819eea4a80b455c245a5a04d"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.ecwolf",
+        "systems": ["com.provenance.wolf3d"],
+        "extensions": ["wl6", "n3d", "sod", "sdm", "wl1", "pk3"],
+        "source": "https://github.com/libretro/ecwolf",
+        "docs": "https://docs.libretro.com/library/ecwolf/",
+        "license": "BSD|LGPL"
+      }
+    },
+    {
+      "core": "fbalpha2012_cps1",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/fbalpha2012_cps1_libretro.js",
+          "sizeBytes": 272061,
+          "sha256": "6c92807ede8c6a056dadc199f6643846d04dec91f0ec5c37511e958080140f95",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/fbalpha2012_cps1_libretro.wasm",
+          "sizeBytes": 4414096,
+          "sha256": "06142bdc4dbff846f43e5253d292c18d0dfd26bcfb9a7b495f9008fb58d38691",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Arcade (FB Alpha 2012 CPS-1)",
+        "systemname": "CP System I",
+        "systemid": "fb_alpha",
+        "supported_extensions": "zip",
+        "license": "Non-commercial",
+        "notes": "(!) The BIOS files must be inside the ROM directory."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.fbalpha2012-cps1",
+        "systems": ["com.provenance.cps1"],
+        "extensions": ["zip"],
+        "source": "https://github.com/libretro/fbalpha2012",
+        "docs": "https://docs.libretro.com/library/fbalpha2012/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "fbalpha2012_cps2",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/fbalpha2012_cps2_libretro.js",
+          "sizeBytes": 272061,
+          "sha256": "2f9dc801264f25df38e7d7e657d8391b0da61acdb6ab957d7b4615bf74605004",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/fbalpha2012_cps2_libretro.wasm",
+          "sizeBytes": 4304170,
+          "sha256": "53f90a51734ca8f7102b728232fcfaa00fce9278ec3ab63fc4dc68efd3c1f1c6",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Arcade (FB Alpha 2012 CPS-2)",
+        "systemname": "CP System II",
+        "systemid": "fb_alpha",
+        "supported_extensions": "zip",
+        "license": "Non-commercial",
+        "notes": "(!) The BIOS files must be inside the ROM directory."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.fbalpha2012-cps2",
+        "systems": ["com.provenance.cps2"],
+        "extensions": ["zip"],
+        "source": "https://github.com/libretro/fbalpha2012",
+        "docs": "https://docs.libretro.com/library/fbalpha2012/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "fbalpha2012",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/fbalpha2012_libretro.js",
+          "sizeBytes": 272041,
+          "sha256": "0430c7255224235e1eddaad2e11076755ac87a69bb494da104ef4c8dd7af92a6",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/fbalpha2012_libretro.wasm",
+          "sizeBytes": 13263743,
+          "sha256": "fd5d70a4a2ea70f1194dec6c8cace48ab0069c601f5b556813e02cd88f097e2b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Arcade (FB Alpha 2012)",
+        "systemname": "Arcade (various)",
+        "systemid": "fb_alpha",
+        "supported_extensions": "iso|zip|7z",
+        "license": "Non-commercial",
+        "notes": "(!) The BIOS files must be inside the ROM directory."
+      }
+    },
+    {
+      "core": "fbalpha2012_neogeo",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/fbalpha2012_neogeo_libretro.js",
+          "sizeBytes": 272069,
+          "sha256": "e4c364a4be5568f7d255c3e21bccdffc41f80ea2f5f642b9e9ca6bc68f82ae1b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/fbalpha2012_neogeo_libretro.wasm",
+          "sizeBytes": 4550171,
+          "sha256": "63564d6033d85bce5a1cd40b8d8be822821789edb7e4e62ab66126e502d0e77f",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Arcade (FB Alpha 2012 Neo Geo)",
+        "systemname": "Neo Geo",
+        "systemid": "fb_alpha",
+        "supported_extensions": "zip",
+        "license": "Non-commercial",
+        "notes": "(!) The BIOS files must be inside the ROM directory."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.fbalpha2012-neogeo",
+        "systems": ["com.provenance.neogeo"],
+        "extensions": ["zip"],
+        "source": "https://github.com/libretro/fbalpha2012",
+        "docs": "https://docs.libretro.com/library/fbalpha2012/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "fbneo",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/fbneo_libretro.js",
+          "sizeBytes": 272115,
+          "sha256": "b57bcbbebdcdd9c944c464d61935971944f3feb517c2b20f954d3067d0613974",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/fbneo_libretro.wasm",
+          "sizeBytes": 42030978,
+          "sha256": "708ecf64493fcd0a9381173bf21b9eb4e4e0f35d773ea14acaf7733ebc55e3bf",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Arcade (FinalBurn Neo)",
+        "systemname": "Arcade (various)",
+        "systemid": "fb_alpha",
+        "supported_extensions": "zip|7z|cue|ccd",
+        "license": "Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) The BIOS files can also be inside the ROM directory or the root of SYSTEM directory.|(!) Homepage : https://neo-source.com/"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.fbneo",
+        "systems": [
+          "com.provenance.mame",
+          "com.provenance.cps1",
+          "com.provenance.cps2",
+          "com.provenance.neogeo"
+        ],
+        "extensions": ["zip"],
+        "source": "https://github.com/libretro/FBNeo",
+        "docs": "https://docs.libretro.com/library/fbneo/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "fceumm",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/fceumm_libretro.js",
+          "sizeBytes": 270617,
+          "sha256": "c2b5cc3f60239e75c94d976d80e60ab5e8c7459a495d2521a9d26c9cfe6e30b3",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/fceumm_libretro.wasm",
+          "sizeBytes": 4233254,
+          "sha256": "246146d4e98d9e861a8f3c9db1e2bb079b93b82061a47d579bb31dada37d252d",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Nintendo - NES / Famicom (FCEUmm)",
+        "systemname": "Nintendo Entertainment System",
+        "systemid": "nes",
+        "supported_extensions": "fds|nes|unif|unf",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) disksys.rom (md5): ca30b50f880eb660a320674ed365ef7a|(!) gamegenie.nes (md5): 7f98d77d7a094ad7d069b74bd553ec98|(!) nes.pal must be located in system directory."
+      }
+    },
+    {
+      "core": "freechaf",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/freechaf_libretro.js",
+          "sizeBytes": 270616,
+          "sha256": "cada159f94ec3aa85d551a7326e22285437a2140aec24be137d88a0aad655c94",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/freechaf_libretro.wasm",
+          "sizeBytes": 3348020,
+          "sha256": "46c87a28479d25e0c4f842bc79c6646813e300a45643bd2cde95209b14c874fd",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Fairchild - ChannelF (FreeChaF)",
+        "systemname": "Channel F",
+        "systemid": "channel_f",
+        "supported_extensions": "bin|chf",
+        "license": "GPLv3",
+        "notes": "(!) sl31253.bin (md5): ac9804d4c0e9d07e33472e3726ed15c3|(!) sl31254.bin (md5): da98f4bb3242ab80d76629021bb27585|(!) sl90025.bin (md5): 95d339631d867c8f1d15a5f2ec26069d"
+      }
+    },
+    {
+      "core": "galaksija",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/galaksija_libretro.js",
+          "sizeBytes": 270620,
+          "sha256": "5ff9e436f7588911b4764cabbf6c2f26d9a1dea40a7d16dc6d4c4a33c4b9647f",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/galaksija_libretro.wasm",
+          "sizeBytes": 3526011,
+          "sha256": "f589624750601e9026fe9c5790e9df47a3100fbb033aeaee52ee5f33ec9fc590",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Elektronika In\u017eenjering - Galaksija (Galaksija)",
+        "systemname": "Galaksija",
+        "systemid": "galaksija",
+        "supported_extensions": "gal",
+        "license": "Public Domain",
+        "hw_render": "false",
+        "needs_fullpath": "true"
+      }
+    },
+    {
+      "core": "gam4980",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gam4980_libretro.js",
+          "sizeBytes": 270612,
+          "sha256": "f32e0204cc11b3981639cf3cba050d7974cbf542aaa1dd969fc7e388afe871f9",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gam4980_libretro.wasm",
+          "sizeBytes": 3417588,
+          "sha256": "a5f2e77963cf3063c9d749d243a781ed2a1f154457b641851da30358e31fa29f",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "GAM4980",
+        "systemname": "Longman 4980",
+        "systemid": "gam4980",
+        "supported_extensions": "gam",
+        "license": "GPLv3+",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "gambatte",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gambatte_libretro.js",
+          "sizeBytes": 270625,
+          "sha256": "c81fd1f65b2f342802c8818bba335f0d8512f0ac36ba5a0a4c51063f25b0a6d4",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gambatte_libretro.wasm",
+          "sizeBytes": 3913161,
+          "sha256": "6abb7e80d471c2a988ca54f6e4090abc1be96d2031e912ea7c7cbc155eef2b17",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - Game Boy / Color (Gambatte)",
+        "systemname": "Game Boy/Game Boy Color",
+        "systemid": "game_boy",
+        "supported_extensions": "gb|gbc|dmg",
+        "license": "GPLv2",
+        "notes": "(!) gb_bios.bin (md5): 32fbbd84168d3482956eb3c5051637f5|(!) gbc_bios.bin (md5): dbfce9db9deaa2567f6a84fde55f9680"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.gambatte",
+        "systems": ["com.provenance.gb", "com.provenance.gbc"],
+        "extensions": ["gb", "gbc", "dmg"],
+        "source": "https://github.com/libretro/gambatte-libretro",
+        "docs": "https://docs.libretro.com/library/gambatte/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "gearboy",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gearboy_libretro.js",
+          "sizeBytes": 270701,
+          "sha256": "133fcea665135c813efe87f887195f103a7e79e2616a51ff6b2542de07fc1139",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gearboy_libretro.wasm",
+          "sizeBytes": 3724140,
+          "sha256": "251da0df4bf4b88953d49e8978b1cb29036212200077eb04437c12aff2a01317",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - Game Boy / Color / Super Game Boy (Gearboy)",
+        "systemname": "Game Boy/Game Boy Color/Super Game Boy",
+        "systemid": "game_boy",
+        "supported_extensions": "gb|dmg|gbc|cgb|sgb",
+        "license": "GPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) dmg_boot.bin (md5): 32fbbd84168d3482956eb3c5051637f5|(!) cgb_boot.bin (md5): dbfce9db9deaa2567f6a84fde55f9680|Enable DMG Bootrom or GBC Bootrom in Core Options.|Restart the core after changing boot ROM options."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.gearboy",
+        "systems": ["com.provenance.gb", "com.provenance.gbc"],
+        "extensions": ["gb", "dmg", "gbc", "cgb", "sgb"],
+        "source": "https://github.com/drhelius/Gearboy",
+        "docs": "https://docs.libretro.com/library/gearboy/",
+        "license": "GPLv3"
+      }
+    },
+    {
+      "core": "gearcoleco",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gearcoleco_libretro.js",
+          "sizeBytes": 270713,
+          "sha256": "78c6b44a8738451f28e14c98e9aa307983dd89cee545f17b74e0865257a3611a",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gearcoleco_libretro.wasm",
+          "sizeBytes": 3721804,
+          "sha256": "26ad819e507153f2cb99a90c699c1dae5bdd3ad3e93ce3ea52b584da47848b0f",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Coleco - ColecoVision / ADAM (Gearcoleco)",
+        "systemname": "ColecoVision / ADAM",
+        "systemid": "colecovision",
+        "supported_extensions": "col|cv|bin|rom|zip|ddp|dsk|m3u",
+        "license": "GPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) colecovision.rom (md5): 2c66f5911e5b42b8ebe113403548eee7 (CRC32): 3aa93ef3|(!) eos.rom (md5): 01df3140909f09aa9aac4f88890f676c (CRC32): 05a37a34|(!) writer.rom (md5): 4fe4f6800076ea3d897d4285653447bd (CRC32): 58d86a2a|ADAM requires OS-7, EOS and SmartWriter.|OS-7 aliases: coleco.rom, os7.u2.|SmartWriter aliases: wp.rom, wp_r80.rom."
+      }
+    },
+    {
+      "core": "geargrafx",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/geargrafx_libretro.js",
+          "sizeBytes": 270709,
+          "sha256": "2d63a7e858455f3b50862632fc57c79e0f877838bad639e0e87b9cd039a38141",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/geargrafx_libretro.wasm",
+          "sizeBytes": 5177930,
+          "sha256": "15c1f56360159ec94c93682cabd0e671b0debc368a906d54fe3124ef36c038d0",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "NEC - PC Engine / SuperGrafx / CD / LaserActive (Geargrafx)",
+        "systemname": "PC Engine/SuperGrafx/CD/LaserActive",
+        "systemid": "pc_engine",
+        "supported_extensions": "pce|sgx|hes|cue|chd|mmi",
+        "license": "GPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) syscard3.pce (md5): 38179df8f4ac870017db21ebcbf53114|(!) syscard2.pce (md5): 3a456f0eccff039eb5ff045f56ec1c3b (v2.0), 3cdd6614a918616bfc41c862e889dd79 (v2.1)|(!) syscard1.pce (md5): 2b7ccb3d86baa18f6402c176f3065082|(!) gexpress.pce (md5): 6d2cb14fc3e1f65ceb135633d1694122|(!) pac-n1.bin (md5): f69f173b251d8bf7649b10a9167a10bf|(!) pce-lp1.bin (md5): 761fea207d0eafd4cfd78da7c44cac88|(!) pac-n10.bin (md5): f0fb8a4605ac7eefbafd4f2d5a793cc8|CD-ROM content requires a BIOS; HuCard/HES content does not.|Select a System Card with Core Options > CD BIOS.|System Card 3 uses syscard3.pce and is the default.|Game Express discs require gexpress.pce.|LaserActive Japan BIOS: pac-n1.bin or pce-lp1.bin.|LaserActive US BIOS: pac-n10.bin.|Select the PAC region with Core Options > LaserActive Region.|Restart the core after changing firmware options.|MMI images require a 64-bit core."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.geargrafx",
+        "systems": ["com.provenance.pce", "com.provenance.sgfx"],
+        "extensions": ["pce", "sgx"],
+        "source": "https://github.com/drhelius/Geargrafx",
+        "docs": "https://docs.libretro.com/library/geargrafx/",
+        "license": "GPLv3"
+      }
+    },
+    {
+      "core": "gearsystem",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gearsystem_libretro.js",
+          "sizeBytes": 270713,
+          "sha256": "603425843bdd2a0f5de60bedc64e5f602b45ddcd4c1ce8981bf7491fc0e2724e",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gearsystem_libretro.wasm",
+          "sizeBytes": 3752137,
+          "sha256": "d570924b470cac1c06282925c9caa1d42b8b46c46e31646034d80d9271305597",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Sega - MS/GG/SG-1000 (Gearsystem)",
+        "systemname": "Sega 8-bit (MS/GG/SG-1000)",
+        "systemid": "master_system",
+        "supported_extensions": "sms|gg|sg|mv|bin|rom",
+        "license": "GPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) bios.sms (md5): 840481177270d5642a14ca71ee72844c|(!) bios.gg (md5): 672e104c3be3a238301aceffc3b23fd6|Enable Master System BIOS or Game Gear BIOS in Core Options.|Restart the core after changing BIOS options."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.gearsystem",
+        "systems": [
+          "com.provenance.mastersystem",
+          "com.provenance.gamegear",
+          "com.provenance.sg1000"
+        ],
+        "extensions": ["sms", "gg", "sg"],
+        "source": "https://github.com/drhelius/Gearsystem",
+        "docs": "https://docs.libretro.com/library/gearsystem/",
+        "license": "GPLv3"
+      }
+    },
+    {
+      "core": "genesis_plus_gx",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/genesis_plus_gx_libretro.js",
+          "sizeBytes": 270653,
+          "sha256": "4b9cc64a6633d727fefcde8935fa1597708cf000b002707c74881eb46fc05b25",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/genesis_plus_gx_libretro.wasm",
+          "sizeBytes": 6241720,
+          "sha256": "00de734599f0165e8d7031eea5d7e55fe7348671ac650f8e5b6993c714020e2a",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Sega - MS/GG/MD/CD (Genesis Plus GX)",
+        "systemname": "Sega 8/16-bit (Various)",
+        "systemid": "mega_drive",
+        "supported_extensions": "mdx|md|smd|gen|bin|cue|iso|sms|bms|gg|sg|68k|sgd|chd|m3u",
+        "license": "Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) sk2chip.bin (md5): b4e76e416b887f4e7413ba76fa735f16|(!) sk.bin (md5): 4ea493ea4e9f6c9ebfccbdb15110367e"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.genesis-plus-gx",
+        "systems": [
+          "com.provenance.genesis",
+          "com.provenance.mastersystem",
+          "com.provenance.gamegear",
+          "com.provenance.sg1000"
+        ],
+        "extensions": ["md", "smd", "gen", "sms", "gg", "sg"],
+        "source": "https://github.com/libretro/Genesis-Plus-GX",
+        "docs": "https://docs.libretro.com/library/genesis_plus_gx/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "genesis_plus_gx_wide",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/genesis_plus_gx_wide_libretro.js",
+          "sizeBytes": 270673,
+          "sha256": "7cc938cd213cea2bed985e8a21ad7fa8e52e5a4646991f926318bb9a7d87a9fc",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/genesis_plus_gx_wide_libretro.wasm",
+          "sizeBytes": 6025958,
+          "sha256": "b9ca6aab5316cdfed983ef9637f48a08cb1b929804928ba28d3588a8834264af",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Sega - MS/GG/MD/CD (Genesis Plus GX Wide)",
+        "systemname": "Sega 8/16-bit (Various)",
+        "systemid": "mega_drive",
+        "supported_extensions": "mdx|md|smd|gen|bin|cue|iso|sms|bms|gg|sg|68k|sgd|chd|m3u",
+        "license": "Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) sk2chip.bin (md5): b4e76e416b887f4e7413ba76fa735f16|(!) sk.bin (md5): 4ea493ea4e9f6c9ebfccbdb15110367e"
+      }
+    },
+    {
+      "core": "gme",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gme_libretro.js",
+          "sizeBytes": 270596,
+          "sha256": "312fb3782bf84dd521e5f0bc2afb7630a9be13846581ab870400fa8d9aca3d88",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gme_libretro.wasm",
+          "sizeBytes": 3660123,
+          "sha256": "1c44817d920e8447e4e37ef5270816db69715eedf31e6b6c678b4254f77ddff0",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Game Music Emu",
+        "systemname": "Music",
+        "systemid": "game_music",
+        "supported_extensions": "ay|gbs|gym|hes|kss|nsf|nsfe|sap|spc|vgm|vgz|zip",
+        "license": "GPLv3"
+      }
+    },
+    {
+      "core": "gong",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gong_libretro.js",
+          "sizeBytes": 270600,
+          "sha256": "33a61bb7cef406eb0f1cba8e9efbe42868b3d5f4e244c343459e52f306457c21",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gong_libretro.wasm",
+          "sizeBytes": 3362320,
+          "sha256": "f12f35ca0df3673dc3ca019567ebced941ec16904dcf24400cf2cb136e125bea",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Gong",
+        "systemname": "Pong Game Clone",
+        "systemid": "gong",
+        "supported_extensions": "",
+        "license": "GPL v3",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "gw",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/gw_libretro.js",
+          "sizeBytes": 270907,
+          "sha256": "45a4d3c242fcd7210c9720588518ae6fcc6cc793c16929a9d8207dbdc5654d46",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/gw_libretro.wasm",
+          "sizeBytes": 3770507,
+          "sha256": "348b8849dc17cc84ac53b3048e49c0fe09d9d23efe240856c7e229fa605c879e",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Handheld Electronic (GW)",
+        "systemname": "Handheld Electronic",
+        "systemid": "handheld_electronic",
+        "supported_extensions": "mgw",
+        "license": "zlib"
+      }
+    },
+    {
+      "core": "handy",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/handy_libretro.js",
+          "sizeBytes": 270604,
+          "sha256": "f88aeff7e551a5ce381aa53508d485f4196cd54b3e5b429342ceb8d8309a11e6",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/handy_libretro.wasm",
+          "sizeBytes": 3468718,
+          "sha256": "ee994d59692d774529d0d75fa7bbc8955c2bc37944406e6404ff14e5c77c03fb",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Atari - Lynx (Handy)",
+        "systemname": "Lynx",
+        "systemid": "atari_lynx",
+        "supported_extensions": "lnx|lyx|o",
+        "license": "Zlib",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) lynxboot.img (md5): fcd403db69f54290b51035d82f835e7b"
+      }
+    },
+    {
+      "core": "jaxe",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/jaxe_libretro.js",
+          "sizeBytes": 270600,
+          "sha256": "23dceb5dfe3f445a16d477ddd24417ebf1152ac8c6f67f324db55dcac0d06f47",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/jaxe_libretro.wasm",
+          "sizeBytes": 3325117,
+          "sha256": "6cdb9f00c217e3ac2b1c1b68b680d044f2fdc612ee75f6ab157dc360df083354",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "CHIP-8/S-CHIP/XO-CHIP (JAXE)",
+        "systemname": "CHIP-8",
+        "systemid": "chip_8",
+        "supported_extensions": "ch8|sc8|xo8",
+        "license": "MIT"
+      }
+    },
+    {
+      "core": "jumpnbump",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/jumpnbump_libretro.js",
+          "sizeBytes": 270620,
+          "sha256": "10e6bbbe5ef73fec65e043b6fd8b29743c1778c5132f71a4ae1abca35b4fbf43",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/jumpnbump_libretro.wasm",
+          "sizeBytes": 3398832,
+          "sha256": "8311396c805cd3844478457d80914d7adcc026d0adfec5ffa1b7427df2f36a7b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Jump 'n Bump",
+        "systemid": "jumpnbump",
+        "supported_extensions": "dat",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "lowresnx",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/lowresnx_libretro.js",
+          "sizeBytes": 270616,
+          "sha256": "5ac14b65b61f3d96f3d63b914f886c927172a4d688c5950668a12be40f2aba7b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/lowresnx_libretro.wasm",
+          "sizeBytes": 3453494,
+          "sha256": "5f5fb0fcdce33100dafcdc5a50a8d079da2d53e27edb42b799fa8174f6020ceb",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "LowRes NX",
+        "systemname": "LowRes NX",
+        "systemid": "lowresnx",
+        "supported_extensions": "nx",
+        "license": "zlib",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "lutro",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/lutro_libretro.js",
+          "sizeBytes": 267691,
+          "sha256": "5c500cbe72ab72435b3df0c8584ea2f572f4a317984bb77f32157d4c07e6990d",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/lutro_libretro.wasm",
+          "sizeBytes": 3742820,
+          "sha256": "f6fe481d71d4df5f358e4b94d6d65a2fe28a543f54924b8100b412b26bb70ab1",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Lua Engine (Lutro)",
+        "systemname": "Lutro",
+        "supported_extensions": "lutro|love|lua",
+        "license": "MIT",
+        "hw_render": "false"
+      }
+    },
+    {
+      "core": "m2000",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/m2000_libretro.js",
+          "sizeBytes": 270769,
+          "sha256": "1d22c1590a3201d77af39c4a76acc41c355ca34e4e1cdfe22efa66b7f6c56940",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/m2000_libretro.wasm",
+          "sizeBytes": 3569593,
+          "sha256": "870e72c3681369474e8ff26fe4edae16cd474426d32742027b627d29fbaffede",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Philips - P2000T (M2000)",
+        "systemname": "P2000T",
+        "systemid": "p2000t",
+        "supported_extensions": "cas",
+        "license": "GPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "true"
+      }
+    },
+    {
+      "core": "mame2000",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mame2000_libretro.js",
+          "sizeBytes": 270625,
+          "sha256": "f0541c6dc214b0a6ffc3a4f29998e61759937d242717a5994a0fd6edf9f0d15e",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mame2000_libretro.wasm",
+          "sizeBytes": 10429773,
+          "sha256": "590460d19a2495d511df994cd9002597bf3fafc73fefeb0ab00a8c2a57d7fbfa",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Arcade (MAME 2000)",
+        "systemname": "Arcade (various)",
+        "systemid": "mame",
+        "supported_extensions": "zip",
+        "license": "MAME",
+        "hw_render": "false",
+        "notes": "(!) The BIOS files must be inside the ROM directory.|"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.mame2000",
+        "systems": ["com.provenance.mame"],
+        "extensions": ["zip"],
+        "source": "https://github.com/libretro/mame2000-libretro",
+        "docs": "https://docs.libretro.com/library/mame2000/",
+        "license": "MAME"
+      }
+    },
+    {
+      "core": "mame2003",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mame2003_libretro.js",
+          "sizeBytes": 270634,
+          "sha256": "292c630babe28cc0ada95a93e348e501aac32d961868c52052213a7ac810fbb7",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mame2003_libretro.wasm",
+          "sizeBytes": 20743716,
+          "sha256": "55888b598fb5e4b24d594328a10f5168722c691a9891938c1b227883154d1959",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Arcade (MAME 2003)",
+        "systemname": "Arcade (various)",
+        "systemid": "mame",
+        "supported_extensions": "zip",
+        "license": "MAME",
+        "hw_render": "false",
+        "notes": "(!) The BIOS files must be inside the ROM directory.|"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.mame2003",
+        "systems": ["com.provenance.mame"],
+        "extensions": ["zip"],
+        "source": "https://github.com/libretro/mame2003-libretro",
+        "docs": "https://docs.libretro.com/library/mame_2003/",
+        "license": "MAME"
+      }
+    },
+    {
+      "core": "mame2003_plus",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mame2003_plus_libretro.js",
+          "sizeBytes": 270654,
+          "sha256": "59a11077a2abbd52cc5e3662191034582a99fd12b4bea02b515ca6bd1636b067",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mame2003_plus_libretro.wasm",
+          "sizeBytes": 25172360,
+          "sha256": "f0926e281caeb39877e3db8ae59a07c49cbf2b122d74ca73309b86786e1bcd18",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Arcade (MAME 2003-Plus)",
+        "systemname": "Arcade (various)",
+        "systemid": "mame",
+        "supported_extensions": "zip",
+        "license": "MAME Noncommercial",
+        "hw_render": "false",
+        "notes": "(!) Unless using Full Non-Merged romsets, BIOS files must be inside the ROM directory.|See libretro core documentation for more information about content paths.|"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.mame2003-plus",
+        "systems": ["com.provenance.mame"],
+        "extensions": ["zip"],
+        "source": "https://github.com/libretro/mame2003-plus-libretro",
+        "docs": "https://docs.libretro.com/library/mame2003_plus/",
+        "license": "MAME Noncommercial"
+      }
+    },
+    {
+      "core": "mednafen_lynx",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mednafen_lynx_libretro.js",
+          "sizeBytes": 272040,
+          "sha256": "75fc2f7608809add79a4b509c15ff11ed2c29c25d7db5df02ec1820a5e536ed9",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mednafen_lynx_libretro.wasm",
+          "sizeBytes": 3433893,
+          "sha256": "850816fd73812036a03173d8f7a29cd091f2da599a6eaad29b7e60baa2db2ecd",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Atari - Lynx (Beetle Lynx)",
+        "systemname": "Lynx",
+        "systemid": "atari_lynx",
+        "supported_extensions": "lnx|lyx|bll|o",
+        "license": "Zlib|GPLv2",
+        "notes": "(!) lynxboot.img (md5): fcd403db69f54290b51035d82f835e7b"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.beetle-lynx",
+        "systems": ["com.provenance.lynx"],
+        "extensions": ["lnx", "lyx", "bll", "o"],
+        "source": "https://github.com/libretro/beetle-lynx-libretro",
+        "docs": "https://docs.libretro.com/library/beetle_lynx/",
+        "license": "Zlib|GPLv2"
+      }
+    },
+    {
+      "core": "mednafen_ngp",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mednafen_ngp_libretro.js",
+          "sizeBytes": 272036,
+          "sha256": "36f4bdfe2e82ceaadf4c15247ada8d8d66aad51259c9c995ee71f8440a56cc6f",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mednafen_ngp_libretro.wasm",
+          "sizeBytes": 3551052,
+          "sha256": "9abffa2034a7c6c3b03d2d642d1b6dd04ebc8ff27a9412ae84447460c3999ace",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "SNK - Neo Geo Pocket / Color (Beetle NeoPop)",
+        "systemname": "Neo Geo Pocket (Color)",
+        "systemid": "neo_geo_pocket",
+        "supported_extensions": "ngp|ngc|ngpc|npc",
+        "license": "GPLv2"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.beetle-ngp",
+        "systems": ["com.provenance.ngp", "com.provenance.ngpc"],
+        "extensions": ["ngp", "ngc", "ngpc", "npc"],
+        "source": "https://github.com/libretro/beetle-ngp-libretro",
+        "docs": "https://docs.libretro.com/library/beetle_neopop/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "mednafen_pce_fast",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mednafen_pce_fast_libretro.js",
+          "sizeBytes": 270661,
+          "sha256": "3f77f52e61769cdd6cd0013d8515100067c92721f095bc9f7433b5fe21abe4df",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mednafen_pce_fast_libretro.wasm",
+          "sizeBytes": 4001680,
+          "sha256": "85562f1e4afae034df0295b9ff4803eafd75ae8f2b09703041853d2fb5d95dd9",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "NEC - PC Engine / CD (Beetle PCE FAST)",
+        "systemname": "PC Engine/PCE-CD",
+        "systemid": "pc_engine",
+        "supported_extensions": "pce|cue|ccd|chd|toc|m3u",
+        "license": "GPLv2",
+        "notes": "(!) syscard3.pce (md5): 38179df8f4ac870017db21ebcbf53114|[i] For cue files track type use:|[i] OGG for ogg files|[i] WAVE for wav files|[i] BINARY for iso files"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.beetle-pce-fast",
+        "systems": ["com.provenance.pce"],
+        "extensions": ["pce"],
+        "source": "https://github.com/libretro/beetle-pce-fast-libretro",
+        "docs": "https://docs.libretro.com/library/beetle_pce_fast/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "mednafen_vb",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mednafen_vb_libretro.js",
+          "sizeBytes": 272032,
+          "sha256": "b9b61c40fd0770ecb1acf9263fa31617d6431ec8ee0b529c60b2dc0632c00c90",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mednafen_vb_libretro.wasm",
+          "sizeBytes": 3426510,
+          "sha256": "fa3dd31d1eb89dcca88de6c8daa45a51e15fd44dfc7558f3ddaca94fb0e010e0",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - Virtual Boy (Beetle VB)",
+        "systemname": "Virtual Boy",
+        "systemid": "virtual_boy",
+        "supported_extensions": "vb|vboy|bin",
+        "license": "GPLv2"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.beetle-vb",
+        "systems": ["com.provenance.vb"],
+        "extensions": ["vb", "vboy", "bin"],
+        "source": "https://github.com/libretro/beetle-vb-libretro",
+        "docs": "https://docs.libretro.com/library/beetle_vb/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "mednafen_wswan",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mednafen_wswan_libretro.js",
+          "sizeBytes": 270649,
+          "sha256": "a3a3355d586a5ccabf9263f8813ee7f89d04bf13edaa0229fa8d9aedeb544c3f",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mednafen_wswan_libretro.wasm",
+          "sizeBytes": 3501205,
+          "sha256": "44e8c6bfb7dc14d64c7d2a9382f2303334dcbf39fb6aa5b81fa2a0d024a13e8b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Bandai - WonderSwan/Color (Beetle Wonderswan)",
+        "systemname": "WonderSwan/Color",
+        "systemid": "wonderswan",
+        "supported_extensions": "ws|wsc|pc2|pcv2",
+        "license": "GPLv2"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.beetle-wswan",
+        "systems": ["com.provenance.ws", "com.provenance.wsc"],
+        "extensions": ["ws", "wsc", "pc2", "pcv2"],
+        "source": "https://github.com/libretro/beetle-wswan-libretro",
+        "docs": "https://docs.libretro.com/library/beetle_cygne/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "mgba",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mgba_libretro.js",
+          "sizeBytes": 273602,
+          "sha256": "21be160531e6b16b2f2986250192fa155f3d6c6452c7d3d0a9ae2d53ea510c5f",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mgba_libretro.wasm",
+          "sizeBytes": 4225351,
+          "sha256": "f3021d0f2896c868c9a84d3e0b37075ca832b71cc4648eecc7cad88f26c87a1a",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - Game Boy Advance (mGBA)",
+        "systemname": "Game Boy/Game Boy Color/Game Boy Advance",
+        "systemid": "game_boy_advance",
+        "supported_extensions": "gb|gbc|gba",
+        "license": "MPLv2.0",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) gba_bios.bin (md5): a860e8c0b6d573d191e4ec7db1b1e4f6|(!) gb_bios.bin (md5): 32fbbd84168d3482956eb3c5051637f5|(!) gbc_bios.bin (md5): dbfce9db9deaa2567f6a84fde55f9680"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.mgba",
+        "systems": ["com.provenance.gba"],
+        "extensions": ["gba"],
+        "source": "https://github.com/libretro/mgba",
+        "docs": "https://docs.libretro.com/library/mgba/",
+        "license": "MPLv2.0"
+      }
+    },
+    {
+      "core": "minivmac",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/minivmac_libretro.js",
+          "sizeBytes": 270616,
+          "sha256": "c07f9bbacb05b40864123e62761b33160bd4d00ad7a5694bc441f4659d0cd85e",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/minivmac_libretro.wasm",
+          "sizeBytes": 3556148,
+          "sha256": "2ccb121e36341aa5a89b918b8a469a65295d5d5dd137d6becdde7202e3fc730d",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Mac II (minivmac)",
+        "systemname": "Mac68k",
+        "systemid": "mac68k",
+        "supported_extensions": "dsk|img|zip|hvf|cmd",
+        "license": "GPLv2",
+        "notes": "(!) MacII.ROM (md5): 66223be1497460f1e60885eeb35e03cc"
+      }
+    },
+    {
+      "core": "mrboom",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mrboom_libretro.js",
+          "sizeBytes": 272021,
+          "sha256": "a125248f6b935b323b097c33b3e3f1286e8ecc8d22b0ed6821e29da4421f7e4f",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mrboom_libretro.wasm",
+          "sizeBytes": 10565403,
+          "sha256": "12ce94824cbd654671d8f8be63d50f937b7a4c78ffe8ff1cf2b30d777afac82f",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Mr.Boom (Bomberman)",
+        "systemname": "Mr.Boom",
+        "systemid": "bomberman",
+        "supported_extensions": "desktop",
+        "license": "MIT",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "mu",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mu_libretro.js",
+          "sizeBytes": 270592,
+          "sha256": "6a36f3633d7020b1ae7e74cf9a9f8f9f4dbc7da585355c00fb0dd05416f84a95",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mu_libretro.wasm",
+          "sizeBytes": 3713967,
+          "sha256": "cb6aa4b10d49002566a95a9e8544505dcb24c93e1cc9fb435214d5b69e2cb622",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Palm OS (Mu)",
+        "systemname": "Palm OS",
+        "systemid": "palm_os",
+        "supported_extensions": "prc|pqa|img|pdb|zip",
+        "license": "CC BY-NC 3.0 US (Non-commercial)"
+      }
+    },
+    {
+      "core": "neocd",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/neocd_libretro.js",
+          "sizeBytes": 270693,
+          "sha256": "92e4ec0858d54bd4c7c08dc02b6375165a0f8ce7c48170b637fb1a9fd1d011da",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/neocd_libretro.wasm",
+          "sizeBytes": 4250224,
+          "sha256": "9abe38687a7658d390ed5ba6c9ad6966f92ac2b8591669afc44f355e528949dc",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "SNK - Neo Geo CD (NeoCD)",
+        "systemname": "SNK Neo Geo CD",
+        "systemid": "neo_geo_cd",
+        "supported_extensions": "cue|chd",
+        "license": "LGPLv3",
+        "notes": "(!) neocd/neocd_f.rom (sha1): a5f4a7a627b3083c979f6ebe1fabc5d2df6d083b|(!) neocd/neocd_sf.rom (sha1): 4a94719ee5d0e3f2b981498f70efc1b8f1cef325|(!) neocd/front-sp1.bin (sha1): 53bc1f283cdf00fa2efbb79f2e36d4c8038d743a|(!) neocd/neocd_t.rom (sha1): cc92b54a18a8bff6e595aabe8e5c360ba9e62eb5|(!) neocd/neocd_st.rom (sha1): 19729b51bdab60c42aafef6e20ea9234c7eb8410|(!) neocd/top-sp1.bin (sha1): 235f4d1d74364415910f73c10ae5482d90b4274f|(!) neocd/neocd_z.rom (sha1): b0f1c4fa8d4492a04431805f6537138b842b549f|(!) neocd/neocd_sz.rom (sha1): 6a947457031dd3a702a296862446d7485aa89dbb|(!) neocd/neocd.bin (sha1): 7bb26d1e5d1e930515219cb18bcde5b7b23e2eda|(!) neocd/ng-lo.rom (sha1): 2b1c719531dac9bb503f22644e6e4236b91e7cfc|(!) neocd/000-lo.lo (sha1): 5992277debadeb64d1c1c64b0a92d9293eaf7e4a|(!) neocd/uni-bioscd.rom (sha1): 5142f205912869b673a71480c5828b1eaed782a8"
+      }
+    },
+    {
+      "core": "nestopia",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/nestopia_libretro.js",
+          "sizeBytes": 272118,
+          "sha256": "d3ab51229e992b7749cc7dce56de21ed20a9d948bbeb4bf3624de2c4b89ca5cd",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/nestopia_libretro.wasm",
+          "sizeBytes": 5378873,
+          "sha256": "52825c5b4e799c33bcbd5efbeac4cb0019b546518712786389b01f6623527277",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - NES / Famicom (Nestopia)",
+        "systemname": "Nintendo Entertainment System",
+        "systemid": "nes",
+        "supported_extensions": "nes|fds|unf|unif|nsf",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) disksys.rom (md5): ca30b50f880eb660a320674ed365ef7a|Press Retropad L1 to switch disk side."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.nestopia",
+        "systems": ["com.provenance.nes"],
+        "extensions": ["nes", "unf", "unif"],
+        "source": "https://github.com/libretro/nestopia",
+        "docs": "https://docs.libretro.com/library/nestopia/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "numero",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/numero_libretro.js",
+          "sizeBytes": 270778,
+          "sha256": "fbbfeaa77049f73948e8ee72d7423c95e95cb175b8bfa8555060bd436962b7bc",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/numero_libretro.wasm",
+          "sizeBytes": 3986593,
+          "sha256": "c395cd64d7f69f225f3fb872f133d58f1fb5faf08009d7cb0444f549b63307a9",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Texas Instruments TI-83 (Numero)",
+        "systemname": "TI83",
+        "systemid": "ti_83",
+        "supported_extensions": "8xp|8xk|8xg",
+        "license": "GPLv2",
+        "needs_fullpath": "false",
+        "notes": "(!) ti83se.rom (md5): c6ff8204c5c81b7be34614dbbd690c8b|(!) ti83plus.rom (md5): 8011181f810b5ec4e9d6a03f0e14257a|(!) ti83.rom (md5): d4448d09bbfde687c04f9e3310e023ab"
+      }
+    },
+    {
+      "core": "nxengine",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/nxengine_libretro.js",
+          "sizeBytes": 270616,
+          "sha256": "caebb53342af255f41cd5485c8ee249ba070e7f3f780bd540ae3aa8cbbdaa4b7",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/nxengine_libretro.wasm",
+          "sizeBytes": 3823274,
+          "sha256": "3b0356b1d923b2723e7c75784b0b18f22856292a8249e42063f079b66a1290eb",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Cave Story (NXEngine)",
+        "systemname": "Cave Story Game Engine",
+        "systemid": "nxengine",
+        "supported_extensions": "exe",
+        "license": "GPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) NXEngine requires data ROM 'Cave Story (en).zip'.|(!) Load Content 'Doukutsu.exe'"
+      }
+    },
+    {
+      "core": "o2em",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/o2em_libretro.js",
+          "sizeBytes": 270600,
+          "sha256": "2f3304944845cffe8077d5459d22a8a825a9b49f697506dd9ad4c3a05864e47c",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/o2em_libretro.wasm",
+          "sizeBytes": 3506546,
+          "sha256": "70983a3ae70e5f5993f32f71322f009ce959be64961d1349c0ca74eecdc79dfb",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Magnavox - Odyssey2 / Philips Videopac+ (O2EM)",
+        "systemname": "Magnavox Odyssey2 / Philips Videopac+",
+        "systemid": "odyssey2",
+        "supported_extensions": "bin",
+        "license": "Artistic License",
+        "notes": "(!) o2rom.bin (md5): 562d5ebf9e030a40d6fabfc2f33139fd|(!) c52.bin (md5): f1071cdb0b6b10dde94d3bc8a6146387|(!) g7400.bin (md5): c500ff71236068e0dc0d0603d265ae76|(!) jopac.bin (md5): 279008e4a0db2dc5f1c048853b033828"
+      }
+    },
+    {
+      "core": "opera",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/opera_libretro.js",
+          "sizeBytes": 270604,
+          "sha256": "199a0af63e57304a2469c0df625abc548626897343da01113e20e5e740704331",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/opera_libretro.wasm",
+          "sizeBytes": 3593940,
+          "sha256": "41f8b267e80b71da3c861b31553818cbe60804bb514b5b571d6243aea5bfe1d7",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "The 3DO Company - 3DO (Opera)",
+        "systemname": "3DO",
+        "systemid": "3do",
+        "supported_extensions": "iso|bin|chd|cue",
+        "license": "LGPL/Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) panafz1.bin (md5): f47264dd47fe30f73ab3c010015c155b|(!) panafz10.bin (md5): 51f2f43ae2f3508a14d9f56597e2d3ce|(!) panafz10-norsa.bin (md5): 1477bda80dc33731a65468c1f5bcbee9|(!) panafz10e-anvil.bin (md5): a48e6746bd7edec0f40cff078f0bb19f|(!) panafz10e-anvil-norsa.bin (md5): cf11bbb5a16d7af9875cca9de9a15e09|(!) goldstar.bin (md5): 8639fd5e549bd6238cfee79e3e749114|(!) sanyotry.bin (md5): 35fa1a1ebaaeea286dc5cd15487c13ea|(!) 3do_arcade_saot.bin (md5): 8970fc987ab89a7f64da9f8a8c4333ff|(!) panafz1-kanji.bin (md5): b8dc97f778a6245c58e064b0312e8281|(!) panafz10ja-anvil-kanji.bin (md5): 428577250f43edc902ea239c50d2240d|(!) panafz1j.bin (md5): a496cfdded3da562759be3561317b605|(!) panafz1j-norsa.bin (md5): f6c71de7470d16abe4f71b1444883dc8|(!) panafz1j-kanji.bin (md5): c23fb5d5e6bb1c240d02cf968972be37"
+      }
+    },
+    {
+      "core": "pcsx_rearmed",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/pcsx_rearmed_libretro.js",
+          "sizeBytes": 271454,
+          "sha256": "e3a7e983833afcf1894187d420cc54f0a31acd2ac779e38287e486dbb0443907",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/pcsx_rearmed_libretro.wasm",
+          "sizeBytes": 4240185,
+          "sha256": "3050aebf1cfb12ef92d1255d43c882a051a21a0f98dcd3bbbcc09f0a1ea72a23",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Sony - PlayStation (PCSX ReARMed)",
+        "systemname": "PlayStation",
+        "systemid": "playstation",
+        "supported_extensions": "bin|cue|img|mdf|pbp|toc|cbn|m3u|ccd|chd|iso|exe",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) scph5500.bin (md5): 8dd7d5296a650fac7319bce665a6a53c|(!) scph5501.bin (md5): 490f666e1afb15b7362b406ed1cea246|(!) scph5502.bin (md5): 32736f17079d0b2b7024407c39bd3050|(!) psxonpsp660.bin (md5): c53ca5908936d412331790f4426c6c33"
+      }
+    },
+    {
+      "core": "picodrive",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/picodrive_libretro.js",
+          "sizeBytes": 271236,
+          "sha256": "6ecd5cc7ca7fdf6fa191b106c499f78359a1545f61d7c24e7b2b222e3682e91b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/picodrive_libretro.wasm",
+          "sizeBytes": 4937959,
+          "sha256": "613120df9ca0ab7d765b238c9a4c1a13284b3ed9e1c2e6db72c333db9bfbb360",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Sega - MS/GG/MD/CD/32X (PicoDrive)",
+        "systemname": "Sega 8/16-bit + 32X (Various)",
+        "systemid": "mega_drive",
+        "supported_extensions": "bin|gen|smd|md|32x|cue|iso|chd|sms|gg|sg|sc|m3u|68k|sgd|pco",
+        "license": "MAME",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) bios_CD_U.bin (md5): 2efd74e3232ff260e371b99f84024f7f|(!) bios_CD_E.bin (md5): e66fa1dc5820d254611fdcdba0662372|(!) bios_CD_J.bin (md5): 278a9397d192149e84e820ac621a8edd"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.picodrive",
+        "systems": ["com.provenance.genesis", "com.provenance.32X"],
+        "extensions": ["md", "smd", "gen", "32x"],
+        "source": "https://github.com/libretro/picodrive",
+        "docs": "https://docs.libretro.com/library/picodrive/",
+        "license": "MAME"
+      }
+    },
+    {
+      "core": "pocketcdg",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/pocketcdg_libretro.js",
+          "sizeBytes": 270620,
+          "sha256": "b13e003f09a8f5fdfb233cb2024187e4b03bad654141b69e7cf41ba55e679be6",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/pocketcdg_libretro.wasm",
+          "sizeBytes": 3410055,
+          "sha256": "f6a47d6a3db3e450741136e2743a48b7d5362cdeba6ee022517726cb3fd5cfbe",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "PocketCDG",
+        "systemname": "Music",
+        "systemid": "music",
+        "supported_extensions": "cdg",
+        "license": "MIT"
+      }
+    },
+    {
+      "core": "prboom",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/prboom_libretro.js",
+          "sizeBytes": 270617,
+          "sha256": "4f3cae7ad8521a4c010fd03386686a9200cff8027acb04d9722e0c8d7097300c",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/prboom_libretro.wasm",
+          "sizeBytes": 5233722,
+          "sha256": "0f611c61229ab0b4f6762e85db1b191548f8e78ba016a0ac825ca575cc2d811f",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Doom (PrBoom)",
+        "systemname": "DOOM Game Engine",
+        "systemid": "doom",
+        "supported_extensions": "wad|iwad|pwad|pk3",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) PrBoom requires data ROM 'prboom.wad' inside the ROM directory.|(!) Load Content 'doom1.wad'."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.prboom",
+        "systems": ["com.provenance.doom"],
+        "extensions": ["wad", "iwad", "pwad", "pk3"],
+        "source": "https://github.com/libretro/libretro-prboom",
+        "docs": "https://docs.libretro.com/library/prboom/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "quasi88",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/quasi88_libretro.js",
+          "sizeBytes": 270621,
+          "sha256": "115dc4a6e27c62fe21ddae539a0807c2e8493c175394b802c6ed7dcbb6a7c6c1",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/quasi88_libretro.wasm",
+          "sizeBytes": 4127261,
+          "sha256": "98d072faa799b48864db6fc5bacaff5f4de00ca3ff56fc466ecd782e20964bbe",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "NEC - PC-88 series (QUASI88)",
+        "systemname": "PC-88 series",
+        "systemid": "pc_88",
+        "supported_extensions": "d88|u88|m3u",
+        "license": "BSD 3-Clause and MAME non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "QUASI88 by Showzoh Fukunaga.|Sound driver by MAME team.|fmgen and PC-8801 pseudo BIOS by cisc.|libretro port by Celerizer.| |BSD 3-Clause License| |Redistribution and use in source and binary|forms, with or without modification, are permitted|provided that the following conditions are met:| |1. Redistributions of source code must retain the|   above copyright notice, this list of conditions and|   the following disclaimer.| |2. Redistributions in binary form must reproduce the|   above copyright notice, this list of conditions and|   the following disclaimer in the documentation and/or|   other materials provided with the distribution.| |3. Neither the name of the copyright holder nor the|   names of its contributors may be used to endorse or|   promote products derived from this software without|   specific prior written permission.| |THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND|CONTRIBUTORS ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,|INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF|MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE|DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR|CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,|SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT|NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;|LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)|HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN|CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR|OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,|EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+      }
+    },
+    {
+      "core": "quicknes",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/quicknes_libretro.js",
+          "sizeBytes": 270625,
+          "sha256": "3e4dabb8eb83426a5ea4c232d6cdd68a603c030f6e2c308b21239ced7d352817",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/quicknes_libretro.wasm",
+          "sizeBytes": 3705789,
+          "sha256": "7ebaf08320efefd2eeebd2243101e9746453a54e7ba4d85613e9a8992a86a507",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - NES / Famicom (QuickNES)",
+        "systemname": "Nintendo Entertainment System",
+        "systemid": "nes",
+        "supported_extensions": "nes",
+        "license": "LGPLv2.1+",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.quicknes",
+        "systems": ["com.provenance.nes"],
+        "extensions": ["nes"],
+        "source": "https://github.com/libretro/QuickNES_Core",
+        "docs": "https://docs.libretro.com/library/quicknes/",
+        "license": "LGPLv2.1+"
+      }
+    },
+    {
+      "core": "retro8",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/retro8_libretro.js",
+          "sizeBytes": 272416,
+          "sha256": "4e42fe13d03c440cf77825f11517b32ff56f206c19372b4ddad0705afe7241d9",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/retro8_libretro.wasm",
+          "sizeBytes": 3621645,
+          "sha256": "c9fcabaa3f641b1cbdf68c9bf6f42e314ce158e5a6b6cbf3a26e8d8a095f9c1b",
+          "lastModified": "Mon, 26 Oct 2026 02:00:37 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "PICO-8 (Retro8)",
+        "systemname": "PICO-8",
+        "systemid": "pico8",
+        "supported_extensions": "p8|png",
+        "license": "GPLv3"
+      }
+    },
+    {
+      "core": "scummvm",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/scummvm_libretro.js",
+          "sizeBytes": 271351,
+          "sha256": "2454ffd2417e27b175fb0257e913b51eb95b74b0a0b19d4f8f82941116adcbbb",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/scummvm_libretro.wasm",
+          "sizeBytes": 75686701,
+          "status": "over-cap",
+          "sha256": null
+        }
+      },
+      "factorySmoke": {
+        "passed": false,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "Not factory-smoked because one or more artifacts exceeded caps."
+      },
+      "cataloged": false,
+      "officialInfo": "No matching libretro-super core info file found"
+    },
+    {
+      "core": "snes9x2002",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/snes9x2002_libretro.js",
+          "sizeBytes": 270624,
+          "sha256": "632c09a1de5574f42b259f9415327633b80f1699e4cdf9b333364218c1007b74",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/snes9x2002_libretro.wasm",
+          "sizeBytes": 3955702,
+          "sha256": "208f15387f9b7b8df85dd4627ef57a863a8f5a0c5927660b48601617bd5912fa",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - SNES / SFC (Snes9x 2002)",
+        "systemname": "Super Nintendo Entertainment System",
+        "systemid": "super_nes",
+        "supported_extensions": "smc|fig|sfc|gd3|gd7|dx2|bsx|swc",
+        "license": "Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.snes9x2002",
+        "systems": ["com.provenance.snes"],
+        "extensions": ["smc", "fig", "sfc", "gd3", "gd7", "dx2", "bsx", "swc"],
+        "source": "https://github.com/libretro/snes9x2002",
+        "docs": "https://docs.libretro.com/library/snes9x_2002/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "snes9x2005",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/snes9x2005_libretro.js",
+          "sizeBytes": 270624,
+          "sha256": "122bd6cc84a2e197c3e4de56b32b88484bb05f6cac3cd2b82337730fef8a9ad5",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/snes9x2005_libretro.wasm",
+          "sizeBytes": 3955218,
+          "sha256": "71b68db8d2e7f982249c047d7c1ed81740a094bf3f570d1ef1460a0fa34e11b7",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - SNES / SFC (Snes9x 2005)",
+        "systemname": "Super Nintendo Entertainment System",
+        "systemid": "super_nes",
+        "supported_extensions": "smc|fig|sfc|gd3|gd7|dx2|bsx|swc",
+        "license": "Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.snes9x2005",
+        "systems": ["com.provenance.snes"],
+        "extensions": ["smc", "fig", "sfc", "gd3", "gd7", "dx2", "bsx", "swc"],
+        "source": "https://github.com/libretro/snes9x2005",
+        "docs": "https://docs.libretro.com/library/snes9x_2005/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "snes9x2010",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/snes9x2010_libretro.js",
+          "sizeBytes": 270624,
+          "sha256": "f185831231f01e5fec4df1319974ff030e0e9d7009b7f41802cc8882832a60a9",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/snes9x2010_libretro.wasm",
+          "sizeBytes": 5770847,
+          "sha256": "c2ad6753b39fe939e784392e54ea71594cc2c9577f4c0dd022d048e1109c32bb",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - SNES / SFC (Snes9x 2010)",
+        "systemname": "Super Nintendo Entertainment System",
+        "systemid": "super_nes",
+        "supported_extensions": "smc|fig|sfc|gd3|gd7|dx2|bsx|swc",
+        "license": "Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.snes9x2010",
+        "systems": ["com.provenance.snes"],
+        "extensions": ["smc", "fig", "sfc", "gd3", "gd7", "dx2", "bsx", "swc"],
+        "source": "https://github.com/libretro/snes9x2010",
+        "docs": "https://docs.libretro.com/library/snes9x_2010/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "snes9x",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/snes9x_libretro.js",
+          "sizeBytes": 270697,
+          "sha256": "c3c20d2d3f632e3d2d957275527a5ee897ba35ca74b7d7d9d6fddfe77d07fb25",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/snes9x_libretro.wasm",
+          "sizeBytes": 6367580,
+          "sha256": "3cdf32c9e1ad151f29a35fd6646eece0164a584432cfcf41a4f4aba837dcf00b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - SNES / SFC (Snes9x)",
+        "systemname": "Super Nintendo Entertainment System",
+        "systemid": "super_nes",
+        "supported_extensions": "smc|sfc|swc|fig|bs|st",
+        "license": "Non-commercial",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) BS-X.bin (md5): fed4d8242cfbed61343d53d48432aced|(!) STBIOS.bin (md5): d3a44ba7d42a74d3ac58cb9c14c6a5ca|(!) To start BS-X games from the RPG-like interface, go back into the house and select the 1st option."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.snes9x",
+        "systems": ["com.provenance.snes"],
+        "extensions": ["smc", "sfc", "swc", "fig", "bs", "st"],
+        "source": "https://github.com/libretro/snes9x",
+        "docs": "https://docs.libretro.com/library/snes9x/",
+        "license": "Non-commercial"
+      }
+    },
+    {
+      "core": "tamalibretro",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/tamalibretro_libretro.js",
+          "sizeBytes": 270632,
+          "sha256": "e8e060e129187d150fbcdf8c54bb66d9451a7767c0e8283fa5f6931df4013fde",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/tamalibretro_libretro.wasm",
+          "sizeBytes": 3466707,
+          "sha256": "4a1a3c253eb9314a284644b353576dcbfa46f529d5da15cbeb0fa0fb761735fc",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Bandai - Tamagotchi P1 (TamaLIBretro)",
+        "systemname": "Tamagotchi P1",
+        "systemid": "tamagotchi",
+        "supported_extensions": "b|bin|rom",
+        "license": "GPL-2.0",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "TamaLIB Copyright (C) 2021 Jean-Christophe Rona.|TamaLIBretro by Keith Bourdon.|TamaLIB and TamaLIBretro are distributed under the GPLv2 license."
+      }
+    },
+    {
+      "core": "tgbdual",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/tgbdual_libretro.js",
+          "sizeBytes": 270612,
+          "sha256": "7bb7bf8ffcb37c72f9059c6fad33182fe1b943d6e27959307d1467aef57c017d",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/tgbdual_libretro.wasm",
+          "sizeBytes": 3386700,
+          "sha256": "9faa408a3b1c2d74d71f3fd7e6b18a8a45d6d0a6e0971a94d0ecb1a6e8c85380",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - Game Boy / Color (TGB Dual)",
+        "systemname": "Game Boy/Game Boy Color",
+        "systemid": "game_boy",
+        "supported_extensions": "cgb|dmg|gb|gbc|sgb",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.tgbdual",
+        "systems": ["com.provenance.gb", "com.provenance.gbc"],
+        "extensions": ["gb", "gbc", "cgb", "dmg", "sgb"],
+        "source": "https://github.com/libretro/tgbdual-libretro",
+        "docs": "https://docs.libretro.com/library/tgb_dual/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "theodore",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/theodore_libretro.js",
+          "sizeBytes": 270625,
+          "sha256": "1c36f6ca4c18f5d3b33257bb11185896f363e855191130785760c10b65712a12",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/theodore_libretro.wasm",
+          "sizeBytes": 5503350,
+          "sha256": "260530b7b5f331e7dde4efa2c55f1fe50f0fd64a2b7b3c2fc74c383c84a3374c",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Thomson - MO/TO (Theodore)",
+        "systemname": "Thomson MO/TO",
+        "systemid": "thomson_moto",
+        "supported_extensions": "fd|sap|k7|m7|m5|rom",
+        "license": "GPLv3",
+        "hw_render": "false",
+        "needs_fullpath": "true"
+      }
+    },
+    {
+      "core": "tia",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/tia_libretro.js",
+          "sizeBytes": 270596,
+          "sha256": "1708a10d7a4a49eeba314b5f6bfa0996d9f4aa821ce4f245730a3463a51d5447",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/tia_libretro.wasm",
+          "sizeBytes": 3441787,
+          "sha256": "26bde3190551376a1493c51d4c466eb7a9d23b6393248ed386f3153a3e81d5fa",
+          "lastModified": "Wed, 28 Oct 2026 02:02:00 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Atari - 2600 (Tia)",
+        "systemname": "Atari 2600",
+        "systemid": "atari_2600",
+        "supported_extensions": "a26|bin",
+        "license": "GPLv2+",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.tia",
+        "systems": ["com.provenance.2600"],
+        "extensions": ["a26", "bin"],
+        "source": "https://github.com/warmenhoven/tia",
+        "docs": "https://docs.libretro.com/library/tia/",
+        "license": "GPLv2+"
+      }
+    },
+    {
+      "core": "tic80",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/tic80_libretro.js",
+          "sizeBytes": 271612,
+          "sha256": "5662081b5e2f622c29811c999266a17c4deeab2a65bd3a0a8e7890512d7cc6cd",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/tic80_libretro.wasm",
+          "sizeBytes": 3531286,
+          "sha256": "e895f7b6db01136b20e3dc657d1002a4bc7d53d4ddeefed92af64cb53f7063d6",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "TIC-80",
+        "systemname": "TIC-80",
+        "systemid": "tic80",
+        "supported_extensions": "tic",
+        "license": "MIT",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.tic80",
+        "systems": ["com.provenance.tic80"],
+        "extensions": ["tic"],
+        "source": "https://github.com/nesbox/TIC-80/",
+        "docs": "https://docs.libretro.com/library/tic80/",
+        "license": "MIT"
+      }
+    },
+    {
+      "core": "tyrquake",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/tyrquake_libretro.js",
+          "sizeBytes": 270779,
+          "sha256": "39aa470aa9990152a72ec327300a0e2d6a17f84a0bd037bb577bf5b878e65958",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/tyrquake_libretro.wasm",
+          "sizeBytes": 4039070,
+          "sha256": "58c2f1c2bcb04ae2cbc4cb06f98fcda03705aff1d711b9c2bf915713767252f1",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Quake (TyrQuake)",
+        "systemname": "Quake Game Engine",
+        "systemid": "quake_1",
+        "supported_extensions": "pak",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "[i] Make those folders in the same directory:|[i] -id1 for the main game|[i] -hipnotic for the 1st mission pack|[i] -rogue for the 2nd mission pack|[i] -quoth for Quoth addon|[i] Put BGM into a subfolder named music in each of them."
+      },
+      "catalogProfile": {
+        "id": "org.libretro.tyrquake",
+        "systems": ["com.provenance.quake"],
+        "extensions": ["pak"],
+        "source": "https://github.com/libretro/tyrquake",
+        "docs": "https://docs.libretro.com/library/tyrquake/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "uw8",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/uw8_libretro.js",
+          "sizeBytes": 270596,
+          "sha256": "0c67aa41bd544d41250d424c1f3397f25ff9afbdcc6e7ba8dce3cc01d40f5a5c",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/uw8_libretro.wasm",
+          "sizeBytes": 3448895,
+          "sha256": "99aca02a05a1741229d5b3ea8ac0d5473f04e09ee1147435beaaaa9da0f4e594",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "MicroW8",
+        "systemname": "MicroW8",
+        "systemid": "uw8",
+        "supported_extensions": "uw8|wasm",
+        "license": "The Unlicense",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) Homepage: https://exoticorn.github.io/microw8/"
+      }
+    },
+    {
+      "core": "uzem",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/uzem_libretro.js",
+          "sizeBytes": 272004,
+          "sha256": "628e03057b95129f4778b3fa1a1800bb1f8984d06a2d039624d0a5f55d30ea60",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/uzem_libretro.wasm",
+          "sizeBytes": 3347962,
+          "sha256": "30a46af7dbc5fc294762989c1a16f0b046aff09fb7557dd548d246e4559accdf",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Uzebox (Uzem)",
+        "systemname": "Uzebox",
+        "systemid": "uzebox",
+        "supported_extensions": "uze",
+        "license": "MIT",
+        "hw_render": "false",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "vaporspec",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vaporspec_libretro.js",
+          "sizeBytes": 270620,
+          "sha256": "ff4de0f9ae5445a23175fa40c07e7f4f943b8f1ca0f16c54d52a43adbc781c1c",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vaporspec_libretro.wasm",
+          "sizeBytes": 3349128,
+          "sha256": "9e1c0306b5593e79be55d17035229e8239e684f11876f1f2a115e432fc3647d3",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "VaporSpec",
+        "systemname": "VaporSpec",
+        "systemid": "vaporspec",
+        "supported_extensions": "vaporbin",
+        "license": "MIT",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "vba_next",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vba_next_libretro.js",
+          "sizeBytes": 270616,
+          "sha256": "e2476626a9c328607db3105a53d7231df32fce7a5e16eb28c8249c4b52bf3162",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vba_next_libretro.wasm",
+          "sizeBytes": 3874341,
+          "sha256": "108e2ce4c37f74a03f9a6868ebf934f6250556dcf0f4011da80f80303e32b95b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Nintendo - Game Boy Advance (VBA Next)",
+        "systemname": "Game Boy Advance",
+        "systemid": "game_boy_advance",
+        "supported_extensions": "gba",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) gba_bios.bin (md5): a860e8c0b6d573d191e4ec7db1b1e4f6"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.vba-next",
+        "systems": ["com.provenance.gba"],
+        "extensions": ["gba"],
+        "source": "https://github.com/libretro/vba-next",
+        "docs": "https://docs.libretro.com/library/vba_next/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "vecx",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vecx_libretro.js",
+          "sizeBytes": 270600,
+          "sha256": "7e2af97e59f9dd5e9c5a8cdfe0489a5cde29c8251bb7bb06f315d519cf5778e6",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vecx_libretro.wasm",
+          "sizeBytes": 3381320,
+          "sha256": "359f68281ef6dd673758ee41b8510475e62b610e1d1a26d3814bfd124d11be72",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "GCE - Vectrex (vecx)",
+        "systemname": "Vectrex",
+        "systemid": "vectrex",
+        "supported_extensions": "bin|vec",
+        "license": "GPLv3",
+        "hw_render": "true",
+        "required_hw_api": "OpenGL Core >= 3.3",
+        "needs_fullpath": "false"
+      }
+    },
+    {
+      "core": "vice_x128",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vice_x128_libretro.js",
+          "sizeBytes": 272794,
+          "sha256": "bb2b253ad3e6a06ee7b9b8846bfee0b85059cf5e6441af6f24e918d6acc2e4f1",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vice_x128_libretro.wasm",
+          "sizeBytes": 5947985,
+          "sha256": "17c93984ff61c589b78d4978c7303d0590bc01925c7630894c6fe867637bbf79",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Commodore - C128 (VICE x128)",
+        "systemname": "C128",
+        "systemid": "commodore_c128",
+        "supported_extensions": "d64|d71|d80|d81|d82|g64|g41|x64|t64|tap|prg|p00|crt|bin|zip|gz|d6z|d7z|d8z|g6z|g4z|x6z|cmd|m3u|vfl|vsf|nib|nbz|d2m|d4m|/",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) JiffyDOS_C128.bin (md5): cbbd1bbcb5e4fd8046b6030ab71fc021|(!) JiffyDOS_C64.bin (md5): be09394f0576cf81fa8bacf634daf9a2|(!) JiffyDOS_1541-II.bin (md5): 1b1e985ea5325a1f46eb7fd9681707bf|(!) JiffyDOS_1571_repl310654.bin (md5): 41c6cc528e9515ffd0ed9b180f8467c0|(!) JiffyDOS_1581.bin (md5): 20b6885c6dc2d42c38754a365b043d71"
+      }
+    },
+    {
+      "core": "vice_x64",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vice_x64_libretro.js",
+          "sizeBytes": 272790,
+          "sha256": "cd0ee39f71b36a1bc2044e71b53f9144befba2379ec8bf1b0c7173b3135e8401",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vice_x64_libretro.wasm",
+          "sizeBytes": 5627377,
+          "sha256": "0fdacaed007681ab95c4361f267de9b10796aea244d10c162466d3463c737051",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Commodore - C64 (VICE x64, fast)",
+        "systemname": "C64",
+        "systemid": "commodore_c64",
+        "supported_extensions": "d64|d71|d80|d81|d82|g64|g41|x64|t64|tap|prg|p00|crt|bin|zip|gz|d6z|d7z|d8z|g6z|g4z|x6z|cmd|m3u|vfl|vsf|nib|nbz|d2m|d4m|/",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) JiffyDOS_C64.bin (md5): be09394f0576cf81fa8bacf634daf9a2|(!) JiffyDOS_1541-II.bin (md5): 1b1e985ea5325a1f46eb7fd9681707bf|(!) JiffyDOS_1571_repl310654.bin (md5): 41c6cc528e9515ffd0ed9b180f8467c0|(!) JiffyDOS_1581.bin (md5): 20b6885c6dc2d42c38754a365b043d71"
+      }
+    },
+    {
+      "core": "vice_x64sc",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vice_x64sc_libretro.js",
+          "sizeBytes": 272797,
+          "sha256": "773f0129914cb916ed1978ea81a2afc0420c21b35b8fcaeaba91ea0d9e56e1da",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vice_x64sc_libretro.wasm",
+          "sizeBytes": 5589976,
+          "sha256": "8848618b703b78dfdde69560e463715aeaf5b4add01d4e220d933398da484026",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Commodore - C64 (VICE x64sc, accurate)",
+        "systemname": "C64",
+        "systemid": "commodore_c64",
+        "supported_extensions": "d64|d71|d80|d81|d82|g64|g41|x64|t64|tap|prg|p00|crt|bin|zip|gz|d6z|d7z|d8z|g6z|g4z|x6z|cmd|m3u|vfl|vsf|nib|nbz|d2m|d4m|/",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) JiffyDOS_C64.bin (md5): be09394f0576cf81fa8bacf634daf9a2|(!) JiffyDOS_1541-II.bin (md5): 1b1e985ea5325a1f46eb7fd9681707bf|(!) JiffyDOS_1571_repl310654.bin (md5): 41c6cc528e9515ffd0ed9b180f8467c0|(!) JiffyDOS_1581.bin (md5): 20b6885c6dc2d42c38754a365b043d71"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.vice-x64sc",
+        "systems": ["com.provenance.c64"],
+        "extensions": [
+          "d64",
+          "d71",
+          "d81",
+          "g64",
+          "g41",
+          "x64",
+          "t64",
+          "tap",
+          "prg",
+          "p00",
+          "crt",
+          "bin",
+          "zip"
+        ],
+        "source": "https://github.com/libretro/vice-libretro",
+        "docs": "https://docs.libretro.com/library/vice/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "vice_xpet",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vice_xpet_libretro.js",
+          "sizeBytes": 272794,
+          "sha256": "4a2510806446f2af0dc32fa472e4bba0ee329f4d97e3b671709741d7649caa76",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vice_xpet_libretro.wasm",
+          "sizeBytes": 5116512,
+          "sha256": "6d40fa02e02346262ad91ea62324c63114bf8e6b828cf38b1f573c52ab3be86b",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Commodore - PET (VICE xpet)",
+        "systemname": "PET",
+        "systemid": "commodore_pet",
+        "supported_extensions": "d64|d71|d80|d81|d82|g64|g41|x64|t64|tap|prg|p00|crt|bin|zip|gz|d6z|d7z|d8z|g6z|g4z|x6z|cmd|m3u|vfl|vsf|nib|nbz|d2m|d4m|/",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true"
+      }
+    },
+    {
+      "core": "vice_xplus4",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vice_xplus4_libretro.js",
+          "sizeBytes": 272802,
+          "sha256": "eb4c965199ae1faf6bde8c1c2a7c2b5cd848a27e25856a9d40b6aca53f7152a1",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vice_xplus4_libretro.wasm",
+          "sizeBytes": 5199141,
+          "sha256": "50bd9b274e60ee860d451ca1f792e6847f5956f733a6a71d324344cab6a0039c",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Commodore - PLUS/4 (VICE xplus4)",
+        "systemname": "PLUS/4",
+        "systemid": "commodore_plus4",
+        "supported_extensions": "d64|d71|d80|d81|d82|g64|g41|x64|t64|tap|prg|p00|crt|bin|zip|gz|d6z|d7z|d8z|g6z|g4z|x6z|cmd|m3u|vfl|vsf|nib|nbz|d2m|d4m|/",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true"
+      }
+    },
+    {
+      "core": "vice_xscpu64",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vice_xscpu64_libretro.js",
+          "sizeBytes": 272806,
+          "sha256": "b13a51e38952c801a5a2507db42bf6a1861a177d906ae1fb9b9e65de91bf8f16",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vice_xscpu64_libretro.wasm",
+          "sizeBytes": 5669364,
+          "sha256": "2c46132d088940425fe22c2c01444ce52ef6bbd859649a7c44d279adf0d4ab6a",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Commodore - C64 SuperCPU (VICE xscpu64)",
+        "systemname": "C64 SuperCPU",
+        "systemid": "commodore_c64_supercpu",
+        "supported_extensions": "d64|d71|d80|d81|d82|g64|g41|x64|t64|tap|prg|p00|crt|bin|zip|gz|d6z|d7z|d8z|g6z|g4z|x6z|cmd|m3u|vfl|vsf|nib|nbz|d2m|d4m|/",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true",
+        "notes": "(!) JiffyDOS_C64.bin (md5): be09394f0576cf81fa8bacf634daf9a2|(!) JiffyDOS_1541-II.bin (md5): 1b1e985ea5325a1f46eb7fd9681707bf|(!) JiffyDOS_1571_repl310654.bin (md5): 41c6cc528e9515ffd0ed9b180f8467c0|(!) JiffyDOS_1581.bin (md5): 20b6885c6dc2d42c38754a365b043d71"
+      }
+    },
+    {
+      "core": "vice_xvic",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vice_xvic_libretro.js",
+          "sizeBytes": 272794,
+          "sha256": "707b44d320c9211086ba8dac53cc0fde97ab959e637f1717c3683cf63e9eb47c",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vice_xvic_libretro.wasm",
+          "sizeBytes": 5177075,
+          "sha256": "4cbd75385ec2d937d74c0b9ff118bb55a5d1667e09db67acb74c5a769928e3b3",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Commodore - VIC-20 (VICE xvic)",
+        "systemname": "VIC-20",
+        "systemid": "commodore_vic20",
+        "supported_extensions": "d64|d71|d80|d81|d82|g64|g41|x64|t64|tap|prg|p00|crt|bin|zip|gz|d6z|d7z|d8z|g6z|g4z|x6z|cmd|m3u|vfl|vsf|nib|nbz|d2m|d4m|20|40|60|a0|b0|rom|/",
+        "license": "GPLv2",
+        "hw_render": "false",
+        "needs_fullpath": "true"
+      }
+    },
+    {
+      "core": "vitaquake2",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/vitaquake2_libretro.js",
+          "sizeBytes": 270624,
+          "sha256": "60147959285e9f80e58da21fb30c04887fb02c0fb582d0e0d11efd17c80eeeb3",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/vitaquake2_libretro.wasm",
+          "sizeBytes": 4303563,
+          "sha256": "7fbaaeb179a5644b158887e646e0884dc2962d5a80f980c25dd4ffa8600fdaf6",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": true,
+      "officialInfo": {
+        "display_name": "Quake II (vitaQuake 2)",
+        "systemname": "Quake II Game Engine",
+        "systemid": "quake_2",
+        "supported_extensions": "pak",
+        "license": "GPLv2"
+      },
+      "catalogProfile": {
+        "id": "org.libretro.vitaquake2",
+        "systems": ["com.provenance.quake2"],
+        "extensions": ["pak"],
+        "source": "https://github.com/libretro/vitaquake2",
+        "docs": "https://docs.libretro.com/library/vitaquake2/",
+        "license": "GPLv2"
+      }
+    },
+    {
+      "core": "wasm4",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/wasm4_libretro.js",
+          "sizeBytes": 270604,
+          "sha256": "f1eb5ba58f645486ef809dab8b4617630abad6619cf9099517f6550ea57789a5",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/wasm4_libretro.wasm",
+          "sizeBytes": 3452881,
+          "sha256": "2d9fedb37be58a2c0da7ea3b9a87600df31340e1f6f1a696d2b384d152c28826",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "WASM-4",
+        "systemname": "WASM-4",
+        "systemid": "wasm4",
+        "supported_extensions": "wasm",
+        "license": "ISC",
+        "hw_render": "false",
+        "needs_fullpath": "false",
+        "notes": "(!) Homepage: https://wasm4.org"
+      }
+    },
+    {
+      "core": "x1",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/x1_libretro.js",
+          "sizeBytes": 271414,
+          "sha256": "b15681a754121a71a32154e6892c9953ac4a3d70462e467501fbf36e5f48298e",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/x1_libretro.wasm",
+          "sizeBytes": 3472718,
+          "sha256": "c004a3ebd1cf944087237023d5d5c7465038a76f73d891cf269eccb16803ce20",
+          "lastModified": "Mon, 26 Oct 2026 02:00:38 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Sharp X1 (X Millennium)",
+        "systemname": "Sharp X1",
+        "systemid": "sharp_x1",
+        "supported_extensions": "dx1|zip|2d|2hd|tfd|d88|88d|hdm|xdf|dup|tap|cmd",
+        "license": "BSD",
+        "notes": "(!) xmil/IPLROM.X1 (md5): eeeea1cd29c6e0e8b094790ae969bfa7|(!) xmil/IPLROM.X1T (md5): 851e4a5936f17d13f8c39a980cf00d77"
+      }
+    },
+    {
+      "core": "xrick",
+      "listedInOfficialSelector": true,
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/xrick_libretro.js",
+          "sizeBytes": 270604,
+          "sha256": "c31ad35d793d6065227c37f1ec9f80513dad4a38ba299633b0ab4d970c7218a4",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/xrick_libretro.wasm",
+          "sizeBytes": 3529285,
+          "sha256": "c1167b37243f178f834662446a45e7614bcd9efa9a011811de887ba78ccebae2",
+          "lastModified": "Tue, 27 Oct 2026 02:00:32 GMT"
+        }
+      },
+      "factorySmoke": {
+        "passed": true,
+        "origin": "opaque (null)",
+        "checks": [
+          "default async ESM factory",
+          "wasmBinary + noInitialRun + noExitRuntime",
+          "FS.mkdirTree/writeFile/readFile",
+          "callMain function present",
+          "MEMFS round-trip"
+        ],
+        "note": "No content bytes were loaded or executed; no compatibility, video, audio, input, save, or firmware behavior was tested."
+      },
+      "cataloged": false,
+      "officialInfo": {
+        "display_name": "Rick Dangerous (XRick)",
+        "systemname": "Rick Dangerous Game Engine",
+        "systemid": "xrick",
+        "supported_extensions": "zip",
+        "license": "GPLv3",
+        "notes": "(!) XRick requires data ROM 'data.zip'.|(!) Load Content 'data.zip'"
+      }
+    }
+  ],
+  "applicationStagingLimitations": {
+    "org.libretro.prboom": "Engine data prboom.wad not staged",
+    "org.libretro.ecwolf": "Engine data ecwolf.pk3 and companion files not staged",
+    "org.libretro.tyrquake": "id1/pak0.pak folder layout not staged",
+    "org.libretro.vitaquake2": "Game data folder staging unverified"
+  }
+}

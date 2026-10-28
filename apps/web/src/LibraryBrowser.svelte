@@ -13,7 +13,6 @@
   import { createLibraryBrowser } from './lib/library-browser';
   import { createDetail, type DetailController } from './lib/detail';
   import { createPreviews } from './lib/previews';
-  import { createBulkMatching } from './lib/bulk-matching';
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
   import { entryKey } from './lib/content-format';
   import CategoryTabs from './components/CategoryTabs.svelte';
@@ -27,7 +26,7 @@
   import FolderPicker from './FolderPicker.svelte';
   import {createLibraryFolders} from './lib/library-folders';
   import { chooseFolder, type FolderContext } from './lib/folder-selection';
-  import BulkMatching from './BulkMatching.svelte';
+  import LibraryJobs from './LibraryJobs.svelte';
   let {
     context,
     application,
@@ -55,10 +54,6 @@
   } = $props();
   const browser = untrack(() => createLibraryBrowser(context.client, null));
   const authEpoch = untrack(() => get(application).authEpoch);
-  const bulk = untrack(() => createBulkMatching(context.client, {
-    changed: () => { if (!disposed) void browser.refresh(); },
-    authorizationRejected: (status) => { rejectAccess(status); if (status === 403) void application.revalidate(); },
-  }));
   let bulkOpen = $state(false);
   let disposed = false;
   // Keep controller identity intact for stale-instance and authorization-loss guards.
@@ -132,7 +127,6 @@
     folderGeneration++;
     clearDetail();
     previews.dispose();
-    bulk.dispose();
     folderAdder?.dispose();
     addingFolder=false;
     addChoices = false;
@@ -193,8 +187,7 @@
         disposePrivate();
         return;
       }
-      if (!state.owner && (get(bulk).phase !== 'idle' || bulkOpen)) {
-        bulk.reset();
+      if (!state.owner && bulkOpen) {
         bulkOpen = false;
       }
       const selected = get(browser).scope;
@@ -205,7 +198,6 @@
           : !state.owner)
       ) {
         clearDetail();
-        bulk.reset();
         bulkOpen = false;
         upload = false;
         void browser.selectScope(null);
@@ -236,7 +228,6 @@
     untrack(() => {
       if (navigation === lastNavigation) return;
       if (JSON.stringify(selected) !== JSON.stringify(get(browser).scope)) {
-        bulk.reset();
         bulkOpen = false;
       }
       lastNavigation = navigation;
@@ -409,7 +400,7 @@
         <details class="library-tools">
           <summary>Library tools</summary>
           <div class="actions">
-            {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>{['discovering','running'].includes($bulk.phase) ? 'Matching library…' : $bulk.phase==='idle' ? 'Match library' : 'Matching results'}</button>
+            {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>Library activity</button>
               <button type="button" disabled={!folders.length || !!$folderAdder?.busy} onclick={()=>void scanSavedFolders()}>Scan folders for games</button>
               <button type="button" onclick={onsettings}>Library settings</button>{/if}
             <button type="button" disabled={$browser.loading} onclick={refreshCollection}>Refresh</button>
@@ -495,8 +486,8 @@
     {#if $folderAdder?.notice}<p role="status">{$folderAdder.notice}</p>{/if}
     {#if owner && !addingFolder && (folderSelectionFailure || $folderAdder?.failure)}<p class="problem" role="alert">{folderSelectionFailure || $folderAdder?.failure}</p>{/if}
   {/if}
-  {#if bulkOpen && owner && scope}<Modal title="Match library" onclose={() => { bulkOpen = false; refreshCollection(); }}>
-    <BulkMatching {context} controller={bulk} {scope} onchanged={refreshCollection} />
+  {#if bulkOpen && owner && scope}<Modal title="Library activity" onclose={() => { bulkOpen = false; refreshCollection(); }}>
+    <LibraryJobs {context} {scope} {libraries} roots={folders} onchanged={refreshCollection} />
   </Modal>{/if}
   {#if scope && 'libraryId' in scope && ((addChoices && canAdd) || (upload && canCreate) || (addingFolder && owner))}<Modal
       title={upload ? 'Upload files' : addingFolder ? 'Add server folder' : $browser.filters.category === 'games' ? 'Add games' : 'Add files'}

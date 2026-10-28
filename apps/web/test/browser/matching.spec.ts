@@ -10,16 +10,21 @@ for (const bulk of [false, true])
     await fixture.legacy();
     await signIn(page, fixture);
     await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
-    if (bulk) await libraryTool(page, 'Match library');
+    if (bulk) await libraryTool(page, 'Library activity');
     else await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
     const panel = bulk
-      ? page.getByRole('dialog', { name: 'Match library', exact: true })
+      ? page.getByRole('dialog', { name: 'Library activity', exact: true })
       : page.getByRole('region', { name: 'Metadata and artwork matching' });
     const action = panel.getByRole('button', {
-      name: bulk ? 'Start library matching' : 'Find matches',
+      name: bulk ? 'Find missing artwork and details' : 'Find matches',
       exact: true,
     });
     await expect(action).toBeEnabled();
+    if (bulk)
+      await panel
+        .locator('summary')
+        .filter({ hasText: /^Matching providers$/ })
+        .click();
     await panel.getByText('Providers and manager', { exact: true }).click();
     await panel.getByRole('checkbox', { name: 'Include online providers', exact: true }).uncheck();
     const local = panel.getByRole('checkbox', { name: /\(local\)$/ });
@@ -90,13 +95,13 @@ for (const bulk of [false, true])
     });
     await signIn(page, fixture);
     await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
-    if (bulk) await libraryTool(page, 'Match library');
+    if (bulk) await libraryTool(page, 'Library activity');
     else await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
     const panel = bulk
-      ? page.getByRole('dialog', { name: 'Match library', exact: true })
+      ? page.getByRole('dialog', { name: 'Library activity', exact: true })
       : page.getByRole('region', { name: 'Metadata and artwork matching' });
     const action = panel.getByRole('button', {
-      name: bulk ? 'Start library matching' : 'Find matches',
+      name: bulk ? 'Find missing artwork and details' : 'Find matches',
       exact: true,
     });
     await expect(panel.getByRole('alert')).toContainText('Provider list temporarily unavailable');

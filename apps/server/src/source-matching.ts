@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { join, posix } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 import { type Actor, DomainError } from '@ecs/domain';
 import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
@@ -8,17 +8,22 @@ import {
   type MatchingInput,
   patchFingerprint,
 } from '@ecs/plugins/matching';
-import { type MatchingPluginDescription, matchingJob } from '@ecs/plugins/matching-host';
-import { crc32Hex } from '@ecs/storage';
+import {
+  closeMatchingWorkers,
+  type MatchingPluginDescription,
+  matchingJob,
+} from '@ecs/plugins/matching-host';
+import { validateSystemIdentifier } from '@ecs/protocol';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
-import { boundedFile, imageType } from './matching-files.js';
+import { boundedFile, boundedFingerprint, imageType } from './matching-files.js';
 import { localSource, visibleSource } from './source-groups.js';
 import { sourceMetadata } from './source-metadata.js';
+import { runAutomaticOrganization } from './source-organization.js';
 import { registerSourceSelections } from './source-selections.js';
 
-function matchBody(value: unknown): {
+export function matchBody(value: unknown): {
   online: boolean;
   checksum: boolean;
   providerIds?: string[];
@@ -56,7 +61,23 @@ function matchBody(value: unknown): {
   };
 }
 
-export function registerSourceMatching(app: FastifyInstance, context: ServerContext): void {
+export interface SourceMatchingService {
+  autoMatch(
+    actor: Actor & { kind: 'user' },
+    sourceId: string,
+    options: ReturnType<typeof matchBody>,
+    signal: AbortSignal,
+  ): Promise<{
+    status: 'saved' | 'review' | 'unmatched' | 'skipped';
+    saved: number;
+    suggestions: number;
+    error: string | null;
+  }>;
+}
+export function registerSourceMatching(
+  app: FastifyInstance,
+  context: ServerContext,
+): SourceMatchingService {
   type Job = {
     sourceId: string;
     ownerId: string;
@@ -65,6 +86,7 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
     stamps: Map<string, string>;
   };
   const jobs = new Map<string, Job>();
+  const inflight = new Map<string, Promise<Awaited<ReturnType<typeof executeMatch>>>>();
   const abort = new AbortController();
   let active = 0;
   let listing: Promise<MatchingPluginDescription[]> | null = null;
@@ -72,6 +94,10 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
   app.addHook('preClose', async () => {
     abort.abort();
     jobs.clear();
+    await closeMatchingWorkers({
+      ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
+      catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
+    });
   });
   async function plugins(): Promise<MatchingPluginDescription[]> {
     if (pluginList && pluginList.expires >= Date.now()) return pluginList.plugins;
@@ -79,6 +105,7 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
     listing = matchingJob(
       {
         operation: 'list',
+        catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
         ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
       },
       { signal: abort.signal },
@@ -99,21 +126,46 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
   });
   app.post('/api/v1/sources/:sourceId/matches', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can run matching');
-    const source = visibleSource(context, actor, (request.params as { sourceId: string }).sourceId);
-    const options = matchBody(request.body ?? {});
+    const result = await match(
+      actor,
+      (request.params as { sourceId: string }).sourceId,
+      matchBody(request.body ?? {}),
+      abort.signal,
+    );
+    reply.header('cache-control', 'private, no-store');
+    return result;
+  });
+  function match(
+    actor: Actor & { kind: 'user' },
+    sourceId: string,
+    options: ReturnType<typeof matchBody>,
+    signal: AbortSignal,
+  ) {
+    visibleSource(context, actor, sourceId);
+    const key = JSON.stringify({
+      sourceId,
+      ownerId: actor.userId,
+      ...options,
+      ...(options.providerIds ? { providerIds: [...options.providerIds].sort() } : {}),
+    });
+    const existing = inflight.get(key);
+    if (existing) return existing;
+    const result = executeMatch(actor, sourceId, options, signal).finally(() => {
+      inflight.delete(key);
+    });
+    inflight.set(key, result);
+    return result;
+  }
+  async function executeMatch(
+    actor: Actor & { kind: 'user' },
+    sourceId: string,
+    options: ReturnType<typeof matchBody>,
+    signal: AbortSignal,
+  ) {
+    const source = visibleSource(context, actor, sourceId);
     if (active >= 2)
-      throw new DomainError(
-        'matching-busy',
-        429,
-        'Two matching jobs are already running. Try again shortly.',
-      );
+      throw new DomainError('matching-busy', 429, 'Matching is busy. Try again shortly.');
     active++;
-    const cancelled = new AbortController();
-    const disconnect = () => {
-      if (!reply.raw.writableEnded) cancelled.abort();
-    };
-    reply.raw.once('close', disconnect);
-    const signal = AbortSignal.any([abort.signal, cancelled.signal]);
     try {
       const available = await plugins();
       if (
@@ -137,42 +189,11 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
         companions: [],
         size: source.size,
       };
-      const directory = posix.dirname(source.relativePath);
-      const stem = source.displayName
-        .replace(/\.[^.]+$/, '')
-        .normalize('NFC')
-        .toLowerCase();
-      const files = context.catalog.listSources(source.rootId, 50001);
-      if (files.length > 50000)
-        throw new DomainError(
-          'matching-folder-too-large',
-          413,
-          'This folder exceeds the matching index limit',
-        );
-      const companions = files
-        .filter((file) => {
-          const parent = posix.dirname(file.relativePath);
-          return (
-            file.id !== source.id &&
-            [
-              directory,
-              ...['artwork', 'boxart', 'covers', 'patches', 'metadata', 'cheats'].map((name) =>
-                posix.join(directory, name),
-              ),
-            ].includes(parent) &&
-            ((options.checksum && /\.(bps|ups)$/i.test(file.displayName)) ||
-              file.displayName
-                .replace(/\.[^.]+$/, '')
-                .replace(/(?:[ ._-](?:cover|boxart|front))$/i, '')
-                .replace(
-                  /\s+\((?:Game Genie|Action Replay|Pro Action Replay|GameShark|CodeBreaker)\)$/i,
-                  '',
-                )
-                .normalize('NFC')
-                .toLowerCase() === stem)
-          );
-        })
-        .slice(0, 100);
+      const companions = context.catalog.matchingCompanions(
+        source.rootId,
+        source.relativePath,
+        options.checksum,
+      );
       for (const file of companions) {
         visibleSource(context, actor, file.id);
         const companion: MatchCompanion = { id: file.id, name: file.displayName };
@@ -231,10 +252,22 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
             'Container checksums do not identify the ROM inside. Use filename matching for this entry.',
           );
         const local = await localSource(context, actor, source.id);
-        const bytes = await boundedFile(local.path, 64 * 1024 * 1024);
-        input.md5 = createHash('md5').update(bytes).digest('hex');
-        input.crc32 = crc32Hex(bytes);
-        input.size = bytes.length;
+        const etag = (await sourceMetadata(local.path, source.id)).etag;
+        let fingerprint = context.catalog.matchingFingerprint(source.id, etag);
+        if (!fingerprint) {
+          fingerprint = await boundedFingerprint(local.path, 64 * 1024 * 1024, signal);
+          if ((await sourceMetadata(local.path, source.id)).etag !== etag)
+            throw new DomainError(
+              'matching-source-changed',
+              409,
+              'Source changed. Find matches again before saving.',
+            );
+          context.catalog.saveMatchingFingerprint(source.id, etag, fingerprint);
+        }
+        stamps.set(source.id, etag);
+        input.md5 = fingerprint.md5;
+        input.crc32 = fingerprint.crc32;
+        input.size = fingerprint.size;
       }
       const result = await matchingJob(
         {
@@ -274,7 +307,6 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
         candidates,
         stamps,
       });
-      reply.header('cache-control', 'private, no-store');
       return { sourceId: source.id, requestId, plugins: result.plugins, candidates, problems };
     } catch (error) {
       if (error instanceof DomainError) throw error;
@@ -285,9 +317,8 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
       );
     } finally {
       active--;
-      reply.raw.removeListener('close', disconnect);
     }
-  });
+  }
 
   async function stamp(actor: Actor, id: string): Promise<string> {
     const file = await localSource(context, actor, id);
@@ -332,7 +363,8 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
     sourceId: string,
     actor: Actor,
     _request: FastifyRequest,
-    reply: FastifyReply,
+    reply: FastifyReply | null,
+    jobSignal?: AbortSignal,
   ) {
     if (active >= 2)
       throw new DomainError(
@@ -343,9 +375,9 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
     active++;
     const cancelled = new AbortController();
     const disconnect = () => {
-      if (!reply.raw.writableEnded) cancelled.abort();
+      if (reply && !reply.raw.writableEnded) cancelled.abort();
     };
-    reply.raw.once('close', disconnect);
+    reply?.raw.once('close', disconnect);
     try {
       let bytes: Buffer;
       let fileName: string;
@@ -380,7 +412,13 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
         try {
           const fetched = await matchingJob(
             { operation: artwork ? 'artwork' : 'cheats', artworkUrl: candidate.url },
-            { signal: AbortSignal.any([abort.signal, cancelled.signal]) },
+            {
+              signal: AbortSignal.any([
+                abort.signal,
+                cancelled.signal,
+                ...(jobSignal ? [jobSignal] : []),
+              ]),
+            },
           );
           const encoded = artwork ? fetched.artwork : fetched.file;
           if (!encoded) throw new Error('Missing content');
@@ -418,7 +456,7 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
       return { bytes, contentType, fileName, originKind };
     } finally {
       active--;
-      reply.raw.removeListener('close', disconnect);
+      reply?.raw.removeListener('close', disconnect);
     }
   }
   registerSourceSelections(app, context, { proposal, resource });
@@ -442,4 +480,119 @@ export function registerSourceMatching(app: FastifyInstance, context: ServerCont
       return reply.type(content.contentType).send(content.bytes);
     },
   );
+  return {
+    async autoMatch(actor, sourceId, options, signal) {
+      signal.throwIfAborted();
+      const source = visibleSource(context, actor, sourceId);
+      if (source.availability !== 'local')
+        return {
+          status: 'skipped',
+          saved: 0,
+          suggestions: 0,
+          error: 'Server folder is offline or unavailable.',
+        };
+      const checksum =
+        options.checksum &&
+        source.size <= 64 * 1024 * 1024 &&
+        !source.groupMembers?.length &&
+        !/\.(zip|7z|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.displayName);
+      let result = await match(actor, sourceId, { ...options, checksum }, signal);
+      let saved = context.catalog.sourceMatches(sourceId);
+      let count = 0;
+      let warning: string | null = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        signal.throwIfAborted();
+        const remaining = result.candidates.filter(
+          (candidate) => !saved.matches.some((existing) => existing.kind === candidate.kind),
+        );
+        const systems = new Set(
+          [
+            ...saved.matches,
+            ...remaining.filter((candidate) => candidate.confidence === 'checksum'),
+          ]
+            .map((candidate) => candidate.metadata.systemId)
+            .filter(Boolean),
+        );
+        const candidate =
+          checksum && !result.problems.length && systems.size <= 1
+            ? remaining.find(
+                (candidate) =>
+                  candidate.confidence === 'checksum' &&
+                  remaining.filter(
+                    (other) => other.kind === candidate.kind && other.confidence === 'checksum',
+                  ).length === 1,
+              )
+            : undefined;
+        if (!candidate) break;
+        const proposed = proposal(sourceId, actor.userId, result.requestId, candidate.id);
+        await proposed.validate(actor);
+        if (candidate.metadata.systemId && validateSystemIdentifier(candidate.metadata.systemId))
+          throw new DomainError(
+            'invalid-match',
+            400,
+            'The provider returned an invalid system identifier',
+          );
+        if (candidate.kind === 'rom' && !candidate.metadata.systemId) break;
+        const file = ['artwork', 'patch', 'cheats'].includes(candidate.kind)
+          ? await resource(candidate, sourceId, actor, {} as FastifyRequest, null, signal)
+          : null;
+        signal.throwIfAborted();
+        await proposed.validate(actor);
+        visibleSource(context, actor, sourceId);
+        saved = context.catalog.saveSourceMatch(
+          sourceId,
+          saved.revision,
+          candidate.kind,
+          {
+            id: candidate.id,
+            providerId: candidate.providerId,
+            kind: candidate.kind,
+            title: candidate.title,
+            confidence: candidate.confidence,
+            metadata: candidate.metadata,
+            originKind: file?.originKind ?? null,
+            ...(candidate.fileId ? { originFileId: candidate.fileId } : {}),
+            ...(candidate.url ? { originUrl: candidate.url } : {}),
+            contentAvailable: !!file,
+            contentType: file?.contentType ?? null,
+            fileName: file?.fileName ?? null,
+            updatedAt: new Date().toISOString(),
+          },
+          file?.bytes ?? null,
+          actor.userId,
+        );
+        count++;
+        if (['rom', 'metadata', 'artwork'].includes(candidate.kind)) {
+          const organization = await runAutomaticOrganization(
+            context,
+            actor,
+            sourceId,
+            proposed.pendingLocalKinds.filter(
+              (kind) => !saved.matches.some((match) => match.kind === kind),
+            ),
+          );
+          if (organization?.warning) {
+            warning = organization.warning;
+            break;
+          }
+          if (organization?.status === 'moved')
+            result = await match(actor, sourceId, { ...options, checksum }, signal);
+        }
+      }
+      const remaining = result.candidates.filter(
+        (candidate) => !saved.matches.some((existing) => existing.kind === candidate.kind),
+      );
+      return {
+        status:
+          remaining.length || result.problems.length || warning
+            ? 'review'
+            : saved.matches.length
+              ? 'saved'
+              : 'unmatched',
+        saved: count,
+        suggestions: remaining.length,
+        error: warning ?? (result.problems.length ? 'Some matching providers failed.' : null),
+      };
+    },
+  };
 }
