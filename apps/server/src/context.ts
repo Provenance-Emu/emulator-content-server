@@ -11,6 +11,7 @@ export interface ServerContext {
   playerProfiles: ReadonlyMap<string, PlayerProfileAssets>;
   defaultPlayerProfileId: string | null;
   matchingPluginsDir?: string;
+  matchingTools?: { sevenZip?: string; chdman?: string };
   catalog: CatalogDatabase;
   dataDir: string;
   webdavEnabled: boolean;

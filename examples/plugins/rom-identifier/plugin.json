@@ -1,0 +1,9 @@
+{
+  "id": "example.homebrew.identity",
+  "name": "Homebrew header identifier",
+  "kind": "provider",
+  "version": "1.0.0",
+  "engine": "ecs.plugin/1",
+  "entry": "entry.mjs",
+  "provider": { "capabilities": ["rom"], "network": false }
+}

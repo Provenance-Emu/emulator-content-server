@@ -7,6 +7,7 @@ import { localMatchingProvider, type MatchingProvider, runMatching } from './mat
 import type { MatchingJob, MatchingPluginDescription, MatchingReply } from './matching-host.js';
 import { pluginFile } from './paths.js';
 import { type LoadedPlugin, loadPluginDirectory, type PluginLoad } from './registry.js';
+import { type IdentificationPlugin, identifyRom } from './rom-identification.js';
 
 const modules = new WeakMap<LoadedPlugin, Promise<Record<string, unknown>>>();
 function entry(plugin: LoadedPlugin): Promise<Record<string, unknown>> {
@@ -64,6 +65,40 @@ async function installed(directory?: string): Promise<PluginLoad> {
   }
 }
 export async function executeMatchingJob(job: MatchingJob): Promise<MatchingReply> {
+  if (job.operation === 'identify') {
+    if (!job.identification) throw new Error('Missing identification request');
+    const loaded = await installed(job.directory);
+    const identifiers: IdentificationPlugin[] = [];
+    for (const path of job.identifierModules ?? []) {
+      const loaded = await import(pathToFileURL(path).href);
+      const plugin = loaded.default as IdentificationPlugin;
+      if (
+        !plugin ||
+        typeof plugin.id !== 'string' ||
+        typeof plugin.supports !== 'function' ||
+        typeof plugin.identify !== 'function'
+      )
+        throw new Error('Invalid host identification adapter');
+      identifiers.push(plugin);
+    }
+    for (const plugin of loaded.plugins) {
+      if (
+        plugin.manifest.kind !== 'provider' ||
+        plugin.manifest.provider?.network ||
+        !plugin.manifest.provider?.capabilities.includes('rom')
+      )
+        continue;
+      const module = await entry(plugin);
+      if (typeof module.identify !== 'function') continue;
+      const identify = module.identify as IdentificationPlugin['identify'];
+      identifiers.push({
+        id: plugin.manifest.id,
+        supports: () => true,
+        identify: (request, reader, signal) => identify(request, reader, signal),
+      });
+    }
+    return { plugins: [], facts: await identifyRom(job.identification, undefined, identifiers) };
+  }
   if (job.operation === 'artwork' || job.operation === 'cheats') {
     const url = new URL(job.artworkUrl ?? '');
     if (
@@ -140,7 +175,10 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
         network: manifest.provider.network,
         async search(input, signal) {
           const module = await entry(plugin);
-          if (typeof module.search !== 'function') throw new Error('Missing provider search');
+          if (typeof module.search !== 'function') {
+            if (typeof module.identify === 'function') return [];
+            throw new Error('Missing provider search');
+          }
           return module.search(input, signal);
         },
       });
@@ -218,7 +256,7 @@ function request(raw: unknown): { id: string; job: MatchingJob } {
     !job ||
     typeof job !== 'object' ||
     Array.isArray(job) ||
-    !['list', 'match', 'artwork', 'cheats'].includes(job.operation)
+    !['list', 'match', 'artwork', 'cheats', 'identify'].includes(job.operation)
   )
     throw new Error('Invalid request');
   for (const path of [job.directory, job.catalogCacheDirectory])
@@ -229,6 +267,27 @@ function request(raw: unknown): { id: string; job: MatchingJob } {
     (!job.input || typeof job.input.name !== 'string' || !Array.isArray(job.input.companions))
   )
     throw new Error('Invalid input');
+  if (
+    job.operation === 'identify' &&
+    (!job.identification ||
+      typeof job.identification.path !== 'string' ||
+      !isAbsolute(job.identification.path) ||
+      job.identification.path.length > 4096 ||
+      typeof job.identification.name !== 'string' ||
+      job.identification.name.length > 512 ||
+      !Number.isSafeInteger(job.identification.size) ||
+      job.identification.size < 0)
+  )
+    throw new Error('Invalid identification source');
+  if (
+    job.identifierModules !== undefined &&
+    (!Array.isArray(job.identifierModules) ||
+      job.identifierModules.length > 8 ||
+      job.identifierModules.some(
+        (path) => typeof path !== 'string' || path.length > 4096 || !isAbsolute(path),
+      ))
+  )
+    throw new Error('Invalid identification adapters');
   return { id: envelope.id, job };
 }
 if (process.send) {

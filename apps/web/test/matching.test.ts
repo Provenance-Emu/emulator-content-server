@@ -397,3 +397,52 @@ for (const refreshFails of [false, true])
       assert.equal(writes, 1);
     } else assert.equal(get(controller).result?.requestId, 'request-2');
   });
+
+test('saved back-cover preview and removal address their role while preserving the front cover', async (t) => {
+  const base = {
+    providerId: 'org.ecs.local',
+    kind: 'artwork',
+    title: 'Generated',
+    confidence: 'local',
+    metadata: {},
+    contentAvailable: true,
+    contentType: 'image/png',
+    fileName: 'generated.png',
+    updatedAt: '',
+  };
+  let matches = [
+    { ...base, id: 'front', artworkRole: 'front' },
+    { ...base, id: 'back', artworkRole: 'back' },
+  ];
+  let revision = 2;
+  const requested: string[] = [];
+  const f = transport((url, init) => {
+    if (url.pathname.endsWith('/content')) {
+      requested.push(url.searchParams.get('artworkRole') ?? 'front');
+      return new Response(new Uint8Array([137, 80, 78, 71]), {
+        headers: { 'content-type': 'image/png' },
+      });
+    }
+    if (init?.method === 'DELETE') {
+      assert.equal(url.searchParams.get('artworkRole'), 'back');
+      matches = matches.filter((row) => row.artworkRole !== 'back');
+      revision++;
+    }
+    return Response.json({ sourceId: 'source', revision, matches });
+  });
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.load();
+  assert.ok(get(controller).savedArtwork);
+  await controller.previewSaved('back');
+  assert.ok(get(controller).savedArtworkByRole.back);
+  assert.deepEqual(requested, ['front', 'back']);
+  assert.equal(await controller.remove('artwork:back'), true);
+  assert.deepEqual(
+    get(controller).saved?.matches.map((row) => row.id),
+    ['front'],
+  );
+  assert.ok(get(controller).savedArtwork);
+  assert.equal(get(controller).savedArtworkByRole.back, undefined);
+});

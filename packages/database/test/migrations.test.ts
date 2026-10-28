@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { DomainError } from '@ecs/domain';
 import { CatalogDatabase, MIGRATIONS, pendingMigrations, SCHEMA_VERSION } from '../src/index.js';
+import { companionDirectory, companionExtension, companionStem } from '../src/source-companions.js';
 
 function unsupported(error: unknown): boolean {
   return error instanceof DomainError && error.code === 'migration';
@@ -270,6 +271,65 @@ test('version 12 upgrades identity and saved snapshots before opening twice', as
         );
         assert.equal(upgraded.inspectionMoveCandidates('root')[0]?.filesystemIdentity, '1:2:3');
         assert.equal(upgraded.getSourceOrganizationPolicy('root'), null);
+        assert.equal(upgraded.integrity(), 'ok');
+      } finally {
+        upgraded.close();
+      }
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('version 19 preserves selection bytes, backfills artwork roles, and opens repeatedly', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-v19-'));
+  const filename = join(dir, 'catalog.sqlite');
+  try {
+    const prior = new DatabaseSync(filename);
+    prior.function('ecs_companion_parent', { deterministic: true }, (value) =>
+      companionDirectory(String(value ?? '')),
+    );
+    prior.function('ecs_companion_stem', { deterministic: true }, (value) =>
+      companionStem(String(value ?? '')),
+    );
+    prior.function('ecs_companion_extension', { deterministic: true }, (value) =>
+      companionExtension(String(value ?? '')),
+    );
+    for (const migration of MIGRATIONS.filter((entry) => entry.version <= 18)) {
+      prior.exec(migration.sql);
+      prior.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(migration.version, 'now');
+    }
+    const savedJson = '{ "id" : "legacy-art", "kind" : "artwork" }';
+    const savedBytes = Buffer.from([0, 1, 127, 255]);
+    prior.exec(`INSERT INTO users VALUES ('owner','owner','fixture',1,'now');
+      INSERT INTO libraries VALUES ('library','Library','owner',1,'now',NULL);
+      INSERT INTO content_roots(id,path,label,library_id,created_at) VALUES ('root','/never-probed','Shelf','library','now');
+      INSERT INTO source_files(id,root_id,relative_path,display_name,size,blocks,kind,availability,scanned_at)
+        VALUES ('source','root','generated','Generated',1,1,'rom','local','now');`);
+    prior.prepare('INSERT INTO source_match_state VALUES (?,?)').run('source', 4);
+    prior
+      .prepare(
+        'INSERT INTO source_match_selections(source_id,kind,selection_json,content) VALUES(?,?,?,?)',
+      )
+      .run('source', 'artwork', savedJson, savedBytes);
+    prior.close();
+    for (let open = 0; open < 2; open++) {
+      const upgraded = new CatalogDatabase(filename);
+      try {
+        assert.equal(upgraded.sourceMatches('source').revision, 4);
+        assert.equal(upgraded.sourceMatches('source').matches[0]?.artworkRole, 'front');
+        assert.deepEqual(
+          upgraded.sourceMatchContent('source', 'artwork'),
+          new Uint8Array(savedBytes),
+        );
+        const raw = new DatabaseSync(filename, { readOnly: true });
+        assert.equal(
+          raw
+            .prepare('SELECT selection_json FROM source_match_selections WHERE source_id=?')
+            .get('source')?.selection_json,
+          savedJson,
+        );
+        raw.close();
         assert.equal(upgraded.integrity(), 'ok');
       } finally {
         upgraded.close();

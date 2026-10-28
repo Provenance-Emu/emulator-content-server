@@ -168,16 +168,23 @@ test('review saves categories before acknowledging the shared result and updates
     .inputValue();
   await panel.getByRole('button', { name: 'Review', exact: true }).click();
   let failSave = true;
-  await page.route('**/api/v1/sources/*/matches/selections', async (route) => {
-    if (route.request().method() === 'PUT' && failSave) {
-      failSave = false;
-      return route.fulfill({
-        status: 503,
-        json: { type: 'urn:ecs:problem:unavailable', title: 'Generated failed save', status: 503 },
-      });
-    }
-    return route.continue();
-  });
+  await page.route(
+    (url) => /^\/api\/v1\/sources\/[^/]+\/matches\/selections$/.test(url.pathname),
+    async (route) => {
+      if (route.request().method() === 'PUT' && failSave) {
+        failSave = false;
+        return route.fulfill({
+          status: 503,
+          json: {
+            type: 'urn:ecs:problem:unavailable',
+            title: 'Generated failed save',
+            status: 503,
+          },
+        });
+      }
+      return route.continue();
+    },
+  );
   await panel.getByRole('button', { name: 'Save and next category', exact: true }).click();
   await expect(panel.getByRole('alert')).toContainText('Generated failed save');
   expect((await fixture.client.libraryJob(id)).job.review).toBe(1);

@@ -3,10 +3,13 @@ import { join } from 'node:path';
 import { type Actor, DomainError } from '@ecs/domain';
 import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
+  automaticEvidence,
+  hasIdentityConflict,
   type MatchCandidate,
   type MatchCompanion,
   type MatchingInput,
   patchFingerprint,
+  reconcileCandidates,
 } from '@ecs/plugins/matching';
 import {
   closeMatchingWorkers,
@@ -17,12 +20,8 @@ import { validateSystemIdentifier } from '@ecs/protocol';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
-import {
-  boundedFile,
-  boundedFingerprint,
-  boundedZipFingerprint,
-  imageType,
-} from './matching-files.js';
+import { boundedFile, imageType } from './matching-files.js';
+import { identifySource } from './rom-identification.js';
 import { localSource, visibleSource } from './source-groups.js';
 import { sourceMetadata } from './source-metadata.js';
 import { runAutomaticOrganization } from './source-organization.js';
@@ -89,7 +88,7 @@ export function registerSourceMatching(
     expires: number;
     candidates: (MatchCandidate & { providerId: string })[];
     stamps: Map<string, string>;
-    checksummed: boolean;
+    input: MatchingInput;
   };
   const jobs = new Map<string, Job>();
   const inflight = new Map<string, Promise<Awaited<ReturnType<typeof executeMatch>>>>();
@@ -247,42 +246,27 @@ export function registerSourceMatching(
           /* An invalid or unavailable sidecar does not stop the game's other matches. */
         }
       }
-      let checksummed = false;
-      if (options.checksum) {
-        if (
-          source.groupMembers?.length ||
-          /\.(7z|rar|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.displayName)
-        )
-          throw new DomainError(
-            'matching-container-checksum',
-            400,
-            'Container checksums do not identify the ROM inside. Use filename matching for this entry.',
-          );
+      if (options.checksum && !source.groupError && (source.groupMembers?.length ?? 1) <= 1) {
         const local = await localSource(context, actor, source.id);
-        const etag = (await sourceMetadata(local.path, source.id)).etag;
-        const zip = /\.zip$/i.test(source.displayName);
-        const cacheStamp = zip ? `zip-v1:${etag}` : etag;
-        let fingerprint = context.catalog.matchingFingerprint(source.id, cacheStamp);
-        if (!fingerprint) {
-          fingerprint = zip
-            ? await boundedZipFingerprint(local.path, signal)
-            : await boundedFingerprint(local.path, 64 * 1024 * 1024, signal);
-          if ((await sourceMetadata(local.path, source.id)).etag !== etag)
-            throw new DomainError(
-              'matching-source-changed',
-              409,
-              'Source changed. Find matches again before saving.',
-            );
-          signal.throwIfAborted();
-          if (fingerprint)
-            context.catalog.saveMatchingFingerprint(source.id, cacheStamp, fingerprint);
-        }
-        stamps.set(source.id, etag);
-        if (fingerprint) {
-          input.md5 = fingerprint.md5;
-          input.crc32 = fingerprint.crc32;
-          input.size = fingerprint.size;
-          checksummed = true;
+        input.facts = await identifySource(context, source, local.path, signal);
+        const raw =
+          input.facts.hashes.find(
+            (hash) =>
+              hash.verified &&
+              ['raw', 'zip-member'].includes(hash.representation) &&
+              hash.algorithm === 'md5',
+          ) ?? input.facts.hashes.find((hash) => hash.verified && hash.algorithm === 'md5');
+        if (raw) {
+          input.md5 = raw.value;
+          input.size = raw.size;
+          const crc = input.facts.hashes.find(
+            (hash) =>
+              hash.verified &&
+              hash.algorithm === 'crc32' &&
+              hash.representation === raw.representation &&
+              hash.size === raw.size,
+          );
+          if (crc) input.crc32 = crc.value;
         }
       }
       const result = await matchingJob(
@@ -306,9 +290,10 @@ export function registerSourceMatching(
         ...(result.result?.problems ?? []),
         ...Array.from(badProviders, (providerId) => ({ providerId, code: 'provider-failed' })),
       ];
-      const candidates = (result.result?.candidates ?? [])
-        .filter((c) => !badProviders.has(c.providerId))
-        .map((candidate) => ({ ...candidate, id: randomUUID() }));
+      const candidates = reconcileCandidates(
+        input,
+        (result.result?.candidates ?? []).filter((c) => !badProviders.has(c.providerId)),
+      ).map((candidate) => ({ ...candidate, id: randomUUID() }));
       for (const [id, job] of jobs) if (job.expires < Date.now()) jobs.delete(id);
       while (jobs.size >= 128) {
         const oldest = jobs.keys().next().value;
@@ -322,7 +307,7 @@ export function registerSourceMatching(
         expires: Date.now() + 15 * 60000,
         candidates,
         stamps,
-        checksummed,
+        input,
       });
       return { sourceId: source.id, requestId, plugins: result.plugins, candidates, problems };
     } catch (error) {
@@ -405,7 +390,9 @@ export function registerSourceMatching(
           throw new DomainError('not-found', 404, 'Selected companion unavailable');
         bytes = await boundedFile(
           file.path,
-          candidate.kind === 'artwork' ? 2 * 1024 * 1024 : 256 * 1024,
+          candidate.kind === 'artwork'
+            ? (candidate.metadata.artworkRole === 'manual' ? 8 : 2) * 1024 * 1024
+            : 256 * 1024,
         );
         fileName = file.source.displayName;
         originKind = file.source.kind;
@@ -453,12 +440,17 @@ export function registerSourceMatching(
       }
       let contentType = 'application/octet-stream';
       if (candidate.kind === 'artwork') {
-        const type = imageType(bytes);
+        const type =
+          imageType(bytes) ??
+          (candidate.metadata.artworkRole === 'manual' &&
+          bytes.subarray(0, 5).toString('ascii') === '%PDF-'
+            ? 'application/pdf'
+            : null);
         if (!type)
           throw new DomainError(
             'unsupported-artwork',
             415,
-            'Artwork is not a supported raster image',
+            'Artwork must be a supported raster image or a PDF manual',
           );
         contentType = type;
       } else if (candidate.kind === 'cheats') {
@@ -494,6 +486,8 @@ export function registerSourceMatching(
       const content = await resource(selected.candidate, params.sourceId, actor, request, reply);
       reply.header('cache-control', 'private, no-store');
       reply.header('x-content-type-options', 'nosniff');
+      if (content.contentType === 'application/pdf')
+        throw new DomainError('unsupported-artwork', 415, 'Save this manual to download its PDF');
       return reply.type(content.contentType).send(content.bytes);
     },
   );
@@ -509,36 +503,37 @@ export function registerSourceMatching(
           error: 'Server folder is offline or unavailable.',
         };
       const checksum =
-        options.checksum &&
-        source.size <= 64 * 1024 * 1024 &&
-        !source.groupMembers?.length &&
-        !/\.(7z|rar|chd|cdi|iso|cue|m3u|gdi|ccd)$/i.test(source.displayName);
+        options.checksum && !source.groupError && (source.groupMembers?.length ?? 1) <= 1;
       let result = await match(actor, sourceId, { ...options, checksum }, signal);
       let saved = context.catalog.sourceMatches(sourceId);
       let count = 0;
       let warning: string | null = null;
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 11; attempt++) {
         signal.throwIfAborted();
         const remaining = result.candidates.filter(
-          (candidate) => !saved.matches.some((existing) => existing.kind === candidate.kind),
+          (candidate) =>
+            !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
         );
+        const pendingInput = jobs.get(result.requestId)?.input;
+        const eligible = (candidate: MatchCandidate) =>
+          pendingInput
+            ? automaticEvidence(pendingInput, candidate) &&
+              !hasIdentityConflict(pendingInput, result.candidates, candidate)
+            : false;
         const systems = new Set(
-          [
-            ...saved.matches,
-            ...remaining.filter((candidate) => candidate.confidence === 'checksum'),
-          ]
+          [...saved.matches, ...remaining.filter(eligible)]
             .map((candidate) => candidate.metadata.systemId)
             .filter(Boolean),
         );
         const candidate =
-          jobs.get(result.requestId)?.checksummed === true &&
-          !result.problems.length &&
-          systems.size <= 1
+          pendingInput && !result.problems.length && systems.size <= 1
             ? remaining.find(
                 (candidate) =>
-                  candidate.confidence === 'checksum' &&
+                  eligible(candidate) &&
+                  (candidate.kind !== 'artwork' ||
+                    (candidate.metadata.artworkRole ?? 'front') === 'front') &&
                   remaining.filter(
-                    (other) => other.kind === candidate.kind && other.confidence === 'checksum',
+                    (other) => matchSlot(other) === matchSlot(candidate) && eligible(other),
                   ).length === 1,
               )
             : undefined;
@@ -599,7 +594,8 @@ export function registerSourceMatching(
         }
       }
       const remaining = result.candidates.filter(
-        (candidate) => !saved.matches.some((existing) => existing.kind === candidate.kind),
+        (candidate) =>
+          !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
       );
       return {
         status:
@@ -614,4 +610,14 @@ export function registerSourceMatching(
       };
     },
   };
+}
+
+function matchSlot(candidate: {
+  kind: string;
+  metadata: Record<string, string>;
+  artworkRole?: string;
+}) {
+  return candidate.kind === 'artwork'
+    ? `artwork:${candidate.artworkRole ?? candidate.metadata.artworkRole ?? 'front'}`
+    : candidate.kind;
 }

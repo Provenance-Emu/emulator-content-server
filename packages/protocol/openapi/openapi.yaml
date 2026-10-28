@@ -772,6 +772,8 @@ paths:
   /api/v1/sources/{sourceId}/matches/selections:
     get:
       operationId: sourceMatchSelections
+      parameters:
+        - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false }, description: Include all artwork roles; older clients should keep the default front-only result. }
       responses:
         '200':
           description: Saved matches visible to the source reader. Selected metadata becomes game metadata; binary companions retain their source-kind access restrictions.
@@ -780,6 +782,8 @@ paths:
               schema: { $ref: '#/components/schemas/SourceMatchSelections' }
     put:
       operationId: saveSourceMatch
+      parameters:
+        - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false }, description: Include all artwork roles in the response; older clients should keep the default front-only result. }
       requestBody:
         required: true
         content:
@@ -802,6 +806,8 @@ paths:
           required: true
           schema: { type: string }
           description: Current saved matching revision as a quoted rev-N ETag.
+        - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, other] }, description: Artwork role to remove; defaults to front. }
+        - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false }, description: Include all artwork roles in the response; older clients should keep the default front-only result. }
       responses:
         '200':
           description: Owner removed a selection; original files remain unchanged.
@@ -811,6 +817,8 @@ paths:
   /api/v1/sources/{sourceId}/matches/selections/{kind}/content:
     get:
       operationId: selectedMatchContent
+      parameters:
+        - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, other] }, description: Artwork role content to retrieve; defaults to front. }
       responses:
         '200':
           description: Authorized immutable artwork, patch, or disabled RetroArch cheat file snapshot.
@@ -1458,6 +1466,7 @@ components:
         id: { type: string }
         providerId: { type: string }
         kind: { type: string, enum: [rom, metadata, artwork, patch, cheats] }
+        artworkRole: { type: string, enum: [front, back, disc, manual, title, screenshot, other] }
         title: { type: string }
         confidence: { type: string, enum: [checksum, local, name] }
         metadata:
@@ -1478,7 +1487,7 @@ components:
         revision: { type: integer, minimum: 0 }
         matches:
           type: array
-          maxItems: 5
+          maxItems: 11
           items: { $ref: '#/components/schemas/SavedSourceMatch' }
     SourceMatchSelectionDraft:
       type: object

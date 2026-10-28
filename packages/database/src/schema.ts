@@ -399,6 +399,33 @@ export const MIGRATIONS: readonly Migration[] = [
       crc32 TEXT NOT NULL CHECK(length(crc32)=8), size INTEGER NOT NULL CHECK(size>=0)
     );`,
   },
+  {
+    version: 19,
+    sql: `
+    ALTER TABLE source_match_selections RENAME TO source_match_selections_v18;
+    CREATE TABLE source_match_selections (
+      source_id TEXT NOT NULL REFERENCES source_files(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK(kind IN ('rom','metadata','artwork','patch','cheats')),
+      artwork_role TEXT NOT NULL DEFAULT '' CHECK(
+        (kind='artwork' AND artwork_role IN ('front','back','disc','manual','title','screenshot','other')) OR
+        (kind<>'artwork' AND artwork_role='')
+      ),
+      selection_json TEXT NOT NULL CHECK(json_valid(selection_json)),
+      content BLOB CHECK(content IS NULL OR length(content) <= 8388608),
+      PRIMARY KEY(source_id,kind,artwork_role)
+    );
+    INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
+      SELECT source_id,kind,CASE WHEN kind='artwork' THEN 'front' ELSE '' END,selection_json,content
+      FROM source_match_selections_v18;
+    DROP TABLE source_match_selections_v18;
+    CREATE TABLE source_identifications (
+      source_id TEXT PRIMARY KEY REFERENCES source_files(id) ON DELETE CASCADE,
+      stamp TEXT NOT NULL,
+      facts_json TEXT NOT NULL CHECK(json_valid(facts_json) AND length(CAST(facts_json AS BLOB)) <= 262144)
+    );
+    UPDATE source_files SET match_stem=ecs_companion_stem(display_name);
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

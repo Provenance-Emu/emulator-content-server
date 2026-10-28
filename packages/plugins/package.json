@@ -18,6 +18,14 @@
     "./cheats": {
       "types": "./dist/src/cheats.d.ts",
       "default": "./dist/src/cheats.js"
+    },
+    "./rom-facts": {
+      "types": "./dist/src/rom-facts.d.ts",
+      "default": "./dist/src/rom-facts.js"
+    },
+    "./rom-identification": {
+      "types": "./dist/src/rom-identification.d.ts",
+      "default": "./dist/src/rom-identification.js"
     }
   }
 }

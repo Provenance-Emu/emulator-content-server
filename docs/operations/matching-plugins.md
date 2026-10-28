@@ -46,11 +46,11 @@ BPS and UPS files supply base size and CRC only after the patch's own CRC passes
 IPS has no embedded base checksum and remains an unverified filename association.
 A user can explicitly hash a local, single ROM up to 64 MiB; matching base CRC and
 size upgrades the patch association. A different base CRC/size rejects the patch. A matching checksum can associate a differently named patch in the same folder or its `patches` subfolder.
-No patch is ever applied by matching. Eligible ZIPs verify the single inner ROM without extracting it. Ambiguous/unsupported archives, 7z and disc containers retain filename suggestions; their container hashes never stand in for inner-ROM identities.
+No patch is ever applied by matching. Eligible ZIPs verify the single inner ROM without extracting it. Unsupported or ambiguous containers retain filename suggestions; their container hashes never stand in for inner-ROM identities. Identification plugins can supply verified hashes for an explicitly named extracted or normalized representation. The matching layer consumes those facts without reading the ROM itself.
 
 The built-in **Game catalogs and artwork** provider keeps its stable `org.ecs.libretro` ID. It reads public No-Intro/Redump catalogs from the [Libretro database](https://github.com/libretro/libretro-database), supplements Jaguar with TOSEC, and supplements Atomiswave with Libretro’s arcade DAT. Naomi, Naomi2 and Atomiswave set IDs and GD-ROM serial aliases come from the public [Flycast game catalog](https://github.com/flyinghead/flycast/blob/master/core/hw/naomi/naomi_roms.cpp). Only scalar identity facts are parsed; upstream C++ is never evaluated. ROM bytes, local paths and server credentials are not sent to those hosts.
 
-Filename suggestions recognize legacy years, language/scene tags, punctuation, leading/trailing articles and alternate localized names. Explicit conflicting regions, revisions and prototype dates remain separate. Equivalent rows with the same displayed title collapse to one suggestion, with checksum evidence preferred. Short arcade set IDs (including duplicate-copy suffixes such as `beachspi-2.zip`) and documented disc serials remain **name** suggestions. Unknown source systems can receive explicit arcade suggestions; ambiguity never silently chooses a board. A name suggestion never becomes a checksum match or an automatic bulk save.
+Filename suggestions recognize legacy years, language/scene tags, punctuation, leading/trailing articles and alternate localized names. Explicit conflicting regions, revisions and prototype dates remain separate. Compatible rows for the same game and release reconcile into one suggestion, with verified evidence preferred and complete original candidates retained in bounded `matchProvenance` metadata. Conflicting same-size hashes, serials, explicit regions/revisions/prototypes, or incompatible metadata remain separate. If complete provenance cannot fit the response bounds, the original suggestions stay separate. Short arcade set IDs (including duplicate-copy suffixes such as `beachspi-2.zip`) and documented disc serials remain **name** suggestions. Unknown source systems can receive explicit arcade suggestions; ambiguity never silently chooses a board. A name suggestion never becomes a checksum match or an automatic bulk save.
 
 Artwork is looked up independently of metadata in complete public [Libretro thumbnail](https://github.com/libretro-thumbnails/libretro-thumbnails) Git trees, using the repository’s correct branch and a pinned tree revision. Only listed PNG files within size bounds are offered; tiny placeholders are skipped. Box art is preferred, with title screens/screenshots available where covers are missing. Jaguar CD uses the shared Jaguar artwork collection. Preview/save still fetches and validates the selected image through the authenticated server. This avoids guessed nonexistent URLs; a listed file can still be removed or invalid when fetched. Partial upstream failures preserve healthy results and show a provider failure for retry.
 
@@ -104,7 +104,7 @@ A provider's `plugin.json`:
 ```
 
 Its entry exports `{ search(input, signal) }`. The input contains a basename,
-system identifier (or null), optional size/MD5/CRC, an explicit `online` boolean,
+system identifier (or null), optional size/MD5/SHA1/CRC, optional bounded `RomFacts`, an explicit `online` boolean,
 and bounded companion facts. It has no data-directory path or server token.
 Return up to 100 candidates with `id`, `kind`, `title`, `confidence` (`checksum`,
 `local`, `name`), and string-valued `metadata`. A candidate may reference a known
@@ -127,6 +127,68 @@ the request cancels the worker. Preview requests expire in fifteen minutes.
 operator code with that OS user's filesystem/network permissions. A manifest's
 network declaration controls normal invocation, not a hostile module's syscalls.
 Do not put secrets in manifests. Provider-specific credential configuration remains follow-up work.
+
+
+## Evidence and artwork roles
+
+`@ecs/plugins/matching` exports `reconcileCandidates(input, candidates)`,
+`automaticEvidence(input, candidate)`, and `classifyArtwork(name, sourceType?)`.
+The server must retain the private input facts and recheck automatic eligibility;
+a provider's `confidence`, `hashVerified`, or other marker is never authority.
+`checksum` describes bytes actually hashed in one explicit representation. A
+byte-read serial can corroborate metadata and one exact canonical front cover
+while retaining `name` confidence. Multiple distinct verified serials or verified
+board systems keep all candidates for review; normalized punctuation aliases do
+not create a conflict. A filename/set alias or declared container
+header hash stays review evidence. No image checksum is compared with ROM bytes.
+
+DAT records retain partial MD5/SHA1/CRC values, optional sizes, serial aliases,
+and disk entries. Candidate string metadata includes available `md5`, `sha1`,
+`crc32`, `hashSize`, `hashRepresentation`, `hashMedia`, `serials`/`setIds` (JSON
+arrays), and `matchEvidence`. Same-representation checksum contradictions cannot
+be hidden by a weaker matching checksum or serial. Distinct tracks may share a
+game identity, but their original per-file evidence remains in provenance.
+CHD disk catalog SHA1 is matched only to `chd-combined-sha1`, without comparing the
+container or logical size to a missing disk size. The header is a declaration,
+not verification: MAME itself compares disk entries against
+[`chd_file::sha1()`](https://github.com/mamedev/mame/blob/master/src/emu/romload.cpp),
+while [the CHD header](https://github.com/mamedev/mame/blob/master/src/lib/util/chd.h)
+distinguishes combined and raw data SHA1. Redump track hashes are not assumed to
+be CHD header hashes. Dreamcast serial fields come from the
+[official Libretro Redump DAT](https://github.com/libretro/libretro-database/blob/master/metadat/redump/Sega%20-%20Dreamcast.dat).
+Flycast set/GD-ROM aliases carry no invented ZIP checksum. A canonical arcade
+cover may include a serial suffix, such as `Game (GDS-0001)`, only when that exact
+normalized ID is both catalog-declared and verified from the selected content.
+Unmatched suffixes and duplicate canonical cover aliases remain reviewable.
+
+Artwork keeps the `artwork` capability and carries `metadata.artworkRole`:
+`front`, `back`, `disc`, `manual`, `title`, `screenshot`, or `other`.
+`classifyArtwork` returns `{ role, baseTitle, explicit }`, recognizes terminal
+labels such as `[back]`, `CD label`, and `manual`, and recognized directories or
+source tags. Plain images retain the existing front-cover convention.
+`Named_Boxarts`, `Named_Titles`, and `Named_Snaps` retain front/title/screenshot
+roles. Remote lookup offers only listed files from those existing upstream
+indexes; it does not fabricate backs, disc labels or manuals that are absent.
+Local explicitly labeled manuals can be PDFs (`imageKind: "pdf"`); other local
+images use `imageKind: "image"`. Back/manual/disc assets never automatically
+replace the primary front cover. Independent roles are independent selections,
+not conflicting covers.
+
+Patch candidates may carry `patchType: "translation" | "rom-hack" | "patch"`
+from explicit filename tags. BPS/UPS base CRC and size can match a verified
+normalized/extracted ROM representation, never an unverified archive declaration.
+A future translation/hack provider should publish the expected base hash, size,
+representation and release provenance plus an immutable asset URL/digest. These
+remain ordinary matching providers in the isolated plugin process; discovery is
+not permission to apply a patch.
+
+A consolidated public catalog can be produced offline from pinned, attributed
+source datasets and exposed through this same provider contract. A useful bundle
+must retain source revisions/licenses, per-representation hashes, exact release
+and serial aliases, artwork roles and immutable asset references. Publishing
+that bundle and redistributing image/manual assets require separate source and
+license review; the current runtime neither scrapes arbitrary artwork sites nor
+claims missing catalog coverage.
 
 ## Persistence and access
 

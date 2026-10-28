@@ -397,8 +397,8 @@ test('concurrent matching lookups share one proposal and unchanged source checks
     assert.ok(source);
     let hits = 0;
     let misses = 0;
-    const read = f.catalog.matchingFingerprint.bind(f.catalog);
-    f.catalog.matchingFingerprint = (id, stamp) => {
+    const read = f.catalog.matchingIdentification.bind(f.catalog);
+    f.catalog.matchingIdentification = (id, stamp) => {
       const result = read(id, stamp);
       if (result) hits++;
       else misses++;

@@ -6,6 +6,7 @@ import {
   type SourceMatchSelections,
 } from '@ecs/client';
 import { type Readable, writable } from 'svelte/store';
+import { matchSlot, roleOf } from './matching-slots.js';
 import { explain } from './problems.js';
 export interface MatchingState {
   result: SourceMatches | null;
@@ -16,6 +17,7 @@ export interface MatchingState {
   previewing: string | null;
   saved: SourceMatchSelections | null;
   savedArtwork: string | null;
+  savedArtworkByRole: Record<string, string>;
   savedLoading: boolean;
   savedLoadFailed: boolean;
   saving: string | null;
@@ -26,6 +28,7 @@ export interface MatchingController extends Readable<MatchingState> {
   preview(id: string): Promise<void>;
   save(id: string): Promise<boolean>;
   remove(kind: string): Promise<boolean>;
+  previewSaved(role: string): Promise<void>;
   clear(): void;
   invalidate(): void;
   dispose(): void;
@@ -40,6 +43,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     previewing: null,
     saved: null,
     savedArtwork: null,
+    savedArtworkByRole: {},
     savedLoading: false,
     savedLoadFailed: false,
     saving: null,
@@ -61,8 +65,9 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     update({ result: null, artwork: {}, previewing: null, failure: null });
   }
   function clearSaved() {
-    if (current.savedArtwork) URL.revokeObjectURL(current.savedArtwork);
-    update({ saved: null, savedArtwork: null });
+    for (const url of new Set([current.savedArtwork, ...Object.values(current.savedArtworkByRole)]))
+      if (url) URL.revokeObjectURL(url);
+    update({ saved: null, savedArtwork: null, savedArtworkByRole: {} });
   }
   function invalidate() {
     if (disposed || denied) return;
@@ -92,9 +97,25 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
   }
   async function showSaved(saved: SourceMatchSelections, run: number) {
     if (!live(run)) return;
-    const oldId = current.saved?.matches.find((m) => m.kind === 'artwork')?.id;
-    update({ saved });
-    const art = saved.matches.find((m) => m.kind === 'artwork' && m.contentAvailable);
+    const oldId = current.saved?.matches.find(
+      (m) => m.kind === 'artwork' && roleOf(m) === 'front',
+    )?.id;
+    const previews = { ...current.savedArtworkByRole };
+    for (const role of Object.keys(previews)) {
+      const before = current.saved?.matches.find(
+        (m) => m.kind === 'artwork' && roleOf(m) === role,
+      )?.id;
+      const next = saved.matches.find((m) => m.kind === 'artwork' && roleOf(m) === role)?.id;
+      if (before !== next) {
+        const url = previews[role];
+        if (url) URL.revokeObjectURL(url);
+        delete previews[role];
+      }
+    }
+    update({ saved, savedArtworkByRole: previews });
+    const art = saved.matches.find(
+      (m) => m.kind === 'artwork' && roleOf(m) === 'front' && m.contentAvailable,
+    );
     if (!art) {
       if (current.savedArtwork) URL.revokeObjectURL(current.savedArtwork);
       update({ savedArtwork: null });
@@ -151,7 +172,9 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     const result = current.result;
     if (
       remove
-        ? !current.saved.matches.some((m) => m.kind === id)
+        ? !current.saved.matches.some(
+            (m) => matchSlot(m) === id || (id === 'artwork' && matchSlot(m) === 'artwork:front'),
+          )
         : !result?.candidates.some((m) => m.id === id)
     )
       return false;
@@ -160,7 +183,13 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     update({ saving: id, failure: null });
     try {
       const saved = remove
-        ? await client.removeSourceMatch(sourceId, id, revision, lifetime.signal)
+        ? await client.removeSourceMatch(
+            sourceId,
+            id.split(':')[0] ?? id,
+            revision,
+            lifetime.signal,
+            id.startsWith('artwork:') ? id.slice(8) : undefined,
+          )
         : await client.saveSourceMatch(
             sourceId,
             result?.requestId ?? '',
@@ -186,7 +215,11 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
           if (
             uncertain &&
             (remove
-              ? !saved.matches.some((match) => match.kind === id)
+              ? !saved.matches.some(
+                  (match) =>
+                    matchSlot(match) === id ||
+                    (id === 'artwork' && matchSlot(match) === 'artwork:front'),
+                )
               : saved.matches.some((match) => match.id === id))
           ) {
             if (!remove) await afterOrganization(saved, run, true);
@@ -261,6 +294,30 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
         if (live(run)) failure(error);
       } finally {
         if (live(run)) update({ previewing: null });
+      }
+    },
+    async previewSaved(role) {
+      if (disposed || denied || current.savedArtworkByRole[role]) return;
+      const selected = current.saved?.matches.find(
+        (match) =>
+          match.kind === 'artwork' &&
+          roleOf(match) === role &&
+          match.contentAvailable &&
+          match.contentType?.startsWith('image/'),
+      );
+      if (!selected) return;
+      const run = epoch;
+      try {
+        const blob = await client.selectedMatchContent(sourceId, 'artwork', lifetime.signal, role);
+        if (live(run) && current.saved?.matches.some((match) => match.id === selected.id))
+          update({
+            savedArtworkByRole: {
+              ...current.savedArtworkByRole,
+              [role]: URL.createObjectURL(blob),
+            },
+          });
+      } catch (error) {
+        if (live(run)) failure(error);
       }
     },
     save(id) {

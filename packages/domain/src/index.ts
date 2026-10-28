@@ -32,6 +32,14 @@ export interface ContentRootRecord {
 }
 
 export type SourceAvailability = 'local' | 'evicted' | 'offline';
+export type SourceArtworkRole =
+  | 'front'
+  | 'back'
+  | 'disc'
+  | 'manual'
+  | 'title'
+  | 'screenshot'
+  | 'other';
 
 export interface SourceFileRecord {
   id: string;
@@ -55,6 +63,7 @@ export interface SourceMatchRecord {
   id: string;
   providerId: string;
   kind: 'rom' | 'metadata' | 'artwork' | 'patch' | 'cheats';
+  artworkRole?: SourceArtworkRole;
   title: string;
   confidence: 'checksum' | 'local' | 'name';
   metadata: Record<string, string>;

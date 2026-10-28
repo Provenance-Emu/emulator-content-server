@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
-import type { SourceMatchRecord, SourceMatchState } from '@ecs/domain';
+import type { SourceArtworkRole, SourceMatchRecord, SourceMatchState } from '@ecs/domain';
 import {
   type Actor,
   type AssetKind,
@@ -34,6 +34,8 @@ import {
   companionStem,
 } from './source-companions.js';
 import {
+  matchingIdentification,
+  saveMatchingIdentification,
   sourceMatchColumns,
   sourceMatchContent,
   sourceMatches,
@@ -1423,8 +1425,8 @@ export class CatalogDatabase {
           SELECT ?,revision FROM source_match_state WHERE source_id=?`)
           .run(id, source.id);
         this.db
-          .prepare(`INSERT INTO source_match_selections(source_id,kind,selection_json,content)
-          SELECT ?,kind,selection_json,content FROM source_match_selections WHERE source_id=?`)
+          .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
+          SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
           .run(id, source.id);
         if (input.organizationCopy)
           this.setSourceOrganizationCopy(input.organizationCopy.sourceRootId, source.id, {
@@ -1621,23 +1623,23 @@ export class CatalogDatabase {
       const differs =
         this.one<{ n: number }>(
           `SELECT COUNT(*) AS n FROM (
-        SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?
-        EXCEPT SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?)`,
+        SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?
+        EXCEPT SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?)`,
           originalId,
           copyId,
         )?.n ||
         this.one<{ n: number }>(
           `SELECT COUNT(*) AS n FROM (
-        SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?
-        EXCEPT SELECT kind,selection_json,content FROM source_match_selections WHERE source_id=?)`,
+        SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?
+        EXCEPT SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?)`,
           copyId,
           originalId,
         )?.n;
       if (!differs) return current;
       this.db.prepare('DELETE FROM source_match_selections WHERE source_id=?').run(copyId);
       this.db
-        .prepare(`INSERT INTO source_match_selections(source_id,kind,selection_json,content)
-        SELECT ?,kind,selection_json,content FROM source_match_selections WHERE source_id=?`)
+        .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
+        SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
         .run(copyId, originalId);
       this.db
         .prepare(`INSERT INTO source_match_state(source_id,revision) VALUES(?,?)
@@ -1742,12 +1744,21 @@ export class CatalogDatabase {
     match: SourceMatchRecord | null,
     content: Uint8Array | null,
     actorId: string,
+    artworkRole?: string,
   ): SourceMatchState {
     return this.transaction(() => {
       const source = this.getSource(sourceId);
       if (!source) throw new DomainError('not-found', 404, 'Source file not found');
       const before = sourceMatches(this.db, sourceId).revision;
-      const saved = writeSourceMatch(this.db, sourceId, expectedRevision, kind, match, content);
+      const saved = writeSourceMatch(
+        this.db,
+        sourceId,
+        expectedRevision,
+        kind,
+        match,
+        content,
+        artworkRole,
+      );
       if (saved.revision !== before) {
         this.insertChange(
           'source',
@@ -1770,8 +1781,20 @@ export class CatalogDatabase {
       return saved;
     });
   }
-  sourceMatchContent(sourceId: string, kind: string): Uint8Array | null {
-    return sourceMatchContent(this.db, sourceId, kind);
+  sourceMatchContent(
+    sourceId: string,
+    kind: string,
+    artworkRole: SourceArtworkRole = 'front',
+  ): Uint8Array | null {
+    return sourceMatchContent(this.db, sourceId, kind, artworkRole);
+  }
+
+  matchingIdentification(sourceId: string, stamp: string): unknown | null {
+    return matchingIdentification(this.db, sourceId, stamp);
+  }
+
+  saveMatchingIdentification(sourceId: string, stamp: string, facts: unknown): void {
+    saveMatchingIdentification(this.db, sourceId, stamp, facts);
   }
 
   sourceGroup(id: string): SourceFileRecord[] {

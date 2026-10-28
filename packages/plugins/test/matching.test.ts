@@ -271,7 +271,8 @@ test('MD5 plus CRC can match CRC-only catalogs without downgrading a conflicting
       search(renamed).map((row) => [row.title, row.confidence]),
       [
         ['CRC only', 'checksum'],
-        ['MD5', 'checksum'],
+        ['Conflict', 'name'],
+        ['MD5', 'name'],
       ],
     );
   }

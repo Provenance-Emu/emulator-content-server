@@ -1,5 +1,8 @@
 import { parseFlycastCatalog } from './arcade-catalog.js';
 import {
+  automaticEvidence,
+  classifyArtwork,
+  compatibleCatalogIdentity,
   createLibretroMatcher,
   type DatRecord,
   type MatchCandidate,
@@ -8,7 +11,7 @@ import {
   PartialMatchingError,
   parseLibretroDat,
 } from './matching.js';
-import { contentStem, nameMatchKeys, nameMatchScore } from './matching-names.js';
+import { contentStem, nameMatchKeys, nameMatchScore, normalizeSerial } from './matching-names.js';
 import { createCatalogLoader } from './public-catalog.js';
 
 interface SystemCatalog {
@@ -67,6 +70,7 @@ interface Artwork {
   path: string;
   kind: string;
   sha: string;
+  role: ReturnType<typeof classifyArtwork>['role'];
 }
 function artworkIndex(text: string): Artwork[] {
   const data = JSON.parse(text) as { sha?: unknown; truncated?: unknown; tree?: unknown };
@@ -92,7 +96,15 @@ function artworkIndex(text: string): Artwork[] {
       return [];
     const match = /^Named_(Boxarts|Titles|Snaps)\/([^/\\\0]{1,512})\.png$/i.exec(row.path);
     return match?.[1] && match[2]
-      ? [{ title: match[2], path: row.path, kind: match[1].toLowerCase(), sha }]
+      ? [
+          {
+            title: match[2],
+            path: row.path,
+            kind: match[1].toLowerCase(),
+            sha,
+            role: classifyArtwork(row.path).role,
+          },
+        ]
       : [];
   });
 }
@@ -318,7 +330,61 @@ export function createLibretroProvider(
       signal?.throwIfAborted();
       // A checksum can establish the public title even when the original file was renamed.
       // Filename-only suggestions stay bounded and region/edition-aware for explicit review.
-      const names = [input.name, ...metadata.map((candidate) => candidate.title)];
+      const aliases = (candidate: MatchCandidate): string[] => {
+        try {
+          const rows: unknown = JSON.parse(candidate.metadata.matchProvenance ?? '[]');
+          return Array.isArray(rows)
+            ? rows.flatMap((row) =>
+                row && typeof row === 'object' && 'title' in row && typeof row.title === 'string'
+                  ? [row.title]
+                  : [],
+              )
+            : [];
+        } catch {
+          return [];
+        }
+      };
+      const serialArtworkAliases = (candidate: MatchCandidate): string[] => {
+        if (!automaticEvidence(lookupInput, candidate)) return [];
+        const verifiedSerials = (input.facts?.identifiers ?? []).filter(
+          (id) =>
+            id.type === 'serial' &&
+            id.verified &&
+            (!id.systemId || id.systemId === candidate.metadata.systemId),
+        );
+        const declared = ['serials', 'setIds'].flatMap((key) => {
+          try {
+            const values: unknown = JSON.parse(candidate.metadata[key] ?? '[]');
+            return Array.isArray(values) && values.length <= 32
+              ? values.filter(
+                  (value): value is string => typeof value === 'string' && value.length <= 160,
+                )
+              : [];
+          } catch {
+            return [];
+          }
+        });
+        return [
+          ...new Set(
+            declared
+              .filter((value) =>
+                verifiedSerials.some((id) => normalizeSerial(id.value) === normalizeSerial(value)),
+              )
+              .flatMap((value) =>
+                [candidate.title, ...aliases(candidate)].map((title) => `${title} (${value})`),
+              ),
+          ),
+        ];
+      };
+      const names = [
+        input.name,
+        ...(input.facts?.names ?? []),
+        ...metadata.flatMap((candidate) => [
+          candidate.title,
+          ...aliases(candidate),
+          ...serialArtworkAliases(candidate),
+        ]),
+      ];
       const ranked = imagesFor(artworks, names)
         .map(({ image, index }) => ({
           image,
@@ -334,14 +400,23 @@ export function createLibretroProvider(
             a.image.path.localeCompare(b.image.path),
         );
       // This corroborates game identity, not a checksum of the image bytes.
-      const canonical = (title: string) => title.normalize('NFC').toLowerCase();
+      const canonical = (title: string) =>
+        title
+          .normalize('NFC')
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
       const verified = new Map(
         metadata
-          .filter((candidate) => candidate.confidence === 'checksum')
-          .map((candidate) => [
-            `${candidate.metadata.systemId}\0${canonical(candidate.title)}`,
-            candidate,
-          ]),
+          .filter((candidate) => automaticEvidence(lookupInput, candidate))
+          .flatMap((candidate) =>
+            [candidate.title, ...aliases(candidate), ...serialArtworkAliases(candidate)].map(
+              (title) =>
+                [
+                  `${candidate.metadata.systemId}\0${canonical(title)}`,
+                  { ...candidate, title, canonicalTitle: candidate.title },
+                ] as const,
+            ),
+          ),
       );
       // Independent DATs may name identical verified bytes using regional and
       // legacy titles. All aliases must agree on game, system and edition facts.
@@ -351,7 +426,7 @@ export function createLibretroProvider(
         identities.every(
           (left) =>
             left.metadata.systemId === systemId &&
-            identities.every((right) => nameMatchScore(left.title, right.title) > 0),
+            identities.every((right) => compatibleCatalogIdentity(lookupInput, left, right)),
         );
       const boxarts = ranked.filter(
         (row) =>
@@ -364,7 +439,7 @@ export function createLibretroProvider(
         : undefined;
       const canonicalCover =
         !failures.length && consistent && onlyCover && identity && systemId
-          ? { index: onlyCover.index, title: identity.title, systemId }
+          ? { index: onlyCover.index, title: identity.canonicalTitle, systemId, identity }
           : undefined;
       const art = ranked.slice(0, 24).map(({ image, index }): MatchCandidate => {
         const corroborated = canonicalCover?.index === index ? canonicalCover : undefined;
@@ -372,7 +447,7 @@ export function createLibretroProvider(
           id: `art-${index}`,
           kind: 'artwork',
           title: image.title,
-          confidence: corroborated ? 'checksum' : 'name',
+          confidence: corroborated?.identity.confidence === 'checksum' ? 'checksum' : 'name',
           url: `https://raw.githubusercontent.com/libretro-thumbnails/${repo}/${image.sha}/${image.path
             .split('/')
             .map((segment) => encodeURIComponent(segment))
@@ -380,12 +455,31 @@ export function createLibretroProvider(
           metadata: {
             source: 'Libretro thumbnails',
             artworkType: image.kind,
+            artworkRole: image.role,
             matchedGame: corroborated?.title ?? contentStem(input.name),
             ...(corroborated
               ? {
+                  ...Object.fromEntries(
+                    Object.entries(corroborated.identity.metadata).filter(([key]) =>
+                      [
+                        'md5',
+                        'sha1',
+                        'crc32',
+                        'hashSize',
+                        'hashMedia',
+                        'hashRepresentation',
+                        'serials',
+                        'setIds',
+                        'matchEvidence',
+                        'matchProvenance',
+                      ].includes(key),
+                    ),
+                  ),
                   systemId: corroborated.systemId,
                   verification:
-                    'Canonical cover for ROM checksum-verified game identity; image checksum not compared',
+                    corroborated.identity.confidence === 'checksum'
+                      ? 'Canonical cover for ROM checksum-verified game identity; image checksum not compared'
+                      : 'Canonical cover for byte-read serial-verified game identity; image checksum not compared',
                 }
               : {}),
             availability: 'Listed in public artwork catalog; image checked on preview',

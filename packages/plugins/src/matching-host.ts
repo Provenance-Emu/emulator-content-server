@@ -1,12 +1,17 @@
-import { type ChildProcess, fork } from 'node:child_process';
+import { type ChildProcess, fork, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { ProviderCapability } from './manifest.js';
 import { PROVIDER_CAPABILITIES } from './manifest.js';
 import type { MatchingInput, MatchingResult } from './matching.js';
 import { validateCandidates } from './matching.js';
+import { type RomFacts, validateRomFacts } from './rom-facts.js';
+import type { IdentificationRequest } from './rom-identification.js';
 export interface MatchingJob {
-  operation: 'list' | 'match' | 'artwork' | 'cheats';
+  operation: 'list' | 'match' | 'artwork' | 'cheats' | 'identify';
+  identification?: IdentificationRequest;
+  /** Trusted host-supplied adapter modules; never accepted from an HTTP request. */
+  identifierModules?: string[];
   artworkUrl?: string;
   catalogCacheDirectory?: string;
   directory?: string;
@@ -24,6 +29,7 @@ export interface MatchingPluginDescription {
 export interface MatchingReply {
   plugins: MatchingPluginDescription[];
   result?: MatchingResult;
+  facts?: RomFacts;
   artwork?: string;
   file?: string;
 }
@@ -70,7 +76,22 @@ function retire(worker: Worker): void {
   clearTimeout(worker.idle);
   worker.child.ref();
   worker.child.channel?.ref();
-  worker.child.kill('SIGKILL');
+  if (process.platform === 'win32' && worker.child.pid) {
+    const killer = spawn('taskkill', ['/PID', String(worker.child.pid), '/T', '/F'], {
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    killer.once('error', () => worker.child.kill('SIGKILL'));
+    killer.once('close', (code) => {
+      if (code !== 0) worker.child.kill('SIGKILL');
+    });
+  } else if (worker.child.pid) {
+    try {
+      process.kill(-worker.child.pid, 'SIGKILL');
+    } catch {
+      worker.child.kill('SIGKILL');
+    }
+  } else worker.child.kill('SIGKILL');
 }
 function finish(request: PendingJob, error?: Error, reply?: MatchingReply, recycle = false): void {
   if (request.settled) return;
@@ -108,6 +129,7 @@ function finish(request: PendingJob, error?: Error, reply?: MatchingReply, recyc
 function spawnWorker(key: string): Worker {
   const child = fork(fileURLToPath(new URL('./matching-worker.js', import.meta.url)), [], {
     stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+    detached: process.platform !== 'win32',
     // Keep credentials and Node injection options out of operator-installed code.
     env: { ...(process.env.PATH ? { PATH: process.env.PATH } : {}), LANG: 'en_US.UTF-8' },
     execArgv: ['--max-old-space-size=192'],
@@ -309,6 +331,7 @@ function validateReply(raw: unknown, job: MatchingJob): MatchingReply {
       !/^[A-Za-z0-9+/]*={0,2}$/.test(reply.file))
   )
     throw new Error('Invalid cheat file');
+  if (job.operation === 'identify') reply.facts = validateRomFacts(reply.facts);
   if (job.operation === 'match') {
     if (
       !reply.result ||

@@ -763,6 +763,7 @@
     },
     "SavedSourceMatch": {
       "properties": [
+        "artworkRole",
         "confidence",
         "contentAvailable",
         "contentType",

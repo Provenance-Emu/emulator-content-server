@@ -46,17 +46,20 @@ test('committed match saves and removals survive a lost response without duplica
   );
   await fixture.client.scanRoot(root.id);
   let writes = 0;
-  await page.route('**/api/v1/sources/*/matches/selections{,/*}', async (route) => {
-    if (!['PUT', 'DELETE'].includes(route.request().method())) return route.continue();
-    const response = await route.fetch();
-    if (!response.ok()) {
-      await route.fulfill({ response });
-      expect(response.status()).toBe(200);
-      return;
-    }
-    writes++;
-    await route.abort('failed');
-  });
+  await page.route(
+    (url) => /^\/api\/v1\/sources\/[^/]+\/matches\/selections(?:\/[^/]+)?$/.test(url.pathname),
+    async (route) => {
+      if (!['PUT', 'DELETE'].includes(route.request().method())) return route.continue();
+      const response = await route.fetch();
+      if (!response.ok()) {
+        await route.fulfill({ response });
+        expect(response.status()).toBe(200);
+        return;
+      }
+      writes++;
+      await route.abort('failed');
+    },
+  );
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
@@ -166,18 +169,21 @@ test('lookups open a populated category and retain the selected category while i
 test('a transient saved-match load can retry inside the open game', async ({ page, fixture }) => {
   await fixture.legacy();
   let reads = 0;
-  await page.route('**/api/v1/sources/*/matches/selections', async (route) => {
-    if (++reads === 1)
-      await route.fulfill({
-        status: 503,
-        json: {
-          type: 'urn:ecs:problem:unavailable',
-          title: 'Temporarily unavailable',
+  await page.route(
+    (url) => /^\/api\/v1\/sources\/[^/]+\/matches\/selections$/.test(url.pathname),
+    async (route) => {
+      if (++reads === 1)
+        await route.fulfill({
           status: 503,
-        },
-      });
-    else await route.continue();
-  });
+          json: {
+            type: 'urn:ecs:problem:unavailable',
+            title: 'Temporarily unavailable',
+            status: 503,
+          },
+        });
+      else await route.continue();
+    },
+  );
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
@@ -310,9 +316,9 @@ test('automatic Copy needs preview opt-in, runs on saves, and can be disabled fr
     (await fixture.client.sources()).items.filter((source) => source.rootId === target.id),
   ).toHaveLength(0);
   await matching.getByRole('button', { name: 'Artwork (1)', exact: true }).click();
-  await matching.getByRole('button', { name: 'Save artwork', exact: true }).click();
+  await matching.getByRole('button', { name: 'Save front cover', exact: true }).click();
   await expect(
-    matching.getByRole('button', { name: 'Remove saved artwork', exact: true }),
+    matching.getByRole('button', { name: 'Remove saved front cover', exact: true }),
   ).toBeVisible();
   const copies = (await fixture.client.sources()).items.filter(
     (source) => source.rootId === target.id,
@@ -379,9 +385,9 @@ test('automatic Move waits for local artwork review and preserves the game and b
     (await fixture.client.sources()).items.find((source) => source.id === original?.id)?.rootId,
   ).toBe(root.id);
   await matching.getByRole('button', { name: 'Artwork (1)', exact: true }).click();
-  await matching.getByRole('button', { name: 'Save artwork', exact: true }).click();
+  await matching.getByRole('button', { name: 'Save front cover', exact: true }).click();
   await expect(
-    matching.getByRole('button', { name: 'Remove saved artwork', exact: true }),
+    matching.getByRole('button', { name: 'Remove saved front cover', exact: true }),
   ).toBeVisible();
   expect(
     (await fixture.client.sources()).items.find((source) => source.id === original?.id)?.rootId,
@@ -400,4 +406,56 @@ test('automatic Move waits for local artwork review and preserves the game and b
     .getByRole('button', { name: 'Turn off automatic organization', exact: true })
     .click();
   await expect(policy.getByRole('status')).toContainText('Automatic organization is off');
+});
+
+test('front, back, disc and manual choices coexist with role filtering and a PDF download', async ({
+  page,
+  fixture,
+}) => {
+  const root = await fixture.legacy();
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+    'base64',
+  );
+  for (const role of ['front', 'back', 'disc'])
+    await writeFile(join(root.path, `external ${role}.png`), png);
+  const pdf = Buffer.from('%PDF-1.4\nGenerated manual\n%%EOF');
+  await writeFile(join(root.path, 'external manual.pdf'), pdf);
+  await fixture.client.scanRoot(root.id);
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
+  const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
+  const filter = matching.getByRole('combobox', { name: 'Artwork type', exact: true });
+  for (const [role, label] of [
+    ['front', 'front cover'],
+    ['back', 'back cover'],
+    ['disc', 'disc label'],
+    ['manual', 'manual'],
+  ]) {
+    await filter.selectOption(role);
+    await matching.getByRole('button', { name: `Save ${label}`, exact: true }).click();
+    await expect(
+      matching.getByRole('button', { name: `Remove saved ${label}`, exact: true }),
+    ).toBeVisible();
+  }
+  await matching.getByRole('button', { name: 'Preview back cover', exact: true }).click();
+  await expect(matching.locator('img[alt^="Saved artwork"]')).toHaveCount(2);
+  const pending = page.waitForEvent('download');
+  await matching.getByRole('button', { name: 'Download manual', exact: true }).click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe('external manual.pdf');
+  const { readFile } = await import('node:fs/promises');
+  expect(await readFile(await download.path())).toEqual(pdf);
+  await matching.getByRole('button', { name: 'Remove saved back cover', exact: true }).click();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved front cover', exact: true }),
+  ).toBeVisible();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved manual', exact: true }),
+  ).toBeVisible();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved back cover', exact: true }),
+  ).toHaveCount(0);
 });

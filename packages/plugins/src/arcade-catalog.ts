@@ -48,10 +48,13 @@ export function parseFlycastCatalog(source: string): DatRecord[] {
           records.push({
             name: id,
             title,
-            size: 0,
+            setIds: [id],
             systemId,
             source: 'Flycast game catalog',
             aliases: serial && /^(?:gds|gdl|cdv)-[a-z0-9-]+$/i.test(serial) ? [serial] : [],
+            ...(serial && /^(?:gds|gdl|cdv)-[a-z0-9-]+$/i.test(serial)
+              ? { serials: [serial] }
+              : {}),
           });
           if (records.length > 5000) throw new Error('Arcade catalog too large');
         }

@@ -696,6 +696,7 @@ public struct SavedSourceMatch: Codable, Equatable, Sendable {
     public var id: String
     public var providerId: String
     public var kind: String
+    public var artworkRole: String?
     public var title: String
     public var confidence: String
     public var metadata: [String: String]
@@ -706,10 +707,11 @@ public struct SavedSourceMatch: Codable, Equatable, Sendable {
     public var fileName: String?
     public var updatedAt: String
 
-    public init(id: String, providerId: String, kind: String, title: String, confidence: String, metadata: [String: String], originFileId: String? = nil, originUrl: String? = nil, contentAvailable: Bool, contentType: String? = nil, fileName: String? = nil, updatedAt: String) {
+    public init(id: String, providerId: String, kind: String, artworkRole: String? = nil, title: String, confidence: String, metadata: [String: String], originFileId: String? = nil, originUrl: String? = nil, contentAvailable: Bool, contentType: String? = nil, fileName: String? = nil, updatedAt: String) {
         self.id = id
         self.providerId = providerId
         self.kind = kind
+        self.artworkRole = artworkRole
         self.title = title
         self.confidence = confidence
         self.metadata = metadata

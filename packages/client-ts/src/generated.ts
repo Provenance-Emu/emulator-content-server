@@ -349,6 +349,7 @@ export interface SavedSourceMatch {
   id: string;
   providerId: string;
   kind: string;
+  artworkRole?: string;
   title: string;
   confidence: string;
   metadata: Record<string, unknown>;

@@ -35,21 +35,27 @@ export function registerSourceSelections(
   context: ServerContext,
   dependencies: Dependencies,
 ): void {
-  function state(actor: Actor, sourceId: string) {
+  function state(actor: Actor, sourceId: string, allArtwork = false) {
     const source = visibleSource(context, actor, sourceId);
     const saved = context.catalog.sourceMatches(sourceId);
     return {
       ...saved,
       matches: saved.matches
         .filter(
-          (match) => !match.originKind || canSeeSource(actor, source.libraryId, match.originKind),
+          (match) =>
+            (!match.originKind || canSeeSource(actor, source.libraryId, match.originKind)) &&
+            (allArtwork || match.kind !== 'artwork' || (match.artworkRole ?? 'front') === 'front'),
         )
         .map(({ originKind, ...match }) => match),
     };
   }
   app.get('/api/v1/sources/:sourceId/matches/selections', async (request, reply) => {
     reply.header('cache-control', 'private, no-store');
-    return state(requireActor(request), (request.params as { sourceId: string }).sourceId);
+    return state(
+      requireActor(request),
+      (request.params as { sourceId: string }).sourceId,
+      includeArtworkRoles(request),
+    );
   });
   app.put('/api/v1/sources/:sourceId/matches/selections', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can save matches');
@@ -77,7 +83,7 @@ export function registerSourceSelections(
       );
     const current = context.catalog.sourceMatches(sourceId);
     if (current.matches.some((match) => match.id === body.candidateId))
-      return state(actor, sourceId);
+      return state(actor, sourceId, includeArtworkRoles(request));
     if (current.revision !== body.expectedRevision)
       throw new DomainError(
         'matching-conflict',
@@ -146,7 +152,7 @@ export function registerSourceSelections(
       : undefined;
     reply.header('cache-control', 'private, no-store');
     return {
-      ...state(actor, sourceId),
+      ...state(actor, sourceId, includeArtworkRoles(request)),
       ...(automaticOrganization ? { automaticOrganization } : {}),
     };
   });
@@ -161,24 +167,45 @@ export function registerSourceSelections(
       null,
       null,
       actor.userId,
+      kind === 'artwork' ? artworkRole(request) : undefined,
     );
     reply.header('cache-control', 'private, no-store');
-    return state(actor, sourceId);
+    return state(actor, sourceId, includeArtworkRoles(request));
   });
   app.get('/api/v1/sources/:sourceId/matches/selections/:kind/content', async (request, reply) => {
     const actor = requireActor(request);
     const { sourceId, kind } = request.params as { sourceId: string; kind: string };
-    const selected = state(actor, sourceId).matches.find((match) => match.kind === kind);
+    const role = artworkRole(request);
+    const selected = state(actor, sourceId, true).matches.find(
+      (match) =>
+        match.kind === kind && (kind !== 'artwork' || (match.artworkRole ?? 'front') === role),
+    );
     if (!selected?.contentAvailable || !selected.contentType)
       throw new DomainError('not-found', 404, 'Selected content not found');
-    const bytes = context.catalog.sourceMatchContent(sourceId, kind);
+    const bytes = context.catalog.sourceMatchContent(sourceId, kind, role);
     if (!bytes) throw new DomainError('not-found', 404, 'Selected content not found');
     reply.header('cache-control', 'private, no-store');
     reply.header('x-content-type-options', 'nosniff');
     reply.header(
       'content-disposition',
-      `${kind === 'artwork' ? 'inline' : 'attachment'}; filename="selected"; filename*=UTF-8''${encodeURIComponent(selected.fileName ?? 'selected')}`,
+      `${kind === 'artwork' && selected.contentType !== 'application/pdf' ? 'inline' : 'attachment'}; filename="selected"; filename*=UTF-8''${encodeURIComponent(selected.fileName ?? 'selected')}`,
     );
     return reply.type(selected.contentType).send(Buffer.from(bytes));
   });
+}
+
+function includeArtworkRoles(request: FastifyRequest): boolean {
+  const value = (request.query as Record<string, unknown>).includeArtworkRoles;
+  if (value !== undefined && value !== 'true' && value !== 'false' && typeof value !== 'boolean')
+    throw new DomainError('invalid-request', 400, 'Invalid artwork role selection');
+  return value === true || value === 'true';
+}
+function artworkRole(request: FastifyRequest): NonNullable<SourceMatchRecord['artworkRole']> {
+  const value = (request.query as Record<string, unknown>).artworkRole ?? 'front';
+  if (
+    typeof value !== 'string' ||
+    !['front', 'back', 'disc', 'manual', 'title', 'screenshot', 'other'].includes(value)
+  )
+    throw new DomainError('invalid-request', 400, 'Invalid artwork role');
+  return value as NonNullable<SourceMatchRecord['artworkRole']>;
 }

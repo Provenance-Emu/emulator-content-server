@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { CatalogDatabase } from '../src/index.js';
-import { companionSelection } from '../src/source-companions.js';
+import { companionSelection, companionStem } from '../src/source-companions.js';
 
 function file(relativePath: string) {
   return {
@@ -62,7 +62,7 @@ test('companion lookup finds normalized sidecars beyond 50k entries and stays di
   const inspection = new DatabaseSync(filename, { readOnly: true });
   const query = companionSelection(folder.id, target, true);
   const plan = inspection
-    .prepare('EXPLAIN QUERY PLAN ' + query.sql)
+    .prepare(`EXPLAIN QUERY PLAN ${query.sql}`)
     .all(...query.values)
     .map((row) => String(row.detail));
   assert.ok(plan.some((detail) => detail.includes('source_files_match_stem')));
@@ -82,4 +82,50 @@ test('companion lookup finds normalized sidecars beyond 50k entries and stays di
   db = new CatalogDatabase(filename);
   assert.equal(db.integrity(), 'ok');
   assert.equal(found().length, 2);
+});
+
+test('companion stems remove explicit artwork roles and find role folders without changing game names', async (t) => {
+  assert.equal(companionStem('The Back of Beyond.nes'), 'the back of beyond');
+  assert.equal(companionStem('Example - Back.png'), 'example');
+  assert.equal(companionStem('Example_CD2.png'), 'example');
+  assert.equal(companionStem('Example [CD Label].png'), 'example');
+  const root = await mkdtemp(join(tmpdir(), 'ecs-companion-roles-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const db = new CatalogDatabase(join(root, 'library.sqlite'));
+  t.after(() => db.close());
+  const owner = db.createUser({ username: 'owner', passwordHash: 'generated', actorId: 'fixture' });
+  const library = db.createLibrary(owner.id, 'Role companions');
+  const folder = db.createContentRoot({
+    path: join(root, 'games'),
+    label: 'games',
+    libraryId: library.id,
+    actorId: owner.id,
+  });
+  const target = 'Game/Example.nes';
+  db.applyInspection({
+    rootId: folder.id,
+    actorId: owner.id,
+    online: true,
+    files: [
+      file(target),
+      file('Game/manual/Example Manual.pdf'),
+      file('Game/discs/Example Disc.png'),
+      file('Game/screenshots/Example Screenshot 1.png'),
+      file('Game/Example - Back.png'),
+      file('Game/Back of Beyond.png'),
+    ],
+  });
+  const found = db
+    .matchingCompanions(folder.id, target, false)
+    .map((entry) => entry.relativePath)
+    .sort();
+  assert.deepEqual(
+    found,
+    [
+      'Game/Example - Back.png',
+      'Game/discs/Example Disc.png',
+      'Game/manual/Example Manual.pdf',
+      'Game/screenshots/Example Screenshot 1.png',
+    ].sort(),
+  );
 });

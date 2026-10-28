@@ -1,6 +1,19 @@
 import { crc32 } from 'node:zlib';
+import { classifyArtwork } from './artwork-classification.js';
 import type { ProviderCapability } from './manifest.js';
-import { contentStem, nameMatchKeys, nameMatchScore } from './matching-names.js';
+import {
+  compatibleGameTitles,
+  contentStem,
+  nameMatchKeys,
+  nameMatchScore,
+  normalizeSerial,
+  normalizeSetAlias,
+  serialSubtitleAlias,
+} from './matching-names.js';
+import type { RomFacts, RomHash } from './rom-facts.js';
+
+export { ARTWORK_ROLES, type ArtworkRole, classifyArtwork } from './artwork-classification.js';
+export { normalizeSerial, normalizeSetAlias } from './matching-names.js';
 
 export interface MatchCompanion {
   id: string;
@@ -15,6 +28,8 @@ export interface MatchingInput {
   size?: number;
   crc32?: string;
   md5?: string;
+  sha1?: string;
+  facts?: RomFacts;
   online?: boolean;
   companions: MatchCompanion[];
 }
@@ -44,9 +59,13 @@ export interface DatRecord {
   source?: string;
   title: string;
   name: string;
-  size: number;
+  size?: number;
   crc32?: string;
   md5?: string;
+  sha1?: string;
+  serials?: string[];
+  setIds?: string[];
+  media?: 'rom' | 'disk';
 }
 
 /** A provider can preserve healthy source results while reporting a failed auxiliary lookup. */
@@ -107,7 +126,7 @@ export async function runMatching(
       a.providerId.localeCompare(b.providerId) ||
       a.id.localeCompare(b.id),
   );
-  return { candidates: candidates.slice(0, 100), problems };
+  return { candidates: reconcileCandidates(input, candidates).slice(0, 100), problems };
 }
 
 export function validateCandidates(
@@ -185,12 +204,27 @@ export const localMatchingProvider: MatchingProvider = {
     const matches: MatchCandidate[] = [];
     const target = stem(input.name);
     for (const companion of input.companions.slice(0, 100)) {
+      const artwork = classifyArtwork(companion.name);
+      const image = /\.(png|jpe?g|webp)$/i.test(companion.name);
+      const manual = /\.pdf$/i.test(companion.name) && artwork.role === 'manual';
       const sameName =
-        stem(companion.name).replace(/(?:[ ._-](?:cover|boxart|front))$/, '') === target;
-      const sameBase =
-        !!input.crc32 &&
-        input.crc32.toLowerCase() === companion.patch?.sourceCrc32 &&
-        input.size === companion.patch.sourceSize;
+        (image || manual
+          ? artwork.baseTitle.normalize('NFC').toLowerCase()
+          : stem(companion.name).replace(
+              /(?:[ ._-](?:translation|rom[ ._-]?hack|hack|patch))$/,
+              '',
+            )) === target;
+      const patch = companion.patch;
+      const eligible = inputHashes(input).filter(
+        (hash) => hash.algorithm === 'crc32' && hash.verified,
+      );
+      const baseHash = patch?.sourceCrc32
+        ? eligible.find(
+            (hash) =>
+              hash.value === patch.sourceCrc32?.toLowerCase() && hash.size === patch.sourceSize,
+          )
+        : undefined;
+      const sameBase = !!baseHash;
       if (!sameName && !sameBase) continue;
       const base = {
         id: companion.id,
@@ -205,28 +239,37 @@ export const localMatchingProvider: MatchingProvider = {
           confidence: 'local',
           metadata: companion.metadata,
         });
-      } else if (/\.(png|jpe?g|webp)$/i.test(companion.name)) {
-        matches.push({ ...base, kind: 'artwork', confidence: 'local', metadata: {} });
-      } else if (companion.patch) {
-        const patch = companion.patch;
-        // A checksummed patch for a different base is not a candidate, even with the same name.
-        if (
-          input.crc32 &&
-          patch.sourceCrc32 &&
-          (input.crc32.toLowerCase() !== patch.sourceCrc32 || input.size !== patch.sourceSize)
-        )
-          continue;
-        const verified =
-          !!input.crc32 &&
-          input.crc32.toLowerCase() === patch.sourceCrc32 &&
-          input.size === patch.sourceSize;
+      } else if (image || manual) {
+        matches.push({
+          ...base,
+          kind: 'artwork',
+          confidence: 'local',
+          metadata: { artworkRole: artwork.role, imageKind: manual ? 'pdf' : 'image' },
+        });
+      } else if (patch) {
+        // Checksummed patches for another known base are rejected, including normalized representations.
+        if (patch.sourceCrc32 && eligible.length && !sameBase) continue;
+        const patchType = /(?:^|[ ._([/-])translation(?:[ ._)\]/-]|$)/i.test(companion.name)
+          ? 'translation'
+          : /(?:^|[ ._([/-])(?:rom[ ._-]?)?hack(?:[ ._)\]/-]|$)/i.test(companion.name)
+            ? 'rom-hack'
+            : 'patch';
         matches.push({
           ...base,
           kind: 'patch',
-          confidence: verified ? 'checksum' : 'name',
+          confidence: sameBase ? 'checksum' : 'name',
           metadata: {
             format: patch.format,
-            verification: verified ? 'Base checksum and size match' : 'Base ROM not verified',
+            patchType,
+            ...(baseHash
+              ? {
+                  crc32: baseHash.value,
+                  hashSize: String(baseHash.size),
+                  hashRepresentation: baseHash.representation,
+                  matchEvidence: 'verified-hash',
+                }
+              : {}),
+            verification: sameBase ? 'Base checksum and size match' : 'Base ROM not verified',
           },
         });
       }
@@ -260,22 +303,37 @@ export function parseLibretroDat(source: string): DatRecord[] {
   const parsed = block(0);
   const records: DatRecord[] = [];
   for (const game of parsed.children.filter((child) => child.key === 'game')) {
-    for (const rom of game.block.children.filter((child) => child.key === 'rom')) {
+    for (const rom of game.block.children.filter((child) => ['rom', 'disk'].includes(child.key))) {
       const fields = rom.block.fields;
       const title = game.block.fields.name;
-      const size = Number(fields.size);
-      if (!title || !fields.name || !Number.isSafeInteger(size) || size < 0) continue;
+      const size = fields.size === undefined ? undefined : Number(fields.size);
+      if (
+        !title ||
+        title.length > 512 ||
+        !fields.name ||
+        fields.name.length > 512 ||
+        (size !== undefined && (!Number.isSafeInteger(size) || size < 0))
+      )
+        continue;
+      const serials = [
+        ...new Set(
+          [game.block.fields.serial, fields.serial]
+            .flatMap((value) => value?.split(/\s*[,;]\s*/) ?? [])
+            .filter((value) => value.length > 0 && value.length <= 160),
+        ),
+      ].slice(0, 32);
       records.push({
         title,
-        ...(game.block.fields.id ? { aliases: [game.block.fields.id] } : {}),
+        ...(game.block.fields.id && game.block.fields.id.length <= 160
+          ? { aliases: [game.block.fields.id], setIds: [game.block.fields.id] }
+          : {}),
         name: fields.name,
-        size,
-        ...(/^[0-9a-f]{8}$/i.test(fields.crc ?? '')
-          ? { crc32: (fields.crc ?? '').toLowerCase() }
-          : {}),
-        ...(/^[0-9a-f]{32}$/i.test(fields.md5 ?? '')
-          ? { md5: (fields.md5 ?? '').toLowerCase() }
-          : {}),
+        ...(size === undefined ? {} : { size }),
+        ...(rom.key === 'disk' ? { media: 'disk' as const } : {}),
+        ...(serials.length ? { serials } : {}),
+        ...(/^[0-9a-f]{8}$/i.test(fields.crc ?? '') ? { crc32: fields.crc?.toLowerCase() } : {}),
+        ...(/^[0-9a-f]{32}$/i.test(fields.md5 ?? '') ? { md5: fields.md5?.toLowerCase() } : {}),
+        ...(/^[0-9a-f]{40}$/i.test(fields.sha1 ?? '') ? { sha1: fields.sha1?.toLowerCase() } : {}),
       });
     }
   }
@@ -304,20 +362,36 @@ export function createLibretroMatcher(
     if (record.systemId)
       for (const alias of [record.name, ...(record.aliases ?? [])])
         add(`alias:${alias.toLowerCase()}`, index);
-    if (record.md5) add(`md5:${record.size}:${record.md5}`, index);
-    if (record.crc32) add(`crc:${record.size}:${record.crc32}`, index);
+    for (const algorithm of HASH_ALGORITHMS) {
+      const value = record[algorithm];
+      if (value)
+        add(`${algorithm}:${record.media === 'disk' ? 'disk' : record.size}:${value}`, index);
+    }
+    for (const serial of record.serials ?? []) add(`serial:${normalizeSerial(serial)}`, index);
+    for (const id of record.setIds ?? []) add(`set:${normalizeSetAlias(id)}`, index);
   });
   return (input) => {
     const indices = new Set<number>();
     const take = (key: string) => {
       for (const index of buckets.get(key) ?? []) indices.add(index);
     };
-    for (const key of nameMatchKeys(input.name)) take(`name:${key}`);
-    const stem = contentStem(input.name).toLowerCase();
-    take(`alias:${stem}`);
-    take(`alias:${stem.replace(/-(?:[2-9][0-9]*|chd)$/, '')}`);
-    if (input.md5) take(`md5:${input.size}:${input.md5.toLowerCase()}`);
-    if (input.crc32) take(`crc:${input.size}:${input.crc32.toLowerCase()}`);
+    for (const name of [input.name, ...(input.facts?.names ?? [])]) {
+      for (const key of nameMatchKeys(name)) take(`name:${key}`);
+      const stem = contentStem(name).toLowerCase();
+      take(`alias:${stem}`);
+      take(`alias:${stem.replace(/-(?:[2-9][0-9]*|chd)$/, '')}`);
+      take(`set:${normalizeSetAlias(name)}`);
+    }
+    for (const hash of inputHashes(input)) {
+      take(`${hash.algorithm}:${hash.size}:${hash.value}`);
+      if (hash.algorithm === 'sha1' && hash.representation === 'chd-combined-sha1')
+        take(`sha1:disk:${hash.value}`);
+    }
+    for (const id of input.facts?.identifiers ?? [])
+      if (!id.systemId || !input.systemId || id.systemId === input.systemId)
+        take(
+          `${id.type}:${id.type === 'serial' ? normalizeSerial(id.value) : normalizeSetAlias(id.value)}`,
+        );
     return matchEntries(
       input,
       [...indices]
@@ -335,52 +409,412 @@ function matchEntries(
 ): MatchCandidate[] {
   const found: MatchCandidate[] = [];
   for (const [index, record] of records) {
-    const checksum =
-      input.size === record.size &&
-      (input.md5 && record.md5
-        ? input.md5.toLowerCase() === record.md5
-        : !!input.crc32 && input.crc32.toLowerCase() === record.crc32);
+    if (input.systemId && record.systemId && input.systemId !== record.systemId) continue;
+    const metadata: Record<string, string> = {
+      title: record.title,
+      ...((record.systemId ?? input.systemId)
+        ? { systemId: record.systemId ?? input.systemId ?? '' }
+        : {}),
+      romName: record.name,
+      source: record.source ?? 'Libretro database',
+      ...(record.size === undefined ? {} : { hashSize: String(record.size) }),
+      ...(record.media ? { hashMedia: record.media } : {}),
+      ...(record.crc32 ? { crc32: record.crc32 } : {}),
+      ...(record.md5 ? { md5: record.md5 } : {}),
+      ...(record.sha1 ? { sha1: record.sha1 } : {}),
+      ...(record.serials?.length ? { serials: JSON.stringify(record.serials) } : {}),
+      ...(record.setIds?.length ? { setIds: JSON.stringify(record.setIds) } : {}),
+    };
+    const proof = assessEvidence(input, metadata);
     const arcadeAlias = (value: string) =>
-      contentStem(value)
-        .toLowerCase()
-        .replace(/-(?:[2-9][0-9]*|chd)$/, '');
+      normalizeSetAlias(value).replace(/-(?:[2-9][0-9]*|chd)$/, '');
     const aliasMatch =
       !!record.systemId &&
-      [record.name, ...(record.aliases ?? [])].some(
+      [record.name, ...(record.aliases ?? []), ...(record.setIds ?? [])].some(
         (alias) =>
-          contentStem(input.name).toLowerCase() === alias.toLowerCase() ||
-          arcadeAlias(input.name) === alias.toLowerCase(),
+          normalizeSetAlias(input.name) === normalizeSetAlias(alias) ||
+          arcadeAlias(input.name) === normalizeSetAlias(alias),
       );
     if (
-      !checksum &&
+      !proof.matched &&
       !aliasMatch &&
-      !nameMatchScore(input.name, record.name) &&
-      !nameMatchScore(input.name, record.title)
+      ![input.name, ...(input.facts?.names ?? [])].some(
+        (name) => nameMatchScore(name, record.name) || nameMatchScore(name, record.title),
+      )
     )
       continue;
-    found.push({
+    metadata.matchEvidence = proof.serialConflict
+      ? 'serial-conflict'
+      : proof.conflict
+        ? 'hash-conflict'
+        : proof.verifiedHash
+          ? 'verified-hash'
+          : proof.declaredHash
+            ? 'declared-hash'
+            : proof.verifiedSerial
+              ? 'verified-serial'
+              : proof.serial
+                ? 'declared-serial'
+                : proof.set || aliasMatch
+                  ? 'set-alias'
+                  : 'name';
+    if (proof.representation) metadata.hashRepresentation = proof.representation;
+    const candidate: MatchCandidate = {
       id: `dat-${index}`,
       kind: 'metadata',
       title: record.title,
-      confidence: checksum ? 'checksum' : 'name',
-      metadata: {
-        title: record.title,
-        systemId: record.systemId ?? input.systemId ?? '',
-        romName: record.name,
-        source: record.source ?? 'Libretro database',
-        ...(record.crc32 ? { crc32: record.crc32 } : {}),
-      },
-    });
+      confidence: proof.verifiedHash && !proof.conflict ? 'checksum' : 'name',
+      metadata,
+    };
+    if (found.length < 100) found.push(candidate);
+    else if (candidate.confidence === 'checksum') {
+      const replace = found.findLastIndex((row) => row.confidence !== 'checksum');
+      if (replace >= 0) found[replace] = candidate;
+    }
   }
-  const unique = new Map<string, MatchCandidate>();
-  for (const candidate of found) {
-    const key = `${candidate.metadata.systemId}\0${candidate.title}`;
-    const existing = unique.get(key);
-    if (!existing || candidate.confidence === 'checksum') unique.set(key, candidate);
-  }
-  return [...unique.values()]
+  return reconcileCandidates(input, found)
     .sort((a, b) => Number(b.confidence === 'checksum') - Number(a.confidence === 'checksum'))
     .slice(0, 30);
+}
+
+const HASH_ALGORITHMS = ['md5', 'sha1', 'crc32'] as const;
+function inputHashes(input: MatchingInput): RomHash[] {
+  const hashes = [...(input.facts?.hashes ?? [])];
+  if (input.size !== undefined)
+    for (const algorithm of HASH_ALGORITHMS) {
+      const value = input[algorithm];
+      if (value)
+        hashes.push({
+          algorithm,
+          value: value.toLowerCase(),
+          size: input.size,
+          representation: 'raw',
+          verified: true,
+        });
+    }
+  return hashes;
+}
+function identifiers(value: string | undefined): string[] {
+  try {
+    const parsed: unknown = JSON.parse(value ?? '[]');
+    return Array.isArray(parsed) && parsed.length <= 32
+      ? parsed.filter((v): v is string => typeof v === 'string' && v.length <= 160)
+      : [];
+  } catch {
+    return [];
+  }
+}
+function assessEvidence(input: MatchingInput, metadata: Record<string, string>) {
+  const groups = new Map<string, RomHash[]>();
+  for (const hash of inputHashes(input)) {
+    if (metadata.hashRepresentation && metadata.hashRepresentation !== hash.representation)
+      continue;
+    if (metadata.hashMedia !== 'disk' && hash.representation.startsWith('chd-')) continue;
+    if (
+      metadata.hashMedia === 'disk'
+        ? hash.algorithm !== 'sha1' || hash.representation !== 'chd-combined-sha1'
+        : metadata.hashSize === undefined || Number(metadata.hashSize) !== hash.size
+    )
+      continue;
+    const key = `${hash.representation}\0${hash.size}`,
+      group = groups.get(key) ?? [];
+    group.push(hash);
+    groups.set(key, group);
+  }
+  let verifiedHash = false,
+    declaredHash = false,
+    conflict = false,
+    hashHit = false,
+    representation: string | undefined;
+  for (const group of groups.values()) {
+    const common = group.filter((hash) => !!metadata[hash.algorithm]);
+    if (!common.length) continue;
+    hashHit ||= common.some(
+      (hash) => hash.value.toLowerCase() === metadata[hash.algorithm]?.toLowerCase(),
+    );
+    const mismatch = common.some(
+      (hash) => hash.value.toLowerCase() !== metadata[hash.algorithm]?.toLowerCase(),
+    );
+    if (mismatch) {
+      conflict = true;
+      continue;
+    }
+    declaredHash = true;
+    const verified = common.some((hash) => hash.verified);
+    if (!representation || (verified && !verifiedHash)) representation = group[0]?.representation;
+    verifiedHash ||= verified;
+  }
+  // Distinct byte representations may legitimately disagree; only verified bytes can resolve that.
+  if (verifiedHash) conflict = false;
+  const expectedSerials = identifiers(metadata.serials).map(normalizeSerial);
+  const expectedSets = identifiers(metadata.setIds).map(normalizeSetAlias);
+  let serial = false,
+    verifiedSerial = false,
+    set = false;
+  for (const id of input.facts?.identifiers ?? []) {
+    if (metadata.systemId && id.systemId && metadata.systemId !== id.systemId) continue;
+    if (input.systemId && id.systemId && input.systemId !== id.systemId) continue;
+    if (id.type === 'serial' && expectedSerials.includes(normalizeSerial(id.value))) {
+      serial = true;
+      verifiedSerial ||= id.verified;
+    }
+    if (id.type === 'set' && expectedSets.includes(normalizeSetAlias(id.value))) set = true;
+  }
+  // A multi-track image may expose several valid IDs. Keep every hint, but never
+  // turn the first matching track (or board) into a unique game identity.
+  const verifiedIds = (input.facts?.identifiers ?? []).filter(
+    (id) => id.type === 'serial' && id.verified,
+  );
+  const serialConflict =
+    new Set(verifiedIds.map((id) => normalizeSerial(id.value))).size > 1 ||
+    new Set(verifiedIds.flatMap((id) => (id.systemId ? [id.systemId] : []))).size > 1;
+  return {
+    verifiedHash,
+    declaredHash,
+    conflict: conflict || serialConflict,
+    serialConflict,
+    serial,
+    verifiedSerial,
+    set,
+    representation,
+    matched: hashHit || serial || set,
+  };
+}
+/** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */
+export function automaticEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+  if (
+    input.systemId &&
+    candidate.metadata.systemId &&
+    input.systemId !== candidate.metadata.systemId
+  )
+    return false;
+  if (
+    candidate.metadata.identityConflict === 'true' ||
+    candidate.metadata.matchEvidence === 'identity-conflict'
+  )
+    return false;
+  if (candidate.kind === 'artwork' && candidate.metadata.artworkRole !== 'front') return false;
+  if (!['metadata', 'artwork', 'patch'].includes(candidate.kind)) return false;
+  if (
+    candidate.kind === 'patch' &&
+    (!candidate.metadata.crc32 || candidate.metadata.hashSize === undefined)
+  )
+    return false;
+  const evidence = assessEvidence(input, candidate.metadata);
+  const layers = provenanceRows(candidate);
+  if (!layers || layers.some((row) => assessEvidence(input, row.metadata).conflict)) return false;
+  return (
+    !evidence.conflict &&
+    (evidence.verifiedHash || (candidate.kind !== 'patch' && evidence.verifiedSerial))
+  );
+}
+function compatibleMetadata(left: Record<string, string>, right: Record<string, string>): boolean {
+  if (left.systemId && right.systemId && left.systemId !== right.systemId) return false;
+  if (
+    left.hashRepresentation &&
+    right.hashRepresentation &&
+    left.hashRepresentation !== right.hashRepresentation
+  )
+    return false;
+  // Distinct file sizes describe separate tracks/variants; every original hash stays in provenance.
+  if (left.hashSize === right.hashSize)
+    for (const algorithm of HASH_ALGORITHMS)
+      if (left[algorithm] && right[algorithm] && left[algorithm] !== right[algorithm]) return false;
+  for (const field of ['serials', 'setIds'] as const) {
+    const a = identifiers(left[field]).map(
+        field === 'serials' ? normalizeSerial : normalizeSetAlias,
+      ),
+      b = identifiers(right[field]).map(field === 'serials' ? normalizeSerial : normalizeSetAlias);
+    if (a.length && b.length && !a.some((value) => b.includes(value))) return false;
+  }
+  return true;
+}
+/** Validate inherited reconciliation records before using them to merge another source. */
+function provenanceRows(
+  candidate: MatchCandidate,
+): Array<{ title: string; metadata: Record<string, string>; [key: string]: unknown }> | null {
+  if (!candidate.metadata.matchProvenance) return [{ ...candidate }];
+  try {
+    const rows: unknown = JSON.parse(candidate.metadata.matchProvenance);
+    if (!Array.isArray(rows) || !rows.length || rows.length > 100) return null;
+    if (
+      rows.some(
+        (row) =>
+          !row ||
+          typeof row !== 'object' ||
+          typeof row.title !== 'string' ||
+          !row.metadata ||
+          typeof row.metadata !== 'object' ||
+          Array.isArray(row.metadata) ||
+          Object.values(row.metadata).some((value) => typeof value !== 'string'),
+      )
+    )
+      return null;
+    return rows.map((row) => ({
+      ...row,
+      ...('providerId' in candidate && !row.providerId ? { providerId: candidate.providerId } : {}),
+    }));
+  } catch {
+    return null;
+  }
+}
+/** Detect an identity contradiction within one game's release family, not unrelated filename hints. */
+export function hasIdentityConflict(
+  input: MatchingInput,
+  candidates: readonly MatchCandidate[],
+  candidate?: MatchCandidate,
+): boolean {
+  return candidates.some((conflict) => {
+    if (conflict.kind !== 'metadata' || !assessEvidence(input, conflict.metadata).conflict)
+      return false;
+    if (!candidate) return true;
+    if (!['metadata', 'artwork'].includes(candidate.kind)) return false;
+    const system = candidate.metadata.systemId ?? input.systemId;
+    if (system !== (conflict.metadata.systemId ?? input.systemId)) return false;
+    return nameMatchScore(candidate.metadata.matchedGame ?? candidate.title, conflict.title) > 0;
+  });
+}
+/** Exact verified serials may corroborate a catalog's primary-title/subtitle alias. */
+export function compatibleCatalogIdentity(
+  input: MatchingInput,
+  left: Pick<MatchCandidate, 'title' | 'metadata'>,
+  right: Pick<MatchCandidate, 'title' | 'metadata'>,
+): boolean {
+  if (compatibleGameTitles(left.title, right.title)) return true;
+  if (
+    !serialSubtitleAlias(left.title, right.title) ||
+    !compatibleMetadata(left.metadata, right.metadata)
+  )
+    return false;
+  if (
+    assessEvidence(input, left.metadata).conflict ||
+    assessEvidence(input, right.metadata).conflict
+  )
+    return false;
+  const a = identifiers(left.metadata.serials).map(normalizeSerial),
+    b = identifiers(right.metadata.serials).map(normalizeSerial);
+  return (input.facts?.identifiers ?? []).some(
+    (id) =>
+      id.type === 'serial' &&
+      id.verified &&
+      (!id.systemId ||
+        ((!left.metadata.systemId || left.metadata.systemId === id.systemId) &&
+          (!right.metadata.systemId || right.metadata.systemId === id.systemId))) &&
+      a.includes(normalizeSerial(id.value)) &&
+      b.includes(normalizeSerial(id.value)),
+  );
+}
+/** Merge compatible same-game suggestions; never truncate provenance to make conflicting evidence disappear. */
+export function reconcileCandidates<T extends MatchCandidate>(
+  input: MatchingInput,
+  candidates: readonly T[],
+): T[] {
+  const result: T[] = [];
+  for (const candidate of candidates) {
+    let merged = false;
+    for (let index = 0; index < result.length; index++) {
+      const existing = result[index];
+      if (
+        !existing ||
+        existing.kind !== candidate.kind ||
+        !compatibleCatalogIdentity(input, existing, candidate) ||
+        !compatibleMetadata(existing.metadata, candidate.metadata)
+      )
+        continue;
+      const leftRows = provenanceRows(existing),
+        rightRows = provenanceRows(candidate);
+      if (
+        !leftRows ||
+        !rightRows ||
+        leftRows.some((left) =>
+          rightRows.some(
+            (right) =>
+              !compatibleCatalogIdentity(input, left, right) ||
+              !compatibleMetadata(left.metadata, right.metadata),
+          ),
+        )
+      )
+        continue;
+      if (
+        candidate.kind === 'artwork' &&
+        (existing.metadata.artworkRole !== candidate.metadata.artworkRole ||
+          existing.url !== candidate.url ||
+          existing.fileId !== candidate.fileId)
+      )
+        continue;
+      if (candidate.kind !== 'metadata' && candidate.kind !== 'artwork') continue;
+      const combined = JSON.stringify([...leftRows, ...rightRows]);
+      const preferred =
+        automaticEvidence(input, candidate) && !automaticEvidence(input, existing)
+          ? candidate
+          : existing;
+      const metadata: Record<string, string> = {
+        ...existing.metadata,
+        ...candidate.metadata,
+        ...preferred.metadata,
+        matchProvenance: combined,
+      };
+      if (existing.metadata.hashSize !== candidate.metadata.hashSize)
+        for (const key of [...HASH_ALGORITHMS, 'hashSize', 'hashMedia', 'hashRepresentation']) {
+          delete metadata[key];
+          if (preferred.metadata[key]) metadata[key] = preferred.metadata[key];
+        }
+      if (combined.length > 4096 || Object.keys(metadata).length > 24) continue;
+      // Non-identity metadata must not be silently overwritten either.
+      const identityKeys = new Set([
+        'title',
+        'romName',
+        'source',
+        'matchEvidence',
+        'hashRepresentation',
+        'hashSize',
+        'hashMedia',
+        'md5',
+        'sha1',
+        'crc32',
+        'serials',
+        'setIds',
+        'matchProvenance',
+      ]);
+      if (
+        Object.keys(existing.metadata).some(
+          (key) =>
+            !identityKeys.has(key) &&
+            candidate.metadata[key] &&
+            existing.metadata[key] !== candidate.metadata[key],
+        )
+      )
+        continue;
+      const evidence = assessEvidence(input, metadata);
+      if (evidence.conflict) {
+        metadata.matchEvidence = evidence.serialConflict ? 'serial-conflict' : 'hash-conflict';
+        result[index] = { ...preferred, confidence: 'name', metadata };
+      } else result[index] = { ...preferred, metadata };
+      merged = true;
+      break;
+    }
+    if (!merged) result.push(candidate);
+  }
+  const conflicts = result.filter(
+    (candidate) =>
+      candidate.kind === 'metadata' && assessEvidence(input, candidate.metadata).conflict,
+  );
+  if (!conflicts.length) return result;
+  return result.map((candidate) => {
+    if (!hasIdentityConflict(input, conflicts, candidate)) return candidate;
+    if (
+      Object.keys(candidate.metadata).length < 24 ||
+      candidate.metadata.identityConflict !== undefined
+    )
+      return { ...candidate, metadata: { ...candidate.metadata, identityConflict: 'true' } };
+    // Preserve a full metadata object; callers can also use hasIdentityConflict for this rare case.
+    if (candidate.metadata.matchEvidence !== undefined)
+      return {
+        ...candidate,
+        metadata: { ...candidate.metadata, matchEvidence: 'identity-conflict' },
+      };
+    return candidate;
+  });
 }
 
 /** Reads patch identity only; never applies it or changes the source ROM. */

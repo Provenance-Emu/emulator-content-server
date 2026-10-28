@@ -86,6 +86,92 @@ test('a real rename keeps the source ID, saved selections and revision through r
     }
   }));
 
+test('artwork roles persist independently and deleting one role preserves the others', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'roles.nes'), 'generated');
+    f.db.applyInspection({ ...f, files: [await inspected(f.root, 'roles.nes')], online: true });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    const artwork = (id: string, artworkRole: 'front' | 'back' | 'disc' | 'manual') => ({
+      ...selection,
+      id,
+      kind: 'artwork' as const,
+      artworkRole,
+      contentAvailable: true,
+      contentType: 'image/png',
+      fileName: `${artworkRole}.png`,
+    });
+    let state = f.db.saveSourceMatch(
+      source.id,
+      0,
+      'artwork',
+      artwork('front', 'front'),
+      Buffer.from([1]),
+      f.actorId,
+    );
+    state = f.db.saveSourceMatch(
+      source.id,
+      state.revision,
+      'artwork',
+      artwork('back', 'back'),
+      Buffer.from([2]),
+      f.actorId,
+    );
+    state = f.db.saveSourceMatch(
+      source.id,
+      state.revision,
+      'artwork',
+      artwork('disc', 'disc'),
+      Buffer.from([3]),
+      f.actorId,
+    );
+    state = f.db.saveSourceMatch(
+      source.id,
+      state.revision,
+      'artwork',
+      artwork('manual', 'manual'),
+      Buffer.from([4]),
+      f.actorId,
+    );
+    assert.deepEqual(
+      state.matches.map((match) => match.artworkRole),
+      ['back', 'disc', 'front', 'manual'],
+    );
+    assert.deepEqual(f.db.sourceMatchContent(source.id, 'artwork', 'back'), new Uint8Array([2]));
+    state = f.db.saveSourceMatch(
+      source.id,
+      state.revision,
+      'artwork',
+      null,
+      null,
+      f.actorId,
+      'back',
+    );
+    assert.deepEqual(
+      state.matches.map((match) => match.artworkRole),
+      ['disc', 'front', 'manual'],
+    );
+    assert.deepEqual(f.db.sourceMatchContent(source.id, 'artwork'), new Uint8Array([1]));
+  }));
+
+test('matching identifications are bounded and invalidated by their stamp', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'identity.nes'), 'generated');
+    f.db.applyInspection({ ...f, files: [await inspected(f.root, 'identity.nes')], online: true });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    f.db.saveMatchingIdentification(source.id, 'fingerprint-v1', {
+      systems: ['nes'],
+      confidence: 0.9,
+    });
+    assert.deepEqual(f.db.matchingIdentification(source.id, 'fingerprint-v1'), {
+      systems: ['nes'],
+      confidence: 0.9,
+    });
+    assert.equal(f.db.matchingIdentification(source.id, 'fingerprint-v2'), null);
+    assert.throws(() => f.db.saveMatchingIdentification(source.id, 'huge', 'x'.repeat(256 * 1024)));
+  }));
+
 test('a copy and ambiguous hard links never steal a missing source identity', async () =>
   fixture(async (f) => {
     await writeFile(join(f.root, 'before.nes'), 'generated');

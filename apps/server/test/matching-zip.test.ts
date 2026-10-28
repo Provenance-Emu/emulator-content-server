@@ -161,7 +161,7 @@ test('ZIP lookup uses inner hashes and a versioned cache; ambiguous and encrypte
   );
   await writeFile(
     join(plugins, 'provider', 'entry.mjs'),
-    `export default {search:async input=>[{id:'generated',kind:'metadata',title:'Generated checksum claim',confidence:'checksum',metadata:{systemId:'com.provenance.jaguar',md5:input.md5??'none',crc32:input.crc32??'none',size:String(input.size)}}]};`,
+    `export default {search:async input=>[{id:'generated',kind:'metadata',title:'Generated checksum claim',confidence:'checksum',metadata:{systemId:'com.provenance.jaguar',md5:input.md5??'none',crc32:input.crc32??'none',size:String(input.size),hashSize:String(input.size),hashRepresentation:'zip-member'}}]};`,
   );
   const f = await libraryFixture({ matchingPluginsDir: plugins });
   try {
@@ -206,9 +206,9 @@ test('ZIP lookup uses inner hashes and a versioned cache; ambiguous and encrypte
       size: 99,
     });
     const stamps: string[] = [];
-    const read = f.catalog.matchingFingerprint.bind(f.catalog);
+    const read = f.catalog.matchingIdentification.bind(f.catalog);
     let hits = 0;
-    f.catalog.matchingFingerprint = (id, key) => {
+    f.catalog.matchingIdentification = (id, key) => {
       stamps.push(key);
       const cached = read(id, key);
       if (cached) hits++;
@@ -228,7 +228,10 @@ test('ZIP lookup uses inner hashes and a versioned cache; ambiguous and encrypte
     assert.equal(candidate.metadata.crc32, 'cbf43926');
     assert.equal(candidate.metadata.size, '9');
     assert.equal(hits, 0);
-    assert.ok(stamps.every((stamp) => stamp.startsWith('zip-v1:')));
+    assert.ok(
+      stamps.every((stamp) => /^[a-f0-9]{64}:W\//.test(stamp)),
+      'Identification version and source identity scope the persistent facts cache',
+    );
     assert.equal((await lookup()).statusCode, 200);
     assert.equal(hits, 1);
     await writeFile(

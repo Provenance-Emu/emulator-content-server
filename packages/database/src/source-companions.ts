@@ -11,7 +11,14 @@ export const gameStem = (name: string): string =>
 export function companionStem(name: string): string {
   return name
     .replace(/\.[^.]+$/, '')
-    .replace(/(?:[ ._-](?:cover|boxart|front))$/i, '')
+    .replace(
+      /\s*[[(](?:front|back|disc|disk|cd[ ._-]?(?:\d+|label)|cdlabel|label|manual|title|screenshot(?:[ ._-]?\d+)?|screen[ ._-]?\d*|cover|boxart|folder|poster|snap|preview)[)\]]\s*$/i,
+      '',
+    )
+    .replace(
+      /(?:[ ._-]+(?:front|back|disc|disk|cd[ ._-]?(?:\d+|label)|cdlabel|label|manual|title|screenshot(?:[ ._-]?\d+)?|screen[ ._-]?\d*|cover|boxart|folder|poster|snap|preview))$/i,
+      '',
+    )
     .replace(/\s+\((?:Game Genie|Action Replay|Pro Action Replay|GameShark|CodeBreaker)\)$/i, '')
     .normalize('NFC')
     .toLowerCase();
@@ -22,14 +29,23 @@ export function companionSelection(rootId: string, relativePath: string, checksu
   const directory = companionDirectory(relativePath);
   const directories = [
     directory,
-    ...['artwork', 'boxart', 'covers', 'patches', 'metadata', 'cheats'].map((name) =>
-      posix.join(directory, name),
-    ),
+    ...[
+      'artwork',
+      'boxart',
+      'covers',
+      'manual',
+      'manuals',
+      'discs',
+      'screenshots',
+      'patches',
+      'metadata',
+      'cheats',
+    ].map((name) => posix.join(directory, name)),
   ];
   const values: string[] = [];
   const branches: string[] = [];
   for (const parent of directories) {
-    values.push(rootId, parent, gameStem(posix.basename(relativePath)), relativePath);
+    values.push(rootId, parent, companionStem(posix.basename(relativePath)), relativePath);
     branches.push(`SELECT * FROM (SELECT id,relative_path FROM source_files INDEXED BY source_files_match_stem
       WHERE root_id=? AND missing_at IS NULL AND match_parent=? AND match_stem=? AND relative_path<>?
       ORDER BY relative_path LIMIT 100)`);
@@ -41,5 +57,5 @@ export function companionSelection(rootId: string, relativePath: string, checksu
         ORDER BY relative_path LIMIT 100)`);
       }
   }
-  return { sql: branches.join(' UNION ') + ' ORDER BY relative_path LIMIT 100', values };
+  return { sql: `${branches.join(' UNION ')} ORDER BY relative_path LIMIT 100`, values };
 }

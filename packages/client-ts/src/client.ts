@@ -640,11 +640,14 @@ export class ContentClient {
     kind: string,
     revision: number,
     signal?: AbortSignal,
+    artworkRole?: string,
   ): Promise<SourceMatchSelections> {
+    const query = new URLSearchParams();
+    if (artworkRole !== undefined) query.set('artworkRole', artworkRole);
     return this.selectionRequest(
       id,
       { method: 'DELETE', headers: { 'if-match': `"rev-${revision}"` }, signal },
-      `/${encodeURIComponent(kind)}`,
+      `/${encodeURIComponent(kind)}${query.size ? `?${query}` : ''}`,
     );
   }
   private async selectionRequest(
@@ -652,17 +655,16 @@ export class ContentClient {
     init: RequestInit,
     suffix = '',
   ): Promise<SourceMatchSelections> {
-    const response = await fetch(
-      this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches/selections${suffix}`),
-      {
-        ...init,
-        headers: {
-          ...this.headers(),
-          ...(init.body ? { 'content-type': 'application/json' } : {}),
-          ...init.headers,
-        },
+    const url = this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches/selections${suffix}`);
+    url.searchParams.set('includeArtworkRoles', 'true');
+    const response = await fetch(url, {
+      ...init,
+      headers: {
+        ...this.headers(),
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
+        ...init.headers,
       },
-    );
+    });
     if (!response.ok) throw await failure(response);
     const result = (await response.json()) as SourceMatchSelections;
     if (
@@ -670,17 +672,25 @@ export class ContentClient {
       !Number.isSafeInteger(result.revision) ||
       result.revision < 0 ||
       !Array.isArray(result.matches) ||
-      result.matches.length > 5
+      result.matches.length > 11
     )
       throw new Error('Invalid saved matches');
-    const kinds = new Set<string>();
+    const selections = new Set<string>();
     for (const match of result.matches) {
+      const role = match?.kind === 'artwork' ? (match.artworkRole ?? 'front') : '';
+      const key = `${match?.kind}:${role}`;
       if (
         !match ||
         typeof match.id !== 'string' ||
         typeof match.providerId !== 'string' ||
         !['rom', 'metadata', 'artwork', 'patch', 'cheats'].includes(match.kind) ||
-        kinds.has(match.kind) ||
+        (match.kind === 'artwork' &&
+          match.artworkRole !== undefined &&
+          !['front', 'back', 'disc', 'manual', 'title', 'screenshot', 'other'].includes(
+            match.artworkRole,
+          )) ||
+        (match.kind !== 'artwork' && match.artworkRole !== undefined) ||
+        selections.has(key) ||
         typeof match.title !== 'string' ||
         match.title.length > 512 ||
         !match.metadata ||
@@ -693,17 +703,21 @@ export class ContentClient {
         (match.contentType !== null && typeof match.contentType !== 'string')
       )
         throw new Error('Invalid saved match');
-      kinds.add(match.kind);
+      selections.add(key);
     }
     return result;
   }
-  async selectedMatchContent(id: string, kind: string, signal?: AbortSignal): Promise<Blob> {
-    const response = await fetch(
-      this.url(
-        `/api/v1/sources/${encodeURIComponent(id)}/matches/selections/${encodeURIComponent(kind)}/content`,
-      ),
-      { headers: this.headers(), signal },
+  async selectedMatchContent(
+    id: string,
+    kind: string,
+    signal?: AbortSignal,
+    artworkRole?: string,
+  ): Promise<Blob> {
+    const url = this.url(
+      `/api/v1/sources/${encodeURIComponent(id)}/matches/selections/${encodeURIComponent(kind)}/content`,
     );
+    if (artworkRole !== undefined) url.searchParams.set('artworkRole', artworkRole);
+    const response = await fetch(url, { headers: this.headers(), signal });
     if (!response.ok) throw await failure(response);
     const reader = response.body?.getReader();
     if (!reader) throw new Error('Selected file unavailable');
@@ -714,7 +728,8 @@ export class ContentClient {
         const part = await reader.read();
         if (part.done) break;
         size += part.value.byteLength;
-        if (size > 2 * 1024 * 1024) throw new Error('Selected file too large');
+        if (size > (kind === 'artwork' && artworkRole === 'manual' ? 8 : 2) * 1024 * 1024)
+          throw new Error('Selected file too large');
         chunks.push(new Uint8Array(part.value));
       }
     } finally {

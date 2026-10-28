@@ -105,3 +105,54 @@ export function nameMatchScore(left: string, right: string): number {
     return 0;
   return a.exact === b.exact ? 100 : a.regions.size && b.regions.size ? 90 : 80;
 }
+
+/** Exact identifiers allow punctuation/spacing variants, retaining region and revision characters. */
+export function normalizeSerial(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toUpperCase()
+    .replace(/[\s._()-]/g, '');
+}
+export function normalizeSetAlias(value: string): string {
+  return contentStem(value).normalize('NFKC').toLowerCase().trim();
+}
+/** Reconciliation is stricter than suggestion ranking: explicit release facts must agree. */
+export function compatibleGameTitles(left: string, right: string): boolean {
+  const a = facts(left),
+    b = facts(right);
+  return (
+    nameMatchScore(left, right) > 0 &&
+    a.edition === b.edition &&
+    a.revision === b.revision &&
+    a.date === b.date &&
+    (!a.regions.size ||
+      !b.regions.size ||
+      (a.regions.size === b.regions.size &&
+        [...a.regions].every((region) => b.regions.has(region))))
+  );
+}
+
+/** A verified shared serial can link a full subtitle to its exact short title, never a fuzzy prefix. */
+export function serialSubtitleAlias(left: string, right: string): boolean {
+  const a = facts(left),
+    b = facts(right);
+  if (
+    a.edition !== b.edition ||
+    a.revision !== b.revision ||
+    a.date !== b.date ||
+    (a.regions.size &&
+      b.regions.size &&
+      (a.regions.size !== b.regions.size ||
+        [...a.regions].some((region) => !b.regions.has(region))))
+  )
+    return false;
+  const parts = (value: string) => {
+    const base = contentStem(value)
+      .replace(/\([^()]*\)|\[[^[\]]*\]/g, ' ')
+      .trim();
+    return { full: key(base), primary: key(base.split(/\s+[-–—]\s+|:\s+/)[0] ?? base) };
+  };
+  const first = parts(left),
+    second = parts(right);
+  return first.full === second.primary || second.full === first.primary;
+}
