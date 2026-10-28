@@ -27,3 +27,12 @@ The 2026-10-28 run indexed 100,000 generated ROM records plus 500 sidecars in ab
 Regression coverage includes a pre-queue catalog retaining saved choices across two reopens, normalized sidecars beyond 50,000 entries, a 60,000-completed-row queue index plan, cross-session cancellation, disconnected HTTP requests, resume/retry and persisted review. Manual provider choices and source revision checks remain authoritative.
 
 The existing 16 MiB public-catalog body bound remains. An oversized upstream dataset needs a split or streaming index adapter; raising concurrency or creating more browser sessions does not bypass that bound.
+
+
+## Existing-library acceptance — 2026-10-28
+
+The operator's existing 1,608 indexed source rows, two root assignments, one user and two sessions survived the schema upgrade and subsequent detached server updates. The initial pre-feature catalog had 13 metadata choices and one artwork choice. A shared 935-game pass added 29 safe metadata selections in 15.636 seconds. Explicit `[BIOS]` filenames were then correctly classified as firmware, reducing Games by 17 entries without changing or deleting source files.
+
+After bounded ZIP support, CRC-only catalog lookup and compatible checksum-title aliases were corrected, a shared pass completed all 918 game entries in 13.991 seconds with zero failures and added 82 Jaguar artwork selections. Final coverage is 42 metadata selections and 83 artwork selections. All 43 choices present before the ZIP follow-up remained byte-for-byte intact; new art was downloaded through the normal bounded provider bridge. SQLite integrity passed, and the installed Mac app rendered the newly saved covers.
+
+These timings describe this local, warm catalog, including the selected provider/cache state; they do not predict throughput on 100,000 disc images or a slow remote volume. The final job retained 570 review outcomes and 333 unmatched outcomes. 7z/CHD inner-content fingerprints, unsupported archive layouts and broader automatic Dreamcast/arcade coverage remain follow-ups. Filename hints are available without pretending they are checksum verification. The released 0.1.6 installers remain frozen; the later matching fixes are on main and active in the local service, and the browser UI additionally has paged job history.
