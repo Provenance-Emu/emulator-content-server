@@ -112,3 +112,11 @@ fork's upgrade grant has not been established, so compatibility with the static
 GPLv3 RetroArch frontend is unresolved. Do not publish this combined binary as a
 curated package until that grant is confirmed. Preserve all source and dependency
 notices for a future review.
+
+## PCSX ReARMed software PlayStation
+
+The pinned source core `c8816799b50388e61cfe237fe2cdbb7d8175f20a` builds without patches against the same frontend/SDK. `build-pcsx-rearmed.mjs` uses separate clean temporary build clones; `rebuild-pcsx-source.mjs` rebuilds the complete published source archive without Git. Selected core/HLE/software GPU/SPU headers grant GPL-2.0-or-later; retain every dependency and frontend notice.
+
+The original 4 KiB PS-X EXE passed opaque-frame execution with an advancing RAM counter and green compositor output. HLE requires no proprietary BIOS. Single EXE/CHD/PBP/ISO, 512 MiB maximum; no CUE/M3U/SBI companions or synchronized saves. Original-program success is not a claim of commercial-game, audio or controller coverage.
+
+The optional [0.1.6 core release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.6-cores.1) includes the 4,446,467-byte package SHA-256 `1a1f37934f601d49ed00d6f69c998860c5283c3ddfde8774ef6dfd4badb9b3ad` and 38,973,971-byte corresponding source SHA-256 `21f2f5e42f1f6ef2a9ac75c4ac87f3845bc384cf43ed97c5aa24a1da930e81ec`, plus checksums/build helpers and complete notices.

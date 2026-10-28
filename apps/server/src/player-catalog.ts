@@ -34,6 +34,18 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     sha256: '62512cdbddba368ea8f59f2929a03d93e8cb0eda6471a09a6b20751bf1b3e119',
   },
   {
+    id: 'org.libretro.pcsx-rearmed',
+    name: 'PCSX ReARMed (PlayStation)',
+    systems: ['com.provenance.psx'],
+    description:
+      'Software PlayStation core with BIOS-free HLE boot. Original program rendering verified; synchronized saves and multi-file layouts are unavailable.',
+    available: true,
+    reason: null,
+    downloadBytes: 4446467,
+    url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-cores.1/pcsx-rearmed.ecsplayer',
+    sha256: '1a1f37934f601d49ed00d6f69c998860c5283c3ddfde8774ef6dfd4badb9b3ad',
+  },
+  {
     id: 'org.libretro.parallel-dc',
     name: 'Dreamcast & Sega arcade (parallel-dc)',
     systems: [
@@ -44,7 +56,8 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     ],
     description: 'Dreamcast and Sega arcade systems.',
     available: false,
-    reason: 'Browser runtime, large media and required BIOS support are being validated.',
+    reason:
+      'The local interpreter boots Dreamcast and Naomi; catalog packaging and Atomiswave media support are still being prepared.',
     downloadBytes: null,
     url: null,
     sha256: null,
