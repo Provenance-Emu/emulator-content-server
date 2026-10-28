@@ -712,3 +712,225 @@ test('shared verified serial reconciles a Redump subtitle and Flycast short titl
     );
   }
 });
+
+test('exact-name fallback is opt-in, keeps full release tags, and remains name evidence', () => {
+  const request = { name: 'Original: Game (World) (En,Ja) (Rev 1).7z', systemId, companions: [] };
+  const records: matching.DatRecord[] = [
+    {
+      name: 'Original - Game (World) (En,Ja) (Rev 1).bin',
+      title: 'Original - Game (World) (En,Ja) (Rev 1)',
+      size: 16,
+      md5,
+      systemId,
+    },
+  ];
+  const strict = required(matching.matchLibretro(request, records)[0]);
+  assert.equal(matching.automaticEvidence(request, strict), false);
+  const enabled = { ...request, allowExactNames: true };
+  const named = required(matching.matchLibretro(enabled, records)[0]);
+  assert.equal(named.confidence, 'name');
+  assert.equal(named.metadata.matchEvidence, 'exact-name');
+  assert.equal(matching.automaticEvidence(enabled, named), true);
+  for (const title of [
+    'Original - Game (USA) (En,Ja) (Rev 1)',
+    'Original - Game (World) (En) (Rev 1)',
+    'Original - Game (World) (En,Ja) (Rev 2)',
+    'Original - Game (World) (En,Ja)',
+    'Original - Game (World) (En,Ja) (Rev 1) (Proto)',
+  ]) {
+    assert.equal(matching.automaticEvidence(enabled, { ...candidate(), title }), false);
+  }
+});
+
+test('exact names never override verified serial, hash, size or system contradictions', () => {
+  const named = candidate({ serials: '["T-54321N"]', md5, hashSize: '16' });
+  const request = {
+    ...input,
+    name: 'Original Game (USA).chd',
+    allowExactNames: true,
+    facts: facts({
+      identifiers: [{ type: 'serial', value: 'T-12345N', systemId, verified: true }],
+    }),
+  };
+  assert.equal(matching.automaticEvidence(request, named), false);
+  assert.equal(matching.automaticEvidence(request, candidate()), false);
+  assert.equal(
+    matching.automaticEvidence(
+      { ...request, facts: facts(), md5: '3'.repeat(32), size: 16 },
+      named,
+    ),
+    false,
+  );
+  assert.equal(
+    matching.automaticEvidence({ ...request, facts: facts(), md5, size: 32 }, named),
+    false,
+  );
+  assert.equal(
+    matching.automaticEvidence(
+      { ...request, facts: facts() },
+      { ...named, metadata: { systemId: 'com.provenance.naomi' } },
+    ),
+    false,
+  );
+});
+
+test('exact front fallback uses actual full filename, requires a known system, and never promotes other roles', async () => {
+  const { createLibretroProvider } = await import('../src/libretro-matching.js');
+  const provider = createLibretroProvider(
+    async (url) =>
+      new Response(
+        String(url).includes('/git/trees/')
+          ? JSON.stringify({
+              sha: 'a'.repeat(40),
+              truncated: false,
+              tree: ['Named_Boxarts', 'Named_Titles', 'Named_Snaps'].map((dir) => ({
+                path: `${dir}/Original Game (World).png`,
+                type: 'blob',
+                size: 1000,
+              })),
+            })
+          : 'game ( name "Original Game (World)" rom ( name "Original Game (World).bin" size 16 ) )',
+      ),
+  );
+  const request = {
+    name: 'Original Game (World).chd',
+    systemId,
+    companions: [],
+    online: true,
+    allowExactNames: true,
+  };
+  const rows = await provider.search(request);
+  const cover = required(rows.find((row) => row.metadata.artworkRole === 'front'));
+  assert.equal(cover.confidence, 'name');
+  assert.equal(cover.metadata.matchEvidence, 'exact-name');
+  assert.equal(matching.automaticEvidence(request, cover), true);
+  assert.ok(!cover.metadata.verification?.includes('serial-verified'));
+  assert.ok(
+    rows
+      .filter((row) => ['title', 'screenshot'].includes(row.metadata.artworkRole ?? ''))
+      .every((row) => !matching.automaticEvidence(request, row)),
+  );
+  assert.equal(matching.automaticEvidence({ ...request, systemId: null }, cover), false);
+  assert.equal(
+    matching.automaticEvidence({ ...request, name: 'Original Game (USA).chd' }, cover),
+    false,
+  );
+});
+
+test('metadata matching a DAT set filename does not inherit automatic artwork with a different full title', async () => {
+  const { createLibretroProvider } = await import('../src/libretro-matching.js');
+  const provider = createLibretroProvider(
+    async (url) =>
+      new Response(
+        String(url).includes('/git/trees/')
+          ? JSON.stringify({
+              sha: 'a'.repeat(40),
+              truncated: false,
+              tree: [
+                { path: 'Named_Boxarts/Original Arcade (World).png', type: 'blob', size: 1000 },
+              ],
+            })
+          : String(url).includes('naomi_roms.cpp')
+            ? 'const Game Games[] = { { "origset", NULL, "Original Arcade (World)", 0x100, 0, "naomi2", M2, ROT0, {} }, };'
+            : 'clrmamepro ( name "Empty" )',
+      ),
+  );
+  const request = {
+    name: 'origset.zip',
+    systemId: 'com.provenance.naomi2',
+    companions: [],
+    online: true,
+    allowExactNames: true,
+  };
+  const rows = await provider.search(request);
+  assert.equal(
+    matching.automaticEvidence(request, required(rows.find((row) => row.kind === 'metadata'))),
+    true,
+  );
+  assert.ok(
+    rows
+      .filter((row) => row.kind === 'artwork')
+      .every((row) => !matching.automaticEvidence(request, row)),
+  );
+});
+
+test('exact-name policy requires explicit agreeing catalog system instead of promoting plain local sidecars', async () => {
+  const request = {
+    name: 'Original Game (USA).rom',
+    systemId,
+    companions: [
+      { id: 'local-art', name: 'Original Game (USA).png' },
+      {
+        id: 'local-meta',
+        name: 'Original Game (USA).json',
+        metadata: { title: 'Original Game (USA)' },
+      },
+    ],
+    allowExactNames: true,
+  };
+  const rows = await matching.localMatchingProvider.search(request);
+  assert.equal(rows.length, 2);
+  assert.ok(rows.every((row) => !matching.automaticEvidence(request, row)));
+  assert.equal(matching.automaticEvidence({ ...request, systemId: null }, candidate()), false);
+});
+
+test('an exact catalog ROM filename cannot hide conflicting displayed region, language or revision', () => {
+  const request = {
+    name: 'Original Game (World) (En,Ja) (Rev 1).zip',
+    systemId,
+    companions: [],
+    allowExactNames: true,
+  };
+  for (const title of [
+    'Original Game (USA) (En,Ja) (Rev 1)',
+    'Original Game (World) (En) (Rev 1)',
+    'Original Game (World) (En,Ja) (Rev 2)',
+    'Original Game (World) (En,Ja) (Rev 1) (Proto)',
+  ]) {
+    const row = { ...candidate({ romName: request.name }), title };
+    assert.equal(matching.automaticEvidence(request, row), false);
+  }
+});
+
+test('manager labels opt-in exact catalog evidence honestly and retains multiple assets for caller review', async () => {
+  const request = {
+    name: 'Original Game (USA).zip',
+    systemId,
+    companions: [],
+    allowExactNames: true,
+  };
+  const result = await matching.runMatching(request, [
+    {
+      id: 'test.catalog',
+      name: 'Catalog',
+      capabilities: ['metadata', 'artwork'],
+      network: false,
+      search: async () => [
+        { ...candidate(), confidence: 'name' },
+        {
+          ...candidate({ artworkRole: 'front' }),
+          id: 'front1',
+          kind: 'artwork',
+          url: 'https://example.com/one.png',
+        },
+        {
+          ...candidate({ artworkRole: 'front' }),
+          id: 'front2',
+          kind: 'artwork',
+          url: 'https://example.com/two.png',
+        },
+      ],
+    },
+  ]);
+  assert.equal(result.candidates.filter((row) => row.kind === 'artwork').length, 2);
+  assert.ok(
+    result.candidates.every(
+      (row) => row.confidence === 'name' && row.metadata.matchEvidence === 'exact-name',
+    ),
+  );
+  assert.ok(
+    result.candidates.every(
+      (row) => !matching.automaticEvidence({ ...request, allowExactNames: false }, row),
+    ),
+  );
+});

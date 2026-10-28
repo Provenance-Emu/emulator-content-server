@@ -30,6 +30,7 @@ import { registerSourceSelections } from './source-selections.js';
 export function matchBody(value: unknown): {
   online: boolean;
   checksum: boolean;
+  allowExactNames?: boolean;
   providerIds?: string[];
   managerId?: string;
 } {
@@ -38,9 +39,9 @@ export function matchBody(value: unknown): {
   const record = value as Record<string, unknown>;
   if (
     Object.keys(record).some(
-      (key) => !['online', 'checksum', 'providerIds', 'managerId'].includes(key),
+      (key) => !['online', 'checksum', 'allowExactNames', 'providerIds', 'managerId'].includes(key),
     ) ||
-    ['online', 'checksum'].some(
+    ['online', 'checksum', 'allowExactNames'].some(
       (key) => record[key] !== undefined && typeof record[key] !== 'boolean',
     )
   )
@@ -60,6 +61,7 @@ export function matchBody(value: unknown): {
   return {
     online: record.online === true,
     checksum: record.checksum === true,
+    ...(record.allowExactNames === true ? { allowExactNames: true } : {}),
     ...(record.providerIds ? { providerIds: record.providerIds as string[] } : {}),
     ...(record.managerId ? { managerId: record.managerId as string } : {}),
   };
@@ -191,6 +193,7 @@ export function registerSourceMatching(
         name: source.displayName,
         systemId: source.systemId,
         online: options.online,
+        ...(options.allowExactNames ? { allowExactNames: true } : {}),
         companions: [],
         size: source.size,
       };
@@ -515,13 +518,34 @@ export function registerSourceMatching(
             !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
         );
         const pendingInput = jobs.get(result.requestId)?.input;
-        const eligible = (candidate: MatchCandidate) =>
-          pendingInput
-            ? automaticEvidence(pendingInput, candidate) &&
-              !hasIdentityConflict(pendingInput, result.candidates, candidate)
-            : false;
+        const conflicts = pendingInput
+          ? result.candidates.filter((candidate) => hasIdentityConflict(pendingInput, [candidate]))
+          : [];
+        const eligibleSet = new Set(
+          remaining.filter(
+            (candidate) =>
+              pendingInput &&
+              automaticEvidence(pendingInput, candidate) &&
+              !hasIdentityConflict(pendingInput, conflicts, candidate),
+          ),
+        );
+        const strongSet = new Set(
+          [...eligibleSet].filter(
+            (candidate) =>
+              pendingInput &&
+              automaticEvidence({ ...pendingInput, allowExactNames: false }, candidate),
+          ),
+        );
+        const strongSlots = new Set([...strongSet].map(matchSlot));
+        const preferred = (candidate: (typeof remaining)[number]) =>
+          eligibleSet.has(candidate) &&
+          (!strongSlots.has(matchSlot(candidate)) || strongSet.has(candidate));
+        const slotCounts = new Map<string, number>();
+        for (const candidate of eligibleSet)
+          if (preferred(candidate))
+            slotCounts.set(matchSlot(candidate), (slotCounts.get(matchSlot(candidate)) ?? 0) + 1);
         const systems = new Set(
-          [...saved.matches, ...remaining.filter(eligible)]
+          [...saved.matches, ...eligibleSet]
             .map((candidate) => candidate.metadata.systemId)
             .filter(Boolean),
         );
@@ -529,12 +553,10 @@ export function registerSourceMatching(
           pendingInput && !result.problems.length && systems.size <= 1
             ? remaining.find(
                 (candidate) =>
-                  eligible(candidate) &&
+                  preferred(candidate) &&
                   (candidate.kind !== 'artwork' ||
                     (candidate.metadata.artworkRole ?? 'front') === 'front') &&
-                  remaining.filter(
-                    (other) => matchSlot(other) === matchSlot(candidate) && eligible(other),
-                  ).length === 1,
+                  slotCounts.get(matchSlot(candidate)) === 1,
               )
             : undefined;
         if (!candidate) break;
@@ -547,9 +569,27 @@ export function registerSourceMatching(
             'The provider returned an invalid system identifier',
           );
         if (candidate.kind === 'rom' && !candidate.metadata.systemId) break;
-        const file = ['artwork', 'patch', 'cheats'].includes(candidate.kind)
-          ? await resource(candidate, sourceId, actor, {} as FastifyRequest, null, signal)
-          : null;
+        let file: Awaited<ReturnType<typeof resource>> | null = null;
+        try {
+          if (['artwork', 'patch', 'cheats'].includes(candidate.kind))
+            file = await resource(candidate, sourceId, actor, {} as FastifyRequest, null, signal);
+        } catch (error) {
+          signal.throwIfAborted();
+          if (
+            error instanceof DomainError &&
+            [
+              'artwork-unavailable',
+              'matching-resource-unavailable',
+              'unsupported-artwork',
+              'unsupported-cheats',
+              'unsupported-patch',
+            ].includes(error.code)
+          ) {
+            warning = error.message;
+            break;
+          }
+          throw error;
+        }
         signal.throwIfAborted();
         await proposed.validate(actor);
         visibleSource(context, actor, sourceId);
@@ -599,7 +639,13 @@ export function registerSourceMatching(
       );
       return {
         status:
-          remaining.length || result.problems.length || warning
+          remaining.some(
+            (candidate) =>
+              candidate.kind !== 'artwork' ||
+              (candidate.metadata.artworkRole ?? 'front') === 'front',
+          ) ||
+          result.problems.length ||
+          warning
             ? 'review'
             : saved.matches.length
               ? 'saved'

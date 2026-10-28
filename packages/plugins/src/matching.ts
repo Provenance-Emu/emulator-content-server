@@ -8,6 +8,7 @@ import {
   nameMatchScore,
   normalizeSerial,
   normalizeSetAlias,
+  releaseFactsConflict,
   serialSubtitleAlias,
 } from './matching-names.js';
 import type { RomFacts, RomHash } from './rom-facts.js';
@@ -31,6 +32,7 @@ export interface MatchingInput {
   sha1?: string;
   facts?: RomFacts;
   online?: boolean;
+  allowExactNames?: boolean;
   companions: MatchCompanion[];
 }
 export interface MatchCandidate {
@@ -126,7 +128,22 @@ export async function runMatching(
       a.providerId.localeCompare(b.providerId) ||
       a.id.localeCompare(b.id),
   );
-  return { candidates: reconcileCandidates(input, candidates).slice(0, 100), problems };
+  const reconciled = reconcileCandidates(input, candidates).slice(0, 100);
+  return {
+    candidates: reconciled.map((candidate) =>
+      exactNameEvidence(input, candidate) &&
+      !automaticEvidence({ ...input, allowExactNames: false }, candidate) &&
+      (candidate.metadata.matchEvidence !== undefined ||
+        Object.keys(candidate.metadata).length < 24)
+        ? {
+            ...candidate,
+            confidence: 'name',
+            metadata: { ...candidate.metadata, matchEvidence: 'exact-name' },
+          }
+        : candidate,
+    ),
+    problems,
+  };
 }
 
 export function validateCandidates(
@@ -466,6 +483,8 @@ function matchEntries(
       confidence: proof.verifiedHash && !proof.conflict ? 'checksum' : 'name',
       metadata,
     };
+    if (!proof.verifiedHash && !proof.verifiedSerial && exactNameEvidence(input, candidate))
+      metadata.matchEvidence = 'exact-name';
     if (found.length < 100) found.push(candidate);
     else if (candidate.confidence === 'checksum') {
       const replace = found.findLastIndex((row) => row.confidence !== 'checksum');
@@ -580,6 +599,74 @@ function assessEvidence(input: MatchingInput, metadata: Record<string, string>) 
     matched: hashHit || serial || set,
   };
 }
+/** Opt-in filename policy: full release text is retained; no title/region/edition guessing. */
+function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+  if (!input.allowExactNames || !['metadata', 'artwork'].includes(candidate.kind)) return false;
+  // Catalog identity is explicit; a plain local sidecar association is not this policy.
+  if (!input.systemId || candidate.metadata.systemId !== input.systemId) return false;
+  if (
+    candidate.metadata.identityConflict === 'true' ||
+    ['identity-conflict', 'hash-conflict', 'serial-conflict'].includes(
+      candidate.metadata.matchEvidence ?? '',
+    )
+  )
+    return false;
+  if (
+    input.systemId &&
+    candidate.metadata.systemId &&
+    input.systemId !== candidate.metadata.systemId
+  )
+    return false;
+  if (
+    candidate.kind === 'artwork' &&
+    (candidate.metadata.artworkRole !== 'front' || !input.systemId)
+  )
+    return false;
+  const exact = (value: string) =>
+    contentStem(value)
+      .normalize('NFC')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
+  const name = exact(input.name);
+  if (
+    !name ||
+    ![
+      candidate.title,
+      ...(candidate.kind === 'metadata' && candidate.metadata.romName
+        ? [candidate.metadata.romName]
+        : []),
+    ].some((value) => exact(value) === name)
+  )
+    return false;
+  if (releaseFactsConflict(input.name, candidate.metadata.title ?? candidate.title)) return false;
+  const evidence = assessEvidence(input, candidate.metadata);
+  if (evidence.conflict) return false;
+  const serials = identifiers(candidate.metadata.serials).map(normalizeSerial);
+  if (
+    (input.facts?.identifiers ?? []).some(
+      (id) =>
+        id.verified &&
+        ((id.systemId &&
+          ((input.systemId && input.systemId !== id.systemId) ||
+            (candidate.metadata.systemId && candidate.metadata.systemId !== id.systemId))) ||
+          (id.type === 'serial' && !serials.includes(normalizeSerial(id.value)))),
+    )
+  )
+    return false;
+  const hashes = inputHashes(input).filter(
+    (hash) => hash.verified && !hash.representation.startsWith('chd-'),
+  );
+  // A known different byte length cannot be erased by a matching label.
+  if (
+    candidate.metadata.hashMedia !== 'disk' &&
+    candidate.metadata.hashSize !== undefined &&
+    HASH_ALGORITHMS.some((algorithm) => candidate.metadata[algorithm]) &&
+    hashes.length &&
+    !hashes.some((hash) => hash.size === Number(candidate.metadata.hashSize))
+  )
+    return false;
+  return true;
+}
 /** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */
 export function automaticEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
   if (
@@ -605,7 +692,9 @@ export function automaticEvidence(input: MatchingInput, candidate: MatchCandidat
   if (!layers || layers.some((row) => assessEvidence(input, row.metadata).conflict)) return false;
   return (
     !evidence.conflict &&
-    (evidence.verifiedHash || (candidate.kind !== 'patch' && evidence.verifiedSerial))
+    (evidence.verifiedHash ||
+      (candidate.kind !== 'patch' && evidence.verifiedSerial) ||
+      exactNameEvidence(input, candidate))
   );
 }
 function compatibleMetadata(left: Record<string, string>, right: Record<string, string>): boolean {

@@ -659,12 +659,14 @@ public struct SourceOrganizationResult: Codable, Equatable, Sendable {
 public struct MatchingOptions: Codable, Equatable, Sendable {
     public var online: Bool?
     public var checksum: Bool?
+    public var allowExactNames: Bool?
     public var providerIds: [String]?
     public var managerId: String?
 
-    public init(online: Bool? = nil, checksum: Bool? = nil, providerIds: [String]? = nil, managerId: String? = nil) {
+    public init(online: Bool? = nil, checksum: Bool? = nil, allowExactNames: Bool? = nil, providerIds: [String]? = nil, managerId: String? = nil) {
         self.online = online
         self.checksum = checksum
+        self.allowExactNames = allowExactNames
         self.providerIds = providerIds
         self.managerId = managerId
     }

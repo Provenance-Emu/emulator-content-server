@@ -734,6 +734,7 @@
     },
     "MatchingOptions": {
       "properties": [
+        "allowExactNames",
         "checksum",
         "managerId",
         "online",

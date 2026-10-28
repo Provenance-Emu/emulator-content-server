@@ -1440,6 +1440,7 @@ components:
       properties:
         online: { type: boolean, default: false }
         checksum: { type: boolean, default: false }
+        allowExactNames: { type: boolean, default: false, description: Permit exact full filename and edition matches when no stronger identity conflicts. }
         providerIds:
           type: array
           maxItems: 32

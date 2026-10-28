@@ -10,6 +10,7 @@ export interface LibraryJobScope {
 export interface LibraryJobOptions {
   online: boolean;
   checksum: boolean;
+  allowExactNames?: boolean;
   providerIds?: string[];
   managerId?: string;
 }
@@ -93,14 +94,7 @@ export class LibraryJobRepository {
     options: LibraryJobOptions,
     actorId: string,
   ): { job: LibraryJobRecord; reused: boolean } {
-    const normalized =
-      kind === 'scan'
-        ? { online: false, checksum: false }
-        : {
-            ...options,
-            ...(options.providerIds ? { providerIds: [...options.providerIds].sort() } : {}),
-          };
-    const optionsJson = JSON.stringify(normalized);
+    const optionsJson = JSON.stringify(normalizedOptions(kind, options));
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const active = this.db
@@ -110,14 +104,18 @@ export class LibraryJobRepository {
         .all(kind) as unknown as Row[];
       for (const row of active) {
         const existing = JSON.parse(row.scope_json) as LibraryJobScope;
-        if (row.scope_json === JSON.stringify(scope) && row.options_json === optionsJson) {
+        const sameOptions =
+          JSON.stringify(
+            normalizedOptions(kind, JSON.parse(row.options_json) as LibraryJobOptions),
+          ) === optionsJson;
+        if (row.scope_json === JSON.stringify(scope) && sameOptions) {
           this.db.exec('COMMIT');
           return { job: this.get(row.id) as LibraryJobRecord, reused: true };
         }
         const a = this.rootIds(existing);
         const b = this.rootIds(scope);
         if (!b.some((id) => a.includes(id))) continue;
-        if (row.options_json === optionsJson && b.every((id) => a.includes(id))) {
+        if (sameOptions && b.every((id) => a.includes(id))) {
           this.db.exec('COMMIT');
           return { job: this.get(row.id) as LibraryJobRecord, reused: true };
         }
@@ -369,4 +367,16 @@ export function libraryJobItemsQuery(
     sql: `SELECT entity_id AS sourceId,state AS status,saved,suggestions,error FROM library_job_items WHERE ${clauses.join(' AND ')} ORDER BY entity_id LIMIT ?`,
     params,
   };
+}
+
+function normalizedOptions(kind: LibraryJobRecord['kind'], options: LibraryJobOptions) {
+  return kind === 'scan'
+    ? { online: false, checksum: false }
+    : {
+        online: options.online,
+        checksum: options.checksum,
+        ...(options.allowExactNames ? { allowExactNames: true } : {}),
+        ...(options.managerId ? { managerId: options.managerId } : {}),
+        ...(options.providerIds ? { providerIds: [...options.providerIds].sort() } : {}),
+      };
 }

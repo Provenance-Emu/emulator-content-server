@@ -63,7 +63,7 @@
   async function find(){
     if(!activeProviders)return;
     page=0;failure=null;
-    await controller.find({online,checksum:checksum&&!container,providerIds,managerId});
+    await controller.find({online,checksum:checksum&&!container,providerIds,managerId,allowExactNames:reviewOptions?.allowExactNames??false});
     const state=get(controller);
     const suggestions=state.result?.candidates??[];
     const unsaved=reviewOptions?suggestions.find((c)=>!state.saved?.matches.some((m)=>matchSlot(m)===matchSlot(c))):null;
@@ -126,7 +126,7 @@
       {#each candidates.slice(page*8,page*8+8) as candidate (candidate.id)}
         <article>
           <h3>{candidate.title}</h3>
-          <p class="dim">{providerName(candidate.providerId)} · {candidate.kind==='artwork'?matchLabel(candidate)+' · ':''} {candidate.metadata.matchEvidence==='verified-serial'?'Verified disc ID':candidate.metadata.matchEvidence==='declared-hash'?'Declared container hash — content not reread':candidate.metadata.matchEvidence==='hash-conflict'?'Conflicting checksums — review':candidate.confidence==='checksum' ? 'Verified checksum' : candidate.confidence==='local' ? 'Local filename association' : 'Filename suggestion — verify the edition'}</p>
+          <p class="dim">{providerName(candidate.providerId)} · {candidate.kind==='artwork'?matchLabel(candidate)+' · ':''} {candidate.metadata.matchEvidence==='exact-name'?'Exact filename and edition':candidate.metadata.matchEvidence==='verified-serial'?'Verified disc ID':candidate.metadata.matchEvidence==='declared-hash'?'Declared container hash — content not reread':candidate.metadata.matchEvidence==='hash-conflict'?'Conflicting checksums — review':candidate.confidence==='checksum' ? 'Verified checksum' : candidate.confidence==='local' ? 'Local filename association' : 'Filename suggestion — verify the edition'}</p>
           {#if candidate.kind==='artwork'&&candidate.metadata.imageKind!=='pdf'}
             {#if $controller.artwork[candidate.id]}<img src={$controller.artwork[candidate.id]} alt={'Artwork suggestion for '+candidate.title} />
             {:else}<button type="button" disabled={!!$controller.previewing} onclick={()=>void controller.preview(candidate.id)}>{$controller.previewing===candidate.id ? 'Loading preview…' : 'Preview artwork'}</button>{/if}

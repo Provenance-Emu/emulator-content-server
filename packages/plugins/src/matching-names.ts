@@ -156,3 +156,65 @@ export function serialSubtitleAlias(left: string, right: string): boolean {
     second = parts(right);
   return first.full === second.primary || second.full === first.primary;
 }
+
+/** Explicit release disagreements remain conflicts even when a catalog ROM filename is exact. */
+export function releaseFactsConflict(left: string, right: string): boolean {
+  const a = facts(left),
+    b = facts(right);
+  if (
+    a.edition !== b.edition ||
+    (a.revision && b.revision && a.revision !== b.revision) ||
+    (a.date && b.date && a.date !== b.date)
+  )
+    return true;
+  if (
+    a.regions.size &&
+    b.regions.size &&
+    (a.regions.size !== b.regions.size || [...a.regions].some((region) => !b.regions.has(region)))
+  )
+    return true;
+  const languages = (value: string) =>
+    new Set(
+      Array.from(
+        value.matchAll(/\(([^()]*)\)|\[([^[\]]*)\]/g),
+        (match) => match[1] ?? match[2] ?? '',
+      )
+        .flatMap((tag) =>
+          tag
+            .toLowerCase()
+            .split(/[,/]/)
+            .map((part) => part.trim()),
+        )
+        .filter((part) =>
+          [
+            'en',
+            'ja',
+            'fr',
+            'de',
+            'es',
+            'it',
+            'nl',
+            'pt',
+            'ko',
+            'zh',
+            'ru',
+            'sv',
+            'no',
+            'da',
+            'fi',
+            'el',
+            'pl',
+            'cs',
+            'hu',
+            'ar',
+          ].includes(part),
+        ),
+    );
+  const first = languages(left),
+    second = languages(right);
+  return (
+    first.size > 0 &&
+    second.size > 0 &&
+    (first.size !== second.size || [...first].some((language) => !second.has(language)))
+  );
+}

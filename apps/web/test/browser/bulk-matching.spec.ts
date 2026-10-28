@@ -244,3 +244,34 @@ test('older matching results remain reachable after more than one page of folder
     '1 without a match',
   );
 });
+
+test('filename fallback is an explicit per-job choice', async ({ page, fixture }) => {
+  const root = await fixture.legacy();
+  await fixture.client.assignRoot(root.id, { libraryId: fixture.empty.id });
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
+  const panel = await openActivity(page);
+  await useLocalMatching(panel);
+  const policy = panel.getByRole('checkbox', {
+    name: 'For new jobs, use exact filenames when a game ID is unavailable',
+    exact: true,
+  });
+  await expect(policy).toBeChecked();
+  await policy.uncheck();
+  const created = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname === '/api/v1/library-jobs',
+  );
+  await panel
+    .getByRole('button', { name: 'Find missing artwork and details', exact: true })
+    .click();
+  const response = await created;
+  expect(response.request().postDataJSON().options.allowExactNames).toBe(false);
+  expect((await response.json()).job.options.allowExactNames).toBeUndefined();
+  await expect(
+    panel.getByText('This job uses verified ROM or disc IDs for automatic selections.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+});

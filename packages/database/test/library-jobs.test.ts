@@ -165,3 +165,63 @@ test('pending work seeks the state index beyond 60,000 processed sources', async
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('equivalent legacy option order and disabled filename fallback reuse the existing job', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-job-policy-'));
+  const path = join(directory, 'catalog.sqlite');
+  const catalog = new CatalogDatabase(path);
+  try {
+    const owner = catalog.createUser({
+      username: 'generated',
+      passwordHash: 'generated',
+      actorId: 'fixture',
+    });
+    const library = catalog.createLibrary(owner.id, 'Generated');
+    const root = catalog.createContentRoot({
+      path: directory,
+      label: 'Generated',
+      libraryId: library.id,
+      actorId: owner.id,
+    });
+    const options = {
+      online: false,
+      checksum: true,
+      providerIds: ['test.b', 'test.a'],
+      managerId: 'org.ecs.matches',
+    };
+    const first = catalog.libraryJobs.create('match', { rootId: root.id }, options, owner.id);
+    const { DatabaseSync } = await import('node:sqlite');
+    const raw = new DatabaseSync(path);
+    raw.prepare('UPDATE library_jobs SET options_json=? WHERE id=?').run(
+      JSON.stringify({
+        providerIds: ['test.a', 'test.b'],
+        checksum: true,
+        online: false,
+        managerId: 'org.ecs.matches',
+      }),
+      first.job.id,
+    );
+    raw.close();
+    const repeated = catalog.libraryJobs.create(
+      'match',
+      { rootId: root.id },
+      { ...options, allowExactNames: false },
+      owner.id,
+    );
+    assert.equal(repeated.reused, true);
+    assert.equal(repeated.job.id, first.job.id);
+    assert.throws(
+      () =>
+        catalog.libraryJobs.create(
+          'match',
+          { rootId: root.id },
+          { ...options, allowExactNames: true },
+          owner.id,
+        ),
+      /shared job already covers/i,
+    );
+  } finally {
+    catalog.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

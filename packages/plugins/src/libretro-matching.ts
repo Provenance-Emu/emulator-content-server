@@ -10,6 +10,7 @@ import {
   type matchLibretro,
   PartialMatchingError,
   parseLibretroDat,
+  reconcileCandidates,
 } from './matching.js';
 import { contentStem, nameMatchKeys, nameMatchScore, normalizeSerial } from './matching-names.js';
 import { createCatalogLoader } from './public-catalog.js';
@@ -407,7 +408,9 @@ export function createLibretroProvider(
           .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
       const verified = new Map(
         metadata
-          .filter((candidate) => automaticEvidence(lookupInput, candidate))
+          .filter((candidate) =>
+            automaticEvidence({ ...lookupInput, allowExactNames: false }, candidate),
+          )
           .flatMap((candidate) =>
             [candidate.title, ...aliases(candidate), ...serialArtworkAliases(candidate)].map(
               (title) =>
@@ -443,7 +446,7 @@ export function createLibretroProvider(
           : undefined;
       const art = ranked.slice(0, 24).map(({ image, index }): MatchCandidate => {
         const corroborated = canonicalCover?.index === index ? canonicalCover : undefined;
-        return {
+        const candidate: MatchCandidate = {
           id: `art-${index}`,
           kind: 'artwork',
           title: image.title,
@@ -457,6 +460,7 @@ export function createLibretroProvider(
             artworkType: image.kind,
             artworkRole: image.role,
             matchedGame: corroborated?.title ?? contentStem(input.name),
+            ...(systemId ? { systemId } : {}),
             ...(corroborated
               ? {
                   ...Object.fromEntries(
@@ -485,8 +489,14 @@ export function createLibretroProvider(
             availability: 'Listed in public artwork catalog; image checked on preview',
           },
         };
+        if (!corroborated && !failures.length && automaticEvidence(lookupInput, candidate)) {
+          candidate.metadata.matchEvidence = 'exact-name';
+          candidate.metadata.verification =
+            'Exact full filename and catalog front title; no checksum or serial verification claimed';
+        }
+        return candidate;
       });
-      const candidates = [...metadata, ...art];
+      const candidates = reconcileCandidates(lookupInput, [...metadata, ...art]);
       if (failures.length) throw new PartialMatchingError(candidates);
       return candidates;
     },

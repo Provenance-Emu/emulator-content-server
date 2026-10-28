@@ -428,3 +428,70 @@ test('concurrent matching lookups share one proposal and unchanged source checks
     await f.dispose();
   }
 });
+
+test('optional artwork and weaker filenames do not make an identified game look conflicted', async () => {
+  const { mkdir, mkdtemp, rm, writeFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const plugins = await mkdtemp(join(tmpdir(), 'ecs-optional-art-'));
+  await mkdir(join(plugins, 'provider'));
+  await writeFile(
+    join(plugins, 'provider', 'plugin.json'),
+    JSON.stringify({
+      id: 'test.optional.art',
+      name: 'Generated optional art',
+      kind: 'provider',
+      version: '1',
+      engine: 'ecs.plugin/1',
+      entry: 'entry.mjs',
+      provider: { capabilities: ['metadata', 'artwork'], network: false },
+    }),
+  );
+  await writeFile(
+    join(plugins, 'provider', 'entry.mjs'),
+    `export default {search:async input=>{const proof={md5:input.md5,crc32:input.crc32,hashSize:String(input.size),hashRepresentation:'raw',systemId:input.systemId,matchEvidence:'verified-hash'};return [{id:'meta',kind:'metadata',title:'Generated game',confidence:'checksum',metadata:proof},...input.companions.filter(row=>row.name.endsWith('.png')).map(row=>({id:row.id,kind:'artwork',title:row.name==='Game.png'?'Game':'Generated game',confidence:row.name.includes('front')?'checksum':'name',fileId:row.id,metadata:row.name.includes('front')?{...proof,artworkRole:'front'}:row.name.includes('screenshot')?{artworkRole:'screenshot'}:{artworkRole:'front',systemId:input.systemId}}))];}};`,
+  );
+  const f = await libraryFixture({ matchingPluginsDir: plugins });
+  try {
+    const path = join(f.base, 'generated');
+    await mkdir(path);
+    await writeFile(join(path, 'Game.nes'), Buffer.from([1, 2, 3, 4]));
+    for (const role of ['front', 'screenshot'])
+      await writeFile(
+        join(path, `Game ${role}.png`),
+        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]),
+      );
+    await writeFile(join(path, 'Game.png'), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]));
+    const root = f.catalog.createContentRoot({
+      path,
+      label: 'Generated',
+      libraryId: f.library.id,
+      actorId: f.owner.id,
+    });
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${root.id}/scan`, headers: f.auth });
+    const response = await f.app.inject({
+      method: 'POST',
+      url: '/api/v1/library-jobs',
+      headers: f.auth,
+      payload: {
+        kind: 'match',
+        rootId: root.id,
+        options: { checksum: true, allowExactNames: true, providerIds: ['test.optional.art'] },
+      },
+    });
+    assert.equal(response.statusCode, 202, response.body);
+    await eventually(
+      () => f.catalog.libraryJobs.get(response.json().job.id)?.state === 'completed',
+    );
+    const job = f.catalog.libraryJobs.get(response.json().job.id);
+    assert.equal(job?.saved, 2);
+    assert.equal(job?.review, 0);
+    assert.equal(job?.failed, 0);
+    const rows = f.catalog.libraryJobs.items(response.json().job.id, 20);
+    assert.equal(rows[0]?.status, 'saved');
+    assert.equal(rows[0]?.suggestions, 1);
+  } finally {
+    await f.dispose();
+    await rm(plugins, { recursive: true, force: true });
+  }
+});
