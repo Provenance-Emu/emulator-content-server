@@ -1003,3 +1003,28 @@ button.secondary {
     transition: none;
   }
 }
+
+/* Mouse controls can stay compact; touch screens retain their 44px targets. */
+@media (min-width: 761px) and (pointer: fine) {
+  .settings-navigation button,
+  .settings-content button,
+  .settings-content input:not([type="checkbox"]):not([type="radio"]),
+  .settings-content select,
+  .folder-picker input:not([type="checkbox"]):not([type="radio"]),
+  .collection-toolbar button,
+  .collection-toolbar input,
+  .collection-toolbar select,
+  .library-tools summary,
+  .category-tabs button,
+  .view-switch label {
+    min-height: 2.25rem;
+    padding-block: 0.35rem;
+  }
+  .settings-navigation button,
+  .settings-content button,
+  .collection-toolbar button,
+  .library-tools summary,
+  .category-tabs button {
+    font-size: 0.9rem;
+  }
+}

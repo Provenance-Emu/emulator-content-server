@@ -22,6 +22,7 @@
   import ViewState from './components/ViewState.svelte';
   import Modal from './components/Modal.svelte';
   import LibraryDetail from './LibraryDetail.svelte';
+  import UnassignedFolders from './UnassignedFolders.svelte';
   import Upload from './Upload.svelte';
   import FolderPicker from './FolderPicker.svelte';
   import {createLibraryFolders} from './lib/library-folders';
@@ -76,8 +77,8 @@
   let addingFolder = $state(false);
   let addingFolderBusy = $state(false);
   let folderSelectionFailure = $state<string | null>(null);
-  async function addServerFolder() {
-    if (!scope || !('libraryId' in scope) || !owner || addingFolderBusy || (folderAdder && get(folderAdder).busy)) return;
+  function folderController() {
+    if (!scope || !('libraryId' in scope) || !owner || addingFolderBusy || (folderAdder && get(folderAdder).busy)) return null;
     const libraryId = scope.libraryId;
     folderAdder?.dispose();
     const actionContext: FolderContext = {
@@ -92,10 +93,20 @@
     const adder = createLibraryFolders(context.client, actionContext, { libraryId });
     folderAdder = adder;
     folderSelectionFailure = null;
-    if (!actionContext.folderSelection) { addingFolder = true; return; }
+    adder.receive(folders);
+    return adder;
+  }
+  async function scanSavedFolders() {
+    const adder = folderController();
+    if (adder) await adder.scanLibrary();
+  }
+  async function addServerFolder() {
+    const adder = folderController();
+    if (!adder) return;
+    if (!folderContext.folderSelection) { addingFolder = true; return; }
     addingFolderBusy = true;
     try {
-      const selected = await chooseFolder(actionContext, 'library-folder');
+      const selected = await chooseFolder(folderContext, 'library-folder');
       if (selected && !disposed && folderAdder === adder) await adder.add(selected);
     } catch (error) {
       if (!disposed && folderAdder === adder) folderSelectionFailure = explain(error);
@@ -354,6 +365,7 @@
         </div>
         {#if owner}<button class="primary" type="button" onclick={oncreate}>{libraries.length ? 'Create a library' : 'Create your first library'}</button>{/if}
       </header>
+      {#if owner}<UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
       {#if libraries.length}
         <div class="library-choice-grid" aria-label="Choose a library">
           {#each libraries as library (library.id)}
@@ -398,12 +410,17 @@
           <summary>Library tools</summary>
           <div class="actions">
             {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>{['discovering','running'].includes($bulk.phase) ? 'Matching library…' : $bulk.phase==='idle' ? 'Match library' : 'Matching results'}</button>
+              <button type="button" disabled={!folders.length || !!$folderAdder?.busy} onclick={()=>void scanSavedFolders()}>Scan folders for games</button>
               <button type="button" onclick={onsettings}>Library settings</button>{/if}
             <button type="button" disabled={$browser.loading} onclick={refreshCollection}>Refresh</button>
           </div>
         </details>
       </div>
     </header>
+    {#if owner && !$browser.loading && !$browser.items.length && !filtered}<UnassignedFolders client={context.client} context={folderContext} {libraries} preferredLibraryId={scope && 'libraryId' in scope ? scope.libraryId : ''} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
+    {#if owner && folders.some(row=>!row.lastScanAt) && scope && 'libraryId' in scope}
+      <section class="scan-needed" aria-label="Saved folders need scanning"><h2>Your saved folders need a scan</h2><p>Scan these folders to show their games in this library. Files stay in place. Artwork and game details can be found afterwards with Match library.</p><button type="button" disabled={!!$folderAdder?.busy} onclick={()=>void scanSavedFolders()}>{$folderAdder?.busy ? 'Scanning folders…' : 'Scan saved folders'}</button></section>
+    {/if}
     <CategoryTabs
       selected={$browser.filters.category}
       onchange={(category) => {
@@ -474,6 +491,8 @@
   {/if}
   {#if folderAdder && owner && scope && 'libraryId' in scope}
     {#each Object.entries($folderAdder?.scanFailures??{}) as [id,message]}<p class="problem" role="alert">Folder saved. Scan failed: {message} <button type="button" onclick={()=>void folderAdder?.retryScan(id)}>Retry scan</button></p>{/each}
+    {#if !addingFolder && $folderAdder?.existingRoot}<div><p>This folder is already saved. Link it to {title} and scan its games?</p><button type="button" disabled={!!$folderAdder?.busy} onclick={()=>void folderAdder?.linkExisting()}>Use existing folder</button></div>{/if}
+    {#if $folderAdder?.notice}<p role="status">{$folderAdder.notice}</p>{/if}
     {#if owner && !addingFolder && (folderSelectionFailure || $folderAdder?.failure)}<p class="problem" role="alert">{folderSelectionFailure || $folderAdder?.failure}</p>{/if}
   {/if}
   {#if bulkOpen && owner && scope}<Modal title="Match library" onclose={() => { bulkOpen = false; refreshCollection(); }}>
@@ -507,5 +526,6 @@
           {#if owner}<section class="add-games-option"><h3>Already on the server</h3><p>Files stay on the server computer. Nothing is copied.</p><button type="button" onclick={() => { void addServerFolder(); addChoices=false; }}>Add server folder</button></section>{/if}
         </div>
       {/if}
+      {#if addingFolder && $folderAdder?.existingRoot}<div class="existing-folder-link"><p>This folder is already registered. Add it to {title} and scan its files?</p><button type="button" disabled={!!$folderAdder?.busy} onclick={async()=>{if(await folderAdder?.linkExisting())addingFolder=false;}}>Use existing folder</button></div>{/if}
     </Modal>{/if}
 </div>

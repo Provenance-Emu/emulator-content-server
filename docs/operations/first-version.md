@@ -39,10 +39,16 @@ The desktop connection form collapses while browsing. The new UI is included in 
 
 Validation: 62 focused existing/updated browser cases passed, followed by 17 final focused onboarding, player/download, connection recovery and authorization cases. The design agent's 10 desktop/UX browser cases passed. Both Svelte checks report zero errors/warnings; web/tray controller suites, production builds, lint, package boundaries and the secret scan pass. A failed-startup regression reproduced the inert retry before its fix; reconnect coalesces requests and never resumes private discovery after sign-out. Screenshots use disposable generated fixtures, not operator games or user research participants.
 
+## Storage and transfer update — 0.1.3
+
+Storage now has tabs for existing server folders, uploaded copies and mounted remote storage. Existing unassigned folders are offered for explicit linking; linked folders scan automatically, never-scanned folders have a visible scan action, and reselecting an existing folder no longer ends at a duplicate-path error. Desktop controls and the web folder browser are more compact. The verified local desktop service uses the native OS folder dialog.
+
+Direct disk downloads and opt-in upload recovery are included in 0.1.3. Recovery stores metadata only, requires reselecting and verifying the original files, and needs an explicit retry. See [upload recovery](upload-recovery.md) and [downloads](downloads.md).
+
 ## Known limits for the next pass
 
 - No relay/NAT traversal, arbitrary browser emulator support, or signing/JIT execution. These are separate integrations rather than promises of this build.
-- The source follow-up supports direct disk saving in browsers with a secure save picker, with a 256 MiB cap and guidance for buffered fallback downloads. See [downloads](downloads.md) for browser support and release scope. Device upload queues retain files/retry state only until the page closes.
+- The source follow-up supports direct disk saving in browsers with a secure save picker, with a 256 MiB cap and guidance for buffered fallback downloads. See [downloads](downloads.md) for browser support and release scope. Opt-in upload recovery retains transfer metadata across reloads; file bytes must be reselected and verified.
 - Settings → Devices lists your account's app tokens and supports read-only/read-write creation and revocation. Secrets are shown once, in memory. Settings → Access now shows the selected account's current library role and refreshes it after assignment/removal. These UI additions are included in the 0.1.1 update.
 - Cores and CHD decoders are not included. The pinned NES profile has prior real-core acceptance; other profiles need their own acceptance.
 - Native Finder mounting, live VPN/proxy deployment and broader platform interoperability remain manual follow-ups.

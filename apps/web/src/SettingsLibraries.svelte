@@ -2,6 +2,7 @@
   import type { ContentClient, ContentRootSummary, Library } from '@ecs/client';
   import { onDestroy, untrack } from 'svelte';
   import LibraryFolders from './LibraryFolders.svelte';
+  import UnassignedFolders from './UnassignedFolders.svelte';
   import type { FolderContext } from './lib/folder-selection';
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
   let {
@@ -11,12 +12,14 @@
     onview,
     onrejected,
     context, onrename,
+    mode = 'libraries',
   }: {
     client: ContentClient;
     libraries: Library[];
     invalidation: number;
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
+    mode?: 'libraries' | 'folders';
     context: FolderContext; onrename: (library: Library) => void;
   } = $props();
   let summaries = $state<ContentRootSummary[]>([]);
@@ -65,18 +68,20 @@
 
 <header class="page-heading">
   <div>
-    <p class="eyebrow">Settings</p>
-    <h1>Libraries</h1>
+    {#if mode === 'libraries'}<p class="eyebrow">Settings</p><h1>Libraries</h1>
+    {:else}<h2>Folders on server</h2>{/if}
     <p class="dim">
-      Files in these server folders appear in your libraries. They stay where they are.
+      {mode === 'libraries' ? 'A library is a named collection with its own access permissions. Link folders to decide which games belong to it.' : 'These folders supply existing game files. Choose a library, add a folder on the server computer, and scan it. Files stay where they are.'}
     </p>
   </div>
   <button type="button" disabled={loading} onclick={() => void load()}>Refresh summaries</button>
 </header>
 {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
-{#if !rejected}{#each libraries as library (library.id)}<section>
+{#if !rejected}
+<UnassignedFolders {client} {context} {libraries} cached={summaries.filter(row=>row.root.libraryId===null)} {onview} />
+{#each libraries as library (library.id)}<section>
     <h2>{library.name}</h2>
-    <button type="button" aria-label={`Rename ${library.name}`} onclick={() => onrename(library)}>Rename library</button>
+    {#if mode === 'libraries'}<button type="button" aria-label={`Rename ${library.name}`} onclick={() => onrename(library)}>Rename library</button>{/if}
     <LibraryFolders {client} {context} {library} {libraries}
       summaries={summaries.filter((summary) => summary.root.libraryId === library.id)}
       {onview}
@@ -84,7 +89,7 @@
   </section>{/each}
 <section>
   <h2>Unassigned folders</h2>
-  <p class="dim">These legacy folders have no library association. Their files stay in place.</p>
+  <p class="dim">These folders are not linked to a library yet. Choose a library above to scan and display their games.</p>
   <LibraryFolders {client} {context} {libraries}
     summaries={summaries.filter((summary) => summary.root.libraryId === null)}
     {onview}

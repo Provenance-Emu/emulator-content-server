@@ -34,7 +34,8 @@ async function withDesktop(page: Page, run: (origin: string) => Promise<void>) {
   try {
     await run('http://127.0.0.1:5174');
   } finally {
-    await page.goto('about:blank');
+    // Close browser API keep-alive sockets before the server fixture tears down.
+    await page.context().close();
     await new Promise<void>((done, reject) =>
       server.close((error) => (error ? reject(error) : done())),
     );
@@ -317,7 +318,8 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
       } else {
         await page.getByRole('button', { name: 'Settings', exact: true }).click();
         if (action === 'upload-storage') {
-          await page.getByRole('button', { name: 'Upload storage', exact: true }).click();
+          await page.getByRole('button', { name: 'Storage', exact: true }).click();
+          await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
           await expect(
             page.getByRole('button', { name: 'Add destination', exact: true }),
           ).toBeVisible();
@@ -371,8 +373,10 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
         // If context retirement remounts the app, reopen its fresh Settings view.
         // On the buggy code this is idempotent and leaves the captured stale controller mounted.
         await page.getByRole('button', { name: 'Settings', exact: true }).click();
-        if (action === 'upload-storage')
-          await page.getByRole('button', { name: 'Upload storage', exact: true }).click();
+        if (action === 'upload-storage') {
+          await page.getByRole('button', { name: 'Storage', exact: true }).click();
+          await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
+        }
         await page
           .getByRole('button', {
             name: action === 'upload-storage' ? 'Add destination' : 'Add folder to Arcade',

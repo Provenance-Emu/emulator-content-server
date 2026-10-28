@@ -56,8 +56,11 @@ test('categories and settings preserve contextual files without scanning or lega
   fixture.requests.length = 0;
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Libraries', exact: true })).toBeVisible();
-  for (const name of ['Upload storage', 'Access', 'Activity', 'Server status', 'Libraries'])
+  for (const name of ['Storage', 'Access', 'Activity', 'Server status', 'Libraries']) {
     await page.getByRole('button', { name, exact: true }).click();
+    if (name === 'Storage')
+      await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
+  }
   expect(
     fixture.requests.some(
       (request) => request.includes('/scan') || request === 'GET /api/v1/sources',

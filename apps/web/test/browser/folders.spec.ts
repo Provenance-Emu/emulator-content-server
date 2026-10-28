@@ -199,7 +199,8 @@ test('Add destination retains the write target by default; explicit selection fa
   await mkdir(folder);
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload storage', exact: true }).click();
+  await page.getByRole('button', { name: 'Storage', exact: true }).click();
+  await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
   const add = page.getByRole('button', { name: 'Add destination', exact: true });
   await add.click();
   const chooser = page.getByRole('dialog', { name: 'Add upload destination', exact: true });
@@ -224,4 +225,100 @@ test('Add destination retains the write target by default; explicit selection fa
     registrations,
   );
   expect((await fixture.client.storageLocations()).writeLocationId).not.toBeNull();
+});
+
+test('saved unscanned folders have a visible scan action in an empty library', async ({
+  page,
+  fixture,
+}) => {
+  const folder = join(fixture.directory, 'Unscanned');
+  await mkdir(folder);
+  await writeFile(join(folder, 'generated.nes'), new Uint8Array([78, 69, 83, 26]));
+  const root = await fixture.client.addRoot({
+    path: folder,
+    label: 'Unscanned',
+    libraryId: fixture.empty.id,
+  });
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
+  await expect(page.getByText('Your saved folders need a scan')).toBeVisible();
+  fixture.requests.length = 0;
+  await page.getByRole('button', { name: 'Scan saved folders', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open generated.nes', exact: true })).toBeVisible();
+  expect(fixture.requests.filter((r) => r === `POST /api/v1/roots/${root.id}/scan`)).toHaveLength(
+    1,
+  );
+  expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(0);
+});
+
+test('home offers unassigned folders and links plus scans only after a click', async ({
+  page,
+  fixture,
+}) => {
+  const folder = join(fixture.directory, 'Older games');
+  await mkdir(folder);
+  await writeFile(join(folder, 'generated.nes'), new Uint8Array([78, 69, 83, 26]));
+  const root = await fixture.client.addRoot({ path: folder, label: 'Older games' });
+  await signIn(page, fixture);
+  const prompt = page.getByRole('region', { name: 'Existing folders without a library' });
+  await expect(prompt).toBeVisible();
+  fixture.requests.length = 0;
+  await prompt.getByRole('combobox', { name: 'Add folders to' }).selectOption(fixture.empty.id);
+  expect(fixture.requests.filter((r) => /^(POST|PUT|DELETE) /.test(r))).toHaveLength(0);
+  await prompt.getByRole('button', { name: 'Add selected folders' }).click();
+  await expect(page.getByRole('heading', { name: 'Empty shelf', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open generated.nes', exact: true })).toBeVisible();
+  expect(fixture.requests.filter((r) => r === `PUT /api/v1/roots/${root.id}/library`)).toHaveLength(
+    1,
+  );
+  expect(fixture.requests.filter((r) => r === `POST /api/v1/roots/${root.id}/scan`)).toHaveLength(
+    1,
+  );
+  expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(0);
+});
+
+test('linking keeps a failed scan visible and retry never registers again', async ({
+  page,
+  fixture,
+}) => {
+  await fixture.legacy();
+  await signIn(page, fixture);
+  await page.route('**/api/v1/roots/*/scan', (route) =>
+    route.fulfill({ status: 503, json: { title: 'Scan unavailable', status: 503 } }),
+  );
+  const prompt = page.getByRole('region', { name: 'Existing folders without a library' });
+  await prompt.getByRole('combobox', { name: 'Add folders to' }).selectOption(fixture.empty.id);
+  await prompt.getByRole('button', { name: 'Add selected folders' }).click();
+  await expect(prompt.getByRole('alert')).toContainText(
+    'Folders linked, but some could not be scanned',
+  );
+  await prompt.getByRole('button', { name: 'Open library', exact: true }).click();
+  await page.unroute('**/api/v1/roots/*/scan');
+  fixture.requests.length = 0;
+  await page.getByText('Library tools', { exact: true }).click();
+  await page.getByRole('button', { name: 'Scan folders for games', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open external.nes', exact: true })).toBeVisible();
+  expect(fixture.requests.filter((r) => /^(PUT|POST) .*\/(roots|library)$/.test(r))).toHaveLength(
+    0,
+  );
+});
+
+test('selecting an already saved orphan offers an explicit link instead of a dead end', async ({
+  page,
+  fixture,
+}) => {
+  const root = await fixture.legacy();
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Add folder to Empty shelf', exact: true }).click();
+  const chooser = page.getByRole('dialog', { name: 'Add library folder', exact: true });
+  await chooser.getByRole('textbox', { name: 'Server folder path', exact: true }).fill(root.path);
+  await chooser.getByRole('button', { name: 'Add folder', exact: true }).click();
+  await expect(chooser.getByRole('button', { name: 'Use existing folder' })).toBeVisible();
+  expect((await fixture.client.rootSummaries({ unassigned: true })).items).toHaveLength(1);
+  await chooser.getByRole('button', { name: 'Use existing folder' }).click();
+  await expect(chooser).toHaveCount(0);
+  expect(
+    (await fixture.client.rootSummaries({ libraryId: fixture.empty.id })).items[0]?.root.id,
+  ).toBe(root.id);
 });

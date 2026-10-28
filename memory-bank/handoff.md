@@ -1,5 +1,11 @@
 # Handoff
 
+## Storage/library UX pass — 2026-10-27
+
+Implemented Storage tabs (server folders/uploaded files/mounted remote storage), compact desktop folder chooser/controls with touch sizing retained, explicit orphan-folder linking on home/empty library/settings, automatic scanning after assignment, duplicate-path reconciliation, native duplicate-orphan action, always-available per-folder scan, and a never-scanned library callout. Failed scans after linking remain visible and can be retried in the destination library without registering/assigning again. A reused design agent reviewed desktop/mobile visuals, tab keyboard/focus behavior, no writes on browsing, and assignment lifecycle.
+
+Operator's two saved roots were already assigned to the default library but had never been scanned. Requested metadata scans indexed 1,608 files into 935 game entries; no original files were moved or modified. A read-only online provider lookup for an actual Dreamcast source returned attributed filename metadata/artwork candidates. Atomiswave/Naomi/Naomi2 provider coverage remains limited; do not claim a scan provides complete artwork/metadata matching. Public upstream DAT availability and format were inspected; no speculative provider mapping or unsafe checksum substitution was added.
+
 ## Active continuation — 2026-10-27
 
 Implemented opt-in IndexedDB upload checkpoints, full bounded SHA-256 file verification/reselection, original transfer key/revision preservation, write-ahead creation intent and conservative crash reconciliation. Session/server/library/game scopes use an opaque credential digest; no file contents or raw credentials are serialized. Logout purges records and warns on a failed cleanup. Broken storage has an explicit temporary-queue fallback. Atomic per-key revision counters survive discard/recreate to prevent stale-tab ABA overwrites. See docs/operations/upload-recovery.md. Focused queue/fingerprint tests, real IndexedDB tests and real-server reload/access tests pass; full web controller suite passed 216 tests. Existing target-picker test had assumed a random UUID sorted onto page one; fixed it to navigate bounded pages.

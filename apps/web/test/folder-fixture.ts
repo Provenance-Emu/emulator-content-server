@@ -66,6 +66,13 @@ export function folderFixture(t: TestContext) {
             medium: null,
           })),
       };
+    } else if (path.endsWith('/library') && method === 'PUT') {
+      const root = roots.find((root) => root.id === path.split('/').at(-2));
+      if (!root) return Response.json({ title: 'Missing root' }, { status: 404 });
+      if (root.libraryId !== null && root.libraryId !== body.libraryId)
+        return Response.json({ title: 'Already assigned' }, { status: 409 });
+      root.libraryId = String(body.libraryId);
+      result = root;
     } else if (path.endsWith('/scan'))
       result = { rootId: path.split('/').at(-2), medium: 'disk', online: true, count: 0 };
     return Response.json(result);

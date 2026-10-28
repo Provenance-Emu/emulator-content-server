@@ -46,12 +46,15 @@
   onorganization={root=>policyRoot=root}
   onwatching={root=>watchingRoot=root}
   onscan={(id) => void folders.retryScan(id)} onremove={(root) => (disconnect = root)} onassign={(root) => { assignment = root; libraryId = ''; }} />
+{#if $folders.notice}<p role="status">{$folders.notice}</p>{/if}
 {#if $folders.failure || failure}<p class="problem" role="alert">{$folders.failure || failure}</p>{/if}
 {#if $folders.denied}<button type="button" disabled={$folders.busy} onclick={() => void folders.load(library ? { libraryId: library.id } : { unassigned: true })}>Retry folder access</button>{/if}
 {#if picking}<Modal title="Add library folder" busy={pickerBusy || $folders.busy} onclose={() => void closePicker()}>
   <FolderPicker {client} contextKey={context.key} origin={context.origin} title="Add library folder" submitLabel="Add folder" onbusy={(busy) => (pickerBusy = busy)} oncancel={() => void closePicker()}
     onsubmit={async (selection) => { const saved = await folders.add(selection); if (!saved) throw new Error(get(folders).failure ?? 'Folder could not be added.'); return saved; }} />
+  {#if $folders.existingRoot}<div><p>This folder is already registered. Add it to {library?.name} and scan its files?</p><button type="button" disabled={$folders.busy} onclick={async()=>{if(await folders.linkExisting())void closePicker();}}>Use existing folder</button></div>{/if}
 </Modal>{/if}
+{#if !picking && $folders.existingRoot}<div><p>This folder is already saved. Link it to {library?.name} and scan its games?</p><button type="button" disabled={$folders.busy} onclick={()=>void folders.linkExisting()}>Use existing folder</button></div>{/if}
 {#if disconnect}<Modal title="Disconnect folder" busy={$folders.busy} onclose={() => (disconnect = null)}>
   <p>Disconnect {disconnect.label} from this library?</p>
   <p>Files stay on disk.</p>

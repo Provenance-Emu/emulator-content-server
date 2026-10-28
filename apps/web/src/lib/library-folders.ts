@@ -1,4 +1,10 @@
-import type { ContentClient, ContentRoot, ContentRootSummary, LibraryScope } from '@ecs/client';
+import {
+  type ContentClient,
+  ContentError,
+  type ContentRoot,
+  type ContentRootSummary,
+  type LibraryScope,
+} from '@ecs/client';
 import { writable } from 'svelte/store';
 import {
   type FolderContext,
@@ -14,6 +20,8 @@ export interface LibraryFoldersState {
   failure: string | null;
   scanFailures: Record<string, string>;
   denied: boolean;
+  existingRoot: ContentRoot | null;
+  notice: string | null;
 }
 export function createLibraryFolders(
   client: ContentClient,
@@ -26,6 +34,8 @@ export function createLibraryFolders(
     failure: null,
     scanFailures: {},
     denied: false,
+    existingRoot: null,
+    notice: null,
   };
   const store = writable(current);
   const key = context.key;
@@ -46,7 +56,9 @@ export function createLibraryFolders(
     const status = isUnauthorized(error) ? 401 : isForbidden(error) ? 403 : null;
     update({
       failure: explain(error),
-      ...(status ? { summaries: [], denied: true, scanFailures: {} } : {}),
+      ...(status
+        ? { summaries: [], denied: true, scanFailures: {}, existingRoot: null, notice: null }
+        : {}),
     });
     if (status) {
       generation++;
@@ -87,7 +99,7 @@ export function createLibraryFolders(
   async function mutate(action: () => Promise<void>) {
     if (!live() || current.busy || current.denied) return false;
     generation++;
-    update({ busy: true, failure: null });
+    update({ busy: true, failure: null, notice: null });
     try {
       await action();
       return live();
@@ -127,17 +139,53 @@ export function createLibraryFolders(
           throw new Error('This folder selection is no longer valid. Choose it again.');
         let root = registrations.get(selection.path);
         if (!root) {
-          root = await client.addRoot({
-            path: selection.path.trim(),
-            label: selection.suggestedName.trim() || folderName(selection.path),
-            libraryId: scope.libraryId,
-          });
+          update({ existingRoot: null });
+          try {
+            root = await client.addRoot({
+              path: selection.path.trim(),
+              label: selection.suggestedName.trim() || folderName(selection.path),
+              libraryId: scope.libraryId,
+            });
+          } catch (error) {
+            if (!(error instanceof ContentError) || error.status !== 409) throw error;
+            const known = await client.rootSummaries();
+            if (!live()) return;
+            const normalize = (path: string) => path.replace(/[\\/]+$/, '');
+            let existing = known.items.find(
+              (row) => normalize(row.root.path) === normalize(selection.path.trim()),
+            )?.root;
+            if (!existing) {
+              const canonical = await client.folders(selection.path.trim());
+              if (!live()) return;
+              existing = known.items.find(
+                (row) => normalize(row.root.path) === normalize(canonical.path),
+              )?.root;
+            }
+            if (!existing) throw error;
+            if (existing.libraryId === null) {
+              update({
+                existingRoot: existing,
+                failure:
+                  'This folder is already saved. Add the existing folder to this library below.',
+              });
+              return;
+            }
+            if (existing.libraryId !== scope.libraryId)
+              throw new Error(
+                'This folder is already linked to another library. Open that library to browse it.',
+              );
+            root = existing;
+            update({
+              notice: 'This folder is already in this library.',
+            });
+          }
           if (!live()) return;
           registrations.set(selection.path, root);
           unacknowledgedRoots.add(root.id);
+          const registeredId = root.id;
           update({
             summaries: [
-              ...current.summaries,
+              ...current.summaries.filter((row) => row.root.id !== registeredId),
               {
                 root,
                 indexedFileCount: 0,
@@ -192,26 +240,56 @@ export function createLibraryFolders(
         if (live() && !current.denied) await context.onchanged?.();
       });
     },
-    assign(id: string, libraryId: string) {
-      return mutate(async () => {
-        if (
-          !libraryId ||
-          !current.summaries.some((s) => s.root.id === id && s.root.libraryId === null)
-        )
-          return;
+    async linkExisting() {
+      const existing = current.existingRoot;
+      if (!existing || !scope || !('libraryId' in scope)) return false;
+      let linked = false;
+      await mutate(async () => {
+        await client.assignRoot(existing.id, {
+          libraryId: scope && 'libraryId' in scope ? scope.libraryId : '',
+        });
+        if (!live()) return;
+        linked = true;
+        update({ existingRoot: null, notice: 'Existing folder linked to this library.' });
+        await scan(existing.id);
+        if (!live() || current.denied) return;
+        await refresh();
+        if (live() && !current.denied) await context.onchanged?.();
+      });
+      return linked;
+    },
+    async assign(id: string, libraryId: string) {
+      if (
+        !libraryId ||
+        !current.summaries.some((s) => s.root.id === id && s.root.libraryId === null)
+      )
+        return false;
+      let linked = false;
+      await mutate(async () => {
         await client.assignRoot(id, { libraryId });
         if (!live()) return;
+        linked = true;
+        await scan(id);
+        if (!live() || current.denied) return;
         update({ summaries: current.summaries.filter((s) => s.root.id !== id) });
         await refresh();
         if (live() && !current.denied) await context.onchanged?.();
       });
+      return linked;
     },
     dispose() {
       disposed = true;
       generation++;
       registrations.clear();
       unacknowledgedRoots.clear();
-      current = { ...current, summaries: [], scanFailures: {}, busy: false };
+      current = {
+        ...current,
+        summaries: [],
+        scanFailures: {},
+        busy: false,
+        existingRoot: null,
+        notice: null,
+      };
       store.set(current);
     },
   };

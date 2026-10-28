@@ -49,13 +49,14 @@
 
 <section aria-labelledby="storage-heading">
   <div class="row">
-    <h2 id="storage-heading">Upload storage</h2>
+    <h2 id="storage-heading">Where uploaded copies are saved</h2>
     <button type="button" disabled={$locations.busy} onclick={() => void locations.load()}>
       Refresh locations
     </button>
   </div>
   <p class="dim">
-    Where new uploads are saved. Changing this does not move existing files.
+    Choose a destination for newly uploaded copies. Changing it does not move files already saved,
+    or change the folders linked to your libraries.
   </p>
   {#if $locations.listing}
     <div class="table-scroll">
@@ -71,7 +72,7 @@
         <tbody>
           <tr>
             <td>
-              Primary <span class="dim">(server data directory)</span>
+              Primary <span class="dim">(built-in server storage)</span>
             </td>
             <td>Online</td>
             <td>
@@ -133,8 +134,8 @@
       <p class="dim">No additional locations are registered. New uploads use Primary.</p>
     {/if}
     <p class="dim">
-      Removing a location only forgets its registration. Locations holding stored files cannot be
-      removed.
+      Removing a destination only removes it from this list. Destinations holding uploaded files
+      cannot be removed.
     </p>
     <button bind:this={addButton} type="button" disabled={$locations.busy || choosing || $locations.denied || !!$locations.pendingDestination} onclick={() => void choose()}>Add destination</button>
   {:else if $locations.busy}

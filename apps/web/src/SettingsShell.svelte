@@ -3,7 +3,7 @@
   import type { FolderContext } from './lib/folder-selection';
   import type { ApplicationState } from './lib/application';
   import SettingsLibraries from './SettingsLibraries.svelte';
-  import Locations from './Locations.svelte';
+  import StorageSettings from './StorageSettings.svelte';
   import Grants from './Grants.svelte';
   import Accounts from './Accounts.svelte';
   import WebDav from './WebDav.svelte';
@@ -27,7 +27,7 @@
   } = $props();
   let selected = $state('Libraries');
   let noted = $state(0);
-  const sections = ['Libraries', 'Upload storage', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status'];
+  const sections = ['Libraries', 'Storage', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status'];
   const visibleSections = $derived(sections.filter(name => name === 'WebDAV'
     ? appState.capabilities?.features.webdav && appState.hasSession
     : appState.owner || name === 'Server status'));
@@ -52,10 +52,11 @@
         {onview}
         {onrejected}
         {context} {onrename}
-      />{:else if appState.owner && selected === 'Upload storage'}<h1>Upload storage</h1>
-      <Locations
+      />{:else if appState.owner && selected === 'Storage'}<StorageSettings
         {client}
-        {context}
+        libraries={appState.libraries}
+        invalidation={appState.invalidation}
+        {onview} {onrejected} {context} {onrename}
         onchange={() => noted++}
       />{:else if appState.owner && selected === 'Access'}<h1>Access</h1>
       <Accounts {client} libraries={appState.libraries} {onrejected} onchange={context.onchanged ?? (() => {})} />

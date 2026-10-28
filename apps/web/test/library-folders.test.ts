@@ -206,3 +206,85 @@ test('a successful local summary cannot acknowledge an older parent cache after 
   folders.receive([]);
   assert.equal(get(folders).summaries.length, 0);
 });
+
+test('linking an existing unassigned folder scans it without registering another root', async (t) => {
+  const f = folderFixture(t);
+  f.roots.push({
+    id: 'existing',
+    path: '/server/Games',
+    label: 'Games',
+    libraryId: null,
+    createdAt: '',
+  });
+  const folders = createLibraryFolders(f.client, f.context, { unassigned: true });
+  await folders.load({ unassigned: true });
+  assert.equal(await folders.assign('existing', 'library'), true);
+  assert.equal(f.calls.filter((c) => c.method === 'POST' && c.path.endsWith('/roots')).length, 0);
+  assert.equal(f.calls.filter((c) => c.path.endsWith('/existing/scan')).length, 1);
+});
+
+test('reselecting a folder already in this library refreshes it instead of failing registration', async (t) => {
+  const f = folderFixture(t);
+  f.roots.push({
+    id: 'existing',
+    path: '/server/Games',
+    label: 'Games',
+    libraryId: 'library',
+    createdAt: '',
+  });
+  f.override(async (path) =>
+    path.endsWith('/roots') ? Response.json({ title: 'Overlapping root' }, { status: 409 }) : null,
+  );
+  const folders = createLibraryFolders(f.client, f.context, { libraryId: 'library' });
+  assert.equal(await folders.add(selection()), true);
+  assert.equal(f.roots.length, 1);
+  assert.equal(f.calls.filter((c) => c.path.endsWith('/existing/scan')).length, 1);
+});
+
+test('duplicate orphan stays unassigned until explicitly linked and is never registered twice', async (t) => {
+  const f = folderFixture(t);
+  f.roots.push({
+    id: 'existing',
+    path: '/server/Games',
+    label: 'Games',
+    libraryId: null,
+    createdAt: '',
+  });
+  f.override(async (path) =>
+    path.endsWith('/roots') ? Response.json({ title: 'Overlap' }, { status: 409 }) : null,
+  );
+  const folders = createLibraryFolders(f.client, f.context, { libraryId: 'library' });
+  assert.equal(await folders.add(selection()), false);
+  assert.equal(f.roots[0]?.libraryId, null);
+  assert.equal(get(folders).existingRoot?.id, 'existing');
+  assert.equal(
+    f.calls.some((c) => c.path.endsWith('/scan') || c.method === 'PUT'),
+    false,
+  );
+  assert.equal(await folders.linkExisting(), true);
+  assert.equal(f.roots[0]?.libraryId, 'library');
+  assert.equal(f.calls.filter((c) => c.path.endsWith('/roots')).length, 1);
+  assert.equal(f.calls.filter((c) => c.path.endsWith('/scan')).length, 1);
+});
+
+test('a folder assigned elsewhere cannot be moved by reselecting its path', async (t) => {
+  const f = folderFixture(t);
+  f.roots.push({
+    id: 'existing',
+    path: '/server/Games',
+    label: 'Games',
+    libraryId: 'other',
+    createdAt: '',
+  });
+  f.override(async (path) =>
+    path.endsWith('/roots') ? Response.json({ title: 'Overlap' }, { status: 409 }) : null,
+  );
+  const folders = createLibraryFolders(f.client, f.context, { libraryId: 'library' });
+  assert.equal(await folders.add(selection()), false);
+  assert.equal(await folders.linkExisting(), false);
+  assert.match(get(folders).failure ?? '', /another library/);
+  assert.equal(
+    f.calls.some((c) => c.path.endsWith('/scan') || c.method === 'PUT'),
+    false,
+  );
+});
