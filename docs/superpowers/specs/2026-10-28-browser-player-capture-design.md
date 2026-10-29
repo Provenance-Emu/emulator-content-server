@@ -4,7 +4,7 @@
 
 Extend our Svelte player and opaque-origin Emscripten sandbox. Deliver reliable screenshot/state-thumbnail capture first, then browsing/loading saved snapshots and resizing/scaling controls. Prioritize Mac Safari and iPhone Safari; retain usable Chromium/Firefox behavior. Stable browser features are the default. No Nostalgist package dependency or core-loader rewriting.
 
-The user selected this approach after the [one-core comparison](../../operations/browser-player-nostalgist-comparison-2026-10-28.md). Specific decisions below are implementation proposals pending approval, not additional requirements attributed to the user.
+The user selected this approach after the [one-core comparison](../../operations/browser-player-nostalgist-comparison-2026-10-28.md). The user approved implementation by “continue” on 2026-10-29. Specific decisions below are implementation proposals accepted for this batch, not additional requirements attributed to the user.
 
 ## Approaches
 

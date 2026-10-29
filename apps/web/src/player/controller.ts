@@ -48,6 +48,7 @@ const config = [
   'savestate_auto_load = "false"',
   'config_save_on_exit = "false"',
   'state_slot = "0"',
+  'savestate_thumbnail_enable = "true"',
 ].join('\n');
 
 export async function startPlayer(
@@ -151,6 +152,7 @@ export async function startPlayer(
             libraryId: prepared.item.libraryId,
             itemId: prepared.item.id,
             revision: prepared.revision,
+            core: prepared.core,
             profileId: prepared.core.id,
             coreName: prepared.core.name,
             buildVersion:

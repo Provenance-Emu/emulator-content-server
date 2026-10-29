@@ -186,3 +186,19 @@ test('Emscripten importScripts feature detection does not prevent a self-contain
   await startPlayer(f.client, selection, { canvas, importer: f.importer });
   assert.ok(f.events.includes('main'));
 });
+
+test('startup rejects a known wrong-build state even when compatibility was confirmed', async () => {
+  const f = fixture();
+  f.manifest.files[2]!.relativePath =
+    `browser-states/v1/${'c'.repeat(64)}/${'b'.repeat(64)}/1760000000000-${'0'.repeat(32)}.state`;
+  await assert.rejects(
+    startPlayer(f.client, selection, {
+      canvas,
+      importer: f.importer,
+      stateAssetId: 'state',
+      compatibleSaves: true,
+    }),
+    /different emulator build/,
+  );
+  assert.ok(!f.events.includes('collect:state'));
+});

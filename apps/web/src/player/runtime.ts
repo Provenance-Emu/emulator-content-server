@@ -16,6 +16,32 @@ export interface PlayerRuntime extends CommandRuntime {
   };
   callMain(args: string[]): void | Promise<void>;
   focus?(): void | Promise<void>;
+  captureScreenshot?(): Promise<Uint8Array<ArrayBuffer>>;
+  prepareStatePreview?(): Promise<boolean>;
+  captureStatePreview?(): Promise<Uint8Array<ArrayBuffer> | null>;
+  displayInfo?(): Promise<DisplayInfo>;
+  setDisplay?(settings: DisplaySettings): Promise<void>;
+}
+export interface DisplaySettings {
+  fit: 'contain' | 'fill';
+  aspect: 'auto' | '4:3' | '16:9' | '1:1';
+  filter: 'pixelated' | 'smooth';
+}
+export interface DisplayInfo {
+  width: number;
+  height: number;
+  captureReady: boolean;
+  preview: boolean;
+  settings: DisplaySettings;
+}
+export function validDisplaySettings(value: unknown): value is DisplaySettings {
+  if (!value || typeof value !== 'object') return false;
+  const s = value as DisplaySettings;
+  return (
+    ['contain', 'fill'].includes(s.fit) &&
+    ['auto', '4:3', '16:9', '1:1'].includes(s.aspect) &&
+    ['pixelated', 'smooth'].includes(s.filter)
+  );
 }
 export interface RuntimeOptions {
   wasmBinary: Uint8Array<ArrayBuffer>;

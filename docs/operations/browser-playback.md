@@ -90,3 +90,26 @@ A failed upload retains copied bytes, one idempotency key and the original base 
 Generated tests exercise transport, API authorization, byte staging, minimal valid WASM instantiation in the opaque frame, storage/parent/network isolation, cancellation, delayed fake command completion, retry and real API keep-both. They do **not** execute a native NES core or establish rendering, audio, input, actual state restoration or cross-emulator save compatibility. The [2026-10-28 plugin acceptance](browser-playback-plugin-acceptance.md) executes a fresh pinned patched pair through the isolated launcher with an original generated program, including rendering/input/audio and save restoration. The [earlier acceptance](browser-playback-acceptance.md) records separate proxy/conflict/failure scenarios for its older artifacts. Neither establishes cross-emulator compatibility.
 
 Before calling a particular artifact pair verified, build the exact profile, record its actual hashes and successful SDK, then use a lawful NES test program to verify rendering/audio/input, real SRAM save/reload and slot-0 state save/load. Repeat through a bearer-only reverse proxy, including read-only export, phone/browser stale-save conflicts, failed startup and timed-out command recovery. No core binaries, ROMs, real saves or nightly downloads belong in this repository.
+
+## Screenshots, snapshot browser and display controls
+
+The player keeps the core inside its opaque sandbox. Capture screenshot waits for a new supported core frame; Download screenshot uses an explicit browser download action for Safari. A save target also enables Save screenshot to library. Capturing again clears the previous screenshot first, so a failed attempt cannot export stale bytes. Capture without a save target still supports downloads. The game is brought into view before frame-dependent operations because offscreen iframes can stop receiving animation frames.
+
+Save state now creates a separate snapshot rather than replacing the state chosen at startup. Native thumbnails are enabled for compatible RetroArch builds and paired with the completed snapshot. An absent thumbnail leaves the state usable with a placeholder. The save-state browser works before startup and during play, supports download and loading, labels imported states and conflict copies, and refuses known snapshots from a different loader/WASM build. Imported states still need explicit compatibility confirmation. Existing imported files are retained.
+
+State and preview uploads use the existing asset API. A state commits before its optional preview. Network failures retain the original pending body/key/base for Retry. If a preview is rejected because another write changed the item revision, download it or choose Keep state without preview; the successfully saved state stays on the server. The player never refreshes a remote revision into its gameplay baseline. Avoid leaving while pending state bytes have not been retried or exported.
+
+Display offers Fit, intentional Fill/stretch, aspect-ratio overrides, sharp/smooth filtering, a height slider and fullscreen where available. Settings affect the actual sandbox canvas. Integer/native scaling is explicitly unavailable until the runtime can report trustworthy native geometry; an upscaled output canvas is not treated as the game's source resolution. iPhone layout changes do not require fullscreen support.
+
+Capture bounds are 8 MiB per screenshot, 2 MiB per thumbnail, maximum dimension 8192 and maximum area 16,777,216 pixels. Screenshot acquisition has a five-second frame deadline; optional native thumbnail completion has a three-second deadline. PNG structure/dimensions are checked on both sides of the bridge. WebGL buffer preservation supports reliable captures but can retain additional graphics memory; actual phone performance still needs device acceptance.
+
+### Focused capture acceptance
+
+Use the external pinned FCEUmm build and the original generated NES test program. No emulator/content binary is bundled. The focused Playwright configuration covers Chromium, WebKit desktop and an iPhone 13 WebKit profile:
+
+```sh
+ECS_ACCEPTANCE_CORE=/absolute/path/to/pinned-core \
+  pnpm --filter @ecs/web exec playwright test -c playwright.player.config.ts
+```
+
+If Playwright WebKit lives outside its normal cache, set `ECS_WEBKIT_EXECUTABLE` to its `pw_run.sh`. The real-core case checks changing nonblank PNG pixels, authenticated state/preview uploads, gallery loading with state restoration and display changes. The other focused cases cover isolation, incomplete native preview writes, stale-capture rejection and capture without synchronized saves. WebKit device profiles do not establish physical iPhone or installed Safari acceptance.

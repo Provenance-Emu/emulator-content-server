@@ -9,6 +9,9 @@
   import { allItems } from './preflight.js';
   import { type BrowserCore, contentExtensions, importBrowserRuntime, validateProfile } from './runtime.js';
   import SaveControls from './SaveControls.svelte';
+  import StateBrowser from './StateBrowser.svelte';
+  import DisplayControls from './DisplayControls.svelte';
+  import { stateCompatibility } from './states.js';
 
   const client = new ContentClient(window.location.origin, loadSession()?.token);
   const query = new URLSearchParams(window.location.search);
@@ -28,6 +31,8 @@
   let stateId = $state('');
   let compatible = $state(false);
   let canvas: HTMLCanvasElement;
+  let stage=$state<HTMLDivElement>();
+  let playerBusy=$state(false),captureReady=$state(false),refresh=$state(0),pendingSave=$state(false);
   let ready = $state(false);
   let needsSignIn = $state(false);
   let working = $state(false);
@@ -135,7 +140,7 @@
           <select bind:value={batteryId} disabled={working}>
             <option value="">Start without a battery save</option>
             {#each files.filter((file) => file.kind === 'battery_save') as file (file.id)}
-              <option value={file.id}>{file.relativePath}{file.conflictOf ? ' (conflict copy)' : ' (live)'}</option>
+              <option value={file.id} disabled={file.kind==='save_state' && !!core && stateCompatibility(file.relativePath,core)==='incompatible'}>{file.relativePath}{file.conflictOf ? ' (conflict copy)' : ' (live)'}</option>
             {/each}
           </select>
         </label>
@@ -143,7 +148,7 @@
           <select bind:value={stateId} disabled={working}>
             <option value="">Start without a state</option>
             {#each files.filter((file) => file.kind === 'save_state') as file (file.id)}
-              <option value={file.id}>{file.relativePath}{file.conflictOf ? ' (conflict copy)' : ''}</option>
+              <option value={file.id} disabled={file.kind==='save_state' && !!core && stateCompatibility(file.relativePath,core)==='incompatible'}>{file.relativePath}{file.conflictOf ? ' (conflict copy)' : ''}</option>
             {/each}
           </select>
         </label>
@@ -152,11 +157,17 @@
       <button type="button" onclick={start} disabled={working || (!!(batteryId || stateId) && !compatible)}>Start</button>
     </section>
   {/if}
-  <canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas>
+  <div class="player-stage" bind:this={stage}><canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas></div>
   {#if working}<p role="status">Preparing complete content and core bytes…</p>{/if}
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
   {#if attempted && !session && !working}<p><a href={window.location.href}>Reload player</a></p>{/if}
-  {#if session}<SaveControls saves={session.saves} hasState={!!session.prepared.state} coreName={session.prepared.core.name} supportsSaves={session.prepared.core.saveCompletion!=='none'} />{/if}
+  {#if session && stage}
+    <DisplayControls runtime={session.runtime} {stage} oninfo={info=>captureReady=info.captureReady} />
+    <SaveControls saves={session.saves} runtime={session.runtime} hasState={!!session.prepared.state} coreName={session.prepared.core.name} supportsSaves={session.prepared.core.saveCompletion!=='none'} {captureReady} disabled={playerBusy} onchange={()=>{refresh++;pendingSave=!!session?.saves?.pending;}} onbusy={busy=>playerBusy=busy} />
+  {/if}
+  {#if ready && targetId && core && core.saveCompletion!=='none'}
+    <StateBrowser {client} itemId={targetId} {core} {refresh} active={!!session} saves={session?.saves??null} disabled={working||playerBusy||pendingSave} onbusy={busy=>playerBusy=busy} onselect={(id,known)=>{stateId=id;if(known&&!batteryId)compatible=true;}} />
+  {/if}
   {#if logs.length}<details><summary>Runtime messages</summary><pre class="player-log">{logs.join('\n')}</pre></details>{/if}
   <p class="dim">Stop leaves this document. Failed startup or command timeout requires reload. Pending uploads are lost when leaving; retry or export first. No background save on close.</p>
 </main>

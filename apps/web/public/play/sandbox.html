@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Isolated emulator</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}canvas{display:block;width:100%;height:100%;object-fit:contain}canvas:focus-visible{outline:2px solid #89bfe2;outline-offset:-2px}</style></head><body><canvas width="640" height="480" tabindex="0" aria-label="Game display"></canvas><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Isolated emulator</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;display:grid;place-items:center}canvas{display:block;width:100%;height:100%;object-fit:contain}canvas:focus-visible{outline:2px solid #89bfe2;outline-offset:-2px}</style></head><body><canvas width="640" height="480" tabindex="0" aria-label="Game display"></canvas><script>
 'use strict';
 (() => {
   const nonce = location.hash.slice(1);
@@ -6,6 +6,54 @@
   const LIMIT = 64 * 1024 * 1024;
   let contentLimit = LIMIT;
   const canvas = document.querySelector('canvas');
+  const SHOT_LIMIT = 8*1024*1024, PREVIEW_LIMIT = 2*1024*1024;
+  const PREVIEW_PATH = '/ecs/states/game.state.png';
+  let frames=0, renderer='', context, pendingShot;
+  let display={fit:'contain',aspect:'auto',filter:'pixelated'};
+  const originalGetContext=canvas.getContext.bind(canvas);
+  canvas.getContext=(kind,attributes)=>{
+    const webgl=['webgl','webgl2','experimental-webgl'].includes(kind);
+    const ctx=originalGetContext(kind,webgl?{...attributes,preserveDrawingBuffer:true}:attributes);
+    if(ctx){renderer=kind;context=ctx;}return ctx;
+  };
+  function validDisplay(s){return s && ['contain','fill'].includes(s.fit) && ['auto','4:3','16:9','1:1'].includes(s.aspect) && ['pixelated','smooth'].includes(s.filter);}
+  function applyDisplay(){
+    let width=innerWidth,height=innerHeight;
+    const ratio=display.aspect==='auto'?(canvas.width/canvas.height||4/3):display.aspect.split(':').reduce((a,b)=>a/Number(b));
+    if(display.fit==='contain'){width=Math.min(width,height*ratio);height=width/ratio;}
+    const styles={width:width+'px',height:height+'px',objectFit:'fill',imageRendering:display.filter==='pixelated'?'pixelated':'auto'};
+    for(const [key,value] of Object.entries(styles))if(canvas.style[key]!==value)canvas.style[key]=value;
+  }
+  addEventListener('resize',applyDisplay);
+  function validPng(bytes,limit){
+    if(!(bytes instanceof Uint8Array)||bytes.length<45||bytes.length>limit||![137,80,78,71,13,10,26,10].every((b,i)=>bytes[i]===b))return false;
+    const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),w=v.getUint32(16),h=v.getUint32(20);
+    if(v.getUint32(8)!==13||v.getUint32(12)!==0x49484452||!w||!h||w>8192||h>8192||w*h>16777216)return false;
+    let data=false,count=0;
+    for(let o=8;o+12<=bytes.length;){const n=v.getUint32(o),t=v.getUint32(o+4);if(++count>4096||n>bytes.length-o-12)return false;const end=o+n+12;if(t===0x49444154&&n)data=true;if(t===0x49454e44)return n===0&&end===bytes.length&&data;o=end;}return false;
+  }
+  function canCapture(){return frames>0 && (renderer==='2d'||context?.getContextAttributes?.()?.preserveDrawingBuffer===true);}
+  function capture(){
+    if(!canCapture())throw Error('Capture unavailable until the core draws a supported frame');
+    if(canvas.width<1||canvas.height<1||canvas.width>8192||canvas.height>8192||canvas.width*canvas.height>16777216)throw Error('Capture dimensions exceed limit');
+    return new Promise((resolve,reject)=>{
+      let settled=false;
+      const timer=setTimeout(()=>finish(Error('No new game frame available for capture')),5000);
+      function finish(error,bytes){if(settled)return;settled=true;clearTimeout(timer);pendingShot=undefined;error?reject(error):resolve(bytes);}
+      pendingShot={reject:()=>finish(Error('Capture cancelled')),draw(){
+        if(settled)return;pendingShot=undefined;
+        try{if(canvas.width<1||canvas.height<1||canvas.width>8192||canvas.height>8192||canvas.width*canvas.height>16777216)throw Error('Capture dimensions exceed limit');canvas.toBlob(async png=>{try{if(!png||png.size>SHOT_LIMIT)throw Error('Invalid capture size');const bytes=new Uint8Array(await png.arrayBuffer());if(closed||!validPng(bytes,SHOT_LIMIT))throw Error('Invalid capture PNG');finish(null,bytes.buffer);}catch(error){finish(error);}},'image/png');}catch(error){finish(error);}
+      }};
+    });
+  }
+  async function preview(){
+    if(typeof runtime.FS.unlink!=='function')return null;
+    const deadline=Date.now()+3000;let previous;
+    while(!closed&&Date.now()<deadline){
+      try{if(runtime.FS.stat&&runtime.FS.stat(PREVIEW_PATH).size>PREVIEW_LIMIT)return null;const bytes=await runtime.FS.readFile(PREVIEW_PATH);if(validPng(bytes,PREVIEW_LIMIT)){if(previous?.length===bytes.length&&bytes.every((b,i)=>previous[i]===b))return new Uint8Array(bytes).buffer;previous=new Uint8Array(bytes);}else previous=undefined;}catch{previous=undefined;}
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }return null;
+  }
   let port, runtime, closed = false, initializing = false, tail = Promise.resolve();
   const urls = new Set();
   const byteArray = (value, limit = LIMIT) => {
@@ -56,6 +104,8 @@
       });
       if (!runtime?.FS || typeof runtime.FS.mkdirTree !== 'function' || typeof runtime.FS.writeFile !== 'function' || typeof runtime.FS.readFile !== 'function' || typeof runtime.callMain !== 'function') throw Error('Runtime needs MEMFS and callMain exports');
       if (spec.commands && (typeof runtime.EmscriptenSendCommand !== 'function' || typeof runtime.EmscriptenReceiveCommandReply !== 'function')) throw Error('Runtime needs command/reply save exports');
+      const previousPostMainLoop=runtime.postMainLoop;
+      runtime.postMainLoop=function(){previousPostMainLoop?.call(runtime);frames++;applyDisplay();pendingShot?.draw();};
       return null;
     }
     if (!runtime) throw Error('Runtime is not initialized');
@@ -75,6 +125,15 @@
         if (reply !== undefined && (typeof reply !== 'string' || reply.length > 4096)) throw Error('Invalid command reply');
         return reply;
       }
+      case 'screenshot': return await capture();
+      case 'preview-clear': {
+        if(typeof runtime.FS.unlink!=='function')return false;
+        try{await runtime.FS.unlink(PREVIEW_PATH);}catch(error){if(error?.errno!==44&&error?.code!=='ENOENT')throw error;}
+        return true;
+      }
+      case 'preview': return await preview();
+      case 'display-info': return {width:canvas.width,height:canvas.height,captureReady:canCapture(),preview:typeof runtime.FS.unlink==='function',settings:display};
+      case 'display': if(!validDisplay(value))throw Error('Invalid display settings');display={fit:value.fit,aspect:value.aspect,filter:value.filter};applyDisplay();return null;
       case 'focus': canvas.focus(); return null;
       default: throw Error('Unknown runtime operation');
     }
@@ -95,7 +154,7 @@
     port.postMessage({type:'connected'});
   }
   addEventListener('message',connect);
-  addEventListener('pagehide',()=>{closed=true;port?.close();for(const url of urls)URL.revokeObjectURL(url);},{once:true});
+  addEventListener('pagehide',()=>{closed=true;pendingShot?.reject();port?.close();for(const url of urls)URL.revokeObjectURL(url);},{once:true});
   parent.postMessage({type:'ecs-player-ready',nonce},'*');
 })();
 </script></body></html>

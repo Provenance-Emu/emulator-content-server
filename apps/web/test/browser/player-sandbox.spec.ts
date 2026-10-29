@@ -159,3 +159,114 @@ test('sandbox blocks privileged network reads and releases stalled startup on ca
   expect(result.cancelled).toBe(true);
   expect(result.remaining).toBe(0);
 });
+
+test('capture bridge returns current PNG pixels, clears stale previews and applies display settings', async ({
+  page,
+  fixture,
+}) => {
+  await page.route('**/ui/player-runtime-test.js', (r) =>
+    r.fulfill({ contentType: 'text/javascript', body: harness }),
+  );
+  await page.goto(`${fixture.origin}/play/`);
+  const result = await page.evaluate(async () => {
+    const api = await import('/ui/player-runtime-test.js');
+    const loaded = await api.importBrowserRuntime(
+      new TextEncoder().encode(`export default async options=>{
+      const files=new Map(); let color='rgb(20,40,200)'; const m={canvas:options.canvas,
+      FS:{mkdirTree(){},writeFile(p,b){files.set(p,new Uint8Array(b));if(p==='/ecs/color')color='rgb(200,40,20)';},readFile(p){if(!files.has(p))throw Error('missing');return files.get(p);},unlink(p){files.delete(p);}},
+      callMain(){const ctx=options.canvas.getContext('2d');function draw(){ctx.fillStyle=color;ctx.fillRect(0,0,options.canvas.width,options.canvas.height);m.postMainLoop?.();requestAnimationFrame(draw);}draw();},EmscriptenSendCommand(){},EmscriptenReceiveCommandReply(){}};return m;};`),
+    );
+    const runtime = await loaded.factory({
+      wasmBinary: new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]),
+      canvas: document.querySelector('canvas'),
+      noInitialRun: true,
+      noExitRuntime: true,
+      print() {},
+      printErr() {},
+      locateFile: (s) => s,
+    });
+    await runtime.callMain([]);
+    const first = await runtime.captureScreenshot();
+    await runtime.FS.writeFile('/ecs/color', new Uint8Array([1]));
+    const second = await runtime.captureScreenshot();
+    const pixel = async (bytes) => {
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const c = document.createElement('canvas');
+      c.width = bitmap.width;
+      c.height = bitmap.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      const p = Array.from(ctx.getImageData(0, 0, 1, 1).data);
+      bitmap.close();
+      return p;
+    };
+    await runtime.FS.writeFile('/ecs/states/game.state.png', first);
+    await runtime.prepareStatePreview();
+    let removed = false;
+    try {
+      await runtime.FS.readFile('/ecs/states/game.state.png');
+    } catch {
+      removed = true;
+    }
+    await runtime.FS.writeFile('/ecs/states/game.state.png', second);
+    const preview = await runtime.captureStatePreview();
+    await runtime.setDisplay({ fit: 'fill', aspect: '16:9', filter: 'smooth' });
+    const info = await runtime.displayInfo();
+    const output = {
+      first: await pixel(first),
+      second: await pixel(second),
+      preview: await pixel(preview),
+      removed,
+      info,
+    };
+    loaded.release();
+    return output;
+  });
+  expect(result.first).toEqual([20, 40, 200, 255]);
+  expect(result.second).toEqual([200, 40, 20, 255]);
+  expect(result.preview).toEqual(result.second);
+  expect(result.removed).toBe(true);
+  expect(result.info.settings).toEqual({ fit: 'fill', aspect: '16:9', filter: 'smooth' });
+});
+
+test('preview bridge ignores stable incomplete bytes until the native writer finishes', async ({
+  page,
+  fixture,
+}) => {
+  await page.route('**/ui/player-runtime-test.js', (r) =>
+    r.fulfill({ contentType: 'text/javascript', body: harness }),
+  );
+  await page.goto(`${fixture.origin}/play/`);
+  const result = await page.evaluate(async () => {
+    const api = await import('/ui/player-runtime-test.js');
+    const loaded = await api.importBrowserRuntime(
+      new TextEncoder().encode(
+        `export default async options=>{const files=new Map();return{FS:{mkdirTree(){},unlink(p){files.delete(p);},writeFile(p,b){if(p==='/ecs/partial'){files.set('/ecs/states/game.state.png',b.slice(0,40));setTimeout(()=>files.set('/ecs/states/game.state.png',b),200);}else files.set(p,b);},readFile(p){if(!files.has(p))throw Error('missing');return files.get(p);}},callMain(){},EmscriptenSendCommand(){},EmscriptenReceiveCommandReply(){}};};`,
+      ),
+    );
+    const runtime = await loaded.factory({
+      canvas: document.querySelector('canvas'),
+      wasmBinary: new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]),
+      noInitialRun: true,
+      noExitRuntime: true,
+      locateFile: (s) => s,
+      print() {},
+      printErr() {},
+    });
+    const bytes = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+      ),
+      (c) => c.charCodeAt(0),
+    );
+    await runtime.prepareStatePreview();
+    await runtime.FS.writeFile('/ecs/partial', bytes);
+    const start = performance.now();
+    const preview = await runtime.captureStatePreview();
+    const output = { elapsed: performance.now() - start, size: preview.length };
+    loaded.release();
+    return output;
+  });
+  expect(result.elapsed).toBeGreaterThanOrEqual(150);
+  expect(result.size).toBe(68);
+});

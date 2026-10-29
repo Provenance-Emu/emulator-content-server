@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CommandChannel } from '../src/player/commands.js';
 import { SaveSynchronizer } from '../src/player/saves.js';
+import { statePath } from '../src/player/states.js';
 import { fixture } from './player-fixture.js';
 
 function setup(deadlineMs = 30_000) {
@@ -169,3 +170,128 @@ for (const kind of ['battery_save', 'save_state'] as const) {
     assert.equal(f.sync.pending, null);
   });
 }
+
+function snapshotSetup() {
+  const f = fixture();
+  const target = { libraryId: 'library', itemId: 'item', revision: 7, core: f.core };
+  const sync = new SaveSynchronizer(
+    f.client,
+    f.runtime,
+    new CommandChannel(f.runtime, { deadlineMs: 100, pollMs: 1 }),
+    target,
+  );
+  const png = new Uint8Array(
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  );
+  f.fs.set('/ecs/states/game.state', new Uint8Array([9]));
+  f.runtime.prepareStatePreview = async () => {
+    f.events.push('clear-preview');
+    return true;
+  };
+  f.runtime.captureStatePreview = async () => {
+    f.events.push('read-preview');
+    return png;
+  };
+  f.client.upload = async (request) => {
+    f.uploads.push(request);
+    return {
+      id: `saved-${f.uploads.length}`,
+      relativePath: request.relativePath,
+      conflictOf: null,
+      revision: 300,
+    } as import('@ecs/client').Asset;
+  };
+  return { ...f, sync, png };
+}
+test('snapshot capture clears the preview before save and uploads a unique state with its exact companion', async () => {
+  const f = snapshotSetup();
+  await f.sync.capture('save_state');
+  await f.sync.capture('save_state');
+  assert.equal(f.uploads.length, 4);
+  assert.match(f.uploads[0]!.relativePath, /^browser-states\/v1\//);
+  assert.notEqual(f.uploads[0]!.relativePath, f.uploads[2]!.relativePath);
+  assert.equal(f.uploads[1]!.relativePath, f.uploads[0]!.relativePath + '.png');
+  assert.equal(f.uploads[1]!.kind, 'screenshot');
+  assert.deepEqual(
+    f.uploads.map((r) => r.baseRevision),
+    [7, 8, 9, 10],
+  );
+  assert.ok(f.events.indexOf('clear-preview') < f.events.indexOf('SAVE_STATE_SLOT 0'));
+  assert.ok(f.events.indexOf('read-preview') > f.events.indexOf('SAVE_STATE_SLOT 0'));
+});
+test('failed preview retains one image retry and never duplicates the successfully uploaded state', async () => {
+  const f = snapshotSetup();
+  const upload = f.client.upload;
+  f.client.upload = async (request) => {
+    if (request.kind === 'screenshot') {
+      f.uploads.push(request);
+      throw Error('offline preview');
+    }
+    return upload(request);
+  };
+  await f.sync.capture('save_state');
+  assert.equal(f.uploads.length, 2);
+  assert.equal(f.sync.pending?.kind, 'screenshot');
+  const pending = f.uploads[1];
+  f.client.upload = upload;
+  await f.sync.retry();
+  assert.equal(f.uploads[2], pending);
+  assert.equal(f.uploads.filter((r) => r.kind === 'save_state').length, 1);
+});
+test('missing or invalid thumbnail still saves the state without uploading unrelated bytes', async () => {
+  const f = snapshotSetup();
+  f.runtime.captureStatePreview = async () => new Uint8Array([1, 2, 3]);
+  await f.sync.capture('save_state');
+  assert.equal(f.uploads.length, 1);
+  assert.equal(f.sync.pending, null);
+});
+test('preview revision rejection preserves the committed state and can be explicitly dismissed', async () => {
+  const f = snapshotSetup();
+  const upload = f.client.upload;
+  f.client.upload = async (r) => {
+    if (r.kind === 'screenshot') {
+      f.uploads.push(r);
+      throw Object.assign(Error('changed'), { status: 409 });
+    }
+    return upload(r);
+  };
+  const state = await f.sync.capture('save_state');
+  assert.equal(state.id, 'saved-1');
+  assert.equal(f.sync.pending?.canRetry, false);
+  assert.equal(f.sync.pending?.preview, true);
+  await assert.rejects(f.sync.retry(), /changed/);
+  f.sync.dismissPendingImage();
+  assert.equal(f.sync.pending, null);
+  assert.equal(f.sync.lastState?.id, state.id);
+});
+test('preview pairs with the returned conflict path and never refreshes a remote revision', async () => {
+  const f = snapshotSetup();
+  f.client.upload = async (r) => {
+    f.uploads.push(r);
+    return {
+      id: 'conflict',
+      relativePath:
+        r.kind === 'save_state' ? r.relativePath + '.conflict-1234abcd' : r.relativePath,
+      conflictOf: r.kind === 'save_state' ? 'live' : null,
+      revision: 999,
+    } as import('@ecs/client').Asset;
+  };
+  await f.sync.capture('save_state');
+  assert.equal(f.uploads[1]!.relativePath, f.uploads[0]!.relativePath + '.conflict-1234abcd.png');
+  assert.equal(f.uploads[1]!.baseRevision, 7);
+});
+test('in-session loading rejects another build before fetching and retains its original upload baseline', async () => {
+  const f = snapshotSetup();
+  const foreign = statePath({ ...f.core, wasm: { ...f.core.wasm, sha256: 'c'.repeat(64) } });
+  f.manifest.files.push({ ...f.manifest.files[2]!, id: 'foreign', relativePath: foreign });
+  await assert.rejects(f.sync.loadAsset('foreign', true), /different emulator build/);
+  assert.ok(!f.events.includes('collect:foreign'));
+  await assert.rejects(f.sync.loadAsset('state'), /Confirm/);
+  f.manifest.revision = 88;
+  await f.sync.loadAsset('state', true);
+  await f.sync.capture('save_state');
+  assert.equal(f.uploads[0]!.baseRevision, 7);
+});

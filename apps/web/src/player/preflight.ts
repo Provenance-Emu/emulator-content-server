@@ -6,6 +6,7 @@ import {
   profileIdentity,
   validateProfile,
 } from './runtime.js';
+import { stateCompatibility } from './states.js';
 export const SAVE_LIMIT = 64 * 1024 * 1024;
 
 export async function allItems(client: Pick<PlayerClient, 'libraries' | 'items'>): Promise<Item[]> {
@@ -155,6 +156,8 @@ export async function preparePlayer(
     options.compatibleSaves,
   );
   const state = selectedSave(manifest, options.stateAssetId, 'save_state', options.compatibleSaves);
+  if (state && stateCompatibility(state.relativePath, core) === 'incompatible')
+    throw new Error('State belongs to a different emulator build');
   async function collect(file: ManifestFile | undefined) {
     if (!file) return undefined;
     const bytes = (await client.collect(file.id, { maxBytes: SAVE_LIMIT, signal: options.signal }))

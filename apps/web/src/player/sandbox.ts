@@ -1,4 +1,6 @@
+import { PREVIEW_LIMIT, pngInfo, SCREENSHOT_LIMIT } from './images.js';
 import type { PlayerRuntime, RuntimeContext, RuntimeImporter } from './runtime.js';
+import { type DisplayInfo, validDisplaySettings } from './runtime.js';
 
 const LIMIT = 64 * 1024 * 1024;
 /** Core code receives bytes through a private port, never the app client, origin or credentials. */
@@ -29,7 +31,7 @@ export const importIsolatedRuntime: RuntimeImporter = async (
       frame.className = options.canvas.className;
       frame.style.border = '0';
       frame.style.width = '100%';
-      frame.style.aspectRatio = '4 / 3';
+      frame.style.height = '100%';
       const entropy = crypto.getRandomValues(new Uint8Array(16));
       const nonce = Array.from(entropy, (b) => b.toString(16).padStart(2, '0')).join('');
       frame.src = `/play/sandbox.html#${nonce}`;
@@ -217,8 +219,52 @@ export const importIsolatedRuntime: RuntimeImporter = async (
           },
           EmscriptenReceiveCommandReply: async () => (await rpc('receive')) as string | undefined,
           focus: async () => {
+            // Offscreen frames can stop receiving animation frames in Chromium.
+            // Bring the game back before waiting for a core-loop command/capture.
+            frame.scrollIntoView({ block: 'nearest', behavior: 'instant' });
             frame.focus();
             await rpc('focus');
+          },
+          captureScreenshot: async () => {
+            const value = await rpc('screenshot');
+            if (!(value instanceof ArrayBuffer)) throw new Error('Invalid screenshot reply');
+            const bytes = new Uint8Array(value);
+            pngInfo(bytes, SCREENSHOT_LIMIT);
+            return bytes;
+          },
+          prepareStatePreview: async () => {
+            const value = await rpc('preview-clear');
+            if (typeof value !== 'boolean') throw new Error('Invalid preview capability');
+            return value;
+          },
+          captureStatePreview: async () => {
+            const value = await rpc('preview');
+            if (value === null) return null;
+            if (!(value instanceof ArrayBuffer)) throw new Error('Invalid preview reply');
+            const bytes = new Uint8Array(value);
+            pngInfo(bytes, PREVIEW_LIMIT);
+            return bytes;
+          },
+          displayInfo: async () => {
+            const value = (await rpc('display-info')) as DisplayInfo;
+            if (
+              !value ||
+              !Number.isInteger(value.width) ||
+              !Number.isInteger(value.height) ||
+              value.width < 0 ||
+              value.height < 0 ||
+              value.width > 32768 ||
+              value.height > 32768 ||
+              typeof value.captureReady !== 'boolean' ||
+              typeof value.preview !== 'boolean' ||
+              !validDisplaySettings(value.settings)
+            )
+              throw new Error('Invalid display reply');
+            return value;
+          },
+          setDisplay: async (settings) => {
+            if (!validDisplaySettings(settings)) throw new Error('Invalid display settings');
+            await rpc('display', settings);
           },
         };
         return runtime;
