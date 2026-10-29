@@ -19,6 +19,7 @@ async function eventually(check: () => boolean): Promise<void> {
 test('shared jobs reuse work across owner sessions, serialize sources, and cancel independently of the starting connection', async () => {
   const f = await libraryFixture();
   const app = Fastify();
+  let prepared = 0;
   let started = 0;
   let stopped = 0;
   let resolveStarted: () => void = () => {};
@@ -40,7 +41,7 @@ test('shared jobs reuse work across owner sessions, serialize sources, and cance
         relativePath: `Generated-${i}.nes`,
         displayName: `Generated-${i}.nes`,
         kind: 'rom',
-        systemId: null,
+        systemId: 'com.provenance.nes',
         size: 4,
         blocks: 1,
         availability: 'local' as const,
@@ -59,6 +60,11 @@ test('shared jobs reuse work across owner sessions, serialize sources, and cance
         .send({ error: error instanceof Error ? error.message : 'Unknown error' });
     });
     registerLibraryJobs(app, { catalog: f.catalog } as ServerContext, {
+      async prepareCatalogs(systems, signal) {
+        signal.throwIfAborted();
+        assert.deepEqual(systems, ['com.provenance.nes']);
+        prepared++;
+      },
       async autoMatch(_actor, _source, _options, signal) {
         started++;
         resolveStarted();
@@ -79,7 +85,11 @@ test('shared jobs reuse work across owner sessions, serialize sources, and cance
       method: 'POST',
       url: '/api/v1/library-jobs',
       headers: f.auth,
-      payload: { kind: 'match', libraryId: f.library.id },
+      payload: {
+        kind: 'match',
+        libraryId: f.library.id,
+        options: { online: true, refreshCatalogs: true },
+      },
     });
     assert.equal(first.statusCode, 202, first.body);
     const id = first.json().job.id;
@@ -95,13 +105,14 @@ test('shared jobs reuse work across owner sessions, serialize sources, and cance
       method: 'POST',
       url: '/api/v1/library-jobs',
       headers: secondAuth,
-      payload: { kind: 'match', rootId: root.id },
+      payload: { kind: 'match', rootId: root.id, options: { online: true, refreshCatalogs: true } },
     });
     assert.equal(second.statusCode, 200, second.body);
     assert.equal(second.json().job.id, id);
     assert.equal(second.json().reused, true);
     assert.equal(second.json().job.total, 1000);
     assert.equal(started, 1);
+    assert.equal(prepared, 1);
     const cancelled = await app.inject({
       method: 'POST',
       url: `/api/v1/library-jobs/${id}/cancel`,
@@ -111,6 +122,7 @@ test('shared jobs reuse work across owner sessions, serialize sources, and cance
     assert.equal(cancelled.json().job.state, 'cancelled');
     await eventually(() => stopped === 1);
     assert.equal(started, 1);
+    assert.equal(prepared, 1);
     const list = await app.inject({ url: '/api/v1/library-jobs', headers: f.auth });
     assert.equal(list.json().jobs[0].id, id);
     const page = await app.inject({

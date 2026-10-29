@@ -1,0 +1,344 @@
+{
+  "libretro": {
+    "repository": "https://github.com/libretro/libretro-database",
+    "revision": "da577d2865c2b1b834b2d5f2fd1368fc5110a01c",
+    "license": "CC-BY-SA-4.0 repository license; upstream exceptions apply",
+    "notice": "The repository README attributes datasets to third-party sources including No-Intro, Redump, TOSEC and GameTDB. Preserve source attribution and each upstream's terms; the repository-wide license does not establish rights over every upstream record. Cheat sources are heterogeneous and their per-file terms are unverified.",
+    "sources": [
+      {
+        "id": "libretro-no-intro",
+        "name": "Libretro Database / No-Intro DATs",
+        "path": "metadat/no-intro",
+        "license": "CC-BY-SA-4.0 plus upstream No-Intro terms",
+        "notice": "Mirror of No-Intro data. This is metadata only; No-Intro upstream attribution/terms remain applicable."
+      },
+      {
+        "id": "libretro-redump",
+        "name": "Libretro Database / Redump DATs",
+        "path": "metadat/redump",
+        "license": "CC-BY-SA-4.0 plus upstream Redump terms",
+        "notice": "Mirror of Redump data. This is metadata only; Redump upstream attribution/terms remain applicable."
+      },
+      {
+        "id": "libretro-tosec",
+        "name": "Libretro Database / TOSEC DATs",
+        "path": "metadat/tosec",
+        "license": "CC-BY-SA-4.0 plus upstream TOSEC terms",
+        "notice": "Mirror of TOSEC data. This is metadata only; TOSEC upstream attribution/terms remain applicable."
+      },
+      {
+        "id": "libretro-hacks",
+        "name": "Libretro Database / hacks DATs",
+        "path": "metadat/hacks",
+        "license": "CC-BY-SA-4.0; per-record upstream exceptions apply",
+        "notice": "Modified-game metadata; original game rights are not granted by this catalog."
+      },
+      {
+        "id": "libretro-homebrew",
+        "name": "Libretro Database / homebrew DATs",
+        "path": "metadat/homebrew",
+        "license": "CC-BY-SA-4.0; creator terms may apply",
+        "notice": "Homebrew metadata; creator attribution and any stated project terms remain applicable."
+      },
+      {
+        "id": "libretro-dats",
+        "name": "Libretro Database / libretro-dats",
+        "path": "metadat/libretro-dats",
+        "license": "CC-BY-SA-4.0 repository license; upstream exceptions apply",
+        "notice": "Libretro-maintained supplemental data, including fan-translation metadata; underlying game/translation rights are not granted."
+      },
+      {
+        "id": "libretro-mame",
+        "name": "Libretro Database / MAME DATs",
+        "path": "metadat/mame-nonmerged",
+        "license": "CC-BY-SA-4.0 repository license; upstream MAME terms apply",
+        "notice": "MAME set metadata; upstream MAME attribution and license terms remain applicable."
+      },
+      {
+        "id": "libretro-fbneo",
+        "name": "Libretro Database / FBNeo DATs",
+        "path": "metadat/fbneo-member",
+        "license": "CC-BY-SA-4.0 repository license; upstream FBNeo terms apply",
+        "notice": "FBNeo set metadata; upstream FBNeo attribution and license terms remain applicable."
+      },
+      {
+        "id": "libretro-composite",
+        "name": "Libretro Database / GameCube and Wii DATs",
+        "path": "dat",
+        "license": "CC-BY-SA-4.0 repository license; GameTDB/Redump terms apply",
+        "notice": "Composite GameCube/Wii data described by the upstream README as GameTDB and Redump inputs; preserve both attributions and their terms."
+      },
+      {
+        "id": "libretro-maintained-dat",
+        "name": "Libretro Database / maintained DATs",
+        "path": "dat",
+        "license": "CC-BY-SA-4.0 repository license; upstream exceptions apply",
+        "notice": "Libretro-maintained system DATs. Underlying commercial game rights remain with their holders."
+      },
+      {
+        "id": "libretro-cheats",
+        "name": "Libretro Database / cheat-code files",
+        "path": "cht",
+        "license": "Per-file terms unverified",
+        "notice": "The repository README says cheat files come from assorted web sources and user contributions. This record points to the original pinned file; do not mirror or claim a blanket CC-BY-SA grant without reviewing its source/terms."
+      }
+    ],
+    "metadataFiles": [
+      {
+        "path": "metadat/no-intro/Nintendo - Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.nes",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/hacks/Nintendo - Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.nes",
+        "sourceId": "libretro-hacks"
+      },
+      {
+        "path": "metadat/homebrew/Nintendo - Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.nes",
+        "sourceId": "libretro-homebrew"
+      },
+      {
+        "path": "metadat/tosec/Nintendo - Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.nes",
+        "sourceId": "libretro-tosec"
+      },
+      {
+        "path": "metadat/no-intro/Nintendo - Super Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.snes",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/libretro-dats/Nintendo - Super Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.snes",
+        "sourceId": "libretro-dats"
+      },
+      {
+        "path": "metadat/hacks/Nintendo - Super Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.snes",
+        "sourceId": "libretro-hacks"
+      },
+      {
+        "path": "metadat/homebrew/Nintendo - Super Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.snes",
+        "sourceId": "libretro-homebrew"
+      },
+      {
+        "path": "metadat/tosec/Nintendo - Super Nintendo Entertainment System.dat",
+        "systemId": "com.provenance.snes",
+        "sourceId": "libretro-tosec"
+      },
+      {
+        "path": "metadat/no-intro/Nintendo - Nintendo 64.dat",
+        "systemId": "com.provenance.n64",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/hacks/Nintendo - Nintendo 64.dat",
+        "systemId": "com.provenance.n64",
+        "sourceId": "libretro-hacks"
+      },
+      {
+        "path": "metadat/redump/Sony - PlayStation.dat",
+        "systemId": "com.provenance.psx",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "metadat/hacks/Sony - PlayStation.dat",
+        "systemId": "com.provenance.psx",
+        "sourceId": "libretro-hacks"
+      },
+      {
+        "path": "metadat/redump/Sega - Dreamcast.dat",
+        "systemId": "com.provenance.dreamcast",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "metadat/homebrew/Sega - Dreamcast.dat",
+        "systemId": "com.provenance.dreamcast",
+        "sourceId": "libretro-homebrew"
+      },
+      {
+        "path": "metadat/no-intro/Atari - Jaguar.dat",
+        "systemId": "com.provenance.jaguar",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/tosec/Atari - Jaguar.dat",
+        "systemId": "com.provenance.jaguar",
+        "sourceId": "libretro-tosec"
+      },
+      {
+        "path": "metadat/redump/Atari - Jaguar CD.dat",
+        "systemId": "com.provenance.jaguarcd",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "metadat/redump/Sega - Naomi.dat",
+        "systemId": "com.provenance.naomi",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "metadat/redump/Sega - Naomi 2.dat",
+        "systemId": "com.provenance.naomi2",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "dat/Atomiswave.dat",
+        "systemId": "com.provenance.atomiswave",
+        "sourceId": "libretro-maintained-dat"
+      },
+      {
+        "path": "dat/Nintendo - GameCube.dat",
+        "systemId": "com.provenance.gamecube",
+        "sourceId": "libretro-composite"
+      },
+      {
+        "path": "metadat/redump/Nintendo - GameCube.dat",
+        "systemId": "com.provenance.gamecube",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "dat/Nintendo - Wii.dat",
+        "systemId": "com.provenance.wii",
+        "sourceId": "libretro-composite"
+      },
+      {
+        "path": "metadat/redump/Nintendo - Wii.dat",
+        "systemId": "com.provenance.wii",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "metadat/no-intro/Sony - PlayStation Portable.dat",
+        "systemId": "com.provenance.psp",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Sony - PlayStation Portable (PSN).dat",
+        "systemId": "com.provenance.psp",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Sony - PlayStation Portable (PSX2PSP).dat",
+        "systemId": "com.provenance.psp",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Sony - PlayStation Portable (UMD Music).dat",
+        "systemId": "com.provenance.psp",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Sony - PlayStation Portable (UMD Video).dat",
+        "systemId": "com.provenance.psp",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/redump/Sony - PlayStation Portable.dat",
+        "systemId": "com.provenance.psp",
+        "sourceId": "libretro-redump"
+      },
+      {
+        "path": "metadat/mame-nonmerged/MAME 2003-Plus.dat",
+        "systemId": "com.provenance.mame",
+        "sourceId": "libretro-mame"
+      },
+      {
+        "path": "metadat/fbneo-member/FBNeo - Arcade Games.dat",
+        "systemId": "com.provenance.mame",
+        "sourceId": "libretro-fbneo"
+      },
+      {
+        "path": "metadat/no-intro/Nintendo - Game Boy.dat",
+        "systemId": "com.provenance.gb",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Nintendo - Game Boy Color.dat",
+        "systemId": "com.provenance.gbc",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Nintendo - Game Boy Advance.dat",
+        "systemId": "com.provenance.gba",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Sega - Mega Drive - Genesis.dat",
+        "systemId": "com.provenance.genesis",
+        "sourceId": "libretro-no-intro"
+      },
+      {
+        "path": "metadat/no-intro/Sega - Master System - Mark III.dat",
+        "systemId": "com.provenance.mastersystem",
+        "sourceId": "libretro-no-intro"
+      }
+    ],
+    "cheatFolders": [
+      { "path": "cht/Nintendo - Nintendo Entertainment System", "systemId": "com.provenance.nes" },
+      {
+        "path": "cht/Nintendo - Super Nintendo Entertainment System",
+        "systemId": "com.provenance.snes"
+      },
+      { "path": "cht/Nintendo - Nintendo 64", "systemId": "com.provenance.n64" },
+      { "path": "cht/Sony - PlayStation", "systemId": "com.provenance.psx" },
+      { "path": "cht/Sony - PlayStation Portable", "systemId": "com.provenance.psp" },
+      { "path": "cht/Sega - Dreamcast", "systemId": "com.provenance.dreamcast" },
+      { "path": "cht/Atari - Jaguar", "systemId": "com.provenance.jaguar" },
+      { "path": "cht/FBNeo - Arcade Games", "systemId": "com.provenance.mame" },
+      { "path": "cht/Nintendo - Game Boy", "systemId": "com.provenance.gb" },
+      { "path": "cht/Nintendo - Game Boy Color", "systemId": "com.provenance.gbc" },
+      { "path": "cht/Nintendo - Game Boy Advance", "systemId": "com.provenance.gba" },
+      { "path": "cht/Sega - Mega Drive - Genesis", "systemId": "com.provenance.genesis" },
+      { "path": "cht/Sega - Master System - Mark III", "systemId": "com.provenance.mastersystem" }
+    ]
+  },
+  "flycast": {
+    "repository": "https://github.com/flyinghead/flycast",
+    "revision": "9c6c8e59d6ccf0f5bdb0ffc2830885854664770b",
+    "path": "core/hw/naomi/naomi_roms.cpp",
+    "sourceId": "flycast-naomi-catalog",
+    "sourceName": "Flycast Naomi/Atomiswave game catalog",
+    "license": "GPL-2.0-or-later Flycast source; embedded MAME ROM metadata LGPL-2.1+",
+    "notice": "The file copyright header attributes the ROM information to MAME and lists the individual copyright holders. This catalog extracts only short title, set, platform and serial identity facts; preserve Flycast/MAME attribution and upstream licenses.",
+    "bytes": 296361,
+    "sha256": "a24cc4bf4a8786f0e20183db227ee08585f399d37e2246405f9db9e2b319fd51"
+  },
+  "patches": [
+    {
+      "sourceId": "patch-dqvi-noprgress",
+      "sourceName": "RadMageIRL / Dragon Quest VI NoPrgress menu fix",
+      "repositoryUrl": "https://github.com/RadMageIRL/DQVI_NOPRGRESS_MENU_FIX",
+      "license": "MIT for original scripts/docs only; patch rights ungranted",
+      "notice": "Patch is a diff against Square Enix's game and the NoPrgress/DeJap translation. Maintainer's LICENSE excludes those contents; use original pinned URL only and obtain rights-holder permission before mirroring. v5 also includes clymax's fix with maintainer-noted permission.",
+      "sourceCommit": "a5558c84b1bb04f0649818f1619c1fd40813daaa",
+      "path": "dqvi-noprgress-menufix-v5.bps",
+      "systemId": "com.provenance.snes",
+      "title": "Dragon Quest VI NoPrgress menu/gameplay fixes v5",
+      "patchType": "patch",
+      "licenseMetadata": "Patch rights ungranted; source-only link",
+      "sha256": "1c8c4bb853a06e1174b3e6effed778fae79a8fe8e0f522db06cac85a3e72fd90",
+      "bytes": 345,
+      "sourceSize": 4194304,
+      "sourceCrc32": "b545c548"
+    },
+    {
+      "sourceId": "patch-dq5-dejap-four-party",
+      "sourceName": "RadMageIRL / Dragon Quest V DeJap v2.01 four-party fix",
+      "repositoryUrl": "https://github.com/RadMageIRL/DQVSNES4PARTYPATCH",
+      "license": "MIT for original scripts/docs only; patch rights ungranted",
+      "notice": "Patch content derives from Mr. 45's 2007 hack and DeJap translation; maintainer says it is shared in the same spirit, not under an express patch license. Use original pinned URL only and obtain rights-holder permission before mirroring.",
+      "sourceCommit": "eda7ca55de4726272118883f0b476673e57efcfb",
+      "path": "dq5-4party-dejap-fixed-v1.bps",
+      "systemId": "com.provenance.snes",
+      "title": "Dragon Quest V DeJap v2.01 corrected four-party patch",
+      "patchType": "rom-hack",
+      "licenseMetadata": "Patch rights ungranted; source-only link",
+      "sha256": "556279845f6c94096bff618d391804eb4a942b00f46cfa96875a14d6a22046be",
+      "bytes": 2162,
+      "sourceSize": 2097152,
+      "sourceCrc32": "9400cb3c"
+    }
+  ]
+}

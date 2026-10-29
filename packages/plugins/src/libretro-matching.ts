@@ -6,6 +6,7 @@ import {
   createLibretroMatcher,
   type DatRecord,
   type MatchCandidate,
+  type MatchingInput,
   type MatchingProvider,
   type matchLibretro,
   PartialMatchingError,
@@ -47,6 +48,9 @@ export const LIBRETRO_SYSTEMS: Record<string, SystemCatalog> = {
     collection: 'no-intro',
   },
   'com.provenance.gamegear': { platform: 'Sega - Game Gear', collection: 'no-intro' },
+  'com.provenance.gamecube': { platform: 'Nintendo - GameCube', collection: 'redump' },
+  'com.provenance.wii': { platform: 'Nintendo - Wii', collection: 'redump' },
+  'com.provenance.psp': { platform: 'Sony - PlayStation Portable', collection: 'redump' },
   'com.provenance.psx': { platform: 'Sony - PlayStation', collection: 'redump' },
   'com.provenance.saturn': { platform: 'Sega - Saturn', collection: 'redump' },
   'com.provenance.dreamcast': { platform: 'Sega - Dreamcast', collection: 'redump' },
@@ -114,6 +118,10 @@ function artworkIndex(text: string): Artwork[] {
 export function createLibretroProvider(
   fetcher: typeof fetch = fetch,
   cacheDirectory?: string,
+  metadataResolver?: (
+    input: MatchingInput,
+    signal?: AbortSignal,
+  ) => Promise<MatchCandidate[] | null>,
 ): MatchingProvider {
   const catalogs = createCatalogLoader(fetcher, cacheDirectory);
   const emptyRecords: DatRecord[] = [],
@@ -269,27 +277,37 @@ export function createLibretroProvider(
           return emptyRecords;
         }
       }
+      let resolvedMetadata: MatchCandidate[] | null = null;
+      if (metadataResolver) {
+        try {
+          resolvedMetadata = await metadataResolver(lookupInput, resourceSignal);
+        } catch (error) {
+          signal?.throwIfAborted();
+          failures.push(error);
+          resolvedMetadata = [];
+        }
+      }
       const tables: Promise<DatRecord[]>[] = [];
-      if (system.collection)
+      if (resolvedMetadata === null && system.collection)
         tables.push(
           dat(
             `https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/${system.collection}/${encodeURIComponent(system.platform)}.dat`,
           ),
         );
-      if (systemId === 'com.provenance.jaguar')
+      if (resolvedMetadata === null && systemId === 'com.provenance.jaguar')
         tables.push(
           dat(
             'https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/tosec/Atari%20-%20Jaguar.dat',
           ),
         );
-      if (systemId === 'com.provenance.atomiswave')
+      if (resolvedMetadata === null && systemId === 'com.provenance.atomiswave')
         tables.push(
           dat(
             'https://raw.githubusercontent.com/libretro/libretro-database/master/dat/Atomiswave.dat',
             true,
           ),
         );
-      if (system.arcade)
+      if (resolvedMetadata === null && system.arcade)
         tables.push(
           (async () => {
             try {
@@ -327,7 +345,7 @@ export function createLibretroProvider(
         }
       })();
       const [records, artworks] = await Promise.all([Promise.all(tables), indexed]);
-      const metadata = match(lookupInput, records);
+      const metadata = resolvedMetadata ?? match(lookupInput, records);
       signal?.throwIfAborted();
       // A checksum can establish the public title even when the original file was renamed.
       // Filename-only suggestions stay bounded and region/edition-aware for explicit review.

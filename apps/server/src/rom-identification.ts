@@ -69,7 +69,7 @@ async function pluginVersion(context: ServerContext): Promise<string> {
   let pending = versions.get(context);
   if (!pending) {
     pending = (async () => {
-      const digest = createHash('sha256').update('rom-identification-v1');
+      const digest = createHash('sha256').update('rom-identification-v2');
       const selected = await readerTools(context);
       for (const [name, path] of Object.entries(selected)) {
         const info = await stat(path, { bigint: true });

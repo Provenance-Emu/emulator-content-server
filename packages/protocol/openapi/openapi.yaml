@@ -1440,6 +1440,7 @@ components:
       properties:
         online: { type: boolean, default: false }
         checksum: { type: boolean, default: false }
+        refreshCatalogs: { type: boolean, default: false, description: Refresh pinned hosted catalog shards through the shared matching job before matching. }
         allowExactNames: { type: boolean, default: false, description: Permit exact full filename and edition matches when no stronger identity conflicts. }
         providerIds:
           type: array

@@ -26,6 +26,10 @@
     "./rom-identification": {
       "types": "./dist/src/rom-identification.d.ts",
       "default": "./dist/src/rom-identification.js"
+    },
+    "./hosted-catalog": {
+      "types": "./dist/src/hosted-catalog.d.ts",
+      "default": "./dist/src/hosted-catalog.js"
     }
   }
 }

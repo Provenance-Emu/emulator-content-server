@@ -11,6 +11,7 @@ export interface LibraryJobOptions {
   online: boolean;
   checksum: boolean;
   allowExactNames?: boolean;
+  refreshCatalogs?: boolean;
   providerIds?: string[];
   managerId?: string;
 }
@@ -142,7 +143,7 @@ export class LibraryJobRepository {
       else
         this.db
           .prepare(
-            `INSERT INTO library_job_items(job_id,entity_id) SELECT ?,s.id FROM live_source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.kind='rom' AND (s.group_anchor IS NULL OR s.group_anchor=s.relative_path) AND ${filter.sql}`,
+            `INSERT INTO library_job_items(job_id,entity_id,system_id) SELECT ?,s.id,s.system_id FROM live_source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.kind='rom' AND (s.group_anchor IS NULL OR s.group_anchor=s.relative_path) AND ${filter.sql}`,
           )
           .run(id, ...filter.params);
       this.db
@@ -183,9 +184,16 @@ export class LibraryJobRepository {
       const filter = scopeSql(JSON.parse(row.scope_json) as LibraryJobScope);
       this.db
         .prepare(
-          `INSERT OR IGNORE INTO library_job_items(job_id,entity_id) SELECT ?,s.id FROM live_source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.kind='rom' AND (s.group_anchor IS NULL OR s.group_anchor=s.relative_path) AND ${filter.sql}`,
+          `INSERT OR IGNORE INTO library_job_items(job_id,entity_id,system_id) SELECT ?,s.id,s.system_id FROM live_source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.kind='rom' AND (s.group_anchor IS NULL OR s.group_anchor=s.relative_path) AND ${filter.sql}`,
         )
         .run(row.id, ...filter.params);
+      // A queued scan or a system correction can change affinity before claim or
+      // resume. Refresh once, never join the full work list for each small batch.
+      this.db
+        .prepare(
+          "UPDATE library_job_items AS i SET system_id=(SELECT s.system_id FROM live_source_files s WHERE s.id=i.entity_id) WHERE i.job_id=? AND i.state='pending'",
+        )
+        .run(row.id);
       this.db
         .prepare(
           'UPDATE library_jobs SET total=(SELECT count(*) FROM library_job_items WHERE job_id=?) WHERE id=?',
@@ -199,6 +207,20 @@ export class LibraryJobRepository {
     const query = libraryJobItemsQuery(id, limit, after, status);
     const rows = this.db.prepare(query.sql).all(...query.params) as unknown as LibraryJobItem[];
     return rows;
+  }
+  /** Keep a system's catalogs warm while preserving the public entity-id cursor. */
+  pendingItems(id: string, limit = 50): LibraryJobItem[] {
+    const query = libraryJobPendingItemsQuery(id, limit);
+    return this.db.prepare(query.sql).all(...query.params) as unknown as LibraryJobItem[];
+  }
+  matchingSystems(id: string): string[] {
+    return (
+      this.db
+        .prepare(
+          'SELECT DISTINCT s.system_id AS systemId FROM library_job_items i JOIN live_source_files s ON s.id=i.entity_id WHERE i.job_id=? AND s.system_id IS NOT NULL',
+        )
+        .all(id) as { systemId: string }[]
+    ).map((row) => row.systemId);
   }
   current(id: string, entityId: string): void {
     this.db
@@ -345,6 +367,16 @@ function scopeSql(scope: LibraryJobScope): { sql: string; params: SQLInputValue[
   };
 }
 
+export function libraryJobPendingItemsQuery(
+  id: string,
+  limit = 50,
+): { sql: string; params: SQLInputValue[] } {
+  return {
+    sql: "SELECT entity_id AS sourceId,state AS status,saved,suggestions,error FROM library_job_items WHERE job_id=? AND state='pending' ORDER BY system_id,entity_id LIMIT ?",
+    params: [id, Math.min(101, Math.max(1, limit))],
+  };
+}
+
 /** Exact optional predicates let SQLite seek the state index after any processed prefix. */
 export function libraryJobItemsQuery(
   id: string,
@@ -375,6 +407,7 @@ function normalizedOptions(kind: LibraryJobRecord['kind'], options: LibraryJobOp
     : {
         online: options.online,
         checksum: options.checksum,
+        ...(options.refreshCatalogs ? { refreshCatalogs: true } : {}),
         ...(options.allowExactNames ? { allowExactNames: true } : {}),
         ...(options.managerId ? { managerId: options.managerId } : {}),
         ...(options.providerIds ? { providerIds: [...options.providerIds].sort() } : {}),

@@ -1,0 +1,58 @@
+name: Build hosted catalogs
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Immutable catalog asset release tag
+        required: true
+        type: string
+        default: catalog-2026.10.28.1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Checkout pinned catalog data
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIBRETRO_REVISION="$(node -e "process.stdout.write(require('./scripts/catalog-sources.json').libretro.revision)")"
+          git clone --filter=blob:none --no-checkout https://github.com/libretro/libretro-database.git /tmp/libretro-database
+          git -C /tmp/libretro-database sparse-checkout init --no-cone
+          node --input-type=module <<'NODE' | git -C /tmp/libretro-database sparse-checkout set --no-cone --stdin
+          import { readFileSync } from 'node:fs';
+          const config = JSON.parse(readFileSync('scripts/catalog-sources.json', 'utf8')).libretro;
+          const paths = [...config.metadataFiles.map(row => row.path), ...config.cheatFolders.map(row => row.path)];
+          process.stdout.write([...new Set(paths)].map(path => `/${path}\n`).join(''));
+          NODE
+          git -C /tmp/libretro-database checkout "$LIBRETRO_REVISION"
+      - name: Build and verify catalog assets
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          pnpm exec tsc -p packages/plugins/tsconfig.json
+          node scripts/build-hosted-catalog.mjs \
+            --source-root /tmp/libretro-database \
+            --release "$RELEASE_TAG" \
+            --output "dist-release/$RELEASE_TAG"
+          node --disable-warning=ExperimentalWarning --test scripts/test-hosted-catalog-builder.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.release_tag }}
+          path: dist-release/${{ inputs.release_tag }}/*
+          if-no-files-found: error
+          retention-days: 30

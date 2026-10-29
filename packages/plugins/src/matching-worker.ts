@@ -1,7 +1,9 @@
 import { realpath } from 'node:fs/promises';
 import { isAbsolute, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { HOSTED_CATALOG_PIN } from './catalog-release.js';
 import { createLibretroCheatsProvider, localCheatsProvider, normalizeCheats } from './cheats.js';
+import { createHostedCatalog, type HostedCatalogClient } from './hosted-catalog.js';
 import { createLibretroProvider } from './libretro-matching.js';
 import { localMatchingProvider, type MatchingProvider, runMatching } from './matching.js';
 import type { MatchingJob, MatchingPluginDescription, MatchingReply } from './matching-host.js';
@@ -31,6 +33,31 @@ async function loadEntry(plugin: LoadedPlugin): Promise<Record<string, unknown>>
   return module.default;
 }
 
+const hostedCache = new Map<string, HostedCatalogClient>();
+function hosted(directory?: string): HostedCatalogClient {
+  const key = directory ?? '';
+  let client = hostedCache.get(key);
+  if (!client) {
+    client = createHostedCatalog({ pin: HOSTED_CATALOG_PIN, cacheDirectory: directory });
+    hostedCache.set(key, client);
+    if (hostedCache.size > 2) hostedCache.delete(hostedCache.keys().next().value ?? '');
+  }
+  return client;
+}
+async function hasHostedCheats(
+  client: HostedCatalogClient,
+  systemId: string | null,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  return (
+    !!HOSTED_CATALOG_PIN &&
+    !!systemId &&
+    (await client.index(signal)).shards.some(
+      (shard) => shard.kind === 'cheats' && shard.systemId === systemId,
+    )
+  );
+}
+
 const builtinCache = new Map<string, MatchingProvider[]>();
 const registryCache = new Map<string, { expires: number; loaded: Promise<PluginLoad> }>();
 let activeSearches = 0;
@@ -38,11 +65,30 @@ function builtins(directory?: string): MatchingProvider[] {
   const key = directory ?? '';
   let providers = builtinCache.get(key);
   if (!providers) {
+    const catalog = hosted(directory),
+      catalogProviders = catalog.providers();
+    const hostedCheats = catalogProviders.find(
+      (provider) => provider.id === 'org.ecs.catalog.cheats',
+    );
+    const legacyCheats = createLibretroCheatsProvider();
     providers = [
       localMatchingProvider,
-      createLibretroProvider(fetch, directory),
+      {
+        ...createLibretroProvider(fetch, directory, catalog.metadata),
+        name: HOSTED_CATALOG_PIN
+          ? `Hosted game catalogs and artwork · ${HOSTED_CATALOG_PIN.release}`.slice(0, 80)
+          : 'Game catalogs and artwork',
+      },
       localCheatsProvider,
-      createLibretroCheatsProvider(),
+      {
+        ...legacyCheats,
+        async search(input, signal) {
+          return hostedCheats && (await hasHostedCheats(catalog, input.systemId, signal))
+            ? hostedCheats.search(input, signal)
+            : legacyCheats.search(input, signal);
+        },
+      },
+      ...catalogProviders.filter((provider) => provider.id !== 'org.ecs.catalog.metadata'),
     ];
     builtinCache.set(key, providers);
     if (builtinCache.size > 2) builtinCache.delete(builtinCache.keys().next().value ?? '');
@@ -65,6 +111,33 @@ async function installed(directory?: string): Promise<PluginLoad> {
   }
 }
 export async function executeMatchingJob(job: MatchingJob): Promise<MatchingReply> {
+  if (job.operation === 'catalog-sync') {
+    return {
+      plugins: [],
+      catalogSync: await hosted(job.catalogCacheDirectory).sync(
+        { systemIds: job.catalogSystems },
+        AbortSignal.timeout(110000),
+      ),
+    };
+  }
+  if (job.operation === 'catalog-resource') {
+    if (!job.catalogResource) throw new Error('Missing hosted resource reference');
+    const resource = await hosted(job.catalogCacheDirectory).resource(
+      job.catalogResource,
+      AbortSignal.timeout(8000),
+    );
+    return {
+      plugins: [],
+      file: Buffer.from(resource.bytes).toString('base64'),
+      catalogResource: {
+        kind: resource.kind,
+        format: resource.format,
+        sha256: resource.sha256,
+        bytes: resource.bytes.byteLength,
+        release: resource.release,
+      },
+    };
+  }
   if (job.operation === 'identify') {
     if (!job.identification) throw new Error('Missing identification request');
     const loaded = await installed(job.directory);
@@ -154,7 +227,7 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
       network: false,
     },
   ];
-  const ids = new Set(plugins.map((p) => p.id));
+  const ids = new Set([...plugins.map((p) => p.id), 'org.ecs.catalog.metadata']);
   for (const plugin of loaded.plugins) {
     const manifest = plugin.manifest;
     if (manifest.kind !== 'provider' && manifest.kind !== 'manager') continue;
@@ -229,6 +302,12 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
         async search(input, signal) {
           activeSearches++;
           try {
+            if (
+              provider.id === 'org.ecs.cheats.libretro' &&
+              selected.some((other) => other.id === 'org.ecs.catalog.cheats') &&
+              (await hasHostedCheats(hosted(job.catalogCacheDirectory), input.systemId, signal))
+            )
+              return [];
             return await provider.search(input, signal);
           } finally {
             activeSearches--;
@@ -256,9 +335,39 @@ function request(raw: unknown): { id: string; job: MatchingJob } {
     !job ||
     typeof job !== 'object' ||
     Array.isArray(job) ||
-    !['list', 'match', 'artwork', 'cheats', 'identify'].includes(job.operation)
+    ![
+      'list',
+      'match',
+      'artwork',
+      'cheats',
+      'identify',
+      'catalog-sync',
+      'catalog-resource',
+    ].includes(job.operation)
   )
     throw new Error('Invalid request');
+  if (
+    job.catalogSystems !== undefined &&
+    (!Array.isArray(job.catalogSystems) ||
+      job.catalogSystems.length > 64 ||
+      job.catalogSystems.some(
+        (value) => typeof value !== 'string' || !/^[a-zA-Z0-9]+(?:\.[a-zA-Z0-9_-]+)+$/.test(value),
+      ))
+  )
+    throw new Error('Invalid catalog systems');
+  if (
+    job.operation === 'catalog-resource' &&
+    (!job.catalogResource ||
+      typeof job.catalogResource !== 'object' ||
+      Object.keys(job.catalogResource).sort().join(',') !== 'recordId,release,shardId' ||
+      Object.values(job.catalogResource).some(
+        (value) =>
+          typeof value !== 'string' ||
+          value.length > 120 ||
+          !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(value),
+      ))
+  )
+    throw new Error('Invalid hosted resource reference');
   for (const path of [job.directory, job.catalogCacheDirectory])
     if (path !== undefined && (typeof path !== 'string' || path.length > 4096))
       throw new Error('Invalid directory');
@@ -311,7 +420,7 @@ if (process.send) {
         try {
           if (
             Buffer.byteLength(JSON.stringify(reply)) >
-            (job.operation === 'artwork' ? 3 * 1024 * 1024 : 512 * 1024)
+            (['artwork', 'catalog-resource'].includes(job.operation) ? 3 * 1024 * 1024 : 512 * 1024)
           )
             throw new Error('Reply too large');
           // A provider that ignores its own deadline must not run alongside the next job.

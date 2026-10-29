@@ -29,12 +29,12 @@
     registryLoading=true;registryFailure=null;
     try {
       const result=await context.client.matchingPlugins();if(!live)return;
-      plugins=result.plugins;providerIds=plugins.filter(p=>p.kind==='provider'&&(!p.network||!p.capabilities.includes('cheats'))).map(p=>p.id);ready=true;
+      plugins=result.plugins;providerIds=plugins.filter(p=>p.kind==='provider'&&(!p.network||!p.capabilities.some(cap=>['cheats','patch'].includes(cap)))).map(p=>p.id);ready=true;
     }catch(error){if(live){registryFailure=explain(error);ready=false;}}
     finally{if(live)registryLoading=false;}
   }
   async function choose(id:string){reviewing=null;await controller.choose(id);await controller.filter(filter);}
-  async function start(kind:'scan'|'match'){reviewing=null;await controller.start(kind,kind==='match'?{online,providerIds,managerId,checksum:true,allowExactNames}:{});await controller.filter(filter);}
+  async function start(kind:'scan'|'match',refreshCatalogs=false){reviewing=null;await controller.start(kind,kind==='match'?{online,providerIds,managerId,checksum:true,allowExactNames,...(refreshCatalogs?{refreshCatalogs:true}:{})}:{});await controller.filter(filter);}
   async function nextReview(done:boolean) {
     if(!reviewing||reviewBusy)return;
     reviewBusy=true;
@@ -52,12 +52,14 @@
 <p>Library work runs on the server and is shared across your sessions. You can close this window and return later.</p>
 <div class="actions" aria-label="Start library work">
   <button type="button" class="primary" disabled={$controller.loading||!canMatch} onclick={()=>void start('match')}>Find missing artwork and details</button>
+  <button type="button" disabled={$controller.loading||!canMatch||!online} onclick={()=>void start('match',true)}>Update catalogs and find matches</button>
   <button type="button" disabled={$controller.loading} onclick={()=>void start('scan')}>Scan saved folders</button>
   <button type="button" disabled={$controller.loading} onclick={()=>void controller.refresh()}>Refresh activity</button>
 </div>
 <label class="filename-policy"><input type="checkbox" bind:checked={allowExactNames} disabled={$controller.loading} /> For new jobs, use exact filenames when a game ID is unavailable</label>
 <p class="dim">Only a full title and edition match can use this fallback. Conflicting IDs, checksums and editions stay in review.</p>
 <details><summary>Matching providers</summary><MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={$controller.loading} /></details>
+<p class="dim">Catalog updates download verified metadata and cheat/patch indexes for systems in this library. Cheat and patch files download only when selected; cheats stay disabled and patches are never applied automatically.</p>
 <p class="dim">Saved choices stay intact. Verified ROM or disc-ID matches can save automatically. Exact filename matches use your fallback setting; other suggestions and conflicting evidence need review. Unavailable files are skipped without downloading cloud placeholders.</p>
 {#if registryFailure||$controller.failure}<p role="alert" class="problem">{registryFailure??$controller.failure}</p>{/if}
 {#if registryFailure}<button type="button" disabled={registryLoading} onclick={()=>void loadProviders()}>Retry matching providers</button>{/if}
@@ -71,6 +73,7 @@
 {#if selected}
   <section aria-label="Library job progress">
     {#if selected.kind==='match'}<p class="dim">{selected.options.allowExactNames?'Exact filename fallback was enabled for this job.':'This job uses verified ROM or disc IDs for automatic selections.'}</p>{/if}
+    {#if selected.options.refreshCatalogs&&selected.state==='running'&&selected.processed===0&&!selected.currentSourceId}<p role="status">Preparing verified hosted catalogs…</p>{/if}
     <p role="status">{selected.state} · {selected.processed.toLocaleString()} of {selected.total.toLocaleString()} checked</p>
     <progress max={Math.max(1,selected.total)} value={selected.processed} aria-label="Library job progress"></progress>
     <p class="dim">{selected.saved.toLocaleString()} selections saved · {selected.review.toLocaleString()} need review · {selected.unmatched.toLocaleString()} without a match · {selected.failed.toLocaleString()} failed · {selected.skipped.toLocaleString()} skipped</p>

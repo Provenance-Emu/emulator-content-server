@@ -46,7 +46,7 @@
       if(disposed)return;
       plugins=registry.plugins;
       // Online cheat indexes are optional for bulk runs: anonymous GitHub API quotas are small.
-      providerIds=$controller.options.providerIds??plugins.filter((p)=>p.kind==='provider'&&(!p.network||!p.capabilities.includes('cheats'))).map((p)=>p.id);
+      providerIds=$controller.options.providerIds??plugins.filter((p)=>p.kind==='provider'&&(!p.network||!p.capabilities.some(cap=>['cheats','patch'].includes(cap)))).map((p)=>p.id);
       online=$controller.phase==='idle'?true:$controller.options.online===true;
       managerId=$controller.options.managerId??'org.ecs.matches';ready=true;
     } catch(error){if(!disposed)failure=explain(error);}

@@ -1,6 +1,7 @@
 import { type ChildProcess, fork, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import type { HostedCatalogResourceRef, HostedCatalogSync } from './hosted-catalog.js';
 import type { ProviderCapability } from './manifest.js';
 import { PROVIDER_CAPABILITIES } from './manifest.js';
 import type { MatchingInput, MatchingResult } from './matching.js';
@@ -8,7 +9,16 @@ import { validateCandidates } from './matching.js';
 import { type RomFacts, validateRomFacts } from './rom-facts.js';
 import type { IdentificationRequest } from './rom-identification.js';
 export interface MatchingJob {
-  operation: 'list' | 'match' | 'artwork' | 'cheats' | 'identify';
+  operation:
+    | 'list'
+    | 'match'
+    | 'artwork'
+    | 'cheats'
+    | 'identify'
+    | 'catalog-sync'
+    | 'catalog-resource';
+  catalogResource?: HostedCatalogResourceRef;
+  catalogSystems?: string[];
   identification?: IdentificationRequest;
   /** Trusted host-supplied adapter modules; never accepted from an HTTP request. */
   identifierModules?: string[];
@@ -32,6 +42,14 @@ export interface MatchingReply {
   facts?: RomFacts;
   artwork?: string;
   file?: string;
+  catalogSync?: HostedCatalogSync;
+  catalogResource?: {
+    kind: 'cheats' | 'patch';
+    format: 'retroarch-cht' | 'bps' | 'ups' | 'ips';
+    sha256: string;
+    bytes: number;
+    release: string;
+  };
 }
 
 export type MatchingWorkerScope = Pick<MatchingJob, 'directory' | 'catalogCacheDirectory'>;
@@ -298,7 +316,7 @@ export async function closeMatchingWorkers(scope?: MatchingWorkerScope): Promise
 function validateReply(raw: unknown, job: MatchingJob): MatchingReply {
   if (
     Buffer.byteLength(JSON.stringify(raw)) >
-    (job.operation === 'artwork' ? 3 * 1024 * 1024 : 512 * 1024)
+    (['artwork', 'catalog-resource'].includes(job.operation) ? 3 * 1024 * 1024 : 512 * 1024)
   )
     throw new Error('Response too large');
   const reply = raw as MatchingReply;
@@ -331,6 +349,38 @@ function validateReply(raw: unknown, job: MatchingJob): MatchingReply {
       !/^[A-Za-z0-9+/]*={0,2}$/.test(reply.file))
   )
     throw new Error('Invalid cheat file');
+  if (job.operation === 'catalog-sync') {
+    const value = reply.catalogSync;
+    if (
+      !value ||
+      typeof value.release !== 'string' ||
+      value.release.length > 120 ||
+      !Number.isSafeInteger(value.shards) ||
+      value.shards < 0 ||
+      value.shards > 4096 ||
+      !Number.isSafeInteger(value.records) ||
+      value.records < 0
+    )
+      throw new Error('Invalid catalog sync');
+  }
+  if (job.operation === 'catalog-resource') {
+    const value = reply.catalogResource;
+    if (
+      !value ||
+      !['cheats', 'patch'].includes(value.kind) ||
+      !['retroarch-cht', 'bps', 'ups', 'ips'].includes(value.format) ||
+      !/^[a-f0-9]{64}$/.test(value.sha256) ||
+      value.release !== job.catalogResource?.release ||
+      !Number.isSafeInteger(value.bytes) ||
+      value.bytes < 1 ||
+      value.bytes > (value.kind === 'cheats' ? 256 * 1024 : 2 * 1024 * 1024) ||
+      typeof reply.file !== 'string' ||
+      reply.file.length > Math.ceil(value.bytes / 3) * 4 ||
+      !/^[A-Za-z0-9+/]*={0,2}$/.test(reply.file) ||
+      Buffer.from(reply.file, 'base64').length !== value.bytes
+    )
+      throw new Error('Invalid catalog resource');
+  }
   if (job.operation === 'identify') reply.facts = validateRomFacts(reply.facts);
   if (job.operation === 'match') {
     if (

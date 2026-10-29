@@ -864,6 +864,10 @@ export function reconcileCandidates<T extends MatchCandidate>(
         'serials',
         'setIds',
         'matchProvenance',
+        'catalogRelease',
+        'catalogShard',
+        'catalogRecord',
+        'catalogSourceIds',
       ]);
       if (
         Object.keys(existing.metadata).some(
@@ -918,7 +922,7 @@ export function patchFingerprint(bytes: Uint8Array): MatchCompanion['patch'] | n
   if (
     !['BPS1', 'UPS1'].includes(signature) ||
     buffer.length < 18 ||
-    buffer.length > 256 * 1024 ||
+    buffer.length > 2 * 1024 * 1024 ||
     crc32(buffer.subarray(0, -4)) !== buffer.readUInt32LE(buffer.length - 4)
   )
     return null;

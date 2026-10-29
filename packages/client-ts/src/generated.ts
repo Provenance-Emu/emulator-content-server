@@ -330,6 +330,7 @@ export interface SourceOrganizationResult {
 export interface MatchingOptions {
   online?: boolean;
   checksum?: boolean;
+  refreshCatalogs?: boolean;
   allowExactNames?: boolean;
   providerIds?: string[];
   managerId?: string;

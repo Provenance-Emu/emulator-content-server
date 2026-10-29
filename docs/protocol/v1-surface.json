@@ -738,7 +738,8 @@
         "checksum",
         "managerId",
         "online",
-        "providerIds"
+        "providerIds",
+        "refreshCatalogs"
       ],
       "required": []
     },

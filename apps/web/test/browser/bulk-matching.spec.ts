@@ -275,3 +275,42 @@ test('filename fallback is an explicit per-job choice', async ({ page, fixture }
     }),
   ).toBeVisible();
 });
+
+test('catalog updates use one shared matching job and stay unavailable in offline mode', async ({
+  page,
+  fixture,
+}) => {
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
+  const panel = await openActivity(page);
+  const update = panel.getByRole('button', {
+    name: 'Update catalogs and find matches',
+    exact: true,
+  });
+  await expect(update).toBeEnabled();
+  await page.route('**/api/v1/library-jobs', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    expect(route.request().postDataJSON()).toMatchObject({
+      kind: 'match',
+      options: { online: true, refreshCatalogs: true, checksum: true },
+    });
+    expect(route.request().postDataJSON().options.providerIds).not.toContain(
+      'org.ecs.catalog.patches',
+    );
+    expect(route.request().postDataJSON().options.providerIds).not.toContain(
+      'org.ecs.catalog.cheats',
+    );
+    return route.fulfill({
+      status: 503,
+      json: {
+        type: 'urn:ecs:problem:generated',
+        title: 'Generated catalog preflight failure',
+        status: 503,
+      },
+    });
+  });
+  await update.click();
+  await expect(panel.getByRole('alert')).toContainText('Generated catalog preflight failure');
+  await useLocalMatching(panel);
+  await expect(update).toBeDisabled();
+});

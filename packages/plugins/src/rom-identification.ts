@@ -5,6 +5,7 @@ import { access, lstat, mkdtemp, open, readFile, rm, stat } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { crc32 } from 'node:zlib';
+import { dolphinIdentificationPlugins } from './dolphin-identification.js';
 import { type RomFacts, type RomHash, validateRomFacts } from './rom-facts.js';
 
 export interface IdentificationRequest {
@@ -52,7 +53,7 @@ const MiB = 1024 * 1024,
 const RAW_ID = 'org.ecs.identify.raw',
   SEVEN_ID = 'org.ecs.identify.7z',
   CHD_ID = 'org.ecs.identify.chd';
-const CONTAINERS = /\.(zip|7z|rar|chd|cdi|iso|cue|gdi|m3u|ccd|rvz|gcz|ciso|wbfs)$/i;
+const CONTAINERS = /\.(zip|7z|rar|chd|cdi|iso|cue|gdi|m3u|ccd|rvz|wia|gcz|ciso|cso|wbfs)$/i;
 const ROM_EXT =
   /\.(nes|sfc|smc|j64|jag|rom|bin|n64|v64|z64|gba|gb|gbc|gg|sms|md|gen|smd|a26|a52|a78|lnx|pce|sg|sgx|ws|wsc|vec|col|ngp|ngc|nds|3ds|elf|exe)$/i;
 function facts(id?: string): RomFacts {
@@ -952,6 +953,7 @@ const BUILTINS: readonly IdentificationPlugin[] = [
   { id: RAW_ID, supports: (request) => !CONTAINERS.test(request.name), identify: raw },
   { id: SEVEN_ID, supports: (request) => /\.7z$/i.test(request.name), identify: sevenZip },
   { id: CHD_ID, supports: (request) => /\.chd$/i.test(request.name), identify: chd },
+  ...dolphinIdentificationPlugins,
 ];
 function merge(target: RomFacts, addition: RomFacts, id: string): void {
   for (const key of ['pluginIds', 'hashes', 'identifiers', 'names', 'warnings'] as const) {

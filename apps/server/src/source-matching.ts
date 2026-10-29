@@ -19,6 +19,7 @@ import {
 import { validateSystemIdentifier } from '@ecs/protocol';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
+import { verifyHostedResource } from './hosted-resources.js';
 import { requireOwner } from './http.js';
 import { boundedFile, imageType } from './matching-files.js';
 import { identifySource } from './rom-identification.js';
@@ -31,6 +32,7 @@ export function matchBody(value: unknown): {
   online: boolean;
   checksum: boolean;
   allowExactNames?: boolean;
+  refreshCatalogs?: boolean;
   providerIds?: string[];
   managerId?: string;
 } {
@@ -39,9 +41,17 @@ export function matchBody(value: unknown): {
   const record = value as Record<string, unknown>;
   if (
     Object.keys(record).some(
-      (key) => !['online', 'checksum', 'allowExactNames', 'providerIds', 'managerId'].includes(key),
+      (key) =>
+        ![
+          'online',
+          'checksum',
+          'allowExactNames',
+          'refreshCatalogs',
+          'providerIds',
+          'managerId',
+        ].includes(key),
     ) ||
-    ['online', 'checksum', 'allowExactNames'].some(
+    ['online', 'checksum', 'allowExactNames', 'refreshCatalogs'].some(
       (key) => record[key] !== undefined && typeof record[key] !== 'boolean',
     )
   )
@@ -61,6 +71,7 @@ export function matchBody(value: unknown): {
   return {
     online: record.online === true,
     checksum: record.checksum === true,
+    ...(record.refreshCatalogs === true ? { refreshCatalogs: true } : {}),
     ...(record.allowExactNames === true ? { allowExactNames: true } : {}),
     ...(record.providerIds ? { providerIds: record.providerIds as string[] } : {}),
     ...(record.managerId ? { managerId: record.managerId as string } : {}),
@@ -68,6 +79,7 @@ export function matchBody(value: unknown): {
 }
 
 export interface SourceMatchingService {
+  prepareCatalogs?(systemIds: string[], signal: AbortSignal): Promise<void>;
   autoMatch(
     actor: Actor & { kind: 'user' },
     sourceId: string,
@@ -241,7 +253,7 @@ export function registerSourceMatching(
             }
           } else if (/\.(bps|ups|ips)$/i.test(file.displayName)) {
             const local = await localSource(context, actor, file.id);
-            const fingerprint = patchFingerprint(await boundedFile(local.path, 256 * 1024));
+            const fingerprint = patchFingerprint(await boundedFile(local.path, 2 * 1024 * 1024));
             if (fingerprint) companion.patch = fingerprint;
           }
           input.companions.push(companion);
@@ -395,10 +407,36 @@ export function registerSourceMatching(
           file.path,
           candidate.kind === 'artwork'
             ? (candidate.metadata.artworkRole === 'manual' ? 8 : 2) * 1024 * 1024
-            : 256 * 1024,
+            : candidate.kind === 'patch'
+              ? 2 * 1024 * 1024
+              : 256 * 1024,
         );
         fileName = file.source.displayName;
         originKind = file.source.kind;
+      } else if (
+        candidate.metadata.catalogRelease &&
+        ['cheats', 'patch'].includes(candidate.kind)
+      ) {
+        const fetched = await matchingJob(
+          {
+            operation: 'catalog-resource',
+            catalogResource: {
+              release: candidate.metadata.catalogRelease,
+              shardId: candidate.metadata.catalogShard ?? '',
+              recordId: candidate.metadata.catalogRecord ?? '',
+            },
+            catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
+            ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
+          },
+          {
+            signal: AbortSignal.any([
+              abort.signal,
+              cancelled.signal,
+              ...(jobSignal ? [jobSignal] : []),
+            ]),
+          },
+        );
+        ({ bytes, fileName } = verifyHostedResource(candidate, fetched));
       } else {
         const artwork =
           candidate.kind === 'artwork' &&
@@ -495,6 +533,20 @@ export function registerSourceMatching(
     },
   );
   return {
+    async prepareCatalogs(systemIds, signal) {
+      for (let offset = 0; offset < Math.max(systemIds.length, 1); offset += 64) {
+        signal.throwIfAborted();
+        await matchingJob(
+          {
+            operation: 'catalog-sync',
+            catalogSystems: systemIds.slice(offset, offset + 64),
+            catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
+            ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
+          },
+          { signal: AbortSignal.any([abort.signal, signal]), timeoutMs: 120000 },
+        );
+      }
+    },
     async autoMatch(actor, sourceId, options, signal) {
       signal.throwIfAborted();
       const source = visibleSource(context, actor, sourceId);

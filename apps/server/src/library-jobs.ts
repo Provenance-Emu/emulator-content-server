@@ -101,9 +101,18 @@ export function registerLibraryJobs(
         const actor = context.catalog.actorForUser(next.actorId);
         if (actor?.kind !== 'user' || (next.job.kind === 'match' && !actor.isOwner))
           throw new DomainError('forbidden', 403, 'The job owner is unavailable.');
+        if (next.job.kind === 'match' && next.job.options.refreshCatalogs) {
+          if (!next.job.options.online)
+            throw new DomainError(
+              'catalog-offline',
+              400,
+              'Enable online providers to update hosted catalogs.',
+            );
+          await matching.prepareCatalogs?.(repository.matchingSystems(next.job.id), abort.signal);
+        }
         while (!closing) {
           abort.signal.throwIfAborted();
-          const entries = repository.items(next.job.id, 50, undefined, 'pending');
+          const entries = repository.pendingItems(next.job.id, 50);
           if (!entries.length) break;
           for (const entry of entries) {
             abort.signal.throwIfAborted();

@@ -426,6 +426,16 @@ export const MIGRATIONS: readonly Migration[] = [
     UPDATE source_files SET match_stem=ecs_companion_stem(display_name);
   `,
   },
+  {
+    version: 20,
+    sql: `
+    ALTER TABLE library_job_items ADD COLUMN system_id TEXT;
+    UPDATE library_job_items AS i SET system_id=(
+      SELECT s.system_id FROM live_source_files s WHERE s.id=i.entity_id
+    ) WHERE EXISTS(SELECT 1 FROM library_jobs j WHERE j.id=i.job_id AND j.kind='match');
+    CREATE INDEX library_job_items_affinity ON library_job_items(job_id,state,system_id,entity_id);
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));
