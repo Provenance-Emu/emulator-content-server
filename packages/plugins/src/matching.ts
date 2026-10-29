@@ -23,6 +23,13 @@ export interface MatchCompanion {
   cheats?: { count: number };
   patch?: { format: 'ips' | 'bps' | 'ups'; sourceCrc32?: string; sourceSize?: number };
 }
+export interface SelectedMetadataSnapshot {
+  readonly id: string;
+  readonly revision: number;
+  readonly title: string;
+  readonly systemId: string;
+  readonly metadata: Readonly<Record<string, string>>;
+}
 export interface MatchingInput {
   name: string;
   systemId: string | null;
@@ -33,6 +40,7 @@ export interface MatchingInput {
   facts?: RomFacts;
   online?: boolean;
   allowExactNames?: boolean;
+  selectedMetadata?: SelectedMetadataSnapshot;
   companions: MatchCompanion[];
 }
 export interface MatchCandidate {
@@ -667,6 +675,116 @@ function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boo
     return false;
   return true;
 }
+/** A saved choice is authority for its artwork association, never new ROM metadata. */
+export function selectedArtworkAnchor(
+  input: MatchingInput,
+): { identity: MatchCandidate; titles: string[] } | null {
+  const saved = input.selectedMetadata;
+  if (
+    !saved ||
+    !text(saved.id, 200) ||
+    !Number.isSafeInteger(saved.revision) ||
+    saved.revision < 0 ||
+    !text(saved.title, 512) ||
+    !input.systemId ||
+    saved.systemId !== input.systemId ||
+    !saved.metadata ||
+    typeof saved.metadata !== 'object' ||
+    Array.isArray(saved.metadata)
+  )
+    return null;
+  const entries = Object.entries(saved.metadata);
+  if (
+    entries.length > 24 ||
+    entries.some(([key, value]) => !/^[a-z][a-zA-Z0-9]{0,31}$/.test(key) || !text(value, 4096))
+  )
+    return null;
+  if (saved.metadata.systemId && saved.metadata.systemId !== saved.systemId) return null;
+  const metadata: Record<string, string> = {
+    ...saved.metadata,
+    systemId: saved.systemId,
+    title: saved.title,
+  };
+  if (assessEvidence(input, metadata).conflict) return null;
+  const serials = identifiers(metadata.serials).map(normalizeSerial);
+  if (
+    (input.facts?.identifiers ?? []).some(
+      (id) =>
+        id.verified &&
+        ((id.systemId && id.systemId !== saved.systemId) ||
+          (id.type === 'serial' &&
+            serials.length > 0 &&
+            !serials.includes(normalizeSerial(id.value)))),
+    )
+  )
+    return null;
+  const identity: MatchCandidate = {
+    id: saved.id,
+    kind: 'metadata',
+    title: saved.title,
+    confidence: 'name',
+    metadata,
+  };
+  const originals = provenanceRows(identity);
+  if (!originals || originals.some((row) => assessEvidence(input, row.metadata).conflict))
+    return null;
+  const titles = [
+    ...new Set([
+      saved.title,
+      ...originals
+        .filter((row) => compatibleCatalogIdentity(input, identity, row))
+        .map((row) => row.title),
+    ]),
+  ];
+  const romNames = [
+    metadata.romName,
+    ...originals
+      .filter((row) => compatibleCatalogIdentity(input, identity, row))
+      .map((row) => row.metadata.romName),
+  ]
+    .filter(
+      (name): name is string => !!name && compatibleGameTitles(saved.title, contentStem(name)),
+    )
+    .map(contentStem);
+  const suffixes = [...identifiers(metadata.serials), ...identifiers(metadata.setIds)];
+  return {
+    identity,
+    titles: [
+      ...new Set([
+        ...titles,
+        ...romNames,
+        ...titles.flatMap((title) => suffixes.map((id) => `${title} (${id})`)),
+      ]),
+    ],
+  };
+}
+function savedSelectionEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+  if (
+    candidate.kind !== 'artwork' ||
+    candidate.metadata.artworkRole !== 'front' ||
+    candidate.metadata.matchEvidence !== 'saved-selection'
+  )
+    return false;
+  const anchor = selectedArtworkAnchor(input),
+    saved = input.selectedMetadata;
+  if (
+    !anchor ||
+    !saved ||
+    candidate.metadata.savedMetadataId !== saved.id ||
+    candidate.metadata.savedMetadataRevision !== String(saved.revision) ||
+    candidate.metadata.systemId !== saved.systemId
+  )
+    return false;
+  const canonical = (value: string) =>
+    value
+      .normalize('NFC')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
+  return (
+    canonical(candidate.metadata.matchedGame ?? '') === canonical(saved.title) &&
+    anchor.titles.some((title) => canonical(title) === canonical(candidate.title))
+  );
+}
 /** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */
 export function automaticEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
   if (
@@ -687,6 +805,11 @@ export function automaticEvidence(input: MatchingInput, candidate: MatchCandidat
     (!candidate.metadata.crc32 || candidate.metadata.hashSize === undefined)
   )
     return false;
+  if (
+    candidate.metadata.matchEvidence === 'saved-selection' &&
+    !savedSelectionEvidence(input, candidate)
+  )
+    return false;
   const evidence = assessEvidence(input, candidate.metadata);
   const layers = provenanceRows(candidate);
   if (!layers || layers.some((row) => assessEvidence(input, row.metadata).conflict)) return false;
@@ -694,7 +817,8 @@ export function automaticEvidence(input: MatchingInput, candidate: MatchCandidat
     !evidence.conflict &&
     (evidence.verifiedHash ||
       (candidate.kind !== 'patch' && evidence.verifiedSerial) ||
-      exactNameEvidence(input, candidate))
+      exactNameEvidence(input, candidate) ||
+      savedSelectionEvidence(input, candidate))
   );
 }
 function compatibleMetadata(left: Record<string, string>, right: Record<string, string>): boolean {

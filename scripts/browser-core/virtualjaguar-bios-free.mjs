@@ -1,10 +1,45 @@
 import { spawnSync } from 'node:child_process';
-/** Pinned-source transformation: omit proprietary boot bytes from the cartridge-only build. */
+/** Pinned-source transformation: retain cartridge/CD HLE without distributing boot ROM bytes. */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const virtualJaguarPin = 'ffea7893a59dd9b9e6f9b85c51627810338b0778';
+export function virtualJaguarHleSource(beforeSource) {
+  let source = beforeSource;
+  const assignment = /vjs\.useJaguarBIOS\s*=(?!=)[^;]+;/g;
+  if ([...source.matchAll(assignment)].length !== 7)
+    throw new Error('Unsupported pinned BIOS assignment sites');
+  source = source.replace(assignment, 'vjs.useJaguarBIOS = false;');
+  const mode = /vjs\.cdBootMode\s*=(?!=)[^;]+;/g;
+  if ([...source.matchAll(mode)].length !== 4)
+    throw new Error('Unsupported pinned CD boot-mode sites');
+  source = source.replace(mode, 'vjs.cdBootMode = CDBOOT_HLE;');
+  const effective = '   effective_cd_boot_mode = vjs.cdBootMode;';
+  if (source.split(effective).length !== 2) throw new Error('Unsupported pinned CD boot resolver');
+  source = source.replace(effective, '   effective_cd_boot_mode = CDBOOT_HLE;');
+  const audio =
+    / {3}if \(CDIntfGetNumSessions\(\) == 1\)\n {3}\{[\s\S]*?effective_cd_boot_mode = CDBOOT_BIOS;\n {3}\}/;
+  if (!audio.test(source)) throw new Error('Unsupported pinned audio-disc override');
+  source = source.replace(
+    audio,
+    `   if (CDIntfGetNumSessions() == 1)\n   {\n      LOG_ERR("[ECS] Audio-only discs require a separately supplied real CD BIOS; unavailable in this HLE profile\\n");\n      CDIntfCloseImage();\n      return DISC_BOOT_NO_BIOS_FOR_AUDIO;\n   }`,
+  );
+  const gate = '   environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);';
+  if (source.split(gate).length !== 2) throw new Error('Unsupported pinned content gate');
+  source = source.replace(
+    gate,
+    `   /* CD data discs use the original upstream HLE path. Cartridge boot-ROM-only\n    * programs and no-content BIOS boot remain unavailable in this profile. */\n   if (!info || (!is_cd_content && (!info->data || info->size < 0x24 ||\n         JaguarCartNeedsBIOS((const uint8_t *)info->data, (uint32_t)info->size))))\n   {\n      LOG_ERR("[ECS] Content requires unavailable real boot firmware\\n");\n      return false;\n   }\n\n${gate}`,
+  );
+  const staging = /^(\s*)stage_(?:cart_boot_rom|cd_bios)\(\);$/gm;
+  if ([...source.matchAll(staging)].length !== 3)
+    throw new Error('Unsupported pinned firmware staging sites');
+  source = source.replace(
+    staging,
+    '$1(void)0; /* ECS: no embedded or external firmware staging. */',
+  );
+  return source;
+}
 export function makeVirtualJaguarBiosFree(directory, gitDirectory = directory) {
   const plans = [];
   const original = (file) => {
@@ -37,29 +72,11 @@ export function makeVirtualJaguarBiosFree(directory, gitDirectory = directory) {
     plan(
       `src/bios/${file}`,
       before,
-      `/* ECS cartridge-only build: boot ROM intentionally omitted. */\n${include}\nuint8_t ${symbol}[${size}] = {0};\n`,
+      `/* ECS HLE build: boot ROM intentionally omitted. */\n${include}\nuint8_t ${symbol}[${size}] = {0};\n`,
     );
   }
   const beforeSource = original('libretro.c');
-  let source = beforeSource;
-  const assignment = /vjs\.useJaguarBIOS\s*=(?!=)[^;]+;/g;
-  if ([...source.matchAll(assignment)].length !== 7)
-    throw new Error('Unsupported pinned BIOS assignment sites');
-  source = source.replace(assignment, 'vjs.useJaguarBIOS = false;');
-  const gate = '   environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);';
-  if (source.split(gate).length !== 2) throw new Error('Unsupported pinned content gate');
-  source = source.replace(
-    gate,
-    `   /* This distribution has no boot ROM: only directly bootable cartridges/ABS. */\n   if (!info || is_cd_content || !info->data || info->size < 0x24 ||\n         JaguarCartNeedsBIOS((const uint8_t *)info->data, (uint32_t)info->size))\n   {\n      LOG_ERR("[ECS] BIOS-free build requires a directly bootable cartridge or ABS program\\n");\n      return false;\n   }\n\n${gate}`,
-  );
-  source = source.replace(
-    '   stage_cart_boot_rom();',
-    '   /* External and built-in boot ROM staging is disabled in this build. */',
-  );
-  source = source.replace(
-    '"j64|jag|rom|abs|cof|bin|prg|cue|cdi|chd"',
-    '"j64|jag|rom|abs|cof|bin|prg"',
-  );
+  const source = virtualJaguarHleSource(beforeSource);
   plan('libretro.c', beforeSource, source);
   const beforeOptions = original('libretro_core_options.h');
   let options = beforeOptions;
@@ -75,7 +92,7 @@ export function makeVirtualJaguarBiosFree(directory, gitDirectory = directory) {
   }
   options = options.replace(
     '      "How cartridges boot: emulated (HLE) BIOS services or the real Jaguar boot ROM."',
-    '      "Cartridge-only build using emulated boot services. No boot ROM is included."',
+    '      "Cartridge and CD data-disc HLE boot services. No boot ROM is included."',
   );
   plan('libretro_core_options.h', beforeOptions, options);
   // Validate every input before changing any source file. Re-running is harmless.

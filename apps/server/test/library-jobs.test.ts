@@ -186,6 +186,10 @@ test('shared matching is checksum-only, preserves saved categories, and leaves f
     assert.equal(job?.review, 1);
     assert.equal(job?.saved, 0);
     assert.equal(job?.processed, 1);
+    assert.match(
+      f.catalog.libraryJobs.items(created.json().job.id, 1)[0]?.error ?? '',
+      /verified ID|edition/,
+    );
     assert.deepEqual(f.catalog.sourceMatches(source.id).matches, []);
     const reviewed = await f.app.inject({
       method: 'POST',

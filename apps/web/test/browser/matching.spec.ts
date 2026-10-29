@@ -2,6 +2,41 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect, libraryTool, signIn, test } from './fixture';
 
+test('library activity keeps its main actions and live progress visible on a phone', async ({
+  page,
+  fixture,
+}) => {
+  await fixture.legacy();
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await libraryTool(page, 'Library activity');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const panel = page.getByRole('dialog', { name: 'Library activity', exact: true });
+  const actions = panel.locator('.matching-primary-actions');
+  await expect(
+    actions.getByRole('button', { name: 'Find missing artwork and details', exact: true }),
+  ).toBeVisible();
+  await expect(
+    actions.getByRole('button', { name: 'Scan saved folders', exact: true }),
+  ).toBeVisible();
+  await expect(actions.locator('button')).toHaveCount(2);
+  for (const button of await actions.getByRole('button').all()) {
+    expect((await button.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  const secondary = panel.locator('.matching-secondary-actions');
+  const width = (await secondary.boundingBox())?.width ?? 0;
+  expect(width).toBeLessThan((await panel.locator('.matching-page').boundingBox())?.width ?? 0);
+  await actions
+    .getByRole('button', { name: 'Find missing artwork and details', exact: true })
+    .click();
+  await expect(panel.getByRole('region', { name: 'Library job progress' })).toBeVisible();
+  const progressBounds = await panel.getByRole('progressbar').boundingBox();
+  expect((progressBounds?.y ?? 0) + (progressBounds?.height ?? 0)).toBeLessThanOrEqual(844);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
 for (const bulk of [false, true])
   test(`${bulk ? 'library' : 'game'} matching cannot start with only disabled online providers selected`, async ({
     page,
@@ -20,12 +55,10 @@ for (const bulk of [false, true])
       exact: true,
     });
     await expect(action).toBeEnabled();
-    if (bulk)
-      await panel
-        .locator('summary')
-        .filter({ hasText: /^Matching providers$/ })
-        .click();
-    await panel.getByText('Providers and manager', { exact: true }).click();
+    await panel
+      .locator('summary')
+      .filter({ hasText: /^Matching options$/ })
+      .click();
     await panel.getByRole('checkbox', { name: 'Include online providers', exact: true }).uncheck();
     const local = panel.getByRole('checkbox', { name: /\(local\)$/ });
     expect(await local.count()).toBeGreaterThan(0);
@@ -137,7 +170,19 @@ test('lookups open a populated category and retain the selected category while i
           kind,
           title: `Suggestion ${lookups}`,
           confidence: 'local',
-          metadata: {},
+          metadata:
+            kind === 'metadata'
+              ? {
+                  publisher: 'Generated Publisher',
+                  developer: 'Generated Developer',
+                  year: '1996',
+                  description: 'Generated summary',
+                  catalogShard: 'NES-0001',
+                  crc32: '1234abcd',
+                  serials: '["TEST-123"]',
+                  matchEvidence: 'saved-selection',
+                }
+              : {},
         })),
       },
     });
@@ -164,6 +209,15 @@ test('lookups open a populated category and retain the selected category while i
     'true',
   );
   await expect(matching.getByRole('heading', { name: 'Suggestion 3' })).toBeVisible();
+  await expect(matching.getByText('Generated Publisher')).toBeVisible();
+  await expect(matching.getByText('Generated Developer')).toBeVisible();
+  await expect(matching.getByText('Generated summary')).toBeVisible();
+  await expect(matching.getByText('NES-0001')).toBeHidden();
+  const evidence = matching.locator('.matching-evidence');
+  await expect(evidence.getByText('NES-0001')).toBeHidden();
+  await evidence.locator('summary').click();
+  await expect(evidence.getByText('Catalog shard')).toBeVisible();
+  await expect(evidence.getByText('Matches saved game details')).toBeVisible();
 });
 
 test('a transient saved-match load can retry inside the open game', async ({ page, fixture }) => {

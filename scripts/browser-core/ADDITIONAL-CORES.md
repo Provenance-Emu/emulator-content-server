@@ -21,43 +21,60 @@ the SDK prepends its older Node runtime. Each recipe records the actual build
 flags. Existing source checkouts, output and temporary build directories must
 be outside this repository. Never use a production data directory for tests.
 
-## BIOS-free Virtual Jaguar
+## Firmware-free Virtual Jaguar 3.10.0
 
 ```
 node scripts/browser-core/build-virtualjaguar.mjs FRONTEND_CHECKOUT CORE_CHECKOUT NEW_PLUGIN_DIRECTORY
 ```
 
-The recipe builds a clean frontend snapshot and tracked core inputs, applies
+The recipe builds immutable frontend and core inputs with checked reflink copies, applies
 `virtualjaguar-bios-free.mjs`, and emits the profile and corresponding source
 archive. The sanitizer replaces the four embedded boot arrays with zero storage,
-forces direct boot, removes BIOS selections, rejects CD/no-content and boot
-payloads requiring GPU-only encrypted initialization. Its transformation script
+forces cartridge/CD HLE, removes real-BIOS selections, and rejects no-content,
+audio-only CD and cartridge payloads requiring GPU-only encrypted initialization. Its transformation script
 contains no removed firmware bytes. Do not distribute an unmodified upstream
 source archive containing those arrays as the BIOS-free corresponding source.
 
 For an already extracted sanitized release archive, the separate
 `rebuild-jaguar-source.mjs EXTRACTED_SOURCE_ROOT NEW_EXTERNAL_OUTPUT` helper uses
-the included source directly, with the original frontend Git version supplied
-explicitly; it needs no BIOS-bearing Git history. Its commands match the tested
-checkout recipe; the standalone helper itself received syntax/lint validation,
-without repeating the full build.
+the included source directly, with the legacy frontend Git abbreviation supplied
+explicitly; it needs no BIOS-bearing Git history. The standalone helper received
+syntax/lint validation. A separate byte-for-byte rebuild of profile 1.1.0 has not
+been performed; the acceptance below covers the fresh checkout recipe's output.
 
-The native loader supports `j64`, `jag`, `rom`, `abs`, `cof`, `bin`, `prg`.
+The current player profile is version **1.1.0**, backed by core **3.10.0**. It
+supports Jaguar and Jaguar CD with `j64`, `jag`, `rom`, `abs`, `cof`, `bin`, `prg`,
+`cdi` and `chd`, up to 512 MiB per self-contained file. CHD requires the session
+metadata accepted by the upstream core. The core's CUE/BIN reader is present,
+while browser track-bundle staging is unavailable, so CUE is not advertised.
 Standard ten-block (`0xf6`) commercial cartridge layouts are explicitly exempt
 from the GPU-only boot heuristic in `src/core/file.c:JaguarCartNeedsBIOS`.
-Formats with a valid 68000 entry use direct HLE boot; some GPU-only introductions
-and Jaguar CD require omitted firmware and are unsupported. No commercial title
-compatibility or audio accuracy was established by the smoke test.
+Formats with a valid 68000 entry use direct HLE boot; CD data discs use the
+upstream CD HLE strategy without firmware staging. GPU-only introductions,
+audio-only discs and real-BIOS boot remain unavailable. The older ECS
+cartridge-only profile explicitly rejected CD in its wrapper; its earlier
+acceptance receipts remain historical records of that narrower profile, not
+claims about the current core's CD capabilities.
 
-`generate-smoke-program.mjs` produces an original ABS and a one-MiB universal
-cartridge. Both set the Jaguar background green and increment guest RAM. The
-opt-in headed browser test checks actual compositor output, an advancing guest
-counter and opaque iframe isolation:
+`generate-smoke-program.mjs` produces original ABS, one-MiB cartridge and
+two-session CDI programs. All three set the Jaguar background green and increment
+guest RAM. The opt-in browser test checks actual compositor output, an advancing
+guest counter and opaque iframe isolation:
 
 ```
 cd apps/web
-ECS_ACCEPTANCE_JAGUAR_PLUGIN=/absolute/profile pnpm exec playwright test test/browser/player-additional-cores.spec.ts --grep Jaguar
+ECS_ACCEPTANCE_JAGUAR_PLUGIN=/absolute/profile ECS_ACCEPTANCE_HEADLESS=1 \
+  ECS_ACCEPTANCE_SOFTWARE_WEBGL=1 pnpm exec playwright test \
+  test/browser/player-additional-cores.spec.ts --grep 'BIOS-free Jaguar'
 ```
+
+The current profile passed all three cases in 45.4 seconds. Default headless
+Chromium on the acceptance Mac failed its WebGL context for both the old and new
+profiles; the test-only ANGLE/SwiftShader switch supplied working WebGL. Production
+runtime/security behavior was unchanged. See the
+[CD HLE acceptance receipt](../../docs/operations/jaguar-cd-hle-acceptance-2026-10-28.md)
+for pinned package/source hashes, zero-firmware archive checks and limits.
+These synthetic checks do not establish commercial-game or audio compatibility.
 
 RetroArch's `retroarch.c` grants GPL-3.0-or-later; Virtual Jaguar's root LICENSE
 is GPLv3. Retain both licenses and all dependency notices in the complete source

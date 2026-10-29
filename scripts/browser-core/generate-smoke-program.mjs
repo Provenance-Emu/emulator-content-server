@@ -34,6 +34,67 @@ export function jaguarSmokeCartridge() {
   return cartridge;
 }
 
+/** Original two-session CDI. Audio-sector byte order wraps our own 68000 program;
+ * the Atari data-header signature is container metadata, not console firmware. */
+export function jaguarSmokeCdi() {
+  const sectors = 4;
+  const trackBytes = sectors * 2352;
+  const logical = Buffer.alloc(trackBytes);
+  for (let index = 0; index < 16; index++) logical.write('ATRI', 2 + index * 4, 'ascii');
+  logical.write('ATARI APPROVED DATA HEADER ATRI ', 0x42, 'ascii');
+  const code = jaguarSmokeAbs().subarray(0x24);
+  logical.writeUInt32BE(0x4000, 0x62);
+  logical.writeUInt32BE(code.length, 0x66);
+  code.copy(logical, 0x6a);
+  const data = Buffer.alloc(trackBytes);
+  for (let index = 0; index < logical.length; index += 2) {
+    data[index] = logical[index + 1];
+    data[index + 1] = logical[index];
+  }
+  function descriptor(lba) {
+    const parts = [];
+    const u32 = (value) => {
+      const bytes = Buffer.alloc(4);
+      bytes.writeUInt32LE(value);
+      parts.push(bytes);
+    };
+    const zero = (length) => parts.push(Buffer.alloc(length));
+    u32(0);
+    const marker = Buffer.from([0, 0, 1, 0, 0, 0, 255, 255, 255, 255]);
+    parts.push(marker, marker);
+    zero(4);
+    zero(1); // no embedded original filename
+    zero(19);
+    u32(0);
+    zero(2);
+    u32(0); // pregap
+    u32(sectors);
+    zero(6);
+    u32(0); // Jaguar data tracks use 2352-byte audio sectors.
+    zero(12);
+    u32(lba);
+    u32(sectors);
+    zero(16);
+    u32(2); // 2352-byte sector code
+    zero(29);
+    zero(5);
+    u32(0);
+    return Buffer.concat(parts);
+  }
+  const table = Buffer.concat([
+    Buffer.from([2, 0, 1, 0]),
+    descriptor(0),
+    Buffer.alloc(13),
+    Buffer.from([1, 0]),
+    descriptor(sectors),
+    Buffer.alloc(13),
+  ]);
+  const footer = Buffer.alloc(8);
+  footer.writeUInt32LE(0x80000006);
+  footer.writeUInt32LE(table.length + footer.length, 4);
+  return Buffer.concat([Buffer.alloc(trackBytes), data, table, footer]);
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   if (process.argv.length !== 4 || process.argv[2] !== 'jaguar')
     throw new Error('Usage: node generate-smoke-program.mjs jaguar NEW_EXTERNAL_PROGRAM.abs');

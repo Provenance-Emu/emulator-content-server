@@ -11,10 +11,15 @@ async function openActivity(page: Page): Promise<Locator> {
 async function useLocalMatching(panel: Locator): Promise<void> {
   await panel
     .locator('summary')
-    .filter({ hasText: /^Matching providers$/ })
+    .filter({ hasText: /^Matching options$/ })
     .click();
-  await panel.getByText('Providers and manager', { exact: true }).click();
   await panel.getByRole('checkbox', { name: 'Include online providers', exact: true }).uncheck();
+}
+async function openLibraryActions(panel: Locator): Promise<void> {
+  const actions = panel.locator('details.matching-secondary-actions');
+  if (!(await actions.evaluate((element) => (element as HTMLDetailsElement).open))) {
+    await actions.locator('summary').click();
+  }
 }
 
 test('owner sessions share a server job across close/reopen and persist explicit review acknowledgement', async ({
@@ -73,6 +78,7 @@ test('owner sessions share a server job across close/reopen and persist explicit
     await expect(shared.getByRole('region', { name: 'Library job progress' })).toContainText(
       '0 need review',
     );
+    await openLibraryActions(panel);
     await panel.getByRole('button', { name: 'Refresh activity', exact: true }).click();
     await expect(panel.getByText('external.nes', { exact: true })).toHaveCount(0);
     await expect(panel.getByRole('region', { name: 'Library job progress' })).toContainText(
@@ -236,12 +242,13 @@ test('older matching results remain reachable after more than one page of folder
   await panel.getByRole('button', { name: 'Load older activity', exact: true }).click();
   await history.selectOption(job.id);
   await expect(panel.getByRole('region', { name: 'Library job progress' })).toContainText(
-    '1 without a match',
+    '1 unmatched',
   );
+  await openLibraryActions(panel);
   await panel.getByRole('button', { name: 'Refresh activity', exact: true }).click();
   await expect(history).toHaveValue(job.id);
   await expect(panel.getByRole('region', { name: 'Library job progress' })).toContainText(
-    '1 without a match',
+    '1 unmatched',
   );
 });
 
@@ -287,6 +294,7 @@ test('catalog updates use one shared matching job and stay unavailable in offlin
     name: 'Update catalogs and find matches',
     exact: true,
   });
+  await openLibraryActions(panel);
   await expect(update).toBeEnabled();
   await page.route('**/api/v1/library-jobs', async (route) => {
     if (route.request().method() !== 'POST') return route.continue();

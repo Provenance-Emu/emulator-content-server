@@ -12,6 +12,7 @@ import {
   PartialMatchingError,
   parseLibretroDat,
   reconcileCandidates,
+  selectedArtworkAnchor,
 } from './matching.js';
 import { contentStem, nameMatchKeys, nameMatchScore, normalizeSerial } from './matching-names.js';
 import { createCatalogLoader } from './public-catalog.js';
@@ -76,6 +77,8 @@ interface Artwork {
   kind: string;
   sha: string;
   role: ReturnType<typeof classifyArtwork>['role'];
+  blobSha?: string;
+  bytes: number;
 }
 function artworkIndex(text: string): Artwork[] {
   const data = JSON.parse(text) as { sha?: unknown; truncated?: unknown; tree?: unknown };
@@ -90,7 +93,7 @@ function artworkIndex(text: string): Artwork[] {
   const sha = data.sha;
   return data.tree.flatMap((entry: unknown) => {
     if (!entry || typeof entry !== 'object') return [];
-    const row = entry as { path?: unknown; type?: unknown; size?: unknown };
+    const row = entry as { path?: unknown; type?: unknown; size?: unknown; sha?: unknown };
     if (
       row.type !== 'blob' ||
       typeof row.path !== 'string' ||
@@ -108,6 +111,10 @@ function artworkIndex(text: string): Artwork[] {
             kind: match[1].toLowerCase(),
             sha,
             role: classifyArtwork(row.path).role,
+            bytes: row.size,
+            ...(typeof row.sha === 'string' && /^[a-f0-9]{40}$/.test(row.sha)
+              ? { blobSha: row.sha }
+              : {}),
           },
         ]
       : [];
@@ -395,7 +402,9 @@ export function createLibretroProvider(
           ),
         ];
       };
+      const selected = selectedArtworkAnchor(lookupInput);
       const names = [
+        ...(selected?.titles ?? []),
         input.name,
         ...(input.facts?.names ?? []),
         ...metadata.flatMap((candidate) => [
@@ -454,13 +463,36 @@ export function createLibretroProvider(
           row.image.kind === 'boxarts' &&
           verified.has(`${systemId}\0${canonical(row.image.title)}`),
       );
-      const onlyCover = boxarts.length === 1 ? boxarts[0] : undefined;
+      const uniqueCovers = <T extends { image: Artwork }>(covers: T[]): T[] => [
+        ...new Map(
+          covers.map((row) => [
+            row.image.blobSha
+              ? `blob:${row.image.blobSha}:${row.image.bytes}`
+              : `path:${row.image.path}`,
+            row,
+          ]),
+        ).values(),
+      ];
+      const distinctBoxarts = uniqueCovers(boxarts);
+      const onlyCover = distinctBoxarts.length === 1 ? distinctBoxarts[0] : undefined;
       const identity = onlyCover
         ? verified.get(`${systemId}\0${canonical(onlyCover.image.title)}`)
         : undefined;
       const canonicalCover =
         !failures.length && consistent && onlyCover && identity && systemId
           ? { index: onlyCover.index, title: identity.canonicalTitle, systemId, identity }
+          : undefined;
+      const selectedCovers = selected
+        ? ranked.filter(
+            (row) =>
+              row.image.kind === 'boxarts' &&
+              selected.titles.some((title) => canonical(title) === canonical(row.image.title)),
+          )
+        : [];
+      const distinctSelectedCovers = uniqueCovers(selectedCovers);
+      const selectedCover =
+        !failures.length && selected && distinctSelectedCovers.length === 1
+          ? distinctSelectedCovers[0]
           : undefined;
       const art = ranked.slice(0, 24).map(({ image, index }): MatchCandidate => {
         const corroborated = canonicalCover?.index === index ? canonicalCover : undefined;
@@ -477,6 +509,9 @@ export function createLibretroProvider(
             source: 'Libretro thumbnails',
             artworkType: image.kind,
             artworkRole: image.role,
+            ...(image.blobSha
+              ? { artworkBlobSha1: image.blobSha, artworkBytes: String(image.bytes) }
+              : {}),
             matchedGame: corroborated?.title ?? contentStem(input.name),
             ...(systemId ? { systemId } : {}),
             ...(corroborated
@@ -507,7 +542,45 @@ export function createLibretroProvider(
             availability: 'Listed in public artwork catalog; image checked on preview',
           },
         };
-        if (!corroborated && !failures.length && automaticEvidence(lookupInput, candidate)) {
+        if (
+          !corroborated &&
+          selected &&
+          selectedCover?.index === index &&
+          lookupInput.selectedMetadata
+        ) {
+          Object.assign(
+            candidate.metadata,
+            Object.fromEntries(
+              Object.entries(selected.identity.metadata).filter(([key]) =>
+                [
+                  'md5',
+                  'sha1',
+                  'crc32',
+                  'hashSize',
+                  'hashMedia',
+                  'hashRepresentation',
+                  'serials',
+                  'setIds',
+                  'matchProvenance',
+                ].includes(key),
+              ),
+            ),
+            {
+              matchedGame: selected.identity.title,
+              matchEvidence: 'saved-selection',
+              savedMetadataId: lookupInput.selectedMetadata.id,
+              savedMetadataRevision: String(lookupInput.selectedMetadata.revision),
+              verification:
+                'Canonical front for the saved metadata choice; no new ROM checksum verification claimed',
+            },
+          );
+        }
+        if (
+          !corroborated &&
+          candidate.metadata.matchEvidence !== 'saved-selection' &&
+          !failures.length &&
+          automaticEvidence(lookupInput, candidate)
+        ) {
           candidate.metadata.matchEvidence = 'exact-name';
           candidate.metadata.verification =
             'Exact full filename and catalog front title; no checksum or serial verification claimed';

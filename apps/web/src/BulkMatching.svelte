@@ -65,71 +65,61 @@
   function done(){advance(true);}
 </script>
 
+<div class="matching-page">
 {#if reviewing?.entry.source}
-  <button type="button" disabled={reviewBusy} onclick={()=>reviewing=null}>Back to matching results</button>
+  <div class="matching-actions" aria-label="Review navigation"><button type="button" disabled={reviewBusy} onclick={()=>reviewing=null}>Back to matching results</button><button type="button" class="primary" disabled={reviewBusy} onclick={done}>Done reviewing this game</button>{#if unresolved.length>1}<button type="button" disabled={reviewBusy} onclick={()=>advance(false)}>Next unresolved game</button>{/if}</div>
   <p role="status" aria-live="polite">{unresolved.length} unresolved game{unresolved.length===1?'':'s'} · {reviewedCount} reviewed</p>
   <h3 tabindex="-1" bind:this={reviewHeading}>{reviewing.entry.name}</h3>
   {#if reviewing.reason}<p>{reviewing.reason}</p>{/if}
-  <p class="dim">Suggestions refresh when you open a game, so expired proposals cannot overwrite your choices.</p>
-  <p class="dim">Save and next moves through unsaved categories, then the next unresolved game. Next unresolved game leaves this game in the queue.</p>
-  <button type="button" disabled={reviewBusy} onclick={done}>Done reviewing this game</button>
-  {#if unresolved.length>1}<button type="button" disabled={reviewBusy} onclick={()=>advance(false)}>Next unresolved game</button>{/if}
+  <details class="matching-disclosure"><summary>Review tips</summary><div class="matching-disclosure-content"><p class="dim">Suggestions refresh when you open a game, so expired proposals cannot overwrite your choices. Save and next moves through unsaved categories, then the next unresolved game. Next unresolved game leaves this game in the queue.</p></div></details>
   {#key reviewing.entry.id}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.entry.id} sourceName={reviewing.entry.source.name} onnext={()=>{reviewBusy=false;advance(true);}} onbusy={busy=>reviewBusy=busy} reviewOptions={{...$controller.options,checksum:canChecksum(reviewing.entry.source)}} />{/key}
 {:else}
-  <p>Match every server-folder game in this library. Unique checksum matches save automatically. Conflicting matches and filename suggestions stay here for review.</p>
-  <p class="dim">Existing saved choices are preserved. Saving metadata updates the title and details visible to people who can read the game. Original files stay unchanged; patches and cheats are never applied.</p>
+  <p>Match server-folder games in this library. Unique checksum matches save automatically; conflicting matches and filename suggestions stay for review.</p>
   {#if $controller.phase==='idle'}
-    <MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={running} />
-    <p class="dim">Checksums are verified for local ROMs up to 64 MB. Archives and disc sets use filename suggestions. Online cheats are optional under Providers and manager.</p>
+    <details class="matching-disclosure matching-options-disclosure"><summary>Matching options</summary><div class="matching-disclosure-content matching-fields"><MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={running} /><p class="dim">Checksums are verified for local ROMs up to 64 MB. Archives and disc sets use filename suggestions. Online cheats are optional. Existing saved choices stay intact. Saving metadata updates details visible to people who can read the game. Original files stay unchanged; patches and cheats are never applied automatically.</p></div></details>
     {#if ready&&!activeProviders}<p class="dim">Select a local provider or enable a selected online provider before matching.</p>{/if}
-    <button type="button" disabled={!ready||!activeProviders} onclick={()=>void controller.start(scope,{online,providerIds,managerId})}>Start library matching</button>
+    <div class="matching-actions"><button type="button" class="primary" disabled={!ready||!activeProviders} onclick={()=>void controller.start(scope,{online,providerIds,managerId})}>Start library matching</button></div>
   {:else}
-    <div class="summary" role="status" aria-live="polite">
+    <div class="summary matching-summary" role="status" aria-live="polite">
       <span><strong>{completed} / {$controller.rows.length}</strong> games checked</span>
       <span><strong>{saved}</strong> exact matches auto-saved</span>
       <span>{reviewedCount} games reviewed</span>
       <span><strong>{$controller.rows.filter((r)=>r.status==='review').length}</strong> games to review</span>
     </div>
     {#if running}
-      <progress max={Math.max(1,$controller.rows.length)} value={completed} aria-label="Library matching progress"></progress>
+      <progress class="matching-progress" max={Math.max(1,$controller.rows.length)} value={completed} aria-label="Library matching progress"></progress>
       <p>{$controller.phase==='discovering'?'Collecting all library pages…':`Matching ${$controller.rows.find((r)=>r.status==='working')?.entry.name??'games'}…`}</p>
-      <button type="button" onclick={()=>controller.pause()}>Pause matching</button>
-    {:else if $controller.phase==='paused'}<button type="button" onclick={()=>void controller.resume()}>Resume matching</button>
+      <div class="matching-actions"><button type="button" onclick={()=>controller.pause()}>Pause matching</button></div>
+    {:else if $controller.phase==='paused'}<div class="matching-actions"><button type="button" class="primary" onclick={()=>void controller.resume()}>Resume matching</button></div>
     {:else}<p role="status">Library matching complete.</p>{/if}
-    {#if !running}
+    {#if !running}<div class="matching-actions" aria-label="Matching run actions">
       {#if $controller.rows.some((r)=>r.retryable)}<button type="button" onclick={()=>void controller.retryFailures()}>Retry failed games</button>{/if}
       {#if $controller.rows.some((r)=>r.status==='unmatched')}<button type="button" onclick={()=>{filter='review';page=0;void controller.retryUnmatched();}}>Retry unmatched games</button>{/if}
       <button type="button" onclick={()=>controller.reset()}>New matching run</button>
-    {/if}
+    </div>{/if}
   {/if}
   <p class="dim">Keep this app open on this library while matching. You can close this panel and browse; reloading or leaving the library stops the run. Saved matches are kept.</p>
   {#if failure||$controller.failure}<p class="problem" role="alert">{failure??$controller.failure}</p>{/if}
   {#if failure}<button type="button" disabled={registryLoading} onclick={()=>void loadPlugins()}>Retry matching providers</button>{/if}
   {#if $controller.rows.length}
-    <div class="actions" aria-label="Matching results filters">
+    <div class="actions matching-tabs" aria-label="Matching results filters">
       {#each tabs as [value,label]}<button type="button" class:active={filter===value} aria-pressed={filter===value} onclick={()=>{filter=value;page=0;}}>{label} ({value==='all'?$controller.rows.length:$controller.rows.filter((r)=>value==='failed'?r.retryable:r.status===value).length})</button>{/each}
     </div>
     {#if !rows.length}<p>No games in this category.</p>{/if}
-    <ul class="results">
+    <ul class="matching-result-list">
       {#each pageRows as row (row.entry.entityType+':'+row.entry.id)}
         <li><div><strong>{row.entry.name}</strong><p class="dim">{row.reason||'Waiting to match'}{row.suggestions?` · ${row.suggestions} suggestions`:''}{row.saved?` · ${row.saved} auto-saved`:''}</p></div>
           {#if row.entry.source&&['review','failed','unmatched'].includes(row.status)}<button type="button" onclick={()=>review(row)}>Review</button>{/if}
         </li>
       {/each}
     </ul>
-    {#if rows.length>12}<nav class="actions" aria-label="Matching result pages"><button type="button" disabled={page===0} onclick={()=>page--}>Previous results</button><span>Page {page+1}</span><button type="button" disabled={(page+1)*12>=rows.length} onclick={()=>page++}>Next results</button></nav>{/if}
+    {#if rows.length>12}<nav class="matching-actions" aria-label="Matching result pages"><button type="button" disabled={page===0} onclick={()=>page--}>Previous results</button><span>Page {page+1}</span><button type="button" disabled={(page+1)*12>=rows.length} onclick={()=>page++}>Next results</button></nav>{/if}
   {/if}
 {/if}
+</div>
 
 <style>
-  .summary { display:flex; flex-wrap:wrap; gap:1rem; margin:1.5rem 0; }
-  .summary span { flex:1; min-width:8rem; padding:1rem; background:var(--surface-raised); border:1px solid var(--border); border-radius:.6rem; }
-  .summary strong { display:block; font-size:1.5rem; }
-  progress { width:100%; }
-  .results { list-style:none; padding:0; }
-  .results li { display:flex; align-items:center; gap:1rem; justify-content:space-between; padding:1rem 0; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
-  .results li > div { flex:1; min-width:0; }
-  .results li > button { flex-shrink:0; }
-  .results p { margin:.4rem 0 0; }
-  .active { outline:2px solid currentColor; }
+  .summary { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:var(--space-3) 0; }
+  .summary span { flex:1; min-width:8rem; padding:var(--space-3); background:var(--color-surface-muted); border:1px solid var(--line); border-radius:var(--radius-control); }
+  .summary strong { display:block; font-size:1.25rem; }
 </style>

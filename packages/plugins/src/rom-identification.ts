@@ -5,6 +5,7 @@ import { access, lstat, mkdtemp, open, readFile, rm, stat } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { crc32 } from 'node:zlib';
+import { cdiIdentificationPlugin } from './cdi-identification.js';
 import { dolphinIdentificationPlugins } from './dolphin-identification.js';
 import { type RomFacts, type RomHash, validateRomFacts } from './rom-facts.js';
 
@@ -724,7 +725,7 @@ function asciiField(bytes: Buffer): string {
   return value.toString('ascii').trim();
 }
 function dreamcast(bytes: Buffer, result: RomFacts): boolean {
-  if (bytes.toString('ascii', 0, 16) !== 'SEGA SEGAKATANA ') return false;
+  if (!bytes.subarray(0, 16).equals(Buffer.from('SEGA SEGAKATANA '))) return false;
   const serial = asciiField(bytes.subarray(0x40, 0x4a)).toUpperCase();
   if (!/^[A-Z0-9]{1,6}-[A-Z0-9]{3,10}$/.test(serial)) return false;
   result.identifiers.push({
@@ -953,6 +954,7 @@ const BUILTINS: readonly IdentificationPlugin[] = [
   { id: RAW_ID, supports: (request) => !CONTAINERS.test(request.name), identify: raw },
   { id: SEVEN_ID, supports: (request) => /\.7z$/i.test(request.name), identify: sevenZip },
   { id: CHD_ID, supports: (request) => /\.chd$/i.test(request.name), identify: chd },
+  cdiIdentificationPlugin,
   ...dolphinIdentificationPlugins,
 ];
 function merge(target: RomFacts, addition: RomFacts, id: string): void {

@@ -37,7 +37,7 @@ const frontend = join(root, 'frontend'),
 for (const file of ['jagbios.c', 'jagbios_m.c', 'jagcdbios.c', 'jagdevcdbios.c']) {
   const source = readFileSync(join(core, 'src/bios', file), 'utf8');
   if (
-    !/^\/\* ECS cartridge-only build: boot ROM intentionally omitted\. \*\/\n#include "[A-Za-z0-9_]+\.h"\nuint8_t \w+\[0x[0-9a-f]+\] = \{0\};\n$/.test(
+    !/^\/\* ECS (?:cartridge-only|HLE) build: boot ROM intentionally omitted\. \*\/\n#include "[A-Za-z0-9_]+\.h"\nuint8_t \w+\[0x[0-9a-f]+\] = \{0\};\n$/.test(
       source,
     )
   )

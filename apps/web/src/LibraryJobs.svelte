@@ -49,58 +49,72 @@
   }
 </script>
 
-<p>Library work runs on the server and is shared across your sessions. You can close this window and return later.</p>
-<div class="actions" aria-label="Start library work">
+<div class="matching-page">
+<p class="dim">Library work runs on the server and is shared across sessions. You can return while a job is running.</p>
+<div class="matching-primary-actions" aria-label="Start library work">
   <button type="button" class="primary" disabled={$controller.loading||!canMatch} onclick={()=>void start('match')}>Find missing artwork and details</button>
-  <button type="button" disabled={$controller.loading||!canMatch||!online} onclick={()=>void start('match',true)}>Update catalogs and find matches</button>
   <button type="button" disabled={$controller.loading} onclick={()=>void start('scan')}>Scan saved folders</button>
-  <button type="button" disabled={$controller.loading} onclick={()=>void controller.refresh()}>Refresh activity</button>
 </div>
-<label class="filename-policy"><input type="checkbox" bind:checked={allowExactNames} disabled={$controller.loading} /> For new jobs, use exact filenames when a game ID is unavailable</label>
-<p class="dim">Only a full title and edition match can use this fallback. Conflicting IDs, checksums and editions stay in review.</p>
-<details><summary>Matching providers</summary><MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={$controller.loading} /></details>
-<p class="dim">Catalog updates download verified metadata and cheat/patch indexes for systems in this library. Cheat and patch files download only when selected; cheats stay disabled and patches are never applied automatically.</p>
-<p class="dim">Saved choices stay intact. Verified ROM or disc-ID matches can save automatically. Exact filename matches use your fallback setting; other suggestions and conflicting evidence need review. Unavailable files are skipped without downloading cloud placeholders.</p>
+<details class="matching-disclosure matching-secondary-actions"><summary>More library actions</summary><div class="matching-disclosure-content matching-actions">
+  <button type="button" disabled={$controller.loading||!canMatch||!online} onclick={()=>void start('match',true)}>Update catalogs and find matches</button>
+  <button type="button" disabled={$controller.loading} onclick={()=>void controller.refresh()}>Refresh activity</button>
+</div></details>
+{#if $controller.jobs.length}
+  <label class="matching-field">Server activity<select value={$controller.selectedId??''} onchange={event=>void choose(event.currentTarget.value)}>
+    {#each $controller.jobs as job(job.id)}<option value={job.id}>{scopeName(job.scope)} · {job.kind==='scan'?'Folder scan':'Artwork and metadata'} · {job.state} · {job.processed}/{job.total} · {new Date(job.createdAt).toLocaleString()}</option>{/each}
+  </select></label>
+  {#if $controller.nextJobsCursor}<button type="button" class="matching-quiet-action" disabled={$controller.loading} onclick={()=>void controller.older()}>Load older activity</button>{/if}
+{:else}<p>No library jobs yet.</p>{/if}
 {#if registryFailure||$controller.failure}<p role="alert" class="problem">{registryFailure??$controller.failure}</p>{/if}
 {#if registryFailure}<button type="button" disabled={registryLoading} onclick={()=>void loadProviders()}>Retry matching providers</button>{/if}
 
-{#if $controller.jobs.length}
-  <label>Server activity<select value={$controller.selectedId??''} onchange={event=>void choose(event.currentTarget.value)}>
-    {#each $controller.jobs as job(job.id)}<option value={job.id}>{scopeName(job.scope)} · {job.kind==='scan'?'Folder scan':'Artwork and metadata'} · {job.state} · {job.processed}/{job.total} · {new Date(job.createdAt).toLocaleString()}</option>{/each}
-  </select></label>
-  {#if $controller.nextJobsCursor}<button type="button" disabled={$controller.loading} onclick={()=>void controller.older()}>Load older activity</button>{/if}
-{:else}<p>No library jobs yet.</p>{/if}
 {#if selected}
   <section aria-label="Library job progress">
     {#if selected.kind==='match'}<p class="dim">{selected.options.allowExactNames?'Exact filename fallback was enabled for this job.':'This job uses verified ROM or disc IDs for automatic selections.'}</p>{/if}
     {#if selected.options.refreshCatalogs&&selected.state==='running'&&selected.processed===0&&!selected.currentSourceId}<p role="status">Preparing verified hosted catalogs…</p>{/if}
-    <p role="status">{selected.state} · {selected.processed.toLocaleString()} of {selected.total.toLocaleString()} checked</p>
-    <progress max={Math.max(1,selected.total)} value={selected.processed} aria-label="Library job progress"></progress>
-    <p class="dim">{selected.saved.toLocaleString()} selections saved · {selected.review.toLocaleString()} need review · {selected.unmatched.toLocaleString()} without a match · {selected.failed.toLocaleString()} failed · {selected.skipped.toLocaleString()} skipped</p>
+    <div class="matching-progress-heading"><strong role="status">{selected.state}</strong><span>{selected.processed.toLocaleString()} of {selected.total.toLocaleString()} checked</span></div>
+    <progress class="matching-progress" max={Math.max(1,selected.total)} value={selected.processed} aria-label="Library job progress"></progress>
+    <div class="matching-stat-row" aria-label="Job results">
+      <span>{selected.saved.toLocaleString()} saved</span><span>{selected.review.toLocaleString()} need review</span><span>{selected.unmatched.toLocaleString()} unmatched</span><span>{selected.failed.toLocaleString()} failed</span><span>{selected.skipped.toLocaleString()} skipped</span>
+    </div>
     {#if selected.error}<p class="problem">{selected.error}</p>{/if}
-    <div class="actions">
+    <div class="matching-actions">
       {#if active}<button type="button" disabled={$controller.loading} onclick={()=>void controller.cancel(selected.id)}>Cancel job</button>
       {:else if ['cancelled','interrupted','failed'].includes(selected.state)}<button type="button" disabled={$controller.loading} onclick={()=>void controller.resume(selected.id)}>Resume remaining work</button>{/if}
       {#if !active&&selected.failed}<button type="button" disabled={$controller.loading} onclick={()=>void controller.resume(selected.id,'failed')}>Retry failed games</button>{/if}
       {#if !active&&selected.unmatched}<button type="button" disabled={$controller.loading} onclick={()=>void controller.resume(selected.id,'unmatched')}>Retry unmatched games</button>{/if}
     </div>
   </section>
+{/if}
+{#if !reviewing}
+<details class="matching-disclosure matching-options-disclosure">
+  <summary>Matching options</summary>
+  <div class="matching-disclosure-content matching-fields">
+    <label class="matching-check"><input type="checkbox" bind:checked={allowExactNames} disabled={$controller.loading} /> For new jobs, use exact filenames when a game ID is unavailable</label>
+    <p class="form-help">Only a full title and edition match can use this fallback. Conflicting IDs, checksums, and editions stay in review.</p>
+    <MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={$controller.loading} />
+    <p class="dim">Catalog updates download verified metadata and cheat or patch indexes for systems in this library. Cheat and patch files download only when selected; cheats stay disabled and patches are never applied automatically. Verified ROM or disc-ID matches can save automatically. Other suggestions and conflicting evidence need review. Unavailable files are skipped.</p>
+  </div>
+</details>
+{/if}
+{#if selected}
   {#if reviewing&&selected.kind==='match'}
-    <button type="button" disabled={reviewBusy} onclick={()=>reviewing=null}>Back to job results</button>
-    <button type="button" disabled={reviewBusy} onclick={()=>void nextReview(true)}>Done reviewing this game</button>
-    <button type="button" disabled={reviewBusy} onclick={()=>void nextReview(false)}>Next unresolved game</button>
+    <div class="matching-actions" aria-label="Review navigation"><button type="button" disabled={reviewBusy} onclick={()=>reviewing=null}>Back to job results</button><button type="button" class="primary" disabled={reviewBusy} onclick={()=>void nextReview(true)}>Done reviewing this game</button><button type="button" disabled={reviewBusy} onclick={()=>void nextReview(false)}>Next unresolved game</button></div>
     <h3>{itemName(reviewing)}</h3>
     {#key reviewing.sourceId}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.sourceId} sourceName={itemName(reviewing)} reviewOptions={{...selected.options,checksum:reviewing.source?canAttemptChecksum(reviewing.source):false}} onnext={()=>void nextReview(true)} />{/key}
   {:else}
-    <label>Results<select bind:value={filter} onchange={()=>void controller.filter(filter)}><option value="review">Needs review</option><option value="failed">Failed</option><option value="unmatched">No match</option><option value="saved">Saved</option><option value="skipped">Skipped</option><option value="">All results</option></select></label>
-    <ul class="job-results">
+    <label class="matching-field">Results<select bind:value={filter} onchange={()=>void controller.filter(filter)}><option value="review">Needs review</option><option value="failed">Failed</option><option value="unmatched">No match</option><option value="saved">Saved</option><option value="skipped">Skipped</option><option value="">All results</option></select></label>
+    <ul class="matching-result-list">
       {#each $controller.items as item(item.sourceId)}<li><div><strong>{itemName(item)}</strong><p class="dim">{item.status}{item.suggestions?` · ${item.suggestions} suggestions`:''}{item.error?` · ${item.error}`:''}</p></div>{#if selected.kind==='match'&&(['review','unmatched','failed'].includes(item.status)||item.suggestions>0)}<button type="button" onclick={()=>reviewing=item}>Review</button>{/if}</li>{/each}
     </ul>
     {#if !$controller.items.length}<p>No results in this category yet.</p>{/if}
-    <div class="actions"><button type="button" onclick={()=>void controller.first()}>First page</button><button type="button" disabled={!$controller.nextCursor} onclick={()=>void controller.next()}>Next results</button></div>
+    <div class="matching-actions"><button type="button" onclick={()=>void controller.first()}>First page</button><button type="button" disabled={!$controller.nextCursor} onclick={()=>void controller.next()}>Next results</button></div>
   {/if}
 {/if}
+</div>
 
 <style>
-  .filename-policy{display:flex;align-items:center;gap:.5rem}.filename-policy input{width:auto}progress{width:100%}label{display:grid;gap:.4rem;margin:1rem 0}select{width:100%;max-width:100%}.job-results{list-style:none;padding:0}.job-results li{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.7rem 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}.job-results li>div{min-width:0}.job-results p{margin:.3rem 0 0}details{margin:1rem 0}
+  section[aria-label="Library job progress"] { margin-top: 0; }
+  section[aria-label="Library job progress"] > p:first-of-type { margin-top: 0; }
+  section[aria-label="Library job progress"] > p:last-of-type { margin-bottom: 0; }
 </style>

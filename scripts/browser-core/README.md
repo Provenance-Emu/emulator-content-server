@@ -34,3 +34,53 @@ isolated temporary server with only the plugin registry, and checks real renderi
 keyboard input, nonzero WebAudio samples, SRAM/state round trips and shutdown.
 It uses a headed browser with working WebGL and requires the external build and cc65; normal browser runs explicitly skip it. See the [2026-10-28 acceptance record](../../docs/operations/browser-playback-plugin-acceptance.md).
 No operator catalog, real game or save is used.
+
+## Virtual Jaguar 3.10.0 cartridge and CD HLE
+
+`build-virtualjaguar.mjs` builds RetroArch `4d4bfc0f` with Virtual Jaguar
+`ffea7893` (core version `3.10.0`) using the same SDK `3.1.46`. Both input
+checkouts and the new output directory must be outside this repository. The
+helper reads committed build inputs and replaces all four embedded boot-ROM
+arrays with zero initializers before compiling or archiving sources. It disables
+external firmware staging, forces the original upstream CD HLE strategy for both
+initial loading and disc insertion, and refuses no-content BIOS boot, audio-only
+CDs, and cartridges which require real boot firmware.
+
+```sh
+node scripts/browser-core/build-virtualjaguar.mjs \
+  /absolute/pinned-retroarch /absolute/pinned-virtualjaguar \
+  /absolute/new-virtualjaguar-plugin
+node --test scripts/browser-core/jaguar-hle.test.mjs
+ECS_ACCEPTANCE_JAGUAR_PLUGIN=/absolute/new-virtualjaguar-plugin \
+  ECS_ACCEPTANCE_HEADLESS=1 ECS_ACCEPTANCE_SOFTWARE_WEBGL=1 \
+  pnpm --filter @ecs/web test:browser \
+  player-additional-cores.spec.ts --grep 'BIOS-free Jaguar'
+```
+
+The generated profile supports Atari Jaguar and Jaguar CD with self-contained
+CDI/CHD files, capped at 512 MiB by the current browser profile contract. Jaguar
+CHDs require the session metadata accepted by the upstream core; see
+[upstream CHD operations](https://github.com/libretro/virtualjaguar-libretro/blob/master/docs/jagcd-chd.md).
+The core also has a CUE/BIN reader, but this profile does not advertise CUE because
+the browser currently stages one content file. Synchronized saves remain
+unavailable. The opt-in CD case generates its own two-session CDI and checks
+actual emulated 68000 progress and a rendered green frame; it makes no claim
+about commercial game compatibility.
+
+The software-WebGL switch affects only this opt-in browser test. On the acceptance
+Mac, default headless Chromium failed before core initialization for both the old
+published profile and the new build. Explicit ANGLE/SwiftShader provided a working
+WebGL context for the recorded three-case acceptance; the production sandbox and
+runtime options were unchanged. `ECS_ACCEPTANCE_RUNTIME_DIAGNOSTICS=1` adds a
+test-only exception logger to the isolated sandbox response when diagnosing a
+startup failure.
+
+The earlier ECS cartridge-only package used the same `3.10.0` source family but
+its distribution wrapper explicitly rejected `is_cd_content` and removed the CD
+extensions. That limitation was in our wrapper, not an absence of upstream CD
+emulation. Upstream's ordinary builds contain console and CD boot-ROM arrays;
+their availability does not mean those firmware bytes are needed by CD HLE or
+included in this profile. The official
+[v3.10.0 release](https://github.com/libretro/virtualjaguar-libretro/releases/tag/v3.10.0)
+also supplies an Emscripten bitcode core; this recipe builds sanitized source
+instead of redistributing its embedded firmware.

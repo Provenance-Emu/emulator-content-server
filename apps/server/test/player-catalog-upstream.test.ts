@@ -3,6 +3,22 @@ import test from 'node:test';
 import { parseManifest } from '@ecs/plugins';
 import { playerCatalog } from '../src/player-catalog.js';
 
+test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => {
+  const jaguar = playerCatalog.find((entry) => entry.id === 'org.libretro.virtualjaguar');
+  assert.ok(jaguar);
+  assert.equal(jaguar.name, 'Virtual Jaguar 3.10.0');
+  assert.deepEqual(jaguar.systems, ['com.provenance.jaguar', 'com.provenance.jaguarcd']);
+  assert.match(jaguar.description, /profile 1\.1\.0/);
+  assert.match(jaguar.description, /CDI\/CHD/);
+  assert.equal(jaguar.available, true);
+  assert.equal(
+    jaguar.url,
+    'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar.ecsplayer',
+  );
+  assert.equal(jaguar.sha256, '8b274aef3918bc8bc35719e417308d43134177057e2cbf5481ab36bfa001791e');
+  assert.equal(jaguar.downloadBytes, 4604914);
+});
+
 test('upstream player catalog entries have valid pinned web-player manifests', () => {
   const entries = playerCatalog.filter((entry) => entry.upstream);
   assert.equal(entries.length, 35);

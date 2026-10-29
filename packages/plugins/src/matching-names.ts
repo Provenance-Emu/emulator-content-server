@@ -61,7 +61,7 @@ function facts(name: string): NameFacts {
     .filter(Boolean)
     .sort()
     .join(',');
-  const revision = tags
+  let revision = tags
     .map(
       (tag) =>
         /^(?:rev(?:ision)?\.?|ver(?:sion)?\.?|v)\s*([a-z0-9]+(?:\.[a-z0-9]+)*)$/i.exec(tag)?.[1],
@@ -69,7 +69,15 @@ function facts(name: string): NameFacts {
     .filter(Boolean)
     .join(',');
   const date = tags.find((tag) => /^\d{4}-\d{2}-\d{2}$/.test(tag)) ?? '';
-  const base = stem.replace(/\([^()]*\)|\[[^[\]]*\]/g, ' ').trim();
+  let base = stem.replace(/\([^()]*\)|\[[^[\]]*\]/g, ' ').trim();
+  const trailingRevision =
+    /(?:\s+(?:rev(?:ision)?\.?|ver(?:sion)?\.?)\s+|\s+v(?=\d))([a-z0-9]+(?:\.[a-z0-9]+)*)$/i.exec(
+      base,
+    );
+  if (trailingRevision?.[1]) {
+    revision = [...new Set([revision, trailingRevision[1]].filter(Boolean))].join(',');
+    base = base.slice(0, trailingRevision.index).trim();
+  }
   const value: NameFacts = {
     exact: key(stem),
     bases: [...new Set([base, ...base.split(/\s+(?:~|\/|_)\s+/)].map(key).filter(Boolean))],
@@ -116,10 +124,38 @@ export function normalizeSerial(value: string): string {
 export function normalizeSetAlias(value: string): string {
   return contentStem(value).normalize('NFKC').toLowerCase().trim();
 }
+function alternateTitles(value: string): string[] {
+  return [
+    ...new Set(
+      contentStem(value)
+        .replace(/\([^()]*\)|\[[^[\]]*\]/g, ' ')
+        .trim()
+        .split(/\s+(?:~|\/|_)\s+/)
+        .map((part) => part.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+function canonicalPrimary(value: string): string {
+  return value
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
+}
+function equalSets(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value) => right.includes(value));
+}
 /** Reconciliation is stricter than suggestion ranking: explicit release facts must agree. */
 export function compatibleGameTitles(left: string, right: string): boolean {
   const a = facts(left),
     b = facts(right);
+  const alternativesA = alternateTitles(left).map(canonicalPrimary),
+    alternativesB = alternateTitles(right).map(canonicalPrimary);
+  if (
+    (alternativesA.length > 1 || alternativesB.length > 1) &&
+    !equalSets(alternativesA, alternativesB)
+  )
+    return false;
   return (
     nameMatchScore(left, right) > 0 &&
     a.edition === b.edition &&
@@ -146,6 +182,28 @@ export function serialSubtitleAlias(left: string, right: string): boolean {
         [...a.regions].some((region) => !b.regions.has(region))))
   )
     return false;
+  if (releaseFactsConflict(left, right)) return false;
+  const alternativesA = alternateTitles(left),
+    alternativesB = alternateTitles(right);
+  if (alternativesA.length > 1 || alternativesB.length > 1) {
+    if (
+      alternativesA.length < 2 ||
+      alternativesB.length < 2 ||
+      alternativesA.length > 8 ||
+      alternativesB.length > 8
+    )
+      return false;
+    const primary = (values: string[]) =>
+      values.map((value) => canonicalPrimary(value.split(/\s+[-–—]\s+|:\s+/)[0] ?? value));
+    const first = primary(alternativesA),
+      second = primary(alternativesB);
+    // Every component must survive: do not collapse a compilation to one overlapping title.
+    return (
+      new Set(first).size === alternativesA.length &&
+      new Set(second).size === alternativesB.length &&
+      equalSets(first, second)
+    );
+  }
   const parts = (value: string) => {
     const base = contentStem(value)
       .replace(/\([^()]*\)|\[[^[\]]*\]/g, ' ')

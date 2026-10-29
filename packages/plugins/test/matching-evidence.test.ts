@@ -934,3 +934,332 @@ test('manager labels opt-in exact catalog evidence honestly and retains multiple
     ),
   );
 });
+
+test('a private saved metadata choice anchors only one exact canonical front without upgrading ROM evidence', async () => {
+  const { createLibretroProvider } = await import('../src/libretro-matching.js');
+  const provider = createLibretroProvider(
+    async (url) =>
+      new Response(
+        String(url).includes('/git/trees/')
+          ? JSON.stringify({
+              sha: 'a'.repeat(40),
+              truncated: false,
+              tree: ['Named_Boxarts', 'Named_Titles', 'Named_Snaps'].map((dir) => ({
+                path: `${dir}/Original Arcade.png`,
+                type: 'blob',
+                size: 1000,
+              })),
+            })
+          : 'clrmamepro ( name "Empty" )',
+      ),
+  );
+  const request = {
+    name: 'origset.zip',
+    systemId,
+    online: true,
+    companions: [],
+    selectedMetadata: {
+      id: 'saved-one',
+      revision: 3,
+      title: 'Original Arcade',
+      systemId,
+      metadata: { systemId },
+    },
+  };
+  const rows = await provider.search(request);
+  const cover = required(rows.find((row) => row.metadata.artworkRole === 'front'));
+  assert.equal(cover.confidence, 'name');
+  assert.equal(cover.metadata.matchEvidence, 'saved-selection');
+  assert.equal(cover.metadata.savedMetadataId, 'saved-one');
+  assert.equal(cover.metadata.savedMetadataRevision, '3');
+  assert.equal(matching.automaticEvidence(request, cover), true);
+  assert.ok(!cover.metadata.verification?.includes('checksum-verified'));
+  assert.ok(
+    rows
+      .filter((row) => ['title', 'screenshot'].includes(row.metadata.artworkRole ?? ''))
+      .every((row) => !matching.automaticEvidence(request, row)),
+  );
+  assert.equal(
+    matching.automaticEvidence({ ...request, selectedMetadata: undefined }, cover),
+    false,
+  );
+  assert.equal(
+    matching.automaticEvidence(
+      { ...request, selectedMetadata: { ...request.selectedMetadata, revision: 4 } },
+      cover,
+    ),
+    false,
+  );
+  assert.equal(matching.automaticEvidence(request, { ...cover, kind: 'metadata' }), false);
+});
+
+test('saved metadata artwork anchor rejects current verified hash/serial/system conflicts and duplicate covers', async () => {
+  const { createLibretroProvider } = await import('../src/libretro-matching.js');
+  const make = (paths: string[]) =>
+    createLibretroProvider(
+      async (url) =>
+        new Response(
+          String(url).includes('/git/trees/')
+            ? JSON.stringify({
+                sha: 'a'.repeat(40),
+                truncated: false,
+                tree: paths.map((path) => ({ path, type: 'blob', size: 1000 })),
+              })
+            : 'clrmamepro ( name "Empty" )',
+        ),
+    );
+  const selectedMetadata = {
+    id: 'saved-one',
+    revision: 1,
+    title: 'Original Game (USA)',
+    systemId,
+    metadata: { systemId, md5, hashSize: '16', serials: '["T-12345N"]' },
+  };
+  const request = { ...input, online: true, selectedMetadata };
+  const valid = await make(['Named_Boxarts/Original Game (USA).png']).search(request);
+  assert.equal(
+    matching.automaticEvidence(request, required(valid.find((row) => row.kind === 'artwork'))),
+    true,
+  );
+  for (const changed of [
+    { ...request, md5: '3'.repeat(32), size: 16 },
+    {
+      ...request,
+      facts: facts({
+        identifiers: [{ type: 'serial', value: 'T-54321N', systemId, verified: true }],
+      }),
+    },
+    { ...request, systemId: 'com.provenance.naomi' },
+  ]) {
+    assert.equal(
+      matching.automaticEvidence(changed, required(valid.find((row) => row.kind === 'artwork'))),
+      false,
+    );
+  }
+  const duplicates = await make([
+    'Named_Boxarts/Original Game (USA).png',
+    'Named_Boxarts/Original-Game (USA).png',
+  ]).search(request);
+  assert.ok(
+    duplicates
+      .filter((row) => row.kind === 'artwork')
+      .every((row) => !matching.automaticEvidence(request, row)),
+  );
+});
+
+test('explicit trailing revision aliases reconcile identical verified bytes without merging different revisions', () => {
+  const request = { ...input, name: 'renamed.j64', size: 16, crc32: '12345678' };
+  const records: matching.DatRecord[] = [
+    {
+      title: 'Original Flight (World) (Rev A)',
+      name: 'Original Flight (World) (Rev A).j64',
+      size: 16,
+      crc32: '12345678',
+      systemId,
+    },
+    {
+      title: 'Original Flight Rev A',
+      name: 'Original Flight Rev A (1993)(Original Studio).jag',
+      size: 16,
+      crc32: '12345678',
+      systemId,
+    },
+    {
+      title: 'Original Flight Rev B',
+      name: 'Original Flight Rev B.jag',
+      size: 32,
+      crc32: '87654321',
+      systemId,
+    },
+  ];
+  const rows = matching.matchLibretro(request, records);
+  assert.equal(rows.filter((row) => matching.automaticEvidence(request, row)).length, 1);
+  assert.equal(JSON.parse(rows[0]?.metadata.matchProvenance ?? '[]').length, 2);
+  const wrongRevision = matching.matchLibretro(
+    { ...request, name: 'Original Flight Rev A.jag', size: undefined, crc32: undefined },
+    records,
+  );
+  assert.ok(wrongRevision.every((row) => !row.title.endsWith('Rev B')));
+  const proto = {
+    ...records[1],
+    title: 'Original Flight Rev A (Proto)',
+    name: 'Original Flight Rev A (Proto).jag',
+  } as matching.DatRecord;
+  assert.equal(
+    matching.matchLibretro(request, [records[0] as matching.DatRecord, proto]).length,
+    2,
+  );
+});
+
+test('saved catalog ROM filenames are exact artwork aliases without stripping release or alternate tags', async () => {
+  const { createLibretroProvider } = await import('../src/libretro-matching.js');
+  const request = {
+    ...input,
+    name: 'origset.zip',
+    online: true,
+    selectedMetadata: {
+      id: 'saved-one',
+      revision: 2,
+      title: 'Original Flight',
+      systemId,
+      metadata: { romName: 'Original Flight (1994)(Original Studio)[a].j64' },
+    },
+  };
+  const provider = createLibretroProvider(
+    async (url) =>
+      new Response(
+        String(url).includes('/git/trees/')
+          ? JSON.stringify({
+              sha: 'a'.repeat(40),
+              truncated: false,
+              tree: [
+                {
+                  path: 'Named_Boxarts/Original Flight (1994)(Original Studio)[a].png',
+                  type: 'blob',
+                  size: 1000,
+                },
+                {
+                  path: 'Named_Boxarts/Original Flight (1994)(Original Studio)[a2].png',
+                  type: 'blob',
+                  size: 1000,
+                },
+              ],
+            })
+          : 'clrmamepro ( name "Empty" )',
+      ),
+  );
+  const rows = await provider.search(request);
+  const eligible = rows.filter((row) => matching.automaticEvidence(request, row));
+  assert.equal(eligible.length, 1);
+  assert.equal(eligible[0]?.title, 'Original Flight (1994)(Original Studio)[a]');
+  assert.equal(eligible[0]?.metadata.matchEvidence, 'saved-selection');
+});
+
+test('only matching front aliases with identical public Git blob SHA and size collapse to one eligible asset', async () => {
+  const { createLibretroProvider } = await import('../src/libretro-matching.js');
+  const request = {
+    ...input,
+    name: 'origset.zip',
+    online: true,
+    selectedMetadata: {
+      id: 'saved-one',
+      revision: 2,
+      title: 'Original Flight',
+      systemId,
+      metadata: { romName: 'Original Flight (1994)(Original Studio).j64' },
+    },
+  };
+  async function search(secondSha: string | undefined, secondSize = 1000) {
+    return createLibretroProvider(
+      async (url) =>
+        new Response(
+          String(url).includes('/git/trees/')
+            ? JSON.stringify({
+                sha: 'a'.repeat(40),
+                truncated: false,
+                tree: [
+                  {
+                    path: 'Named_Boxarts/Original Flight.png',
+                    type: 'blob',
+                    size: 1000,
+                    sha: 'b'.repeat(40),
+                  },
+                  {
+                    path: 'Named_Boxarts/Original Flight (1994)(Original Studio).png',
+                    type: 'blob',
+                    size: secondSize,
+                    ...(secondSha ? { sha: secondSha } : {}),
+                  },
+                ],
+              })
+            : 'clrmamepro ( name "Empty" )',
+        ),
+    ).search(request);
+  }
+  const identical = await search('b'.repeat(40));
+  assert.equal(identical.filter((row) => matching.automaticEvidence(request, row)).length, 1);
+  assert.ok(identical.every((row) => row.metadata.artworkBlobSha1 === 'b'.repeat(40)));
+  for (const rows of [
+    await search('c'.repeat(40)),
+    await search(undefined),
+    await search('b'.repeat(40), 1001),
+  ])
+    assert.ok(rows.every((row) => !matching.automaticEvidence(request, row)));
+});
+
+test('explicit unparenthesized v-number is the same revision as a parenthesized v-number', () => {
+  const request = { ...input, name: 'renamed.j64', size: 16, crc32: '12345678' };
+  const records: matching.DatRecord[] = [
+    {
+      title: 'Original Flight (World) (v1.04)',
+      name: 'Original Flight (World) (v1.04).j64',
+      size: 16,
+      crc32: '12345678',
+      systemId,
+    },
+    {
+      title: 'Original Flight v1.04',
+      name: 'Original Flight v1.04 (1994)(Original Studio).j64',
+      size: 16,
+      crc32: '12345678',
+      systemId,
+    },
+  ];
+  assert.equal(matching.matchLibretro(request, records).length, 1);
+  const different = {
+    ...records[1],
+    title: 'Original Flight v1.05',
+    name: 'Original Flight v1.05.j64',
+  } as matching.DatRecord;
+  assert.equal(
+    matching.matchLibretro(request, [records[0] as matching.DatRecord, different]).length,
+    2,
+  );
+});
+
+test('verified serial reconciles the same complete alternate-primary-title set across order and subtitle separators', () => {
+  const board = 'com.provenance.naomi';
+  const request = {
+    ...input,
+    systemId: board,
+    facts: facts({
+      identifiers: [{ type: 'serial', value: 'GDS-9999', systemId: null, verified: true }],
+    }),
+  };
+  const left = {
+    ...candidate({ systemId: board, serials: '["GDS-9999"]' }),
+    title:
+      'Harbor Tennis - Professional Tennis ~ Power Rally - Professional Tennis (World) (En,Ja)',
+  };
+  const right = {
+    ...candidate({ systemId: board, serials: '["gds-9999"]' }),
+    id: 'second',
+    title: 'Power Rally / Harbor Tennis',
+  };
+  const rows = matching.reconcileCandidates(request, [left, right]);
+  assert.equal(rows.length, 1);
+  assert.equal(JSON.parse(rows[0]?.metadata.matchProvenance ?? '[]').length, 2);
+  assert.equal(matching.automaticEvidence(request, required(rows[0])), true);
+  assert.equal(
+    matching.reconcileCandidates({ ...request, facts: facts() }, [left, right]).length,
+    2,
+  );
+  for (const other of [
+    { ...right, title: 'Power Rally / Another Original Game' },
+    { ...right, title: 'Power Rally' },
+    { ...right, title: 'Power Rally / Harbor Tennis (Japan)' },
+    { ...right, title: 'Power Rally / Harbor Tennis (Rev B)' },
+    { ...right, metadata: { systemId: board, serials: '["GDS-9998"]' } },
+  ])
+    assert.equal(matching.reconcileCandidates(request, [left, other]).length, 2);
+});
+
+test('one overlapping alternate title never merges two otherwise different compilation title sets', () => {
+  const left = { ...candidate(), title: 'Harbor Tennis / Power Rally' };
+  const right = { ...candidate(), id: 'second', title: 'Power Rally / Another Original Game' };
+  assert.equal(matching.reconcileCandidates(input, [left, right]).length, 2);
+  assert.equal(
+    matching.reconcileCandidates(input, [left, { ...right, title: 'Power Rally' }]).length,
+    2,
+  );
+});

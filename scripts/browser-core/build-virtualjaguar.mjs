@@ -1,22 +1,22 @@
-/** Build the pinned BIOS-free cartridge profile from external checkouts. SDK 3.1.46 required. */
+/** Build the pinned firmware-free cartridge/CD HLE profile. SDK 3.1.46 required. */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  chmodSync,
+  constants,
   copyFileSync,
   existsSync,
-  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
   rmSync,
+  statfsSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { snapshotSource } from './source.mjs';
+import { snapshotJaguarBuildSource } from './jaguar-source.mjs';
 import { makeVirtualJaguarBiosFree, virtualJaguarPin } from './virtualjaguar-bios-free.mjs';
 
 const frontendPin = '4d4bfc0fbaacca30d433e5c11b0b2b5242141b66';
@@ -75,31 +75,31 @@ for (const [path, pin] of [
 if (!/^emcc .* 3\.1\.46\b/m.test(run('emcc', ['--version'], frontend, true)))
   throw new Error('Activate SDK 3.1.46');
 const build = mkdtempSync(join(tmpdir(), 'ecs-jaguar-profile-'));
+let complete = false;
 try {
+  const disk = statfsSync(build, { bigint: true });
+  if (disk.bavail * disk.bsize < 1024n * 1024n * 1024n)
+    throw new Error('At least 1 GiB free space is required for the bounded Jaguar build');
   const f = join(build, 'frontend'),
     c = join(build, 'virtualjaguar');
-  snapshotSource(frontend, f, frontendPin);
-  mkdirSync(c);
-  // Copy only tracked build inputs; no ROM fixtures, operator ignored data, Git objects or artifacts.
-  const files = run('git', ['ls-files', '-z'], core, true).split('\0').filter(Boolean);
-  for (const file of files) {
-    if (
+  snapshotJaguarBuildSource(frontend, f, frontendPin);
+  snapshotJaguarBuildSource(
+    core,
+    c,
+    virtualJaguarPin,
+    (file) =>
       /^(?:test|site|app|dist|docker|\.github|\.agents|\.claude)\//.test(file) ||
-      /\.(?:j64|jag|rom|abs|cof|bin|prg|cue|cdi|chd|nes|iso)$/i.test(file)
-    )
-      continue;
-    const source = join(core, file),
-      destination = join(c, file);
-    if (!existsSync(source) || !lstatSync(source).isFile()) continue;
-    mkdirSync(dirname(destination), { recursive: true });
-    copyFileSync(source, destination);
-    chmodSync(destination, lstatSync(source).mode & 0o777);
-  }
+      /\.(?:j64|jag|rom|abs|cof|bin|prg|cue|cdi|chd|nes|iso)$/i.test(file),
+  );
   makeVirtualJaguarBiosFree(c, core);
   // Preserve the measured patched build identity in source archives without Git metadata.
   writeFileSync(join(c, 'scripts/build-id.sh'), "#!/bin/sh\nprintf 'ffea789-dirty\\n'\n");
   run('emmake', ['make', '-j2', 'platform=emscripten'], c);
-  copyFileSync(join(c, 'virtualjaguar_libretro_emscripten.bc'), join(f, 'libretro_emscripten.bc'));
+  copyFileSync(
+    join(c, 'virtualjaguar_libretro_emscripten.bc'),
+    join(f, 'libretro_emscripten.bc'),
+    constants.COPYFILE_FICLONE,
+  );
   run('emmake', ['make', '-j2', '-f', 'Makefile.emscripten', ...flags], f);
   mkdirSync(output);
   const artifact = (source, file) => {
@@ -109,13 +109,13 @@ try {
   };
   const manifest = {
     id: 'org.libretro.virtualjaguar',
-    name: 'Virtual Jaguar (BIOS-free cartridges)',
+    name: 'Virtual Jaguar 3.10.0 (cartridge and CD HLE)',
     kind: 'player',
-    version: '1.0.0',
+    version: '1.1.0',
     engine: 'ecs.plugin/1',
     apps: ['org.provenance-emu.provenance'],
     player: {
-      systems: ['com.provenance.jaguar'],
+      systems: ['com.provenance.jaguar', 'com.provenance.jaguarcd'],
       module: 'core.wasm',
       web: {
         profileVersion: 1,
@@ -123,9 +123,9 @@ try {
         filesystem: 'memfs',
         threaded: false,
         saveCompletion: 'none',
-        contentExtensions: ['j64', 'jag', 'rom', 'abs', 'cof', 'bin', 'prg'],
-        maxContentBytes: 67108864,
-        buildVersion: 'RetroArch 4d4bfc0f / Virtual Jaguar ffea7893 BIOS-free / emcc 3.1.46',
+        contentExtensions: ['j64', 'jag', 'rom', 'abs', 'cof', 'bin', 'prg', 'cdi', 'chd'],
+        maxContentBytes: 536870912,
+        buildVersion: 'RetroArch 4d4bfc0f / Virtual Jaguar 3.10.0 ffea7893 HLE / emcc 3.1.46',
         loader: artifact('virtualjaguar_libretro.js', 'loader.js'),
         wasm: artifact('virtualjaguar_libretro.wasm', 'core.wasm'),
         assets: [],
@@ -135,13 +135,15 @@ try {
   writeFileSync(join(output, 'plugin.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   writeFileSync(
     join(build, 'ECS-BUILD.json'),
-    `${JSON.stringify({ frontendPin, corePin: virtualJaguarPin, sdk: '3.1.46', sdkCommit: '19607820c447a13fd8d0b7680c56148427d6e1b8', frontendFlags: flags, coreFlags: ['platform=emscripten'], limits: 'Cartridge/ABS HLE only; no encrypted/GPU-only boot, CD, BIOS, synchronized saves, or archive extraction.', licenses: ['RetroArch GPL-3.0-or-later', 'Virtual Jaguar GPL-3.0; retain all dependency notices'], sanitizerSha256: digest(readFileSync(new URL('./virtualjaguar-bios-free.mjs', import.meta.url))) }, null, 2)}\n`,
+    `${JSON.stringify({ frontendPin, corePin: virtualJaguarPin, coreVersion: '3.10.0', sdk: '3.1.46', sdkCommit: '19607820c447a13fd8d0b7680c56148427d6e1b8', frontendFlags: flags, coreFlags: ['platform=emscripten'], limits: 'Cartridge/ABS and CD data-disc HLE; self-contained CDI/CHD up to512MiB. CHD requires upstream CHSE session metadata. No encrypted/GPU-only boot, real BIOS, audio-only disc boot, CUE track staging, synchronized saves, or archive extraction.', licenses: ['RetroArch GPL-3.0-or-later', 'Virtual Jaguar GPL-3.0; retain all dependency notices'], sanitizerSha256: digest(readFileSync(new URL('./virtualjaguar-bios-free.mjs', import.meta.url))) }, null, 2)}\n`,
   );
   mkdirSync(join(build, 'ecs-recipes'));
   for (const file of [
     'build-virtualjaguar.mjs',
     'virtualjaguar-bios-free.mjs',
-    'source.mjs',
+    'jaguar-source.mjs',
+    'rebuild-jaguar-source.mjs',
+    'jaguar-hle.test.mjs',
     'generate-smoke-program.mjs',
   ])
     copyFileSync(fileURLToPath(new URL(file, import.meta.url)), join(build, 'ecs-recipes', file));
@@ -168,7 +170,9 @@ try {
     ],
     build,
   );
+  complete = true;
   console.log(JSON.stringify({ output, source: `${output}.source.tar.gz`, manifest }, null, 2));
 } finally {
-  rmSync(build, { recursive: true, force: true });
+  if (complete) rmSync(build, { recursive: true, force: true });
+  else console.error(`Incomplete build preserved for inspection/retry: ${build}`);
 }

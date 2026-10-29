@@ -164,6 +164,7 @@ export function registerSourceMatching(
     const key = JSON.stringify({
       sourceId,
       ownerId: actor.userId,
+      selectionRevision: context.catalog.sourceMatches(sourceId).revision,
       ...options,
       ...(options.providerIds ? { providerIds: [...options.providerIds].sort() } : {}),
     });
@@ -201,12 +202,26 @@ export function registerSourceMatching(
       } catch {
         /* Offline lookups can show filename hints, but cannot be saved as current. */
       }
+      const selectedState = context.catalog.sourceMatches(source.id);
+      const selected = selectedState.matches.find((match) => match.kind === 'metadata');
+      const selectedSystem = selected?.metadata.systemId ?? source.systemId;
       const input: MatchingInput = {
         name: source.displayName,
         systemId: source.systemId,
         online: options.online,
         ...(options.allowExactNames ? { allowExactNames: true } : {}),
         companions: [],
+        ...(selected && selectedSystem && (!source.systemId || selectedSystem === source.systemId)
+          ? {
+              selectedMetadata: {
+                id: selected.id,
+                revision: selectedState.revision,
+                title: selected.title,
+                systemId: selectedSystem,
+                metadata: { ...selected.metadata },
+              },
+            }
+          : {}),
         size: source.size,
       };
       const companions = context.catalog.matchingCompanions(
@@ -364,6 +379,24 @@ export function registerSourceMatching(
         ),
       ],
       async validate(actor: Actor) {
+        if (
+          candidate.kind === 'artwork' &&
+          candidate.metadata.matchEvidence === 'saved-selection'
+        ) {
+          const current = context.catalog.sourceMatches(sourceId);
+          if (
+            !job.input.selectedMetadata ||
+            current.revision !== job.input.selectedMetadata.revision ||
+            !current.matches.some(
+              (match) => match.kind === 'metadata' && match.id === job.input.selectedMetadata?.id,
+            )
+          )
+            throw new DomainError(
+              'matching-selection-changed',
+              409,
+              'Saved game details changed. Find artwork again before saving.',
+            );
+        }
         for (const id of [sourceId, ...(candidate.fileId ? [candidate.fileId] : [])]) {
           if (!job.stamps.has(id) || job.stamps.get(id) !== (await stamp(actor, id)))
             throw new DomainError(
@@ -681,7 +714,7 @@ export function registerSourceMatching(
             warning = organization.warning;
             break;
           }
-          if (organization?.status === 'moved')
+          if (organization?.status === 'moved' || candidate.kind === 'metadata')
             result = await match(actor, sourceId, { ...options, checksum }, signal);
         }
       }
@@ -689,23 +722,50 @@ export function registerSourceMatching(
         (candidate) =>
           !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
       );
-      return {
-        status:
-          remaining.some(
-            (candidate) =>
-              candidate.kind !== 'artwork' ||
-              (candidate.metadata.artworkRole ?? 'front') === 'front',
-          ) ||
-          result.problems.length ||
-          warning
-            ? 'review'
-            : saved.matches.length
-              ? 'saved'
-              : 'unmatched',
-        saved: count,
-        suggestions: remaining.length,
-        error: warning ?? (result.problems.length ? 'Some matching providers failed.' : null),
-      };
+      const primary = remaining.filter(
+        (candidate) =>
+          candidate.kind !== 'artwork' || (candidate.metadata.artworkRole ?? 'front') === 'front',
+      );
+      const status =
+        primary.length || result.problems.length || warning
+          ? 'review'
+          : saved.matches.length
+            ? 'saved'
+            : 'unmatched';
+      const input = jobs.get(result.requestId)?.input;
+      let reason =
+        warning ??
+        (result.problems.length ? 'Some matching providers failed; retry this game.' : null);
+      if (!reason && status === 'review') {
+        const metadata = primary.filter((candidate) => candidate.kind === 'metadata');
+        reason =
+          metadata.length > 1
+            ? 'More than one catalog entry matches; review the game edition.'
+            : metadata.length
+              ? 'Suggested game details need a verified ID or an exact edition match.'
+              : primary.some((candidate) => candidate.kind === 'artwork')
+                ? 'Front-cover suggestions need a clearer game or edition match.'
+                : 'A suggested match needs review.';
+      }
+      if (!reason && status === 'unmatched') {
+        reason = input?.facts?.hashes.some((hash) => hash.verified)
+          ? 'No catalog entry matches the verified ROM bytes.'
+          : input?.facts?.identifiers.some((id) => id.verified)
+            ? 'No catalog entry matches the disc ID.'
+            : (source.groupMembers?.length ?? 1) > 1
+              ? 'This multi-file disc has no supported identity yet.'
+              : 'No catalog match was found; this file has no supported game ID yet.';
+      }
+      if (
+        !reason &&
+        status === 'saved' &&
+        saved.matches.some((match) => match.kind === 'metadata') &&
+        !saved.matches.some(
+          (match) => match.kind === 'artwork' && (match.artworkRole ?? 'front') === 'front',
+        )
+      )
+        reason = 'Game details are saved; no matching front cover was found.';
+      return { status, saved: count, suggestions: remaining.length, error: reason };
     },
   };
 }

@@ -905,6 +905,172 @@ button.secondary {
   margin: 0.5rem 0 1rem;
   color: var(--ink-dim);
 }
+/* Matching tools use one compact, predictable layout across jobs and review. */
+.matching-page {
+  display: grid;
+  gap: var(--space-4);
+}
+.matching-page > p,
+.matching-page > details,
+.matching-page > label,
+.matching-page > .actions,
+.matching-page > section {
+  margin-block: 0;
+}
+.matching-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+.matching-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.matching-quiet-action {
+  width: fit-content;
+  background: transparent;
+}
+.matching-fields {
+  display: grid;
+  gap: var(--space-3);
+  margin-block: var(--space-3);
+}
+.matching-field {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 34rem;
+  color: var(--ink-dim);
+}
+.matching-field select {
+  width: 100%;
+}
+.matching-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  color: var(--ink);
+  cursor: pointer;
+}
+.matching-check input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+.matching-disclosure {
+  width: fit-content;
+  max-width: 100%;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-muted);
+}
+.matching-disclosure:has(> .matching-disclosure-content.matching-fields) {
+  width: 100%;
+}
+.matching-disclosure-content .matching-actions {
+  margin-top: var(--space-2);
+}
+.matching-secondary-actions > summary {
+  padding-block: var(--space-1);
+}
+.matching-disclosure > summary {
+  width: fit-content;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  color: var(--ink-dim);
+}
+.matching-disclosure[open] > summary {
+  color: var(--ink);
+}
+.matching-disclosure-content {
+  padding: 0 var(--space-4) var(--space-3);
+}
+.matching-disclosure-content > :first-child {
+  margin-top: 0;
+}
+.matching-disclosure-content > :last-child {
+  margin-bottom: 0;
+}
+.matching-result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.matching-result-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-bottom: var(--border-width) solid var(--line);
+  overflow-wrap: anywhere;
+}
+.matching-result-list > li:last-child {
+  border-bottom: 0;
+}
+.matching-result-list > li > div {
+  min-width: 0;
+}
+.matching-result-list p {
+  margin: var(--space-1) 0 0;
+}
+.matching-progress {
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+.matching-progress-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+}
+.matching-progress-heading span {
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+.matching-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  color: var(--ink-dim);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+.matching-stat-row > span {
+  white-space: nowrap;
+}
+.matching-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.matching-card {
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-muted);
+  overflow-wrap: anywhere;
+}
+.matching-card h3 {
+  margin-top: 0;
+}
+.matching-tabs {
+  margin-block: var(--space-3);
+}
+.matching-tabs button[aria-pressed="true"] {
+  background: var(--color-selected);
+  border-color: var(--color-selected-border);
+  color: var(--color-selected-text);
+}
+
 .library-home > p,
 .library-home header p {
   max-width: var(--content-measure);

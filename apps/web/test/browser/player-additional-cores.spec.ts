@@ -15,6 +15,7 @@ import {
 import {
   jaguarSmokeAbs,
   jaguarSmokeCartridge,
+  jaguarSmokeCdi,
 } from '../../../../scripts/browser-core/generate-smoke-program.mjs';
 import { openServer } from '../../../server/dist/src/index.js';
 
@@ -73,7 +74,12 @@ const jaguarPlugin = process.env.ECS_ACCEPTANCE_JAGUAR_PLUGIN;
 const parallelPlugin = process.env.ECS_ACCEPTANCE_PARALLEL_DC_PLUGIN;
 const psxPlugin = process.env.ECS_ACCEPTANCE_PSX_PLUGIN;
 if (jaguarPlugin || parallelPlugin || psxPlugin)
-  test.use({ headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1' });
+  test.use({
+    headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1',
+    ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
+      ? { launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader'] } }
+      : {}),
+  });
 const cases = [
   {
     title: 'PlayStation HLE',
@@ -99,6 +105,18 @@ const cases = [
     counterAddress: 0x6000,
     littleEndian: false,
   })),
+  {
+    title: 'BIOS-free Jaguar CD',
+    plugin: jaguarPlugin,
+    profile: 'org.libretro.virtualjaguar',
+    system: 'com.provenance.jaguarcd',
+    program: jaguarSmokeCdi(),
+    filename: 'original.cdi',
+    needle: jaguarSmokeAbs().subarray(0x24),
+    guestAddress: 0x4000,
+    counterAddress: 0x6000,
+    littleEndian: false,
+  },
   ...(['dreamcast', 'naomi', 'naomi2'] as const).map((system) => ({
     title: `BIOS-free ${system}`,
     plugin: parallelPlugin,
@@ -126,7 +144,29 @@ for (const entry of cases) {
     const errors: string[] = [];
     const messages: string[] = [];
     page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
-    page.on('console', (message) => messages.push(message.text()));
+    page.on('console', (message) => {
+      messages.push(message.text());
+      if (
+        process.env.ECS_ACCEPTANCE_RUNTIME_DIAGNOSTICS === '1' &&
+        message.text().startsWith('ECS acceptance runtime error')
+      )
+        console.error(message.text());
+    });
+    if (process.env.ECS_ACCEPTANCE_RUNTIME_DIAGNOSTICS === '1')
+      await page.route('**/play/sandbox.html', async (route) => {
+        const response = await route.fetch();
+        const body = await response.text();
+        const before = 'catch { if (!closed)';
+        if (!body.includes(before))
+          throw new Error('Acceptance diagnostic hook needs current sandbox');
+        await route.fulfill({
+          response,
+          body: body.replace(
+            before,
+            'catch (error) { console.error("ECS acceptance runtime error", message.op, error?.stack ?? String(error)); if (!closed)',
+          ),
+        });
+      });
     let server: Awaited<ReturnType<typeof openServer>> | undefined;
     try {
       const registry = join(directory, 'players');
