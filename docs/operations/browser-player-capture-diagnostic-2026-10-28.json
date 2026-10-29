@@ -1,0 +1,319 @@
+{
+  "date": "2026-10-28",
+  "kind": "throwaway capture-method diagnostic; no production change",
+  "method": "sandbox canvas preserveDrawingBuffer true plus capture after core postMainLoop callback",
+  "runnerSha256": "48650d60d54b2eb4716dae4967653bbd3cb2e5c050623fae450391189e1d496a",
+  "cases": [
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "direct",
+      "beforeInput": {
+        "bytes": 27140,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          60,
+          190,
+          255,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "afterInput": {
+        "bytes": 27908,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          93,
+          150,
+          255,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "restoredBattery": [
+        1,
+        167
+      ]
+    },
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "direct-shader",
+      "beforeInput": {
+        "bytes": 42582,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          42,
+          183,
+          209,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "afterInput": {
+        "bytes": 46331,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          68,
+          141,
+          209,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "restoredBattery": [
+        1,
+        167
+      ]
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "direct",
+      "beforeInput": {
+        "bytes": 24395,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          60,
+          190,
+          255,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "afterInput": {
+        "bytes": 25042,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          93,
+          150,
+          255,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "restoredBattery": [
+        1,
+        167
+      ]
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "direct-shader",
+      "beforeInput": {
+        "bytes": 38186,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          42,
+          183,
+          209,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "afterInput": {
+        "bytes": 41719,
+        "width": 1264,
+        "height": 948,
+        "center": [
+          68,
+          141,
+          209,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "restoredBattery": [
+        1,
+        167
+      ]
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "direct",
+      "beforeInput": {
+        "bytes": 19654,
+        "width": 1122,
+        "height": 843,
+        "center": [
+          60,
+          190,
+          255,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "afterInput": {
+        "bytes": 20360,
+        "width": 1122,
+        "height": 843,
+        "center": [
+          93,
+          150,
+          255,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "restoredBattery": [
+        1,
+        167
+      ]
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "direct-shader",
+      "beforeInput": {
+        "bytes": 32767,
+        "width": 1122,
+        "height": 843,
+        "center": [
+          40,
+          142,
+          241,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "afterInput": {
+        "bytes": 35816,
+        "width": 1122,
+        "height": 843,
+        "center": [
+          64,
+          110,
+          241,
+          255
+        ],
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "restoredBattery": [
+        1,
+        167
+      ]
+    }
+  ],
+  "limitations": [
+    "Desktop automation only; no physical iPhone or installed Safari test",
+    "Original generated NES program and one pinned FCEUmm pair",
+    "This validates a replacement presentation-capture path, not the cause of native screenshot-command timeouts"
+  ]
+}

@@ -1,0 +1,1107 @@
+{
+  "date": "2026-10-28",
+  "status": "comparison complete; direct screenshot prototype unresolved",
+  "productionChanges": false,
+  "nostalgist": {
+    "version": "0.23.0",
+    "sourceCommit": "4534b28e2f3f59e6760b6f133575ee452b3fb266",
+    "license": "MIT"
+  },
+  "inputs": {
+    "nostalgistPackage": {
+      "sha256": "529099b3993111b6f6f80e645f5321b5fd7c38734e54806ab8830b3e602e23ca",
+      "sizeBytes": 82203
+    },
+    "nostalgistModule": {
+      "sha256": "745a0fbef6b65213ba88b133251f891365507cda42caf56c180f169c0d28b665",
+      "sizeBytes": 106285
+    },
+    "coreLoader": {
+      "sha256": "4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8",
+      "sizeBytes": 270617
+    },
+    "coreWasm": {
+      "sha256": "c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205",
+      "sizeBytes": 4209159
+    },
+    "shader": {
+      "sha256": "ed27bab460c53d98fcf727333210de0d746c957c86463028d8c0e4c15e29f3ab",
+      "sizeBytes": 8264
+    }
+  },
+  "environment": {
+    "host": "macOS arm64",
+    "headless": false,
+    "experimentalBrowserFlags": false,
+    "physicalIPhoneTested": false,
+    "installedSafariTested": false,
+    "iphoneProfileIsDesktopWebKit": true
+  },
+  "runtimeComparison": [
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 650,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "c9775a6defea0c453f1a6bd829eb9a4fea05bb14e7c3cb560e92dbc2bb70a313",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 650,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "9fe248437408b049aaa71b957458c0576ccfaf161c973ec35fd336a0da044a94",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "nostalgist",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 655,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "c9775a6defea0c453f1a6bd829eb9a4fea05bb14e7c3cb560e92dbc2bb70a313",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 660,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    },
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "nostalgist-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 657,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "e2fe276cca8cac8b1df29aa274e636ae07b71370bd346930d77ea7c821d43637",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 653,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 653,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "53d5595436829ef34284cd6733db64c7464031eb752fd12cf977e1c4d720ecef",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 653,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "8254ae1d0ef716645f436cb5b84227e23d14d01d0480630b0e3700ccdd28120a",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "nostalgist",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 661,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "53d5595436829ef34284cd6733db64c7464031eb752fd12cf977e1c4d720ecef",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 665,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "nostalgist-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 649,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "8ecad31cbfee0f6989db51cd0dc705577039ae178abe1254bbbbac9fa8765274",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 657,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 653,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "6252279514e076008272b22c9183bf9ca80b8b0c3790b6e881d5edc6c046c75d",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 657,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "fe3b62b495bfcb8afd3202ce27c40db100b17353997cff28cde62099a74d1bf9",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "nostalgist",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 660,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "6252279514e076008272b22c9183bf9ca80b8b0c3790b6e881d5edc6c046c75d",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 662,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "nostalgist-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 649,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "2c63b673a134fcd1bbea5deb8b149b71bdb7a8a048d18c3c725125e7657a5b85",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 657,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    },
+    {
+      "browser": "firefox",
+      "version": "146.0.1",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 657,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "cfef404b055eef76a5cb5036f6e941ac3d0e883f589edca34e5069f6e9cb6efa",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "firefox",
+      "version": "146.0.1",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 653,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "e7ec602c1f3f841b6db9958752650b697b9b952114743d781460b64d28b60a34",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      }
+    },
+    {
+      "browser": "firefox",
+      "version": "146.0.1",
+      "mode": "nostalgist",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 659,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "2fd74fe7c3aed5ed27bf20f5312502dbe6152446ca276799d9e5bec27db7548d",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 653,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    },
+    {
+      "browser": "firefox",
+      "version": "146.0.1",
+      "mode": "nostalgist-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 662,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "3a743610c4a6e296afb6ba3f036fd6f2428e803966e2435bc66482539355f881",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "nostalgistState": {
+        "bytes": 660,
+        "thumbnailBytes": 754,
+        "thumbnailType": "image/png"
+      },
+      "nostalgistScreenshot": {
+        "bytes": 754,
+        "type": "image/png"
+      }
+    }
+  ],
+  "nativeCaptureFollowup": [
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 653,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "dce7d28695e54beb76cfc71dd3842f87ddb97f056d3f80726292f9298a0c877c",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "error": "deadline"
+      },
+      "screenshotPassed": false
+    },
+    {
+      "browser": "chromium",
+      "version": "145.0.7632.6",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 653,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "2532036f95fdb46090a514ffe5cb58b1143e8b0b8a479010cdc777bac8c71cf3",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "error": "deadline"
+      },
+      "screenshotPassed": false
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 648,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "53d5595436829ef34284cd6733db64c7464031eb752fd12cf977e1c4d720ecef",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "bytes": 7607,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshotPassed": true
+    },
+    {
+      "browser": "webkit",
+      "version": "26.0",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 648,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "8254ae1d0ef716645f436cb5b84227e23d14d01d0480630b0e3700ccdd28120a",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "error": "deadline"
+      },
+      "screenshotPassed": false
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 657,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "6252279514e076008272b22c9183bf9ca80b8b0c3790b6e881d5edc6c046c75d",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "bytes": 6199,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshotPassed": true
+    },
+    {
+      "browser": "iphone-webkit",
+      "version": "26.0",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 648,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "fe3b62b495bfcb8afd3202ce27c40db100b17353997cff28cde62099a74d1bf9",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "error": "deadline"
+      },
+      "screenshotPassed": false
+    },
+    {
+      "browser": "firefox",
+      "version": "146.0.1",
+      "mode": "direct",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 650,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "frameHash": "cfef404b055eef76a5cb5036f6e941ac3d0e883f589edca34e5069f6e9cb6efa",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "error": "deadline"
+      },
+      "screenshotPassed": false
+    },
+    {
+      "browser": "firefox",
+      "version": "146.0.1",
+      "mode": "direct-shader",
+      "start": "running",
+      "battery": [
+        1,
+        167
+      ],
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "stateBytes": 657,
+      "resize": {
+        "ok": true,
+        "width": 512,
+        "height": 480
+      },
+      "shaderAccepted": true,
+      "frameHash": "e7ec602c1f3f841b6db9958752650b697b9b952114743d781460b64d28b60a34",
+      "isolation": {
+        "storageBlocked": true,
+        "parentBlocked": true,
+        "networkBlocked": true
+      },
+      "opaqueOriginVerified": true,
+      "thumbnail": {
+        "bytes": 754,
+        "signature": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10
+        ]
+      },
+      "screenshot": {
+        "error": "deadline"
+      },
+      "screenshotPassed": false
+    }
+  ],
+  "unchangedUIWithAuthenticatedServer": [
+    {
+      "browser": "chromium",
+      "mode": "direct",
+      "uiUnchanged": true,
+      "sandbox": "allow-scripts",
+      "initialBattery": [
+        1,
+        167
+      ],
+      "serverStateBytes": 665,
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "alerts": []
+    },
+    {
+      "browser": "chromium",
+      "mode": "nostalgist",
+      "uiUnchanged": true,
+      "sandbox": "allow-scripts",
+      "initialBattery": [
+        1,
+        167
+      ],
+      "serverStateBytes": 657,
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "alerts": []
+    },
+    {
+      "browser": "webkit",
+      "mode": "direct",
+      "uiUnchanged": true,
+      "sandbox": "allow-scripts",
+      "initialBattery": [
+        1,
+        167
+      ],
+      "serverStateBytes": 666,
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "alerts": []
+    },
+    {
+      "browser": "webkit",
+      "mode": "nostalgist",
+      "uiUnchanged": true,
+      "sandbox": "allow-scripts",
+      "initialBattery": [
+        1,
+        167
+      ],
+      "serverStateBytes": 644,
+      "changedBattery": [
+        2,
+        167
+      ],
+      "restoredBattery": [
+        1,
+        167
+      ],
+      "alerts": []
+    }
+  ],
+  "limitations": [
+    "One core and one original generated program only",
+    "No BIOS, audio-quality, gamepad/touch, peripheral, WebGPU/Slang, popout or AirPlay acceptance",
+    "Native screenshot: two PNG captures, six 12-second timeouts; capture sequences differ from wrapper tests",
+    "Preliminary mixed command/wrapper state sequence exceeded its short deadline; cause not fully isolated",
+    "Initial Chromium UI pointer-click saves stalled; keyboard activation passed in both engines",
+    "WebKit wake-lock/policy warnings were observed; these are not clean-console passes"
+  ],
+  "verification": {
+    "runtimeScenarios": 16,
+    "uiScenarios": 4,
+    "targetedNativeCaptureScenarios": 8,
+    "wrapperStateThumbnailAndScreenshotPasses": 8,
+    "nativeThumbnailPasses": 8,
+    "nativeScreenshotPasses": 2,
+    "nativeScreenshotTimeouts": 6
+  }
+}
