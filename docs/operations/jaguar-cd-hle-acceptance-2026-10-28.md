@@ -56,3 +56,9 @@ CUE/BIN parsing exists in the core, while browser track-bundle staging remains
 unavailable and CUE is not advertised. Audio-only discs, GPU-only cartridge boot,
 real BIOS boot, synchronized saves, and commercial-title compatibility are outside
 this acceptance.
+
+The package and source archive are published in
+[v0.1.6-jaguar-cd.1](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.6-jaguar-cd.1).
+The publicly downloaded package was hash-verified before catalog pinning and
+local installation. The installed profile is version 1.1.0 with both Jaguar
+systems advertised; existing enabled/default player settings were preserved.

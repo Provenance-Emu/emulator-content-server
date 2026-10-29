@@ -62,6 +62,64 @@ const selection = {
   metadata: {},
 };
 
+test('a volume device-number change preserves same-path choices and invalidates the old identification stamp', async () =>
+  fixture(async (f) => {
+    await writeFile(join(f.root, 'generated.nes'), 'generated');
+    const file = await inspected(f.root, 'generated.nes');
+    f.db.applyInspection({ ...f, online: true, files: [file] });
+    const source = f.db.listSources(f.rootId)[0];
+    assert.ok(source);
+    const saved = f.db.saveSourceMatch(source.id, 0, 'metadata', selection, null, f.actorId);
+    const identity = file.filesystemIdentity.split(':');
+    identity[0] = String(BigInt(identity[0] ?? '0') + 1n);
+    const remounted = { ...file, filesystemIdentity: identity.join(':') };
+    f.db.applyInspection({ ...f, online: true, files: [remounted] });
+    assert.equal(f.db.listSources(f.rootId)[0]?.id, source.id);
+    assert.deepEqual(f.db.sourceMatches(source.id), saved);
+    assert.equal(
+      f.db.sourceInspectionIdentity(source.id)?.filesystemIdentity,
+      remounted.filesystemIdentity,
+    );
+    const reopened = new CatalogDatabase(f.filename);
+    try {
+      assert.deepEqual(reopened.sourceMatches(source.id), saved);
+    } finally {
+      reopened.close();
+    }
+  }));
+
+for (const changed of ['inode', 'birth', 'size', 'mtime'] as const) {
+  test(`a device-number change with changed ${changed} still detaches replacement choices`, async () =>
+    fixture(async (f) => {
+      await writeFile(join(f.root, 'generated.nes'), 'generated');
+      const file = await inspected(f.root, 'generated.nes');
+      f.db.applyInspection({ ...f, online: true, files: [file] });
+      const source = f.db.listSources(f.rootId)[0];
+      assert.ok(source);
+      f.db.saveSourceMatch(source.id, 0, 'metadata', selection, null, f.actorId);
+      const identity = file.filesystemIdentity.split(':');
+      identity[0] = String(BigInt(identity[0] ?? '0') + 1n);
+      if (changed === 'inode') identity[1] = String(BigInt(identity[1] ?? '0') + 1n);
+      if (changed === 'birth') identity[2] = String(BigInt(identity[2] ?? '0') + 1n);
+      f.db.applyInspection({
+        ...f,
+        online: true,
+        files: [
+          {
+            ...file,
+            filesystemIdentity: identity.join(':'),
+            ...(changed === 'size' ? { size: file.size + 1 } : {}),
+            ...(changed === 'mtime' ? { mtimeMs: file.mtimeMs + 1 } : {}),
+          },
+        ],
+      });
+      const replacement = f.db.listSources(f.rootId)[0];
+      assert.ok(replacement);
+      assert.notEqual(replacement.id, source.id);
+      assert.deepEqual(f.db.sourceMatches(replacement.id).matches, []);
+    }));
+}
+
 test('a real rename keeps the source ID, saved selections and revision through reopen', async () =>
   fixture(async (f) => {
     await writeFile(join(f.root, 'before.nes'), 'generated');

@@ -1,5 +1,5 @@
 import { setTimeout as pause } from 'node:timers/promises';
-import type { CatalogDatabase, LibraryJobScope } from '@ecs/database';
+import type { CatalogDatabase, LibraryJobRecord, LibraryJobScope } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import type { FastifyInstance } from 'fastify';
 import { canSeeRoot } from './content.js';
@@ -44,6 +44,38 @@ export function registerLibraryJobs(
   let running: Promise<void> | null = null;
   let current: { id: string; abort: AbortController } | null = null;
   let closing = false;
+  let halted = false;
+  const interruption =
+    'Library work paused because server storage could not be written. Check free disk space and storage access, then resume remaining work.';
+  function halt(): void {
+    halted = true;
+    // Do not log provider errors, paths, or credentials from an arbitrary cause.
+    app.log.warn('Library worker paused after a storage or queue failure. Resume after recovery.');
+    for (const id of waiters.keys()) notify(id);
+  }
+  function visible(job: LibraryJobRecord): LibraryJobRecord {
+    // Even the interruption write can fail on a full disk. Keep that failure
+    // visible to every session until it can be persisted or the server restarts.
+    return halted && ['running', 'queued'].includes(job.state)
+      ? { ...job, state: 'interrupted', currentSourceId: null, error: interruption }
+      : job;
+  }
+  function requireWritableWorker(): void {
+    if (halted) throw new DomainError('library-storage-unavailable', 503, interruption);
+  }
+  function recoverQueue<T>(operation: () => T): T {
+    const recovering = halted;
+    try {
+      if (recovering) repository.recover();
+      const result = operation();
+      halted = false;
+      return result;
+    } catch (error) {
+      if (recovering && !(error instanceof DomainError))
+        throw new DomainError('library-storage-unavailable', 503, interruption);
+      throw error;
+    }
+  }
   const waiters = new Map<string, Set<() => void>>();
   function notify(id: string): void {
     for (const resolve of waiters.get(id) ?? []) resolve();
@@ -59,6 +91,7 @@ export function registerLibraryJobs(
   queues.set(context.catalog, {
     stop,
     async scan(root, actorId) {
+      requireWritableWorker();
       const result = repository.create(
         'scan',
         { rootId: root.id },
@@ -67,7 +100,7 @@ export function registerLibraryJobs(
       );
       wake();
       while (!closing) {
-        const job = repository.get(result.job.id);
+        const job = getJob(result.job.id);
         if (!job || ['completed', 'failed', 'cancelled', 'interrupted'].includes(job.state)) break;
         await new Promise<void>((resolve) => {
           const entries = waiters.get(result.job.id) ?? new Set();
@@ -85,11 +118,18 @@ export function registerLibraryJobs(
     },
   });
   function wake(): void {
-    if (closing || running) return;
-    running = work().finally(() => {
-      running = null;
-      if (!closing && repository.list(100).some((job) => job.state === 'queued')) wake();
-    });
+    if (closing || halted || running) return;
+    running = work()
+      .catch(() => halt())
+      .finally(() => {
+        running = null;
+        if (closing || halted) return;
+        try {
+          if (repository.list(100).some((job) => job.state === 'queued')) wake();
+        } catch {
+          halt();
+        }
+      });
   }
   async function work(): Promise<void> {
     while (!closing) {
@@ -157,6 +197,9 @@ export function registerLibraryJobs(
               }
             } catch (error) {
               if (abort.signal.aborted) throw error;
+              // A storage outage is queue-wide, not a failed ROM. Leave the
+              // current item pending and do not hammer the remaining library.
+              if (storageUnavailable(error)) throw error;
               if (error instanceof DomainError && error.code === 'root-busy') {
                 await pause(100, undefined, { signal: abort.signal });
                 continue;
@@ -176,23 +219,30 @@ export function registerLibraryJobs(
         }
         if (!closing && !abort.signal.aborted) repository.state(next.job.id, 'completed');
       } catch (error) {
-        if (closing)
-          repository.state(
-            next.job.id,
-            'interrupted',
-            'Server stopped during this job. Resume to continue pending work.',
-          );
-        else if (abort.signal.aborted) repository.state(next.job.id, 'cancelled');
-        else
-          repository.state(
-            next.job.id,
-            'failed',
-            error instanceof DomainError ? error.message : 'The shared job could not finish.',
-          );
+        if (storageUnavailable(error)) halt();
+        try {
+          if (halted) repository.state(next.job.id, 'interrupted', interruption);
+          else if (closing)
+            repository.state(
+              next.job.id,
+              'interrupted',
+              'Server stopped during this job. Resume to continue pending work.',
+            );
+          else if (abort.signal.aborted) repository.state(next.job.id, 'cancelled');
+          else
+            repository.state(
+              next.job.id,
+              'failed',
+              error instanceof DomainError ? error.message : 'The shared job could not finish.',
+            );
+        } catch {
+          halt();
+        }
       } finally {
         current = null;
         notify(next.job.id);
       }
+      if (halted) return;
     }
   }
   app.addHook('onReady', async () => wake());
@@ -232,11 +282,13 @@ export function registerLibraryJobs(
     }
     if (scope.libraryId && !context.catalog.getLibrary(scope.libraryId))
       throw new DomainError('not-found', 404, 'Library not found');
-    const result = repository.create(
-      body.kind as 'scan' | 'match',
-      scope,
-      matchBody(body.options ?? { checksum: true }),
-      actor.userId,
+    const result = recoverQueue(() =>
+      repository.create(
+        body.kind as 'scan' | 'match',
+        scope,
+        matchBody(body.options ?? { checksum: true }),
+        actor.userId,
+      ),
     );
     reply.header('cache-control', 'private, no-store');
     reply.code(result.reused ? 200 : 202);
@@ -250,7 +302,7 @@ export function registerLibraryJobs(
     const limit = pageLimit(query.limit);
     const jobs = repository.list(limit + 1, query.cursor);
     return {
-      jobs: jobs.slice(0, limit),
+      jobs: jobs.slice(0, limit).map(visible),
       nextCursor: jobs.length > limit ? (jobs[limit - 1]?.id ?? null) : null,
     };
   });
@@ -319,8 +371,9 @@ export function registerLibraryJobs(
     const job = getJob(id);
     if (['completed', 'cancelled', 'failed'].includes(job.state)) return { job };
     if (current?.id === id) current.abort.abort();
-    const cancelled = repository.state(id, 'cancelled');
+    const cancelled = recoverQueue(() => repository.state(id, 'cancelled'));
     if (current?.id !== id) notify(id);
+    wake();
     return { job: cancelled };
   });
   app.post('/api/v1/library-jobs/:jobId/resume', async (request, reply) => {
@@ -337,15 +390,29 @@ export function registerLibraryJobs(
     const body = request.body as { retry?: unknown } | null;
     if (body?.retry !== undefined && !['failed', 'unmatched'].includes(String(body.retry)))
       throw new DomainError('invalid-request', 400, 'Invalid retry status');
-    const job = repository.resume(id, body?.retry as 'failed' | 'unmatched' | undefined);
+    // No worker is active while halted. Persist any status we could not write
+    // during the outage before reclaiming work; failed recovery stays paused.
+    const job = recoverQueue(() =>
+      repository.resume(id, body?.retry as 'failed' | 'unmatched' | undefined),
+    );
     wake();
     return { job };
   });
   function getJob(id: string) {
     const job = repository.get(id);
     if (!job) throw new DomainError('not-found', 404, 'Shared job not found');
-    return job;
+    return visible(job);
   }
+}
+function storageUnavailable(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const { code, errcode } = error as { code?: unknown; errcode?: unknown };
+  // SQLite primary codes: READONLY, IOERR, FULL, CANTOPEN (including extensions).
+  return (
+    code === 'ENOSPC' ||
+    code === 'EDQUOT' ||
+    (typeof errcode === 'number' && [8, 10, 13, 14].includes(errcode & 0xff))
+  );
 }
 function pageLimit(value?: string): number {
   if (value === undefined) return 25;

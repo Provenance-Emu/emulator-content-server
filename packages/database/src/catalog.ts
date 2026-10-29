@@ -1138,7 +1138,8 @@ export class CatalogDatabase {
         if (
           prior?.filesystem_identity &&
           file.filesystemIdentity &&
-          prior.filesystem_identity !== file.filesystemIdentity
+          prior.filesystem_identity !== file.filesystemIdentity &&
+          !sameFileAfterRemount(prior, file)
         ) {
           this.deleteInspectedSource(prior, root.libraryId, scannedAt);
           byPath.delete(file.relativePath);
@@ -3010,6 +3011,24 @@ export class CatalogDatabase {
   private one<T>(sql: string, ...params: SQLInputValue[]): T | undefined {
     return this.db.prepare(sql).get(...params) as T | undefined;
   }
+}
+
+/** Device numbers can change when macOS remounts a volume. At the same path in
+ * a registered root, retain choices only when inode, birth time, size and mtime
+ * all agree. Changed identity stamps still invalidate cached ROM identification. */
+function sameFileAfterRemount(prior: SourceRow, file: SourceInspection): boolean {
+  const before = prior.filesystem_identity?.split(':');
+  const after = file.filesystemIdentity?.split(':');
+  return Boolean(
+    before?.length === 3 &&
+      after?.length === 3 &&
+      before[0] !== after[0] &&
+      before[1] === after[1] &&
+      before[2] === after[2] &&
+      prior.size === file.size &&
+      prior.mtime_ms !== null &&
+      prior.mtime_ms === file.mtimeMs,
+  );
 }
 
 type StorageLocationRow = {

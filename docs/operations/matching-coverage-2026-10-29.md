@@ -74,7 +74,9 @@ reproducible task-owned source/download/build caches were removed; no game files
 private data or backups were deleted. The durable job resumed its remaining work
 and completed with zero failed game outcomes. Its acceptance-only session was
 revoked after space recovery. Graceful SQLite-full worker failure without a
-service restart remains a queue-hardening follow-up. Backups and choice digests
+service restart was subsequently fixed in the
+[remount and queue recovery follow-up](library-remount-recovery-2026-10-29.md).
+Backups and choice digests
 are kept in the ignored private release directory.
 
 Virtual Jaguar's separate playback profile correction is documented in
