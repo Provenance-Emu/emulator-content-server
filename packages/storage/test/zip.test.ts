@@ -706,3 +706,22 @@ for (const suffix of ['junk', 'second stream'] as const) {
     }
   });
 }
+
+for (const field of ['disk number', 'directory disk', 'disk entry count', 'member disk'] as const) {
+  test(`split-volume ZIP metadata rejects ${field}`, async (t) => {
+    const archive = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
+    const end = archive.length - 22;
+    const directory = archive.readUInt32LE(end + 16);
+    if (field === 'disk number') archive.writeUInt16LE(1, end + 4);
+    if (field === 'directory disk') archive.writeUInt16LE(1, end + 6);
+    if (field === 'disk entry count') archive.writeUInt16LE(0, end + 8);
+    if (field === 'member disk') archive.writeUInt16LE(1, directory + 34);
+    const staged = await stageArchive(archive);
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+      code: 'archive-rejected',
+      status: 422,
+    });
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}

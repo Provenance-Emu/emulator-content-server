@@ -368,6 +368,13 @@ async function readEndRecord(handle: FileHandle, window: VirtualWindow): Promise
   for (let offset = tail.length - EOCD_FIXED_SIZE; offset >= 0; offset -= 1) {
     if (tail.readUInt32LE(offset) !== EOCD_SIGNATURE) continue;
     if (offset + EOCD_FIXED_SIZE + tail.readUInt16LE(offset + 20) !== tail.length) continue;
+    if (
+      tail.readUInt16LE(offset + 4) !== 0 ||
+      tail.readUInt16LE(offset + 6) !== 0 ||
+      tail.readUInt16LE(offset + 8) !== tail.readUInt16LE(offset + 10)
+    ) {
+      reject('Split-volume archives are not supported');
+    }
     const end = {
       totalEntries: tail.readUInt16LE(offset + 10),
       directorySize: tail.readUInt32LE(offset + 12),
@@ -430,6 +437,9 @@ async function readCentralDirectory(
     if (cursor + CENTRAL_FIXED_SIZE > directory.length) reject('Archive central directory is torn');
     if (directory.readUInt32LE(cursor) !== CENTRAL_SIGNATURE) {
       reject('Archive central directory is malformed');
+    }
+    if (directory.readUInt16LE(cursor + 34) !== 0) {
+      reject('Archive member refers to another volume');
     }
     const nameLength = directory.readUInt16LE(cursor + 28);
     const extraLength = directory.readUInt16LE(cursor + 30);
