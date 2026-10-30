@@ -725,3 +725,56 @@ for (const field of ['disk number', 'directory disk', 'disk entry count', 'membe
     assert.deepEqual(await cachedFiles(staged.root), []);
   });
 }
+
+for (const field of [
+  'valid',
+  'locator disk',
+  'volume count',
+  'record disk',
+  'directory disk',
+  'disk entry count',
+] as const) {
+  test(`ZIP64 volume metadata: ${field}`, async (t) => {
+    const original = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
+    const endOffset = original.length - 22;
+    const end = Buffer.from(original.subarray(endOffset));
+    const record = Buffer.alloc(56);
+    record.writeUInt32LE(0x06064b50, 0);
+    record.writeBigUInt64LE(44n, 4);
+    record.writeUInt16LE(45, 12);
+    record.writeUInt16LE(45, 14);
+    record.writeBigUInt64LE(1n, 24);
+    record.writeBigUInt64LE(1n, 32);
+    record.writeBigUInt64LE(BigInt(end.readUInt32LE(12)), 40);
+    record.writeBigUInt64LE(BigInt(end.readUInt32LE(16)), 48);
+    const locator = Buffer.alloc(20);
+    locator.writeUInt32LE(0x07064b50, 0);
+    locator.writeBigUInt64LE(BigInt(endOffset), 8);
+    locator.writeUInt32LE(1, 16);
+    end.writeUInt16LE(0xffff, 8);
+    end.writeUInt16LE(0xffff, 10);
+    if (field === 'locator disk') locator.writeUInt32LE(1, 4);
+    if (field === 'volume count') locator.writeUInt32LE(2, 16);
+    if (field === 'record disk') record.writeUInt32LE(1, 16);
+    if (field === 'directory disk') record.writeUInt32LE(1, 20);
+    if (field === 'disk entry count') record.writeBigUInt64LE(0n, 24);
+    const staged = await stageArchive(
+      Buffer.concat([original.subarray(0, endOffset), record, locator, end]),
+    );
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    if (field === 'valid') {
+      const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '0');
+      assert.ok(entry);
+      assert.deepEqual(
+        await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+        Buffer.from('DATA'),
+      );
+    } else {
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+    }
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}

@@ -401,10 +401,20 @@ async function readZip64EndRecord(
   if (locator.readUInt32LE(0) !== ZIP64_LOCATOR_SIGNATURE) {
     reject('Archive claims ZIP64 without a locator');
   }
+  if (locator.readUInt32LE(4) !== 0 || locator.readUInt32LE(16) !== 1) {
+    reject('Split-volume ZIP64 archives are not supported');
+  }
   const recordOffset = safeNumber(locator.readBigUInt64LE(8), 'ZIP64 end record offset');
   const record = await readAt(handle, window, recordOffset, ZIP64_EOCD_FIXED_SIZE);
   if (record.readUInt32LE(0) !== ZIP64_EOCD_SIGNATURE)
     reject('Archive ZIP64 end record is missing');
+  if (
+    record.readUInt32LE(16) !== 0 ||
+    record.readUInt32LE(20) !== 0 ||
+    record.readBigUInt64LE(24) !== record.readBigUInt64LE(32)
+  ) {
+    reject('Split-volume ZIP64 archives are not supported');
+  }
   return {
     totalEntries: safeNumber(record.readBigUInt64LE(32), 'Archive entry count'),
     directorySize: safeNumber(record.readBigUInt64LE(40), 'Central directory size'),
