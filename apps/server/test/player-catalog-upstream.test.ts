@@ -8,15 +8,16 @@ test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => 
   assert.ok(jaguar);
   assert.equal(jaguar.name, 'Virtual Jaguar 3.10.0');
   assert.deepEqual(jaguar.systems, ['com.provenance.jaguar', 'com.provenance.jaguarcd']);
-  assert.match(jaguar.description, /profile 1\.1\.0/);
+  assert.match(jaguar.description, /profile 1\.2\.0/);
   assert.match(jaguar.description, /CDI\/CHD/);
+  assert.match(jaguar.description, /CUE\/BIN/);
   assert.equal(jaguar.available, true);
   assert.equal(
     jaguar.url,
-    'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar.ecsplayer',
+    'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-media.1/virtualjaguar.ecsplayer',
   );
-  assert.equal(jaguar.sha256, '8b274aef3918bc8bc35719e417308d43134177057e2cbf5481ab36bfa001791e');
-  assert.equal(jaguar.downloadBytes, 4604914);
+  assert.equal(jaguar.sha256, 'b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de');
+  assert.equal(jaguar.downloadBytes, 4604920);
 });
 
 test('upstream player catalog entries have valid pinned web-player manifests', () => {

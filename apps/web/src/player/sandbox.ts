@@ -193,21 +193,32 @@ export const importIsolatedRuntime: RuntimeImporter = async (
           },
           [script, wasm, ...assets.map((asset) => asset.bytes)],
         );
+        const contentSizes = new Map<string, number>();
+        let contentBytes = 0;
         const runtime: PlayerRuntime = {
           FS: {
             mkdirTree: async (path) => {
               await rpc('mkdir', path);
             },
             writeFile: async (path, bytes) => {
+              const content = path.startsWith('/ecs/content/');
+              const total = contentBytes - (contentSizes.get(path) ?? 0) + bytes.byteLength;
               if (
-                bytes.byteLength >
-                (path.startsWith('/ecs/content/game.')
-                  ? (context.profile?.maxContentBytes ?? LIMIT)
-                  : LIMIT)
+                content &&
+                (total > (context.profile?.maxContentBytes ?? LIMIT) ||
+                  (!contentSizes.has(path) && contentSizes.size >= 128))
+              )
+                throw new Error('Complete disc exceeds runtime content limit');
+              if (
+                bytes.byteLength > (content ? (context.profile?.maxContentBytes ?? LIMIT) : LIMIT)
               )
                 throw new Error('Virtual file exceeds limit');
               const buffer = new Uint8Array(bytes).buffer;
               await rpc('write', { path, bytes: buffer }, [buffer]);
+              if (content) {
+                contentBytes = total;
+                contentSizes.set(path, bytes.byteLength);
+              }
             },
             readFile: async (path) => new Uint8Array((await rpc('read', path)) as ArrayBuffer),
           },

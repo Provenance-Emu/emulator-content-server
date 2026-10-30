@@ -869,6 +869,8 @@ export class ContentClient {
           !file ||
           typeof file.id !== 'string' ||
           typeof file.name !== 'string' ||
+          (file.relativePath !== undefined &&
+            (typeof file.relativePath !== 'string' || file.relativePath.length > 4096)) ||
           typeof file.availability !== 'string' ||
           !Number.isSafeInteger(file.size) ||
           file.size < 0,

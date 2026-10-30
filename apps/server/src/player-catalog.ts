@@ -26,12 +26,12 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     name: 'Virtual Jaguar 3.10.0',
     systems: ['com.provenance.jaguar', 'com.provenance.jaguarcd'],
     description:
-      'Virtual Jaguar 3.10.0 with cartridge and Jaguar CD HLE (profile 1.1.0). Self-contained CDI/CHD up to 512 MiB; real BIOS, audio-only discs, CUE track staging and save synchronization are unavailable.',
+      'Virtual Jaguar 3.10.0 with cartridge and Jaguar CD HLE (profile 1.2.0). Tested CDI/CHD and CUE/BIN playback, up to 512 MiB total per disc; real BIOS, audio-only discs and save synchronization are unavailable.',
     available: true,
     reason: null,
-    downloadBytes: 4604914,
-    url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar.ecsplayer',
-    sha256: '8b274aef3918bc8bc35719e417308d43134177057e2cbf5481ab36bfa001791e',
+    downloadBytes: 4604920,
+    url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-media.1/virtualjaguar.ecsplayer',
+    sha256: 'b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de',
   },
   {
     id: 'org.libretro.pcsx-rearmed',

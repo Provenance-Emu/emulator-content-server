@@ -95,6 +95,21 @@ export function jaguarSmokeCdi() {
   return Buffer.concat([Buffer.alloc(trackBytes), data, table, footer]);
 }
 
+/** The same original two-session program as independent CUE/BIN files. */
+export function jaguarSmokeCue() {
+  const disc = jaguarSmokeCdi();
+  const trackBytes = 4 * 2352;
+  return {
+    cue: Buffer.from(
+      'REM SESSION 01\nFILE "track01.bin" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\nREM SESSION 02\nFILE "track02.bin" BINARY\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n',
+    ),
+    tracks: [
+      { name: 'track01.bin', bytes: disc.subarray(0, trackBytes) },
+      { name: 'track02.bin', bytes: disc.subarray(trackBytes, 2 * trackBytes) },
+    ],
+  };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   if (process.argv.length !== 4 || process.argv[2] !== 'jaguar')
     throw new Error('Usage: node generate-smoke-program.mjs jaguar NEW_EXTERNAL_PROGRAM.abs');

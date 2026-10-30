@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { ContentClient } from '@ecs/client';
 import { expect, test } from '@playwright/test';
+import { jaguarSmokeChd } from '../../../../scripts/browser-core/generate-jaguar-chd-smoke.mjs';
 import { psxSmokeCode, psxSmokeExe } from '../../../../scripts/browser-core/generate-psx-smoke.mjs';
 import {
   dreamcastSmokeElf,
@@ -16,6 +17,7 @@ import {
   jaguarSmokeAbs,
   jaguarSmokeCartridge,
   jaguarSmokeCdi,
+  jaguarSmokeCue,
 } from '../../../../scripts/browser-core/generate-smoke-program.mjs';
 import { openServer } from '../../../server/dist/src/index.js';
 
@@ -117,6 +119,32 @@ const cases = [
     counterAddress: 0x6000,
     littleEndian: false,
   },
+  {
+    title: 'BIOS-free Jaguar CD CHD',
+    plugin: jaguarPlugin,
+    profile: 'org.libretro.virtualjaguar',
+    system: 'com.provenance.jaguarcd',
+    program: () => jaguarSmokeChd(),
+    filename: 'original.chd',
+    needle: jaguarSmokeAbs().subarray(0x24),
+    guestAddress: 0x4000,
+    counterAddress: 0x6000,
+    littleEndian: false,
+  },
+  ...(['asset', 'source'] as const).map((kind) => ({
+    title: `BIOS-free Jaguar CD CUE ${kind}`,
+    plugin: jaguarPlugin,
+    profile: 'org.libretro.virtualjaguar',
+    system: 'com.provenance.jaguarcd',
+    program: Buffer.from(jaguarSmokeCue().cue.toString().replaceAll('"track', '"../tracks/track')),
+    filename: 'disc/original.cue',
+    mediaKind: kind,
+    tracks: jaguarSmokeCue().tracks,
+    needle: jaguarSmokeAbs().subarray(0x24),
+    guestAddress: 0x4000,
+    counterAddress: 0x6000,
+    littleEndian: false,
+  })),
   ...(['dreamcast', 'naomi', 'naomi2'] as const).map((system) => ({
     title: `BIOS-free ${system}`,
     plugin: parallelPlugin,
@@ -174,7 +202,7 @@ for (const entry of cases) {
       await cp(resolve(entry.plugin ?? ''), join(registry, 'jaguar'), { recursive: true });
       server = await openServer({
         dataDir: join(directory, 'data'),
-        uiDir: resolve('dist'),
+        uiDir: resolve(process.env.ECS_ACCEPTANCE_UI ?? 'dist'),
         playerPluginsDir: registry,
         localTrust: false,
         logger: false,
@@ -196,16 +224,52 @@ for (const entry of cases) {
         md5: null,
         crc: null,
       });
-      const { program, filename } = entry;
-      const rom = await client.upload({
-        libraryId: library.id,
-        itemId: item.id,
-        kind: 'rom',
-        displayName: filename,
-        relativePath: filename,
-        baseRevision: item.revision,
-        body: program,
-      });
+      const filename = entry.filename;
+      const program = typeof entry.program === 'function' ? entry.program() : entry.program;
+      let playUrl: string;
+      if ('mediaKind' in entry && entry.mediaKind === 'source') {
+        const content = join(directory, 'jaguarcd');
+        await mkdir(join(content, 'disc'), { recursive: true });
+        await mkdir(join(content, 'tracks'));
+        await writeFile(join(content, filename), program);
+        for (const track of entry.tracks)
+          await writeFile(join(content, 'tracks', track.name), track.bytes);
+        const root = await client.addRoot({
+          path: content,
+          label: 'Original disc',
+          libraryId: library.id,
+        });
+        await client.scanRoot(root.id);
+        const source = (await client.sources(root.id)).items.find(
+          (source) => source.name === 'original.cue',
+        );
+        if (!source) throw new Error('Generated CUE source missing');
+        playUrl = `${origin}/play/?source=${source.id}&profile=${entry.profile}`;
+      } else {
+        const rom = await client.upload({
+          libraryId: library.id,
+          itemId: item.id,
+          kind: 'rom',
+          displayName: filename,
+          relativePath: filename,
+          baseRevision: item.revision,
+          body: program,
+        });
+        if ('tracks' in entry) {
+          for (const track of entry.tracks) {
+            await client.upload({
+              libraryId: library.id,
+              itemId: item.id,
+              kind: 'rom',
+              displayName: track.name,
+              relativePath: `tracks/${track.name}`,
+              baseRevision: (await client.manifest(item.id)).revision,
+              body: track.bytes,
+            });
+          }
+        }
+        playUrl = `${origin}/play/?item=${item.id}&asset=${rom.id}&profile=${entry.profile}`;
+      }
       await page.addInitScript(
         ({ origin, session }) => {
           if (window === top && location.origin === origin)
@@ -229,7 +293,7 @@ for (const entry of cases) {
         },
         { origin, session },
       );
-      await page.goto(`${origin}/play/?item=${item.id}&asset=${rom.id}&profile=${entry.profile}`);
+      await page.goto(playUrl);
       await expect(page.getByRole('combobox', { name: 'Emulator', exact: true })).toHaveValue(
         entry.profile,
       );

@@ -5,6 +5,8 @@
   if (!/^[a-f0-9]{32}$/.test(nonce) || parent === window) return;
   const LIMIT = 64 * 1024 * 1024;
   let contentLimit = LIMIT;
+  const contentSizes = new Map();
+  let contentBytes = 0;
   const canvas = document.querySelector('canvas');
   const SHOT_LIMIT = 8*1024*1024, PREVIEW_LIMIT = 2*1024*1024;
   const PREVIEW_PATH = '/ecs/states/game.state.png';
@@ -112,7 +114,14 @@
     const value = message.value;
     switch (message.op) {
       case 'mkdir': await runtime.FS.mkdirTree(path(value)); return null;
-      case 'write': await runtime.FS.writeFile(path(value.path),byteArray(value.bytes,value.path.startsWith('/ecs/content/game.') ? contentLimit : LIMIT)); return null;
+      case 'write': {
+        const target=path(value.path), content=target.startsWith('/ecs/content/');
+        const bytes=byteArray(value.bytes,content ? contentLimit : LIMIT);
+        const total=contentBytes-(contentSizes.get(target)??0)+bytes.byteLength;
+        if(content && (total>contentLimit || (!contentSizes.has(target)&&contentSizes.size>=128)))throw Error('Complete disc exceeds runtime content limit');
+        await runtime.FS.writeFile(target,bytes);
+        if(content){contentBytes=total;contentSizes.set(target,bytes.byteLength);}return null;
+      }
       case 'read': {
         const bytes = await runtime.FS.readFile(path(value));
         if (!(bytes instanceof Uint8Array) || bytes.byteLength > LIMIT) throw Error('Runtime output exceeds limit');

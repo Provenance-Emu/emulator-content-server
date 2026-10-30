@@ -52,18 +52,23 @@ node scripts/browser-core/build-virtualjaguar.mjs \
   /absolute/new-virtualjaguar-plugin
 node --test scripts/browser-core/jaguar-hle.test.mjs
 ECS_ACCEPTANCE_JAGUAR_PLUGIN=/absolute/new-virtualjaguar-plugin \
+  ECS_ACCEPTANCE_CHDMAN=/absolute/jagcd-tools/chdman \
   ECS_ACCEPTANCE_HEADLESS=1 ECS_ACCEPTANCE_SOFTWARE_WEBGL=1 \
   pnpm --filter @ecs/web test:browser \
   player-additional-cores.spec.ts --grep 'BIOS-free Jaguar'
 ```
 
-The generated profile supports Atari Jaguar and Jaguar CD with self-contained
-CDI/CHD files, capped at 512 MiB by the current browser profile contract. Jaguar
+The generated profile (1.2.0) supports Atari Jaguar and Jaguar CD with CDI/CHD
+files and CUE/BIN groups, capped at 512 MiB total by the browser profile contract. Jaguar
 CHDs require the session metadata accepted by the upstream core; see
 [upstream CHD operations](https://github.com/libretro/virtualjaguar-libretro/blob/master/docs/jagcd-chd.md).
-The core also has a CUE/BIN reader, but this profile does not advertise CUE because
-the browser currently stages one content file. Synchronized saves remain
-unavailable. The opt-in CD case generates its own two-session CDI and checks
+The browser preserves CUE session/index directives and stages authorized BINARY
+tracks under controlled flat names. Both scanned groups and uploaded item assets
+are supported, with at most 128 staged files and a 64 KiB CUE descriptor. Use the
+session-preserving converter from Virtual Jaguar's jagcd-tools release for CHD
+fixtures; the generator rejects converters that discard CHSE metadata.
+Synchronized saves remain unavailable. The opt-in CD cases generate two-session
+CDI, compressed CHD and CUE/BIN programs and check
 actual emulated 68000 progress and a rendered green frame; it makes no claim
 about commercial game compatibility.
 

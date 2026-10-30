@@ -1525,6 +1525,9 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
+        relativePath:
+          type: string
+          description: Portable path relative to the common disc-group directory, for contained media staging. Never an absolute server path.
         size: { type: integer, format: int64 }
         availability: { type: string }
     SourceGroup:

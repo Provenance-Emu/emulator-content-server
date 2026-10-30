@@ -848,6 +848,7 @@
         "availability",
         "id",
         "name",
+        "relativePath",
         "size"
       ],
       "required": [

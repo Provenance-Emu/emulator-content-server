@@ -7,7 +7,7 @@ export type PlayerSelection =
   | { kind: 'asset'; itemId: string; assetId: string }
   | { kind: 'source'; sourceId: string; itemId?: string };
 export type PlayerClient = Partial<
-  Pick<ContentClient, 'playerProfile' | 'playerProfiles' | 'playerProfileAssets'>
+  Pick<ContentClient, 'playerProfile' | 'playerProfiles' | 'playerProfileAssets' | 'sourceGroup'>
 > &
   Pick<
     ContentClient,
@@ -134,6 +134,8 @@ export async function startPlayer(
       }
     }
     await runtime.FS.writeFile(paths.config, new TextEncoder().encode(config));
+    for (const file of prepared.contentFiles ?? [])
+      await runtime.FS.writeFile(file.path, file.bytes);
     await runtime.FS.writeFile(
       contentPath(prepared.core, prepared.contentExtension),
       prepared.content,

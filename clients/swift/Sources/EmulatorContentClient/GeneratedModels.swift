@@ -783,12 +783,14 @@ public struct SourceMatches: Codable, Equatable, Sendable {
 public struct SourceGroupFile: Codable, Equatable, Sendable {
     public var id: String
     public var name: String
+    public var relativePath: String?
     public var size: Int64
     public var availability: String
 
-    public init(id: String, name: String, size: Int64, availability: String) {
+    public init(id: String, name: String, relativePath: String? = nil, size: Int64, availability: String) {
         self.id = id
         self.name = name
+        self.relativePath = relativePath
         self.size = size
         self.availability = availability
     }

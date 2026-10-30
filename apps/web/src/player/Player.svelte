@@ -66,7 +66,7 @@
       let system:string|null=null,name='',size=0;
       if (sourceId) {
         source = (await client.sources()).items.find(file=>file.id===sourceId) ?? null;
-        if (!source || source.availability!=='local' || (source.groupFileCount??1)>1 || !source.systemId) throw new Error('Source is unavailable or needs an unsupported multi-file media profile.');
+        if (!source || source.availability!=='local' || source.groupError || ((source.groupFileCount??1)>1&&!/\.cue$/i.test(source.name)) || !source.systemId) throw new Error('Source is unavailable or needs a supported disc group.');
         system=source.systemId;name=source.name;size=source.size;
         targets=items.filter(item=>item.libraryId===source?.libraryId && item.systemIdentifier===system);
         if(targetId&&!targets.some(item=>item.id===targetId))throw new Error('The selected save target must belong to the source library and system.');
@@ -77,7 +77,7 @@
         if(!file)throw new Error('The selected game file is unavailable.');
         system=item.systemIdentifier;name=file.relativePath;size=file.size;targets=[item];
       }
-      if(/\.(cue|gdi|ccd|m3u)$/i.test(name))throw new Error('Multi-file disc layouts need a compatible media profile.');
+      if(/\.(gdi|ccd|m3u)$/i.test(name))throw new Error('This disc layout needs a compatible media profile.');
       const compatible=available.filter(profile=>{try{validateProfile(profile);return profile.systems.includes(system??'') && size>0 && size<=profile.maxContentBytes && contentExtensions(profile).some(extension=>name.toLowerCase().endsWith(`.${extension}`));}catch{return false;}});
       if(!compatible.length)throw new Error('No installed emulator supports this game file. Download it to use another emulator.');
       if(profileId&&!compatible.some(profile=>profile.id===profileId))throw new Error('The selected emulator profile does not support this game.');
@@ -114,7 +114,7 @@
 </script>
 <main>
   <div class="row"><h1>Browser player</h1><a href="/ui/">{session ? 'Stop and return to library' : 'Library / sign in'}</a></div>
-  <p class="dim">Installed emulator profiles · single-file games · keyboard focus in the game display</p>
+  <p class="dim">Installed emulator profiles · supported games and CUE/BIN discs · keyboard focus in the game display</p>
   {#if core}
     <p>{core.name} · {'profileVersion' in core ? core.buildVersion : `frontend ${core.frontendCommit.slice(0,8)} · core ${core.coreCommit.slice(0,8)}`}</p>
   {/if}

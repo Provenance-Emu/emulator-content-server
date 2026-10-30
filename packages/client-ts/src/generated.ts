@@ -392,6 +392,7 @@ export interface SourceMatches {
 export interface SourceGroupFile {
   id: string;
   name: string;
+  relativePath?: string;
   size: number;
   availability: string;
 }

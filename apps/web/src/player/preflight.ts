@@ -1,5 +1,7 @@
 import type { Item, Manifest, ManifestFile } from '@ecs/client';
 import type { PlayerClient, PlayerSelection, StartOptions } from './controller.js';
+import { MAX_CUE_BYTES } from './cue.js';
+import { prepareCueMedia } from './cue-media.js';
 import {
   type BrowserCore,
   contentExtensions,
@@ -59,6 +61,7 @@ export interface PreparedPlayer {
   item: Item | null;
   revision: number | null;
   content: Uint8Array<ArrayBuffer>;
+  contentFiles?: { path: string; bytes: Uint8Array<ArrayBuffer> }[];
   battery?: { file: ManifestFile; bytes: Uint8Array<ArrayBuffer> };
   state?: { file: ManifestFile; bytes: Uint8Array<ArrayBuffer> };
 }
@@ -97,6 +100,7 @@ export async function preparePlayer(
   }
   let content: Uint8Array<ArrayBuffer>;
   let contentExtension = '';
+  let contentFiles: PreparedPlayer['contentFiles'];
   if (selection.kind === 'asset') {
     const file = manifest?.files.find(
       (entry) => entry.id === selection.assetId && entry.kind === 'rom',
@@ -107,12 +111,35 @@ export async function preparePlayer(
         file.relativePath.toLowerCase().endsWith(`.${extension}`),
       )
     )
-      throw new Error('Select a single-file ROM supported by this emulator');
+      throw new Error('Select a game file supported by this emulator');
     contentExtension = file.relativePath.split('.').at(-1)?.toLowerCase() ?? '';
-    bounded(file.size, core.maxContentBytes);
-    content = (
-      await client.collect(file.id, { maxBytes: core.maxContentBytes, signal: options.signal })
-    ).bytes;
+    bounded(
+      file.size,
+      contentExtension === 'cue'
+        ? Math.min(MAX_CUE_BYTES, core.maxContentBytes)
+        : core.maxContentBytes,
+    );
+    if (contentExtension === 'cue') {
+      const media = await prepareCueMedia(
+        client,
+        {
+          kind: 'asset',
+          id: file.id,
+          relativePath: file.relativePath,
+          size: file.size,
+          members: (manifest?.files ?? [])
+            .filter((entry) => entry.kind === 'rom')
+            .map((entry) => ({ id: entry.id, relativePath: entry.relativePath, size: entry.size })),
+        },
+        core.maxContentBytes,
+        options.signal,
+      );
+      content = media.content;
+      contentFiles = media.files;
+    } else
+      content = (
+        await client.collect(file.id, { maxBytes: core.maxContentBytes, signal: options.signal })
+      ).bytes;
   } else {
     const source = (await client.sources()).items.find((entry) => entry.id === selection.sourceId);
     if (source?.availability !== 'local')
@@ -120,7 +147,8 @@ export async function preparePlayer(
         'Source is unavailable, offline, evicted or unknown. Download it on the server first.',
       );
     if (
-      (source.groupFileCount ?? 1) > 1 ||
+      ((source.groupFileCount ?? 1) > 1 && !/\.cue$/i.test(source.name)) ||
+      source.groupError ||
       source.kind !== 'rom' ||
       !contentExtensions(core).some((extension) =>
         source.name.toLowerCase().endsWith(`.${extension}`),
@@ -128,7 +156,7 @@ export async function preparePlayer(
       !source.systemId ||
       !core.systems.includes(source.systemId)
     )
-      throw new Error('Source is not a supported single-file ROM');
+      throw new Error('Source is not a supported game file or CUE/BIN group');
     if (
       item &&
       (!source.libraryId ||
@@ -137,13 +165,28 @@ export async function preparePlayer(
     )
       throw new Error('Select an explicit target in the source library and system');
     contentExtension = source.name.split('.').at(-1)?.toLowerCase() ?? '';
-    bounded(source.size, core.maxContentBytes);
-    content = (
-      await client.collectSource(source.id, {
-        maxBytes: core.maxContentBytes,
-        signal: options.signal,
-      })
-    ).bytes;
+    bounded(
+      source.size,
+      contentExtension === 'cue'
+        ? Math.min(MAX_CUE_BYTES, core.maxContentBytes)
+        : core.maxContentBytes,
+    );
+    if (contentExtension === 'cue') {
+      const media = await prepareCueMedia(
+        client,
+        { kind: 'source', id: source.id, relativePath: source.name, size: source.size },
+        core.maxContentBytes,
+        options.signal,
+      );
+      content = media.content;
+      contentFiles = media.files;
+    } else
+      content = (
+        await client.collectSource(source.id, {
+          maxBytes: core.maxContentBytes,
+          signal: options.signal,
+        })
+      ).bytes;
   }
   bounded(content.byteLength, core.maxContentBytes);
   if (core.saveCompletion === 'none' && (options.batteryAssetId || options.stateAssetId))
@@ -171,6 +214,7 @@ export async function preparePlayer(
     item: item ?? null,
     revision: manifest?.revision ?? null,
     content,
+    ...(contentFiles ? { contentFiles } : {}),
     battery: await collect(battery),
     state: await collect(state),
   };
