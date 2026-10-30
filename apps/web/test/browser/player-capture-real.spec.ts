@@ -141,6 +141,43 @@ test('real player captures changing PNGs, links native previews, loads a browsed
     await expect(browser.getByText('State loaded.', { exact: true })).toBeVisible();
     const restored = await screenshot('restored.png');
     expect(await pixel(restored)).toEqual(firstPixel);
+    const settings = page.getByRole('region', { name: 'Core options and shaders' });
+    await expect(
+      settings.getByRole('button', { name: 'Edit Color Palette', exact: true }),
+    ).toBeVisible({ timeout: 15000 });
+    await settings.getByRole('searchbox', { name: 'Search core options' }).fill('Color Palette');
+    await settings.getByRole('button', { name: 'Edit Color Palette', exact: true }).click();
+    await settings
+      .getByRole('combobox', { name: 'Color Palette', exact: true })
+      .selectOption('rgb');
+    await settings.getByRole('button', { name: 'Apply option', exact: true }).click();
+    await expect(settings.getByRole('button', { name: 'Apply option', exact: true })).toBeEnabled();
+    expect(await pixel(await screenshot('palette-rgb.png'))).not.toEqual(firstPixel);
+    await settings
+      .getByRole('combobox', { name: 'Color Palette', exact: true })
+      .selectOption('default');
+    await settings.getByRole('button', { name: 'Apply option', exact: true }).click();
+    await expect(settings.getByRole('button', { name: 'Apply option', exact: true })).toBeEnabled();
+    expect(await pixel(await screenshot('palette-restored.png'))).toEqual(firstPixel);
+    const shaders = settings.getByRole('combobox', { name: 'Shader preset', exact: true });
+    const plain = await screenshot('shader-off-before.png');
+    await shaders.selectOption('scanlines');
+    await expect(settings.getByText(/Scanlines requested/)).toBeVisible();
+    const scanlines = await screenshot('shader-scanlines.png');
+    expect(scanlines.equals(plain)).toBe(false);
+    await shaders.selectOption('lcd');
+    await expect(settings.getByText(/LCD grid requested/)).toBeVisible();
+    expect((await screenshot('shader-lcd.png')).equals(scanlines)).toBe(false);
+    await shaders.selectOption('off');
+    await expect(settings.getByText('Shaders off.', { exact: true })).toBeVisible();
+    expect(await pixel(await screenshot('shader-off-after.png'))).toEqual(firstPixel);
+    await page.getByRole('button', { name: 'Save state', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Save state', exact: true })).toBeEnabled();
+    await expect(browser.getByRole('button', { name: 'Load state', exact: true })).toHaveCount(2);
+    await browser.getByRole('button', { name: 'Load state', exact: true }).first().click();
+    await expect(browser.getByText('State loaded.', { exact: true })).toBeVisible();
+    await settings.getByRole('button', { name: 'Remember for this game', exact: true }).click();
+    await expect(settings.getByText(/Remembered for this game/)).toBeVisible();
     const controls = page.getByRole('region', { name: 'Display controls' });
     await controls.getByRole('combobox', { name: 'Scaling', exact: true }).selectOption('fill');
     await controls
@@ -152,6 +189,50 @@ test('real player captures changing PNGs, links native previews, loads a browsed
       'auto',
     );
     await expect(page.locator('iframe')).toHaveAttribute('sandbox', 'allow-scripts');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    // Remember actual non-default settings, restart through normal startup, then clear.
+    await settings
+      .getByRole('combobox', { name: 'Color Palette', exact: true })
+      .selectOption('rgb');
+    await settings.getByRole('button', { name: 'Apply option', exact: true }).click();
+    await expect(settings.getByRole('button', { name: 'Apply option', exact: true })).toBeEnabled();
+    await shaders.selectOption('scanlines');
+    await expect(settings.getByText(/Scanlines requested/)).toBeVisible();
+    await settings.getByRole('button', { name: 'Remember for this game', exact: true }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(settings.getByText(/Scanlines requested/)).toBeVisible({ timeout: 30000 });
+    await settings.getByRole('button', { name: 'Edit Color Palette', exact: true }).click();
+    await expect(
+      settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
+    ).toHaveValue('rgb');
+    await settings.getByRole('button', { name: 'Clear game preferences', exact: true }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await settings.getByRole('button', { name: 'Edit Color Palette', exact: true }).click();
+    await expect(
+      settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
+    ).toHaveValue('default');
+    await expect(shaders).toHaveValue('off');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page.route('**/api/v1/uploads', (route) =>
+      route.fulfill({
+        status: 503,
+        json: { type: 'about:blank', title: 'Temporary test outage', status: 503 },
+      }),
+    );
+    await page.getByRole('button', { name: 'Save state', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Export captured save', exact: true }),
+    ).toBeVisible();
+    await expect(shaders).toBeDisabled();
+    await expect(
+      settings.getByRole('button', { name: 'Remember for this game', exact: true }),
+    ).toBeDisabled();
+    await page.unroute('**/api/v1/uploads');
+    await page.getByRole('button', { name: 'Retry upload', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Retry upload', exact: true })).toHaveCount(0);
+    await expect(shaders).toBeEnabled();
     await expect(page.getByRole('alert')).toHaveCount(0);
   } finally {
     await page.goto('about:blank');

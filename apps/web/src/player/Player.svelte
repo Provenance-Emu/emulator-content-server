@@ -11,6 +11,8 @@
   import SaveControls from './SaveControls.svelte';
   import StateBrowser from './StateBrowser.svelte';
   import DisplayControls from './DisplayControls.svelte';
+  import SettingsControls from './SettingsControls.svelte';
+  import { createPreferenceStore, type PreferenceStore, type PlayerPreferences } from './preferences.js';
   import { stateCompatibility } from './states.js';
 
   const client = new ContentClient(window.location.origin, loadSession()?.token);
@@ -39,6 +41,8 @@
   let attempted = $state(false);
   let failure = $state<string | null>(null);
   let session = $state.raw<Awaited<ReturnType<typeof startPlayer>> | null>(null);
+  let preferenceStore=$state.raw<PreferenceStore|null>(null);
+  let preferences=$state.raw<PlayerPreferences>({options:{},shader:'off'});
   let logs = $state<string[]>([]);
 
   async function loadSaves(): Promise<void> {
@@ -96,7 +100,9 @@
     attempted = true; working = true; failure = null;
     const selection: PlayerSelection = sourceId ? { kind: 'source', sourceId, ...(targetId ? { itemId: targetId } : {}) } : { kind: 'asset', itemId: targetId, assetId: assetId! };
     try {
+      if(core){preferenceStore=createPreferenceStore(window.location.origin,core,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined);preferences=preferenceStore.load().preferences;}
       session = await startPlayer(client, selection, {
+        preferences,
         canvas, importer: importBrowserRuntime, ...('profileVersion' in (core??{}) ? {profileId}:{}), expectedProfile:core??undefined, signal:lifetime.signal, batteryAssetId: batteryId || undefined, stateAssetId: stateId || undefined, compatibleSaves: compatible,
         log(text) { logs = [...logs.slice(-7), text.slice(0, 300)]; },
       });
@@ -164,6 +170,7 @@
   {#if session && stage}
     <DisplayControls runtime={session.runtime} {stage} oninfo={info=>captureReady=info.captureReady} />
     <SaveControls saves={session.saves} runtime={session.runtime} hasState={!!session.prepared.state} coreName={session.prepared.core.name} supportsSaves={session.prepared.core.saveCompletion!=='none'} {captureReady} disabled={playerBusy} onchange={()=>{refresh++;pendingSave=!!session?.saves?.pending;}} onbusy={busy=>playerBusy=busy} />
+    {#if preferenceStore}<SettingsControls runtime={session.runtime} commands={session.commands} store={preferenceStore} initial={preferences} disabled={playerBusy||pendingSave} onbusy={busy=>playerBusy=busy} />{/if}
   {/if}
   {#if ready && targetId && core && core.saveCompletion!=='none'}
     <StateBrowser {client} itemId={targetId} {core} {refresh} active={!!session} saves={session?.saves??null} disabled={working||playerBusy||pendingSave} onbusy={busy=>playerBusy=busy} onselect={(id,known)=>{stateId=id;if(known&&!batteryId)compatible=true;}} />

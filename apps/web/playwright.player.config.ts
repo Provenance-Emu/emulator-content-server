@@ -8,6 +8,7 @@ export default defineConfig({
     'player-capture-real.spec.ts',
     'player-sandbox.spec.ts',
     'player-capture-controls.spec.ts',
+    'player-settings.spec.ts',
   ],
   workers: 1,
   fullyParallel: false,

@@ -1,6 +1,14 @@
 import { PREVIEW_LIMIT, pngInfo, SCREENSHOT_LIMIT } from './images.js';
+import { validOptionKey, validOptionValue } from './options.js';
 import type { PlayerRuntime, RuntimeContext, RuntimeImporter } from './runtime.js';
 import { type DisplayInfo, validDisplaySettings } from './runtime.js';
+import {
+  builtinShaders,
+  type SettingsInfo,
+  type ShaderResult,
+  validShaderId,
+  validShaderResult,
+} from './shaders.js';
 
 const LIMIT = 64 * 1024 * 1024;
 /** Core code receives bytes through a private port, never the app client, origin or credentials. */
@@ -134,7 +142,7 @@ export const importIsolatedRuntime: RuntimeImporter = async (
             (!(value instanceof ArrayBuffer) || value.byteLength > LIMIT)) ||
           (request.op === 'receive' &&
             value !== undefined &&
-            (typeof value !== 'string' || value.length > 4096))
+            (typeof value !== 'string' || value.length > 60000))
         ) {
           request.reject(new Error('Invalid emulator reply'));
           close();
@@ -190,6 +198,7 @@ export const importIsolatedRuntime: RuntimeImporter = async (
             assets,
             maxContentBytes: context.profile?.maxContentBytes ?? LIMIT,
             commands: context.profile?.saveCompletion !== 'none',
+            shaders: builtinShaders,
           },
           [script, wasm, ...assets.map((asset) => asset.bytes)],
         );
@@ -226,6 +235,15 @@ export const importIsolatedRuntime: RuntimeImporter = async (
             await rpc('main', args);
           },
           EmscriptenSendCommand: async (command) => {
+            if (!['SAVE_FILES', 'SAVE_STATE_SLOT 0', 'LOAD_STATE_SLOT 0'].includes(command)) {
+              const query = /^GET_CORE_OPTION(?: ([^ ]+))?$/.exec(command);
+              const set = /^SET_CORE_OPTION ([^ ]+) (.+)$/.exec(command);
+              if (
+                !(query && (query[1] === undefined || validOptionKey(query[1]))) &&
+                !(set && validOptionKey(set[1]) && validOptionValue(set[2]))
+              )
+                throw new Error('Invalid core option command');
+            }
             await rpc('send', command);
           },
           EmscriptenReceiveCommandReply: async () => (await rpc('receive')) as string | undefined,
@@ -276,6 +294,28 @@ export const importIsolatedRuntime: RuntimeImporter = async (
           setDisplay: async (settings) => {
             if (!validDisplaySettings(settings)) throw new Error('Invalid display settings');
             await rpc('display', settings);
+          },
+          settingsInfo: async () => {
+            const info = (await rpc('settings-info')) as SettingsInfo;
+            if (!info || typeof info.commands !== 'boolean' || typeof info.shaders !== 'boolean')
+              throw new Error('Invalid settings capability');
+            if (info.shaderResult !== undefined && !validShaderResult(info.shaderResult))
+              throw new Error('Invalid shader status');
+            return {
+              commands: info.commands,
+              shaders: info.shaders,
+              ...(info.shaderResult ? { shaderResult: info.shaderResult } : {}),
+            };
+          },
+          setShader: async (id) => {
+            if (!validShaderId(id)) throw new Error('Invalid shader selection');
+            const result = (await rpc('shader', id)) as ShaderResult;
+            if (
+              !validShaderResult(result) ||
+              (result.status === 'requested' && result.selection !== id)
+            )
+              throw new Error('Invalid shader result');
+            return { selection: result.selection, status: result.status };
           },
         };
         return runtime;

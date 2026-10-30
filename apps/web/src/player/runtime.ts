@@ -8,6 +8,7 @@ export interface RuntimeContext {
 }
 
 import type { CommandRuntime } from './commands.js';
+import type { SettingsInfo, ShaderId, ShaderResult } from './shaders.js';
 export interface PlayerRuntime extends CommandRuntime {
   FS: {
     mkdirTree(path: string): void | Promise<void>;
@@ -21,6 +22,8 @@ export interface PlayerRuntime extends CommandRuntime {
   captureStatePreview?(): Promise<Uint8Array<ArrayBuffer> | null>;
   displayInfo?(): Promise<DisplayInfo>;
   setDisplay?(settings: DisplaySettings): Promise<void>;
+  settingsInfo?(): Promise<SettingsInfo>;
+  setShader?(id: ShaderId): Promise<ShaderResult>;
 }
 export interface DisplaySettings {
   fit: 'contain' | 'fill';

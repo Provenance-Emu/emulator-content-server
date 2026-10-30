@@ -1,5 +1,7 @@
 import { type CollectedAsset, type ContentClient, sha256Bytes } from '@ecs/client';
 import { CommandChannel } from './commands.js';
+import { coreOptionsConfig } from './options.js';
+import type { PlayerPreferences } from './preferences.js';
 import { preparePlayer } from './preflight.js';
 import { contentPath, paths, type RuntimeImporter, validateCoreBytes } from './runtime.js';
 import { SaveSynchronizer } from './saves.js';
@@ -32,6 +34,7 @@ export interface StartOptions {
   stateAssetId?: string;
   compatibleSaves?: boolean;
   log?: (text: string) => void;
+  preferences?: PlayerPreferences;
 }
 const config = [
   'savefile_directory = "/ecs/saves"',
@@ -49,6 +52,8 @@ const config = [
   'config_save_on_exit = "false"',
   'state_slot = "0"',
   'savestate_thumbnail_enable = "true"',
+  'core_options_path = "/ecs/core-options.cfg"',
+  'video_shader_enable = "false"',
 ].join('\n');
 
 export async function startPlayer(
@@ -114,8 +119,11 @@ export async function startPlayer(
       print: log,
       printErr: log,
     });
+    const settingsInfo = await runtime.settingsInfo?.();
     const commands =
-      prepared.core.saveCompletion === 'command-reply-v1' ? new CommandChannel(runtime) : null;
+      prepared.core.saveCompletion === 'command-reply-v1' || settingsInfo?.commands
+        ? new CommandChannel(runtime)
+        : null;
     if (
       typeof runtime.callMain !== 'function' ||
       !runtime.FS ||
@@ -134,6 +142,10 @@ export async function startPlayer(
       }
     }
     await runtime.FS.writeFile(paths.config, new TextEncoder().encode(config));
+    await runtime.FS.writeFile(
+      '/ecs/core-options.cfg',
+      new TextEncoder().encode(coreOptionsConfig(options.preferences?.options ?? {})),
+    );
     for (const file of prepared.contentFiles ?? [])
       await runtime.FS.writeFile(file.path, file.bytes);
     await runtime.FS.writeFile(
@@ -149,7 +161,10 @@ export async function startPlayer(
         : [contentPath(prepared.core, prepared.contentExtension)],
     );
     const saves =
-      commands && prepared.item && prepared.revision !== null
+      commands &&
+      prepared.core.saveCompletion === 'command-reply-v1' &&
+      prepared.item &&
+      prepared.revision !== null
         ? new SaveSynchronizer(client, runtime, commands, {
             libraryId: prepared.item.libraryId,
             itemId: prepared.item.id,
@@ -167,7 +182,7 @@ export async function startPlayer(
           })
         : null;
     if (prepared.state) await saves?.loadSelectedState();
-    return { runtime, saves, prepared, releaseLoader: loaded.release };
+    return { runtime, commands, saves, prepared, releaseLoader: loaded.release };
   } catch (error) {
     loaded.release();
     throw error;

@@ -113,3 +113,15 @@ ECS_ACCEPTANCE_CORE=/absolute/path/to/pinned-core \
 ```
 
 If Playwright WebKit lives outside its normal cache, set `ECS_WEBKIT_EXECUTABLE` to its `pw_run.sh`. The real-core case checks changing nonblank PNG pixels, authenticated state/preview uploads, gallery loading with state restoration and display changes. The other focused cases cover isolation, incomplete native preview writes, stale-capture rejection and capture without synchronized saves. WebKit device profiles do not establish physical iPhone or installed Safari acceptance.
+
+## Core options and GLSL presets
+
+After startup, Core options and shaders exposes the running core's option descriptions and current values. Search, choose Edit to fetch the allowed values, then Apply option. Some changes need a fresh launch; the player does not restart automatically. This command ABI does not report reliable factory defaults, categories or visibility flags, so the UI does not fabricate them. Legacy builds without the command markers/helpers report options unavailable. Replies still require validation; a malformed or timed-out command quarantines the shared settings/save owner until reload.
+
+Changes are session only unless you choose Remember for this core or Remember for this game. Preferences stay in this browser, scoped to server origin, profile, complete loader/WASM hashes and item/source identity. They contain no credentials or game/save bytes and are not account-synchronized. A game's explicit overrides win per key over core preferences. A new build pair gets fresh settings. Clear preferences affects future launches; it does not reset a running core. Storage restrictions do not prevent ordinary playback.
+
+Off is the default shader. Scanlines and LCD grid are original lightweight single-pass GLSL presets bundled with the web UI, staged into MEMFS without CDN fetches. Switching uses the native shader hook where available, with bounded frame/error checks and Off recovery. The UI distinguishes an accepted request from a final compilation acknowledgement, which this ABI does not expose. Screenshots capture visible shader output; state previews may contain raw game pixels. Sharp/smooth CSS filtering remains a separate display setting. No Slang, WebGPU, custom shader uploads or multipass pack support is claimed.
+
+Shader error monitoring continues after the initial frame window. A later reported compilation failure attempts Off recovery, updates the controls and removes that failed preset from matching local preferences for this build. If recovery is unavailable, the UI reports an unknown shader state and asks for reload. Settings changes are blocked while a save upload remains pending; retry or export that save first.
+
+The focused real-core test also changes palette pixels, switches both shaders and Off, saves/loads after shader operations, verifies remembered non-default startup settings and clearing them. Physical Safari/iPhone and sustained phone performance still need device acceptance.
