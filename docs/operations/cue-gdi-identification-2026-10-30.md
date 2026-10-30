@@ -56,3 +56,19 @@ proposal rejection. One focused review found no material integration issues.
 All 108 focused plugin/server cases passed, including six integration cases and
 a system correction that must retain its saved choice and surface a review. Svelte checking
 and all 281 web unit tests passed. Both CUE/GDI matching-option browser cases passed.
+
+## Existing-library pass
+
+The updated local server processed all 918 games in 17.282 seconds. Two owner
+sessions requested the same work and shared one durable job. It completed with
+zero failed or skipped games and preserved every one of the 691 prior selections,
+including their exact JSON and stored artwork bytes. Temporary acceptance sessions
+were revoked. Backups and detailed receipts remain in the ignored private
+`dist-release/pre-disc-identification-20261030/` directory.
+
+The one Dreamcast GDI group produced a verified product ID. All 35 Jaguar CD CUE
+groups produced the explicit no-standard-ID diagnostic without scanning audio.
+No new selection was saved: the library remains at 430 metadata records and 261
+front covers, with 250 review and 327 unmatched outcomes. The readers enable
+stronger matching for supported discs; they do not manufacture missing Jaguar CD
+catalog records or replace existing choices to make those counts look better.
