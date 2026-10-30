@@ -29,7 +29,7 @@
   const candidates=$derived($controller.result?.candidates.filter((c)=>c.kind===category&&(category!=='artwork'||artworkFilter==='all'||roleOf(c)===artworkFilter)) ?? []);
   const activeProviders=$derived(plugins.some((plugin)=>plugin.kind==='provider'&&providerIds.includes(plugin.id)&&(!plugin.network||online)));
   $effect(()=>{onbusy?.($controller.loading || $controller.savedLoading || !!$controller.saving);});
-  const container=$derived(/\.(rar|cue|m3u|gdi|ccd)$/i.test(sourceName));
+  const container=$derived(/\.(rar|m3u|ccd)$/i.test(sourceName));
   onMount(()=>{savedReady=controller.load();if(owner)void loadPlugins();});
   async function loadPlugins(){
     if(disposed||registryLoading)return;

@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { access, readdir, readFile, realpath, stat } from 'node:fs/promises';
-import { delimiter, isAbsolute, join } from 'node:path';
+import { delimiter, isAbsolute, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DomainError } from '@ecs/domain';
+import { type Actor, DomainError } from '@ecs/domain';
 import { matchingJob } from '@ecs/plugins/matching-host';
 import { type RomFacts, validateRomFacts } from '@ecs/plugins/rom-facts';
+import type { IdentificationRequest } from '@ecs/plugins/rom-identification';
 import type { ServerContext } from './context.js';
+import { localSource } from './source-groups.js';
 import { sourceMetadata } from './source-metadata.js';
 
 const ZIP_IDENTIFIER = fileURLToPath(new URL('./zip-identification-plugin.js', import.meta.url));
@@ -114,10 +116,59 @@ export async function identifySource(
   source: { id: string; displayName: string; systemId: string | null },
   path: string,
   signal: AbortSignal,
+  guard?: { actor: Actor; stamps: Map<string, string> },
 ): Promise<RomFacts> {
   signal.throwIfAborted();
   const before = await sourceMetadata(path, source.id);
-  const stamp = `${await pluginVersion(context)}:${before.etag}`;
+  let media: IdentificationRequest['media'];
+  const members: { id: string; path: string; etag: string }[] = [];
+  if (/\.(cue|gdi)$/i.test(source.displayName)) {
+    const indexed = context.catalog.getSource(source.id);
+    if (!guard || !indexed || indexed.groupError)
+      throw new DomainError(
+        'matching-disc-unavailable',
+        409,
+        'Rescan this disc folder before identifying it',
+      );
+    const files = context.catalog.sourceGroup(source.id);
+    if (!files.length || files.length > 128 || files.length !== indexed.groupMembers?.length)
+      throw new DomainError(
+        'matching-disc-changed',
+        409,
+        'Disc members changed or exceed the supported group size. Rescan its folder.',
+      );
+    let base = posix.dirname(indexed.relativePath);
+    for (const file of files)
+      while (base !== '.' && !file.relativePath.startsWith(`${base}/`)) base = posix.dirname(base);
+    media = { entry: posix.relative(base, indexed.relativePath), members: [] };
+    for (const file of files) {
+      signal.throwIfAborted();
+      const local = await localSource(context, guard.actor, file.id);
+      const metadata = await sourceMetadata(local.path, file.id);
+      if (local.source.rootId !== indexed.rootId || metadata.size !== file.size)
+        throw new DomainError(
+          'matching-disc-changed',
+          409,
+          'Disc member changed; rescan its folder',
+        );
+      members.push({ id: file.id, path: local.path, etag: metadata.etag });
+      guard.stamps.set(file.id, metadata.etag);
+      media.members.push({
+        name: posix.relative(base, file.relativePath),
+        path: local.path,
+        size: metadata.size,
+      });
+    }
+  }
+  // Keep the existing single-file cache keys: a new disc reader must not make
+  // large cartridge/archive libraries hash all their unchanged bytes again.
+  const stamp = `${await pluginVersion(context)}:${before.etag}${
+    media
+      ? `:disc-layout-v1:${createHash('sha256')
+          .update(JSON.stringify([source.systemId, media, members]))
+          .digest('hex')}`
+      : ''
+  }`;
   const cached = context.catalog.matchingIdentification(source.id, stamp);
   if (cached) {
     try {
@@ -136,6 +187,7 @@ export async function identifySource(
         systemId: source.systemId,
         size: before.size,
         tools: await readerTools(context),
+        ...(media ? { media } : {}),
       },
       ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
       catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
@@ -149,6 +201,21 @@ export async function identifySource(
       409,
       'Source changed while identifying it; scan and try again',
     );
+  for (const member of members) {
+    signal.throwIfAborted();
+    if (!guard)
+      throw new DomainError('matching-disc-unavailable', 409, 'Disc authorization is unavailable');
+    const local = await localSource(context, guard.actor, member.id);
+    if (
+      local.path !== member.path ||
+      (await sourceMetadata(local.path, member.id)).etag !== member.etag
+    )
+      throw new DomainError(
+        'matching-disc-changed',
+        409,
+        'Disc member changed while identifying it; scan and try again',
+      );
+  }
   signal.throwIfAborted();
   context.catalog.saveMatchingIdentification(source.id, stamp, facts);
   return facts;

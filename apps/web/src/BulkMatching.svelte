@@ -2,7 +2,7 @@
   import type { LibraryScope, MatchingPlugin } from '@ecs/client';
   import { onMount, tick } from 'svelte';
   import type { ServerContext } from './lib/application';
-  import { canChecksum, type BulkMatchingController, type BulkMatchRow } from './lib/bulk-matching';
+  import { canAttemptChecksum, type BulkMatchingController, type BulkMatchRow } from './lib/bulk-matching';
   import { explain } from './lib/problems';
   import MatchingProviders from './components/MatchingProviders.svelte';
   import MatchingPanel from './MatchingPanel.svelte';
@@ -72,7 +72,7 @@
   <h3 tabindex="-1" bind:this={reviewHeading}>{reviewing.entry.name}</h3>
   {#if reviewing.reason}<p>{reviewing.reason}</p>{/if}
   <details class="matching-disclosure"><summary>Review tips</summary><div class="matching-disclosure-content"><p class="dim">Suggestions refresh when you open a game, so expired proposals cannot overwrite your choices. Save and next moves through unsaved categories, then the next unresolved game. Next unresolved game leaves this game in the queue.</p></div></details>
-  {#key reviewing.entry.id}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.entry.id} sourceName={reviewing.entry.source.name} onnext={()=>{reviewBusy=false;advance(true);}} onbusy={busy=>reviewBusy=busy} reviewOptions={{...$controller.options,checksum:canChecksum(reviewing.entry.source)}} />{/key}
+    {#key reviewing.entry.id}<MatchingPanel {context} owner={true} {onchanged} sourceId={reviewing.entry.id} sourceName={reviewing.entry.source.name} onnext={()=>{reviewBusy=false;advance(true);}} onbusy={busy=>reviewBusy=busy} reviewOptions={{...$controller.options,checksum:canAttemptChecksum(reviewing.entry.source)}} />{/key}
 {:else}
   <p>Match server-folder games in this library. Unique checksum matches save automatically; conflicting matches and filename suggestions stay for review.</p>
   {#if $controller.phase==='idle'}

@@ -675,10 +675,18 @@ function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boo
     return false;
   return true;
 }
+function discIdentityConflict(input: MatchingInput): boolean {
+  return (
+    input.facts?.warnings.some((warning) =>
+      ['disc-system-conflict', 'disc-identifiers-conflict'].includes(warning),
+    ) ?? false
+  );
+}
 /** A saved choice is authority for its artwork association, never new ROM metadata. */
 export function selectedArtworkAnchor(
   input: MatchingInput,
 ): { identity: MatchCandidate; titles: string[] } | null {
+  if (discIdentityConflict(input)) return null;
   const saved = input.selectedMetadata;
   if (
     !saved ||
@@ -787,6 +795,7 @@ function savedSelectionEvidence(input: MatchingInput, candidate: MatchCandidate)
 }
 /** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */
 export function automaticEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+  if (discIdentityConflict(input)) return false;
   if (
     input.systemId &&
     candidate.metadata.systemId &&

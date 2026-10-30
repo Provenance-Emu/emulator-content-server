@@ -21,6 +21,32 @@ const facts = (overrides: Partial<RomFacts> = {}): RomFacts => ({
   ...overrides,
 });
 const input = { name: 'renamed.chd', systemId, companions: [] };
+test('disc contradictions block filename fallback and saved-choice artwork anchors', () => {
+  for (const warning of ['disc-system-conflict', 'disc-identifiers-conflict']) {
+    const request: matching.MatchingInput = {
+      ...input,
+      name: 'Original Game (USA).cue',
+      allowExactNames: true,
+      facts: facts({ warnings: [warning] }),
+      selectedMetadata: {
+        id: 'saved',
+        revision: 1,
+        title: 'Original Game (USA)',
+        systemId,
+        metadata: { systemId },
+      },
+    };
+    const metadata: matching.MatchCandidate = {
+      id: 'new',
+      kind: 'metadata',
+      title: 'Original Game (USA)',
+      confidence: 'name',
+      metadata: { systemId },
+    };
+    assert.equal(matching.automaticEvidence(request, metadata), false);
+    assert.equal(matching.selectedArtworkAnchor(request), null);
+  }
+});
 const candidate = (metadata: Record<string, string> = {}): matching.MatchCandidate => ({
   id: 'one',
   kind: 'metadata',

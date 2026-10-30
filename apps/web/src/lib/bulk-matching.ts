@@ -47,17 +47,25 @@ export interface BulkMatchingController extends Readable<BulkMatchingState> {
 
 /** Request eligibility only; the server decides whether an archive really hashed. */
 export function canAttemptChecksum(source: SourceFile): boolean {
+  if (/\.(cue|gdi)$/i.test(source.name))
+    return (
+      source.availability === 'local' &&
+      !source.groupError &&
+      source.size > 0 &&
+      source.size <= 64 * 1024 &&
+      (source.groupFileCount ?? 1) <= 128
+    );
   return (
     source.availability === 'local' &&
     (source.size <= 64 * 1024 * 1024 || /\.(chd|iso|cdi|gcm)$/i.test(source.name)) &&
     (source.groupFileCount ?? 1) <= 1 &&
-    !/\.(rar|cue|m3u|gdi|ccd)$/i.test(source.name)
+    !/\.(rar|m3u|ccd)$/i.test(source.name)
   );
 }
 
 // The retired per-tab planner cannot observe inner archive verification evidence.
 export function canChecksum(source: SourceFile): boolean {
-  return canAttemptChecksum(source) && !/\.(zip|7z|chd|iso|cdi|gcm)$/i.test(source.name);
+  return canAttemptChecksum(source) && !/\.(zip|7z|chd|iso|cdi|gcm|cue|gdi)$/i.test(source.name);
 }
 
 /** Trust provider checksum evidence only when this lookup actually hashed the ROM.
@@ -188,7 +196,17 @@ export function createBulkMatching(
           let saved = await client.sourceSelections(id, signal);
           if (!live(run)) return;
           const checksum = canChecksum(next.entry.source);
-          let result = await client.sourceMatches(id, { ...current.options, checksum }, signal);
+          let result = await client.sourceMatches(
+            id,
+            {
+              ...current.options,
+              checksum:
+                checksum ||
+                (/\.(cue|gdi)$/i.test(next.entry.source.name) &&
+                  canAttemptChecksum(next.entry.source)),
+            },
+            signal,
+          );
           if (!live(run)) return;
           const { auto } = plan(result, saved, checksum);
           let count = next.saved;

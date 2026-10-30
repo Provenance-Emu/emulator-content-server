@@ -102,6 +102,7 @@ export function registerSourceMatching(
     expires: number;
     candidates: (MatchCandidate & { providerId: string })[];
     stamps: Map<string, string>;
+    identityStamps: Map<string, string>;
     input: MatchingInput;
   };
   const jobs = new Map<string, Job>();
@@ -197,6 +198,7 @@ export function registerSourceMatching(
       )
         throw new DomainError('invalid-request', 400, 'Unknown matching plugin');
       const stamps = new Map<string, string>();
+      const identityStamps = new Map<string, string>();
       try {
         stamps.set(source.id, await stamp(actor, source.id));
       } catch {
@@ -276,9 +278,16 @@ export function registerSourceMatching(
           /* An invalid or unavailable sidecar does not stop the game's other matches. */
         }
       }
-      if (options.checksum && !source.groupError && (source.groupMembers?.length ?? 1) <= 1) {
+      if (
+        options.checksum &&
+        !source.groupError &&
+        ((source.groupMembers?.length ?? 1) <= 1 || /\.(cue|gdi)$/i.test(source.displayName))
+      ) {
         const local = await localSource(context, actor, source.id);
-        input.facts = await identifySource(context, source, local.path, signal);
+        input.facts = await identifySource(context, source, local.path, signal, {
+          actor,
+          stamps: identityStamps,
+        });
         const raw =
           input.facts.hashes.find(
             (hash) =>
@@ -337,6 +346,7 @@ export function registerSourceMatching(
         expires: Date.now() + 15 * 60000,
         candidates,
         stamps,
+        identityStamps,
         input,
       });
       return { sourceId: source.id, requestId, plugins: result.plugins, candidates, problems };
@@ -397,8 +407,12 @@ export function registerSourceMatching(
               'Saved game details changed. Find artwork again before saving.',
             );
         }
-        for (const id of [sourceId, ...(candidate.fileId ? [candidate.fileId] : [])]) {
-          if (!job.stamps.has(id) || job.stamps.get(id) !== (await stamp(actor, id)))
+        for (const id of new Set([
+          sourceId,
+          ...job.identityStamps.keys(),
+          ...(candidate.fileId ? [candidate.fileId] : []),
+        ])) {
+          if ((job.identityStamps.get(id) ?? job.stamps.get(id)) !== (await stamp(actor, id)))
             throw new DomainError(
               'matching-source-changed',
               409,
@@ -591,7 +605,9 @@ export function registerSourceMatching(
           error: 'Server folder is offline or unavailable.',
         };
       const checksum =
-        options.checksum && !source.groupError && (source.groupMembers?.length ?? 1) <= 1;
+        options.checksum &&
+        !source.groupError &&
+        ((source.groupMembers?.length ?? 1) <= 1 || /\.(cue|gdi)$/i.test(source.displayName));
       let result = await match(actor, sourceId, { ...options, checksum }, signal);
       let saved = context.catalog.sourceMatches(sourceId);
       let count = 0;
@@ -726,14 +742,21 @@ export function registerSourceMatching(
         (candidate) =>
           candidate.kind !== 'artwork' || (candidate.metadata.artworkRole ?? 'front') === 'front',
       );
+      const input = jobs.get(result.requestId)?.input;
+      const warnings = input?.facts?.warnings ?? [];
+      const discConflict = warnings.includes('disc-system-conflict')
+        ? 'The embedded disc ID disagrees with this system. Review the system before matching.'
+        : warnings.includes('disc-identifiers-conflict')
+          ? 'The disc contains conflicting game IDs. Choose its catalog match explicitly.'
+          : null;
       const status =
-        primary.length || result.problems.length || warning
+        primary.length || result.problems.length || warning || discConflict
           ? 'review'
           : saved.matches.length
             ? 'saved'
             : 'unmatched';
-      const input = jobs.get(result.requestId)?.input;
       let reason =
+        discConflict ??
         warning ??
         (result.problems.length ? 'Some matching providers failed; retry this game.' : null);
       if (!reason && status === 'review') {
@@ -748,13 +771,17 @@ export function registerSourceMatching(
                 : 'A suggested match needs review.';
       }
       if (!reason && status === 'unmatched') {
-        reason = input?.facts?.hashes.some((hash) => hash.verified)
-          ? 'No catalog entry matches the verified ROM bytes.'
-          : input?.facts?.identifiers.some((id) => id.verified)
-            ? 'No catalog entry matches the disc ID.'
-            : (source.groupMembers?.length ?? 1) > 1
-              ? 'This multi-file disc has no supported identity yet.'
-              : 'No catalog match was found; this file has no supported game ID yet.';
+        reason = warnings.includes('cue-jaguarcd-requires-catalog-or-explicit-match')
+          ? 'Jaguar CD has no standard embedded game ID. Choose a catalog match or use an exact filename.'
+          : warnings.includes('cue-secondary-track-iso-origin-unsupported')
+            ? 'This secondary data track needs a supported filesystem origin to identify its game.'
+            : input?.facts?.hashes.some((hash) => hash.verified)
+              ? 'No catalog entry matches the verified ROM bytes.'
+              : input?.facts?.identifiers.some((id) => id.verified)
+                ? 'No catalog entry matches the disc ID.'
+                : (source.groupMembers?.length ?? 1) > 1
+                  ? 'This multi-file disc has no supported identity yet.'
+                  : 'No catalog match was found; this file has no supported game ID yet.';
       }
       if (
         !reason &&
