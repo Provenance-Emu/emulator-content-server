@@ -56,3 +56,11 @@ is a manifest-only update with unchanged sanitized core resources. The public
 package is 4,604,920 bytes, SHA-256
 `b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de`.
 The corresponding sanitized source archive remains linked from the release.
+
+The local server was updated to the committed UI/server build and profile 1.2.0,
+with existing emulator preferences preserved. Live acceptance verified seven
+contained member paths, two sessions sharing one two-folder scan, zero failures,
+and all 691 existing choices unchanged (430 metadata records and 261 covers).
+Acceptance sessions were revoked. The final CHD rerun used its own output
+directory after another runner removed the shared result directory; CPU/video
+assertions had already passed before that artifact-write collision.
