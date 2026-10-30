@@ -45,3 +45,27 @@ export function jaguarCdArtworkReview(title: string): string | undefined {
     return 'The source uses the original title cover; Songbird reissue artwork was not verified.';
   return undefined;
 }
+
+/** Shared HTTP/worker download policy; the fallback never grants access to arbitrary GitHub files. */
+export function isBuiltinArtworkUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    if (
+      url.origin !== 'https://raw.githubusercontent.com' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      return false;
+    if (url.pathname.startsWith('/libretro-thumbnails/')) return true;
+    const prefix = `/${JAGUAR_CD_ARTWORK.repository}/${JAGUAR_CD_ARTWORK.revision}/${JAGUAR_CD_ARTWORK.prefix.split('/').map(encodeURIComponent).join('/')}`;
+    if (!url.pathname.startsWith(prefix)) return false;
+    const relative = url.pathname.slice(prefix.length);
+    const match = /^Named_(?:Boxarts|Titles|Snaps)\/([^/]+\.png)$/.exec(relative);
+    return !!match?.[1] && !/[/\\\0]/.test(decodeURIComponent(match[1]));
+  } catch {
+    return false;
+  }
+}

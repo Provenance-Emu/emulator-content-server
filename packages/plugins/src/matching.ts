@@ -1,3 +1,5 @@
+export { isBuiltinArtworkUrl } from './jaguar-cd-artwork.js';
+
 import { crc32 } from 'node:zlib';
 import { classifyArtwork } from './artwork-classification.js';
 import type { ProviderCapability } from './manifest.js';

@@ -124,3 +124,23 @@ test('a changed mirror pin fails closed while leaving metadata available', async
     /partial|incomplete|failed/i,
   );
 });
+
+test('artwork downloads permit only the pinned Jaguar CD mirror subtree', async () => {
+  const { isBuiltinArtworkUrl } = await import('../src/matching.js');
+  const base = `https://raw.githubusercontent.com/libretro/virtualjaguar-libretro/${revision}/site/thumbnails/Atari%20-%20Jaguar%20CD/`;
+  assert.equal(isBuiltinArtworkUrl(`${base}Named_Boxarts/Baldies%20(USA)%20(Rev%201).png`), true);
+  for (const url of [
+    `${base.replace(revision, 'master')}Named_Boxarts/Baldies.png`,
+    `${base.replace(revision, 'a'.repeat(40))}Named_Boxarts/Baldies.png`,
+    `${base}../Jaguar/Named_Boxarts/Baldies.png`,
+    `${base}Named_Boxarts/%2Fother.png`,
+    `${base}Named_Boxarts/Baldies.png?x=1`,
+    `${base}Named_Boxarts/Baldies.png#fragment`,
+    base.replace('raw.githubusercontent.com', 'raw.githubusercontent.com.attacker.invalid') +
+      'Named_Boxarts/Baldies.png',
+    `${base.replace('https://', 'https://user@')}Named_Boxarts/Baldies.png`,
+    `${base}SOURCES.tsv`,
+    `${base}Named_Boxarts/Baldies.txt`,
+  ])
+    assert.equal(isBuiltinArtworkUrl(url), false, url);
+});

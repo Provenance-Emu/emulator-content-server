@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { HOSTED_CATALOG_PIN } from './catalog-release.js';
 import { createLibretroCheatsProvider, localCheatsProvider, normalizeCheats } from './cheats.js';
 import { createHostedCatalog, type HostedCatalogClient } from './hosted-catalog.js';
+import { isBuiltinArtworkUrl } from './jaguar-cd-artwork.js';
 import { createLibretroProvider } from './libretro-matching.js';
 import { localMatchingProvider, type MatchingProvider, runMatching } from './matching.js';
 import type { MatchingJob, MatchingPluginDescription, MatchingReply } from './matching-host.js';
@@ -177,7 +178,7 @@ export async function executeMatchingJob(job: MatchingJob): Promise<MatchingRepl
     if (
       url.origin !== 'https://raw.githubusercontent.com' ||
       !(job.operation === 'artwork'
-        ? url.pathname.startsWith('/libretro-thumbnails/')
+        ? isBuiltinArtworkUrl(url.href)
         : url.pathname.startsWith('/libretro/libretro-database/master/cht/') &&
           url.pathname.endsWith('.cht')) ||
       url.username ||

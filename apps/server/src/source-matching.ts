@@ -5,6 +5,7 @@ import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
   automaticEvidence,
   hasIdentityConflict,
+  isBuiltinArtworkUrl,
   type MatchCandidate,
   type MatchCompanion,
   type MatchingInput,
@@ -488,7 +489,7 @@ export function registerSourceMatching(
         const artwork =
           candidate.kind === 'artwork' &&
           candidate.providerId === 'org.ecs.libretro' &&
-          candidate.url?.startsWith('https://raw.githubusercontent.com/libretro-thumbnails/');
+          isBuiltinArtworkUrl(candidate.url);
         const cheats =
           candidate.kind === 'cheats' &&
           candidate.providerId === 'org.ecs.cheats.libretro' &&
