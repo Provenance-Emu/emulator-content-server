@@ -610,6 +610,8 @@ function assessEvidence(input: MatchingInput, metadata: Record<string, string>) 
 /** Opt-in filename policy: full release text is retained; no title/region/edition guessing. */
 function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
   if (!input.allowExactNames || !['metadata', 'artwork'].includes(candidate.kind)) return false;
+  if (candidate.kind === 'artwork' && candidate.metadata.artworkReviewRequired === 'true')
+    return false;
   // Catalog identity is explicit; a plain local sidecar association is not this policy.
   if (!input.systemId || candidate.metadata.systemId !== input.systemId) return false;
   if (
@@ -796,6 +798,8 @@ function savedSelectionEvidence(input: MatchingInput, candidate: MatchCandidate)
 /** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */
 export function automaticEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
   if (discIdentityConflict(input)) return false;
+  if (candidate.kind === 'artwork' && candidate.metadata.artworkReviewRequired === 'true')
+    return false;
   if (
     input.systemId &&
     candidate.metadata.systemId &&

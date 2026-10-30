@@ -1289,3 +1289,27 @@ test('one overlapping alternate title never merges two otherwise different compi
     2,
   );
 });
+
+test('an upstream front marked review-required never acquires automatic authority', () => {
+  const request = { ...input, name: 'Original Game (USA).cue', allowExactNames: true };
+  const cover: matching.MatchCandidate = {
+    ...candidate({ artworkRole: 'front', artworkReviewRequired: 'true', sha1, hashSize: '16' }),
+    kind: 'artwork',
+    url: 'https://example.com/front.png',
+  };
+  assert.equal(matching.automaticEvidence(request, cover), false);
+  assert.equal(
+    matching.automaticEvidence(
+      {
+        ...request,
+        facts: facts({
+          hashes: [
+            { algorithm: 'sha1', value: sha1, size: 16, representation: 'raw', verified: true },
+          ],
+        }),
+      },
+      cover,
+    ),
+    false,
+  );
+});

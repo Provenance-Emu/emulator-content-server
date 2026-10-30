@@ -100,6 +100,10 @@ test('builder emits reproducible pinned metadata/cheat shards with bounded sizes
   });
   assert.deepEqual([...first.assets.keys()], [...second.assets.keys()]);
   for (const [name, bytes] of first.assets) assert.deepEqual(bytes, second.assets.get(name), name);
+  assert.equal(
+    first.index.sources.find((source) => source.id === 'flycast-test').revision,
+    'b'.repeat(40),
+  );
   assert.equal(first.summary.metadataRecords, 3);
   assert.equal(first.summary.cheatRecords, 1);
   assert.ok(first.indexBytes.byteLength <= smallLimits.index);
@@ -198,6 +202,10 @@ test('builder verifies pinned patch bytes and BPS base size/CRC without releasin
     fetcher,
     limits: smallLimits,
   });
+  assert.equal(
+    built.index.sources.find((source) => source.id === patchConfig.sourceId).revision,
+    patchConfig.sourceCommit,
+  );
   const patchShard = built.index.shards.find((shard) => shard.kind === 'patch');
   const patchRecord = JSON.parse(built.assets.get(patchShard.url.split('/').at(-1)).toString())
     .records[0];
@@ -223,4 +231,55 @@ test('builder verifies pinned patch bytes and BPS base size/CRC without releasin
     }),
     /identity mismatch/,
   );
+});
+
+test('builder replaces incomplete disc DAT input with a bounded pinned snapshot and archives its source receipt', async (t) => {
+  const sourceRoot = await fixture(t);
+  const xml = Buffer.from(
+    `<datafile><game name="Generated Disc (USA) (Demo) (Alt)"><rom name="Generated Disc (USA) (Demo) (Alt) (Track 1).bin" size="16" crc="1234abcd" md5="${'1'.repeat(32)}" sha1="${'2'.repeat(40)}"/></game></datafile>`,
+  );
+  const filename = Buffer.from('generated.dat');
+  const header = Buffer.alloc(30);
+  header.writeUInt32LE(0x04034b50);
+  header.writeUInt32LE((await import('node:zlib')).crc32(xml), 14);
+  header.writeUInt32LE(xml.length, 18);
+  header.writeUInt32LE(xml.length, 22);
+  header.writeUInt16LE(filename.length, 26);
+  const archive = Buffer.concat([header, filename, xml]);
+  const snapshot = {
+    sourceId: 'generated-disc-snapshot',
+    sourceName: 'Generated original disc DAT',
+    url: 'https://example.com/disc-dat/',
+    revision: '2026-10-23-sha256-generated',
+    systemId: 'com.provenance.jaguarcd',
+    license: 'Generated fixture only',
+    notice: 'No third-party license is inferred.',
+    archive: { filename: 'generated-disc.zip', bytes: archive.length, sha256: digest(archive) },
+    dat: { filename: 'generated.dat', bytes: xml.length, sha256: digest(xml), records: 1 },
+  };
+  const cfg = { ...config(), metadataSnapshots: [snapshot] };
+  const built = await buildCatalog({
+    sourceRoot,
+    config: cfg,
+    release: 'catalog-snapshot-test',
+    fetcher: async (url) => (url === snapshot.url ? new Response(archive) : noPatchFetch(url)),
+  });
+  assert.equal(built.summary.metadataRecords, 4);
+  const source = built.index.sources.find((row) => row.id === snapshot.sourceId);
+  assert.equal(source.revision, snapshot.revision);
+  assert.equal(source.url, snapshot.url);
+  assert.equal(source.license, snapshot.license);
+  assert.deepEqual(built.assets.get(snapshot.archive.filename), archive);
+  assert.deepEqual(JSON.parse(built.assets.get('SOURCE-RECEIPTS.json').toString()).snapshots[0], {
+    sourceId: snapshot.sourceId,
+    url: snapshot.url,
+    revision: snapshot.revision,
+    archive: snapshot.archive,
+    dat: snapshot.dat,
+  });
+  const shard = built.index.shards.find((row) => row.systemId === snapshot.systemId);
+  const record = JSON.parse(built.assets.get(shard.url.split('/').at(-1)).toString()).records[0];
+  assert.equal(record.title, 'Generated Disc (USA) (Demo) (Alt)');
+  assert.equal(record.sourceIds[0], snapshot.sourceId);
+  assert.match(built.assets.get('SOURCES.md').toString(), /No third-party license is inferred/);
 });

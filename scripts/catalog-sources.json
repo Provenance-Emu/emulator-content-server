@@ -170,11 +170,6 @@
         "sourceId": "libretro-tosec"
       },
       {
-        "path": "metadat/redump/Atari - Jaguar CD.dat",
-        "systemId": "com.provenance.jaguarcd",
-        "sourceId": "libretro-redump"
-      },
-      {
         "path": "metadat/redump/Sega - Naomi.dat",
         "systemId": "com.provenance.naomi",
         "sourceId": "libretro-redump"
@@ -276,22 +271,58 @@
       }
     ],
     "cheatFolders": [
-      { "path": "cht/Nintendo - Nintendo Entertainment System", "systemId": "com.provenance.nes" },
+      {
+        "path": "cht/Nintendo - Nintendo Entertainment System",
+        "systemId": "com.provenance.nes"
+      },
       {
         "path": "cht/Nintendo - Super Nintendo Entertainment System",
         "systemId": "com.provenance.snes"
       },
-      { "path": "cht/Nintendo - Nintendo 64", "systemId": "com.provenance.n64" },
-      { "path": "cht/Sony - PlayStation", "systemId": "com.provenance.psx" },
-      { "path": "cht/Sony - PlayStation Portable", "systemId": "com.provenance.psp" },
-      { "path": "cht/Sega - Dreamcast", "systemId": "com.provenance.dreamcast" },
-      { "path": "cht/Atari - Jaguar", "systemId": "com.provenance.jaguar" },
-      { "path": "cht/FBNeo - Arcade Games", "systemId": "com.provenance.mame" },
-      { "path": "cht/Nintendo - Game Boy", "systemId": "com.provenance.gb" },
-      { "path": "cht/Nintendo - Game Boy Color", "systemId": "com.provenance.gbc" },
-      { "path": "cht/Nintendo - Game Boy Advance", "systemId": "com.provenance.gba" },
-      { "path": "cht/Sega - Mega Drive - Genesis", "systemId": "com.provenance.genesis" },
-      { "path": "cht/Sega - Master System - Mark III", "systemId": "com.provenance.mastersystem" }
+      {
+        "path": "cht/Nintendo - Nintendo 64",
+        "systemId": "com.provenance.n64"
+      },
+      {
+        "path": "cht/Sony - PlayStation",
+        "systemId": "com.provenance.psx"
+      },
+      {
+        "path": "cht/Sony - PlayStation Portable",
+        "systemId": "com.provenance.psp"
+      },
+      {
+        "path": "cht/Sega - Dreamcast",
+        "systemId": "com.provenance.dreamcast"
+      },
+      {
+        "path": "cht/Atari - Jaguar",
+        "systemId": "com.provenance.jaguar"
+      },
+      {
+        "path": "cht/FBNeo - Arcade Games",
+        "systemId": "com.provenance.mame"
+      },
+      {
+        "path": "cht/Nintendo - Game Boy",
+        "systemId": "com.provenance.gb"
+      },
+      {
+        "path": "cht/Nintendo - Game Boy Color",
+        "systemId": "com.provenance.gbc"
+      },
+      {
+        "path": "cht/Nintendo - Game Boy Advance",
+        "systemId": "com.provenance.gba"
+      },
+      {
+        "path": "cht/Sega - Mega Drive - Genesis",
+        "systemId": "com.provenance.genesis"
+      },
+      {
+        "path": "cht/Sega - Master System - Mark III",
+        "systemId": "com.provenance.mastersystem"
+      }
     ]
   },
   "flycast": {
@@ -339,6 +370,28 @@
       "bytes": 2162,
       "sourceSize": 2097152,
       "sourceCrc32": "9400cb3c"
+    }
+  ],
+  "metadataSnapshots": [
+    {
+      "sourceId": "redump-ajcd-snapshot",
+      "sourceName": "Redump.info / original Atari Jaguar CD DAT",
+      "url": "https://redump.info/datfile/ajcd/",
+      "revision": "2026-10-23-sha256-b658591678fccec7a2c1d018ec910bec1515a62391cd23d982bbd21bfcff8fa3",
+      "systemId": "com.provenance.jaguarcd",
+      "license": "Redump upstream terms; no independent redistribution license established",
+      "notice": "Public catalog facts from the original Redump.info DAT. Preserve Redump attribution. No rights to game content or artwork are granted; the libretro repository license is not asserted over this separately sourced snapshot. The exact public metadata archive is retained with source receipts for reproducibility.",
+      "archive": {
+        "filename": "redump-ajcd-20261023.zip",
+        "bytes": 33244,
+        "sha256": "3b821e1471931d6933439af11abb2c0e0acfd9fe210a7c6c7143cc3d312ea2d5"
+      },
+      "dat": {
+        "filename": "Atari - Jaguar CD Interactive Multimedia System - Datfile (40) (2026-10-23 10-16-24).dat",
+        "bytes": 103778,
+        "sha256": "b658591678fccec7a2c1d018ec910bec1515a62391cd23d982bbd21bfcff8fa3",
+        "records": 40
+      }
     }
   ]
 }

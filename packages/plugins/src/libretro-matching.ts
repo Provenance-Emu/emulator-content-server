@@ -1,5 +1,10 @@
 import { parseFlycastCatalog } from './arcade-catalog.js';
 import {
+  JAGUAR_CD_ARTWORK,
+  jaguarCdArtworkAliases,
+  jaguarCdArtworkReview,
+} from './jaguar-cd-artwork.js';
+import {
   automaticEvidence,
   classifyArtwork,
   compatibleCatalogIdentity,
@@ -29,7 +34,7 @@ export const LIBRETRO_SYSTEMS: Record<string, SystemCatalog> = {
   'com.provenance.jaguarcd': {
     platform: 'Atari - Jaguar CD',
     collection: 'redump',
-    artworkRepo: 'Atari_-_Jaguar',
+    artworkRepo: 'Atari_-_Jaguar_CD',
   },
   'com.provenance.nes': {
     platform: 'Nintendo - Nintendo Entertainment System',
@@ -72,6 +77,10 @@ export const LIBRETRO_SYSTEMS: Record<string, SystemCatalog> = {
 const FLYCAST =
   'https://raw.githubusercontent.com/flyinghead/flycast/master/core/hw/naomi/naomi_roms.cpp';
 interface Artwork {
+  repository?: string;
+  source?: string;
+  originalTitle?: string;
+  review?: string;
   title: string;
   path: string;
   kind: string;
@@ -80,45 +89,64 @@ interface Artwork {
   blobSha?: string;
   bytes: number;
 }
-function artworkIndex(text: string): Artwork[] {
+function artworkIndex(text: string, mirror = false): Artwork[] {
   const data = JSON.parse(text) as { sha?: unknown; truncated?: unknown; tree?: unknown };
   if (
     typeof data.sha !== 'string' ||
     !/^[0-9a-f]{40}$/.test(data.sha) ||
+    (mirror && data.sha !== JAGUAR_CD_ARTWORK.revision) ||
     data.truncated ||
     !Array.isArray(data.tree) ||
     data.tree.length > 30000
   )
     throw new Error('Incomplete artwork catalog');
   const sha = data.sha;
-  return data.tree.flatMap((entry: unknown) => {
-    if (!entry || typeof entry !== 'object') return [];
-    const row = entry as { path?: unknown; type?: unknown; size?: unknown; sha?: unknown };
-    if (
-      row.type !== 'blob' ||
-      typeof row.path !== 'string' ||
-      typeof row.size !== 'number' ||
-      row.size < 32 ||
-      row.size > 2 * 1024 * 1024
-    )
-      return [];
-    const match = /^Named_(Boxarts|Titles|Snaps)\/([^/\\\0]{1,512})\.png$/i.exec(row.path);
-    return match?.[1] && match[2]
-      ? [
-          {
-            title: match[2],
-            path: row.path,
-            kind: match[1].toLowerCase(),
-            sha,
-            role: classifyArtwork(row.path).role,
-            bytes: row.size,
-            ...(typeof row.sha === 'string' && /^[a-f0-9]{40}$/.test(row.sha)
-              ? { blobSha: row.sha }
-              : {}),
-          },
-        ]
-      : [];
-  });
+  return data.tree
+    .flatMap((entry: unknown) => {
+      if (!entry || typeof entry !== 'object') return [];
+      const row = entry as { path?: unknown; type?: unknown; size?: unknown; sha?: unknown };
+      if (
+        row.type !== 'blob' ||
+        typeof row.path !== 'string' ||
+        typeof row.size !== 'number' ||
+        row.size < 32 ||
+        row.size > 2 * 1024 * 1024
+      )
+        return [];
+      if (mirror && !row.path.startsWith(JAGUAR_CD_ARTWORK.prefix)) return [];
+      const relativePath = mirror ? row.path.slice(JAGUAR_CD_ARTWORK.prefix.length) : row.path;
+      const match = /^Named_(Boxarts|Titles|Snaps)\/([^/\\\0]{1,512})\.png$/i.exec(relativePath);
+      return match?.[1] && match[2]
+        ? [
+            {
+              title: match[2],
+              path: row.path,
+              kind: match[1].toLowerCase(),
+              sha,
+              role: classifyArtwork(relativePath).role,
+              ...(mirror
+                ? {
+                    repository: JAGUAR_CD_ARTWORK.repository,
+                    source: JAGUAR_CD_ARTWORK.source,
+                    originalTitle: match[2],
+                    ...(match[1].toLowerCase() === 'boxarts'
+                      ? { review: jaguarCdArtworkReview(match[2]) }
+                      : {}),
+                  }
+                : {}),
+              bytes: row.size,
+              ...(typeof row.sha === 'string' && /^[a-f0-9]{40}$/.test(row.sha)
+                ? { blobSha: row.sha }
+                : {}),
+            },
+          ]
+        : [];
+    })
+    .flatMap((image) =>
+      mirror
+        ? [image, ...jaguarCdArtworkAliases(image.title).map((title) => ({ ...image, title }))]
+        : [image],
+    );
 }
 
 /** Public facts/indexes only: ROM bytes, local paths and credentials never leave the server. */
@@ -345,7 +373,16 @@ export function createLibretroProvider(
             resourceSignal,
             8 * 1024 * 1024,
           );
-          return index ? memo(`art:${repo}`, index, () => artworkIndex(index)) : emptyArt;
+          if (index) return memo(`art:${repo}`, index, () => artworkIndex(index));
+          if (systemId !== 'com.provenance.jaguarcd') return emptyArt;
+          const mirror = await catalogs.load(
+            `https://api.github.com/repos/${JAGUAR_CD_ARTWORK.repository}/git/trees/${JAGUAR_CD_ARTWORK.revision}?recursive=1`,
+            resourceSignal,
+            8 * 1024 * 1024,
+          );
+          return mirror
+            ? memo('art:jaguar-cd-mirror', mirror, () => artworkIndex(mirror, true))
+            : emptyArt;
         } catch (error) {
           failures.push(error);
           return emptyArt;
@@ -461,6 +498,7 @@ export function createLibretroProvider(
       const boxarts = ranked.filter(
         (row) =>
           row.image.kind === 'boxarts' &&
+          !row.image.review &&
           verified.has(`${systemId}\0${canonical(row.image.title)}`),
       );
       const uniqueCovers = <T extends { image: Artwork }>(covers: T[]): T[] => [
@@ -486,6 +524,7 @@ export function createLibretroProvider(
         ? ranked.filter(
             (row) =>
               row.image.kind === 'boxarts' &&
+              !row.image.review &&
               selected.titles.some((title) => canonical(title) === canonical(row.image.title)),
           )
         : [];
@@ -501,12 +540,21 @@ export function createLibretroProvider(
           kind: 'artwork',
           title: image.title,
           confidence: corroborated?.identity.confidence === 'checksum' ? 'checksum' : 'name',
-          url: `https://raw.githubusercontent.com/libretro-thumbnails/${repo}/${image.sha}/${image.path
+          url: `https://raw.githubusercontent.com/${image.repository ?? `libretro-thumbnails/${repo}`}/${image.sha}/${image.path
             .split('/')
             .map((segment) => encodeURIComponent(segment))
             .join('/')}`,
           metadata: {
-            source: 'Libretro thumbnails',
+            source: image.source ?? 'Libretro thumbnails',
+            ...(image.originalTitle
+              ? {
+                  artworkCatalogTitle: image.originalTitle,
+                  artworkNotice: JAGUAR_CD_ARTWORK.notice,
+                }
+              : {}),
+            ...(image.review
+              ? { artworkReviewRequired: 'true', artworkReviewReason: image.review }
+              : {}),
             artworkType: image.kind,
             artworkRole: image.role,
             ...(image.blobSha
