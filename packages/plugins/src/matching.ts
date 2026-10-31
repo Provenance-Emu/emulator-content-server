@@ -4,6 +4,7 @@ import { crc32 } from 'node:zlib';
 import { classifyArtwork } from './artwork-classification.js';
 import type { ProviderCapability } from './manifest.js';
 import {
+  artworkTitleMatches,
   compatibleGameTitles,
   contentStem,
   nameMatchKeys,
@@ -794,7 +795,12 @@ function savedSelectionEvidence(input: MatchingInput, candidate: MatchCandidate)
       .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
   return (
     canonical(candidate.metadata.matchedGame ?? '') === canonical(saved.title) &&
-    anchor.titles.some((title) => canonical(title) === canonical(candidate.title))
+    anchor.titles.some((title) =>
+      artworkTitleMatches(title, candidate.title, [
+        ...identifiers(anchor.identity.metadata.serials),
+        ...identifiers(anchor.identity.metadata.setIds),
+      ]),
+    )
   );
 }
 /** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */

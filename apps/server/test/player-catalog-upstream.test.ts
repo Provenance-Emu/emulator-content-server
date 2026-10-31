@@ -84,3 +84,42 @@ test('upstream player catalog entries have valid pinned web-player manifests', (
     }
   }
 });
+
+test('requested Provenance systems have a player or an explicit installation blocker', () => {
+  for (const system of [
+    '2600',
+    '5200',
+    '7800',
+    'gb',
+    'gbc',
+    'gba',
+    'nes',
+    'snes',
+    'gamegear',
+    'vb',
+    'jaguar',
+    'jaguarcd',
+    'dreamcast',
+    'naomi',
+    'naomi2',
+    'atomiswave',
+    'gamecube',
+    'wii',
+  ]) {
+    const entries = playerCatalog.filter((entry) =>
+      entry.systems.includes(`com.provenance.${system}`),
+    );
+    assert.ok(entries.length, `missing player status for ${system}`);
+    for (const entry of entries) {
+      if (!entry.available) assert.ok(entry.reason, `${entry.id} needs an installation blocker`);
+    }
+  }
+  for (const id of ['org.libretro.atari800', 'org.libretro.dolphin', 'org.libretro.flycast']) {
+    const entry = playerCatalog.find((candidate) => candidate.id === id);
+    assert.ok(entry);
+    assert.equal(entry.available, false);
+    assert.equal(entry.url, null);
+    assert.equal(entry.sha256, null);
+    assert.equal(entry.upstream, undefined);
+  }
+});

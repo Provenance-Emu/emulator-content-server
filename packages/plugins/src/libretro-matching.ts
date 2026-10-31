@@ -19,7 +19,13 @@ import {
   reconcileCandidates,
   selectedArtworkAnchor,
 } from './matching.js';
-import { contentStem, nameMatchKeys, nameMatchScore, normalizeSerial } from './matching-names.js';
+import {
+  artworkTitleMatches,
+  contentStem,
+  nameMatchKeys,
+  nameMatchScore,
+  normalizeSerial,
+} from './matching-names.js';
 import { createCatalogLoader } from './public-catalog.js';
 
 interface SystemCatalog {
@@ -30,6 +36,55 @@ interface SystemCatalog {
   branch?: string;
 }
 export const LIBRETRO_SYSTEMS: Record<string, SystemCatalog> = {
+  'com.provenance.2600': { platform: 'Atari - 2600', collection: 'no-intro' },
+  'com.provenance.5200': { platform: 'Atari - 5200', collection: 'no-intro' },
+  'com.provenance.7800': { platform: 'Atari - 7800', collection: 'no-intro' },
+  'com.provenance.lynx': { platform: 'Atari - Lynx', collection: 'no-intro' },
+  'com.provenance.vb': { platform: 'Nintendo - Virtual Boy', collection: 'no-intro' },
+  'com.provenance.fds': {
+    platform: 'Nintendo - Family Computer Disk System',
+    collection: 'no-intro',
+  },
+  'com.provenance.pce': { platform: 'NEC - PC Engine - TurboGrafx 16', collection: 'no-intro' },
+  'com.provenance.sgfx': { platform: 'NEC - PC Engine SuperGrafx', collection: 'no-intro' },
+  'com.provenance.pcecd': { platform: 'NEC - PC Engine CD - TurboGrafx-CD', collection: 'redump' },
+  'com.provenance.pcfx': { platform: 'NEC - PC-FX', collection: 'redump' },
+  'com.provenance.ws': { platform: 'Bandai - WonderSwan', collection: 'no-intro' },
+  'com.provenance.wsc': { platform: 'Bandai - WonderSwan Color', collection: 'no-intro' },
+  'com.provenance.ngp': { platform: 'SNK - Neo Geo Pocket', collection: 'no-intro' },
+  'com.provenance.ngpc': { platform: 'SNK - Neo Geo Pocket Color', collection: 'no-intro' },
+  'com.provenance.32X': { platform: 'Sega - 32X', collection: 'no-intro' },
+  'com.provenance.segacd': { platform: 'Sega - Mega-CD - Sega CD', collection: 'redump' },
+  'com.provenance.sg1000': { platform: 'Sega - SG-1000', collection: 'no-intro' },
+  'com.provenance.ds': { platform: 'Nintendo - Nintendo DS' },
+  'com.provenance.3ds': { platform: 'Nintendo - Nintendo 3DS' },
+  'com.provenance.ps2': { platform: 'Sony - PlayStation 2' },
+  'com.provenance.3DO': { platform: 'The 3DO Company - 3DO', collection: 'redump' },
+  'com.provenance.neogeo': { platform: 'SNK - Neo Geo' },
+  'com.provenance.neogeocd': { platform: 'SNK - Neo Geo CD', collection: 'redump' },
+  'com.provenance.mame': { platform: 'MAME' },
+  'com.provenance.colecovision': { platform: 'Coleco - ColecoVision', collection: 'no-intro' },
+  'com.provenance.intellivision': { platform: 'Mattel - Intellivision', collection: 'no-intro' },
+  'com.provenance.odyssey2': { platform: 'Magnavox - Odyssey2', collection: 'no-intro' },
+  'com.provenance.vectrex': { platform: 'GCE - Vectrex', collection: 'no-intro' },
+  'com.provenance.pokemonmini': { platform: 'Nintendo - Pokemon Mini', collection: 'no-intro' },
+  'com.provenance.supervision': { platform: 'Watara - Supervision', collection: 'no-intro' },
+  'com.provenance.atari8bit': { platform: 'Atari - 8-bit Family', collection: 'no-intro' },
+  'com.provenance.atarist': { platform: 'Atari - ST', collection: 'no-intro' },
+  'com.provenance.c64': { platform: 'Commodore - 64' },
+  'com.provenance.cdi': { platform: 'Philips - CD-i', collection: 'redump' },
+  'com.provenance.msx': { platform: 'Microsoft - MSX', collection: 'no-intro' },
+  'com.provenance.msx2': { platform: 'Microsoft - MSX2', collection: 'no-intro' },
+  'com.provenance.pc98': { platform: 'NEC - PC-98', collection: 'redump' },
+  'com.provenance.dos': { platform: 'DOS' },
+  'com.provenance.doom': { platform: 'DOOM' },
+  'com.provenance.wolf3d': { platform: 'Wolfenstein 3D' },
+  'com.provenance.quake': { platform: 'Quake' },
+  'com.provenance.quake2': { platform: 'Quake II' },
+  'com.provenance.tic80': { platform: 'TIC-80' },
+  'com.provenance.cps1': { platform: 'FBNeo - Arcade Games' },
+  'com.provenance.cps2': { platform: 'FBNeo - Arcade Games' },
+  'com.provenance.cps3': { platform: 'FBNeo - Arcade Games' },
   'com.provenance.jaguar': { platform: 'Atari - Jaguar', collection: 'no-intro' },
   'com.provenance.jaguarcd': {
     platform: 'Atari - Jaguar CD',
@@ -520,7 +575,7 @@ export function createLibretroProvider(
         !failures.length && consistent && onlyCover && identity && systemId
           ? { index: onlyCover.index, title: identity.canonicalTitle, systemId, identity }
           : undefined;
-      const selectedCovers = selected
+      const exactSelectedCovers = selected
         ? ranked.filter(
             (row) =>
               row.image.kind === 'boxarts' &&
@@ -528,6 +583,16 @@ export function createLibretroProvider(
               selected.titles.some((title) => canonical(title) === canonical(row.image.title)),
           )
         : [];
+      const selectedCovers = exactSelectedCovers.length
+        ? exactSelectedCovers
+        : selected
+          ? ranked.filter(
+              (row) =>
+                row.image.kind === 'boxarts' &&
+                !row.image.review &&
+                selected.titles.some((title) => artworkTitleMatches(title, row.image.title)),
+            )
+          : [];
       const distinctSelectedCovers = uniqueCovers(selectedCovers);
       const selectedCover =
         !failures.length && selected && distinctSelectedCovers.length === 1

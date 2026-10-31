@@ -46,6 +46,58 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     sha256: '1a1f37934f601d49ed00d6f69c998860c5283c3ddfde8774ef6dfd4badb9b3ad',
   },
   {
+    id: 'org.libretro.prosystem',
+    name: 'ProSystem (Atari 7800)',
+    systems: ['com.provenance.7800'],
+    description: 'Atari 7800 cartridge games.',
+    available: false,
+    reason:
+      'A compatible browser package is being validated; the official web loader uses an older runtime.',
+    downloadBytes: null,
+    url: null,
+    sha256: null,
+  },
+  {
+    id: 'org.libretro.atari800',
+    name: 'Atari800 (Atari 5200)',
+    systems: ['com.provenance.5200'],
+    description: 'Atari 5200 games with user-supplied firmware.',
+    available: false,
+    reason: 'A compatible browser build and Atari 5200 firmware staging are not available yet.',
+    downloadBytes: null,
+    url: null,
+    sha256: null,
+  },
+  {
+    id: 'org.libretro.flycast',
+    name: 'Flycast (Dreamcast / Sega arcade)',
+    systems: [
+      'com.provenance.dreamcast',
+      'com.provenance.naomi',
+      'com.provenance.naomi2',
+      'com.provenance.atomiswave',
+    ],
+    description: 'Dreamcast, Naomi, Naomi 2 and Atomiswave.',
+    available: false,
+    reason:
+      'The experimental Flycast WebAssembly JIT uses a different player runtime; integration, firmware and game compatibility still need validation.',
+    downloadBytes: null,
+    url: null,
+    sha256: null,
+  },
+  {
+    id: 'org.libretro.dolphin',
+    name: 'Dolphin (GameCube / Wii)',
+    systems: ['com.provenance.gamecube', 'com.provenance.wii'],
+    description: 'Nintendo GameCube and Wii.',
+    available: false,
+    reason:
+      'The experimental browser port needs a different player runtime, shared memory and WebGPU; integration and browser compatibility are unverified.',
+    downloadBytes: null,
+    url: null,
+    sha256: null,
+  },
+  {
     id: 'org.libretro.parallel-dc',
     name: 'Dreamcast & Sega arcade (parallel-dc)',
     systems: [

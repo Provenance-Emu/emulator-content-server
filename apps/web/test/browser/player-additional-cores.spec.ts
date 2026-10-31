@@ -6,6 +6,10 @@ import { join, resolve } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { ContentClient } from '@ecs/client';
 import { expect, test } from '@playwright/test';
+import {
+  atari7800SmokeCartridge,
+  atari7800SmokeCode,
+} from '../../../../scripts/browser-core/generate-7800-smoke.mjs';
 import { jaguarSmokeChd } from '../../../../scripts/browser-core/generate-jaguar-chd-smoke.mjs';
 import { psxSmokeCode, psxSmokeExe } from '../../../../scripts/browser-core/generate-psx-smoke.mjs';
 import {
@@ -75,7 +79,8 @@ function centerPixel(png: Buffer): number[] {
 const jaguarPlugin = process.env.ECS_ACCEPTANCE_JAGUAR_PLUGIN;
 const parallelPlugin = process.env.ECS_ACCEPTANCE_PARALLEL_DC_PLUGIN;
 const psxPlugin = process.env.ECS_ACCEPTANCE_PSX_PLUGIN;
-if (jaguarPlugin || parallelPlugin || psxPlugin)
+const prosystemPlugin = process.env.ECS_ACCEPTANCE_PROSYSTEM_PLUGIN;
+if (jaguarPlugin || parallelPlugin || psxPlugin || prosystemPlugin)
   test.use({
     headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1',
     ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
@@ -83,6 +88,19 @@ if (jaguarPlugin || parallelPlugin || psxPlugin)
       : {}),
   });
 const cases = [
+  {
+    title: 'Atari 7800 original cartridge',
+    plugin: prosystemPlugin,
+    profile: 'org.libretro.prosystem',
+    system: 'com.provenance.7800',
+    program: atari7800SmokeCartridge(),
+    filename: 'original.bin',
+    needle: atari7800SmokeCode(),
+    guestAddress: 0x8000,
+    counterAddress: 0x40,
+    littleEndian: true,
+    greenMinimum: 100,
+  },
   {
     title: 'PlayStation HLE',
     plugin: psxPlugin,
@@ -165,7 +183,7 @@ for (const entry of cases) {
   }, testInfo) => {
     test.skip(
       !entry.plugin,
-      'Set ECS_ACCEPTANCE_JAGUAR_PLUGIN or ECS_ACCEPTANCE_PARALLEL_DC_PLUGIN to an external player directory.',
+      'Set the matching ECS_ACCEPTANCE_*_PLUGIN variable to an external player directory.',
     );
     test.setTimeout(120_000);
     const directory = await mkdtemp(join(tmpdir(), 'ecs-real-jaguar-'));
@@ -353,14 +371,17 @@ for (const entry of cases) {
       await expect
         .poll(
           async () => {
-            image = await page.frameLocator('iframe').locator('canvas').screenshot();
+            const canvas = page.frameLocator('iframe').locator('canvas');
+            const bounds = await canvas.boundingBox();
+            if (!bounds) throw new Error('Core canvas is missing');
+            image = await page.screenshot({ clip: bounds });
             pixel = centerPixel(image);
             return pixel[1];
           },
           { timeout: 10_000 },
         )
-        .toBeGreaterThan(150);
-      expect(pixel[1]).toBeGreaterThan(150);
+        .toBeGreaterThan('greenMinimum' in entry ? entry.greenMinimum : 150);
+      expect(pixel[1]).toBeGreaterThan('greenMinimum' in entry ? entry.greenMinimum : 150);
       expect(pixel[0]).toBeLessThan(30);
       expect(pixel[2]).toBeLessThan(30);
       await mkdir(testInfo.outputDir, { recursive: true });
