@@ -77,7 +77,12 @@ export async function smokeLibretroPairs(pairs, output) {
     });
     async function smokeWorker() {
       while (smokeCursor < pairs.length) {
-        const { core, originalNesPath } = pairs[smokeCursor++],
+        const {
+            core,
+            originalNesPath,
+            originalContentPath,
+            contentExtension = 'nes',
+          } = pairs[smokeCursor++],
           page = await browser.newPage(),
           pageErrors = [],
           unexpectedRequests = [];
@@ -91,9 +96,12 @@ export async function smokeLibretroPairs(pairs, output) {
         try {
           await page.goto(base);
           const nonce = randomBytes(16).toString('hex');
-          const originalNes = originalNesPath ? [...(await readFile(originalNesPath))] : null;
+          if (!/^[a-z0-9]{1,12}$/.test(contentExtension))
+            throw Error('Invalid original-program extension');
+          const originalPath = originalContentPath ?? originalNesPath;
+          const originalContent = originalPath ? [...(await readFile(originalPath))] : null;
           const result = await page.evaluate(
-            async ({ core, nonce, originalNes }) => {
+            async ({ core, nonce, originalContent, contentExtension }) => {
               const loader = await (await fetch(`/${core}_libretro.js`)).arrayBuffer();
               const wasm = await (await fetch(`/${core}_libretro.wasm`)).arrayBuffer();
               const frame = document.createElement('iframe');
@@ -169,30 +177,26 @@ export async function smokeLibretroPairs(pairs, output) {
                     const result = new Uint8Array(await rpc('read', '/ecs/audit/probe'));
                     if (result[0] !== 42 || result[1] !== 7 || result.length !== 2)
                       throw Error('MEMFS round-trip failed');
-                    if (originalNes) {
+                    if (originalContent) {
+                      const contentPath = `/ecs/content/original.${contentExtension}`;
                       for (const directory of ['content', 'system', 'saves', 'states'])
                         await rpc('mkdir', `/ecs/${directory}`);
                       const write = async (path, bytes) => {
                         const buffer = new Uint8Array(bytes).buffer;
                         await rpc('write', { path, bytes: buffer }, [buffer]);
                       };
-                      await write('/ecs/content/original.nes', originalNes);
+                      await write(contentPath, originalContent);
                       await write(
                         '/ecs/retroarch.cfg',
                         new TextEncoder().encode(
                           'audio_enable = "false"\nvideo_driver = "gl"\nvideo_shader_enable = "false"\nmenu_driver = "null"\nsystem_directory = "/ecs/system"\nsavefile_directory = "/ecs/saves"\nsavestate_directory = "/ecs/states"\nconfig_save_on_exit = "false"\n',
                         ),
                       );
-                      await rpc('main', [
-                        '-v',
-                        '--config',
-                        '/ecs/retroarch.cfg',
-                        '/ecs/content/original.nes',
-                      ]);
+                      await rpc('main', ['-v', '--config', '/ecs/retroarch.cfg', contentPath]);
                       const deadline = performance.now() + 10000;
                       while (!(await rpc('display-info')).captureReady) {
                         if (performance.now() > deadline)
-                          throw Error('Original NES program did not render');
+                          throw Error('Original program did not render');
                         await new Promise((done) => setTimeout(done, 100));
                       }
                       do {
@@ -216,7 +220,7 @@ export async function smokeLibretroPairs(pairs, output) {
                         )
                           break;
                         if (performance.now() > deadline)
-                          throw Error(`Original NES blue palette output missing: ${pixel}`);
+                          throw Error(`Original program blue palette output missing: ${pixel}`);
                         await new Promise((done) => setTimeout(done, 100));
                       } while (
                         pixel[2] < pixel[0] + 30 ||
@@ -230,7 +234,9 @@ export async function smokeLibretroPairs(pairs, output) {
                   ok: readyOrigin === 'null',
                   origin: readyOrigin,
                   productionSandbox: true,
-                  acceptance: originalNes ? 'original-nes-video' : 'factory-memfs-only',
+                  acceptance: originalContent
+                    ? `original-${contentExtension}-video`
+                    : 'factory-memfs-only',
                   pixel,
                 };
               } finally {
@@ -238,7 +244,7 @@ export async function smokeLibretroPairs(pairs, output) {
                 frame.remove();
               }
             },
-            { core, nonce, originalNes },
+            { core, nonce, originalContent, contentExtension },
           );
           results.push({ core, ...result, pageErrors, unexpectedRequests });
         } catch (error) {

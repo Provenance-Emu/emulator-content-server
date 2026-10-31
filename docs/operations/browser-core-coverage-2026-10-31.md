@@ -1,5 +1,9 @@
 # Browser core coverage, 2026-10-31
 
+Follow-up: [three additional central source builds](browser-source-cores-2026-10-31.md)
+add Stella 2014, FreeIntv and Atari800. The upstream-only counts below remain
+the inventory snapshot; the source buildbot now has seven recipes.
+
 The upstream catalog now contains **49 pinned profiles**, up from 35. **44 are installable across 35 canonical Provenance system identifiers**. Installation availability means that the verified loader/WASM pair fits the current browser runtime; it is not a claim that a game has been tested or that the core is already installed. Profiles explicitly say experimental/startup verified and keep synchronized saves disabled.
 
 ## Fresh official inventory

@@ -4,6 +4,26 @@ import { parseManifest } from '@ecs/plugins';
 import { playerCatalog } from '../src/player-catalog.js';
 import { upstreamCorePins } from '../src/player-catalog-upstream-data.js';
 
+test('source-built Atari and Intellivision cores are installable from immutable central releases', () => {
+  for (const [id, system] of [
+    ['stella2014', '2600'],
+    ['freeintv', 'intellivision'],
+    ['atari800', '5200'],
+  ]) {
+    const matches = playerCatalog.filter((entry) => entry.id === `org.libretro.${id}`);
+    assert.equal(matches.length, 1);
+    const [entry] = matches;
+    assert.equal(entry?.available, true);
+    assert.deepEqual(entry.systems, [`com.provenance.${system}`]);
+    assert.equal(
+      entry.url,
+      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-${id}-2026.10.31.1/${id}.ecsplayer`,
+    );
+    assert.match(entry.sha256 ?? '', /^[a-f0-9]{64}$/);
+    assert.ok((entry.downloadBytes ?? 0) > 0);
+  }
+});
+
 test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => {
   const jaguar = playerCatalog.find((entry) => entry.id === 'org.libretro.virtualjaguar');
   assert.ok(jaguar);
@@ -114,6 +134,7 @@ test('requested Provenance systems have a player or an explicit installation blo
     '2600',
     '5200',
     '7800',
+    'intellivision',
     'gb',
     'gbc',
     'gba',
@@ -138,7 +159,7 @@ test('requested Provenance systems have a player or an explicit installation blo
       if (!entry.available) assert.ok(entry.reason, `${entry.id} needs an installation blocker`);
     }
   }
-  for (const id of ['org.libretro.atari800', 'org.dolphin.wasm', 'org.flycast.wasm-jit']) {
+  for (const id of ['org.dolphin.wasm', 'org.flycast.wasm-jit']) {
     const entry = playerCatalog.find((candidate) => candidate.id === id);
     assert.ok(entry);
     assert.equal(entry.available, false);

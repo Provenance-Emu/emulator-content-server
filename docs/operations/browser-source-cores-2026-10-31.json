@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-31",
+  "repository": "Provenance-Emu/emulator-content-server",
+  "profiles": [
+    {
+      "id": "org.libretro.stella2014",
+      "version": "1.0.0",
+      "sourceRevision": "7d1361e407e63f29e52892655069e5fb4096e691",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41182557899",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-stella2014-2026.10.31.1",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "stella2014.ecsplayer",
+          "sizeBytes": 4547701,
+          "sha256": "ef724d23b070d5035dcaeab774ca1c5a15a8c37bebd54d39e2bddfad7b530f13"
+        },
+        {
+          "file": "stella2014.source.tar.gz",
+          "sizeBytes": 85325890,
+          "sha256": "264d6fd075130db989a16a0d18cda8a6c737711cb6ec3d26be1edd374d5e9963"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 1917,
+          "sha256": "93a025aa08a4a14f460b694cf0a03b6ee7151506998ebb62faebdaf7ad9da2f9"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 954,
+          "sha256": "d020a03d577ae4db1d13371e5b228c5befe784e56157806873123003f11437a5"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 216,
+          "sha256": "7a3309f84df0bc51b0cd19085892ca582ffb62015a61b4e5335362f11451ba5e"
+        }
+      ]
+    },
+    {
+      "id": "org.libretro.freeintv",
+      "version": "1.0.0",
+      "sourceRevision": "ef3e0fe322bec62a7f916c0bb0834c08c348d0b4",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41182563444",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-freeintv-2026.10.31.1",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "freeintv.ecsplayer",
+          "sizeBytes": 4126365,
+          "sha256": "e2a92eca25dfaa58e417219fa26cfbd08d26077430b5962ff7aeb64f3b40fedb"
+        },
+        {
+          "file": "freeintv.source.tar.gz",
+          "sizeBytes": 110359373,
+          "sha256": "f17e78502f78c10912c000ed39408e052d0359377c1f4685ed49fea6cfa3a30d"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 1924,
+          "sha256": "9c81b13123628a5e63dfb4cd4859d677837285fd0a1974832868f746c8761d15"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 974,
+          "sha256": "12834f19b622f86eaf7b1aacf776b7e45dc9ac5f27861f3bd50189b902b01996"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 214,
+          "sha256": "0e3f9c107b0efa4bec85dfc395b230a28ceacbc85e9eccc2c0fa6bafded872a9"
+        }
+      ]
+    },
+    {
+      "id": "org.libretro.atari800",
+      "version": "1.0.0",
+      "sourceRevision": "4e7fbc73765c1a9670c7506616046ad1d4ccda51",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41182569521",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-atari800-2026.10.31.1",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "atari800.ecsplayer",
+          "sizeBytes": 4082412,
+          "sha256": "bc168bb4bbaf17a04592e02471234343c405b7976cca79b434a1110f2b6954a6"
+        },
+        {
+          "file": "atari800.source.tar.gz",
+          "sizeBytes": 86500190,
+          "sha256": "7a1fd101577e3a29a155bc3bdf240fa416f1a1e568f2f57c41b41ed6c3cbfbbe"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 1930,
+          "sha256": "469b431af39ae055a4bda367a0f507d28d058586d03d5b9c51dfbf8d845a82df"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 977,
+          "sha256": "bc559aa3e68e5887237eb0d422c0e32ed6e91a39946d772685857bdf70dd37e7"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 214,
+          "sha256": "452993d0d51ee4f33b25f4cf155398d51841c4c526eace2e91ff081976949656"
+        }
+      ]
+    }
+  ],
+  "acceptance": {
+    "sandboxSha256": "3d24095174a75d7db28e8a2dfc67f1d2e63a40bfc674c7f470234a13bba945d4",
+    "silent": true,
+    "headless": true,
+    "tiaPixel": [66, 72, 200, 255],
+    "stella2014Pixel": [66, 73, 206, 255],
+    "atari800Pixel": [74, 65, 173, 255],
+    "freeintv": "factory/MEMFS startup only; exec.bin and grom.bin required for game testing"
+  }
+}

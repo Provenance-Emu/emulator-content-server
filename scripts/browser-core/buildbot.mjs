@@ -27,7 +27,9 @@ export function buildPlan(id) {
     emsdk: buildbotConfig.emsdk,
     parallelism: 2,
     publication: 'none',
-    acceptance: 'production-opaque-factory-memfs-only',
+    acceptance: ['stella2014', 'atari800'].includes(core.id)
+      ? `production-opaque-original-${core.id === 'stella2014' ? 'a26' : 'a52'}-video`
+      : 'production-opaque-factory-memfs-only',
   };
 }
 function run(command, args, cwd, capture = false) {
@@ -89,12 +91,26 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
   const packageBytes = await packagePlayer(player, join(artifacts, `${id}.ecsplayer`));
   const manifest = JSON.parse(await readFile(join(player, 'plugin.json'), 'utf8')),
     web = manifest.player.web;
+  let originalContentPath, contentExtension;
+  if (id === 'stella2014') {
+    const { atari2600SmokeCartridge } = await import('./generate-2600-smoke.mjs');
+    contentExtension = 'a26';
+    originalContentPath = join(output, 'original.a26');
+    await writeFile(originalContentPath, atari2600SmokeCartridge(), { flag: 'wx' });
+  }
+  if (id === 'atari800') {
+    const { atari5200SmokeCartridge } = await import('./generate-5200-smoke.mjs');
+    contentExtension = 'a52';
+    originalContentPath = join(output, 'original.a52');
+    await writeFile(originalContentPath, atari5200SmokeCartridge(), { flag: 'wx' });
+  }
   const smoke = await smokeLibretroPairs(
     [
       {
         core: id.replaceAll('-', '_'),
         loaderPath: join(player, web.loader.file),
         wasmPath: join(player, web.wasm.file),
+        ...(originalContentPath ? { originalContentPath, contentExtension } : {}),
       },
     ],
     artifacts,
