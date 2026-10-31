@@ -55,6 +55,7 @@ const config = [
   'savestate_thumbnail_enable = "true"',
   'core_options_path = "/ecs/core-options.cfg"',
   'video_shader_enable = "false"',
+  'suspend_screensaver_enable = "false"',
 ].join('\n');
 
 export async function startPlayer(

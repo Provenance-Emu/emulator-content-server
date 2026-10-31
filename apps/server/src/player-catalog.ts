@@ -69,18 +69,13 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     sha256: null,
   },
   {
-    id: 'org.libretro.flycast',
-    name: 'Flycast (Dreamcast / Sega arcade)',
-    systems: [
-      'com.provenance.dreamcast',
-      'com.provenance.naomi',
-      'com.provenance.naomi2',
-      'com.provenance.atomiswave',
-    ],
-    description: 'Dreamcast, Naomi, Naomi 2 and Atomiswave.',
+    id: 'org.flycast.wasm-jit',
+    name: 'Flycast (experimental WASM JIT)',
+    systems: ['com.provenance.dreamcast'],
+    description:
+      'Dreamcast with a real SH4-to-WASM JIT and WebGL2. Original-program execution verified; game, firmware and save compatibility remain experimental.',
     available: false,
-    reason:
-      'The experimental Flycast WebAssembly JIT uses a different player runtime; integration, firmware and game compatibility still need validation.',
+    reason: 'Use a local source build; the combined binary redistribution grant is unresolved.',
     downloadBytes: null,
     url: null,
     sha256: null,
@@ -92,7 +87,7 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     description: 'Nintendo GameCube and Wii.',
     available: false,
     reason:
-      'The experimental browser port needs a different player runtime, shared memory and WebGPU; integration and browser compatibility are unverified.',
+      'Browser playback is not ready: this Dolphin build needs shared memory and a separate isolated runtime.',
     downloadBytes: null,
     url: null,
     sha256: null,

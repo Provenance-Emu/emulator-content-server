@@ -1,0 +1,80 @@
+{
+  "schema": "ecs.dolphin-prototype-acceptance/v1",
+  "date": "2026-10-30",
+  "pins": {
+    "repository": "https://github.com/dougchansan/wasm-dolphin",
+    "commit": "7e38409ace3dda709c178312ff63fd92a3653cc7",
+    "upstreamCommit": "e22551eae1c84a7e4d0b6a5c519ef4ed4ef69df1",
+    "loader": {
+      "bytes": 266970,
+      "sha256": "7c78f3fc2207daab059af3b15c230c23d11205584cf1dfe89c65f66996e18b99"
+    },
+    "wasm": {
+      "bytes": 15175335,
+      "sha256": "d7395b3a94080f5b7d08a0522f59096007419d117b7b0eb868246429adee6f5c"
+    }
+  },
+  "transform": "Exactly one eager pthread pool initialization: 16 to 2. Identical upstream WASM; not a non-threaded build.",
+  "changedLoaderSha256": "0bfc73fbbf370d831fbce04239f062a93f885c053a86866ce5dca3a879be331f",
+  "originalDolSha256": "871a29b63057d92acaf6d59cfbf69eb036cd1081558dbc86740b748a0b433c00",
+  "environment": "Node 22.22.2 on macOS; no browser acceptance",
+  "abi": {
+    "memoryBytes": 1610612736,
+    "shared": true,
+    "jitSmoke": 142,
+    "addi": 123,
+    "integerBlock": 1,
+    "logs": []
+  },
+  "dol": {
+    "firstRunning": {
+      "state": "Running",
+      "status": "Boot submitted to Dolphin core",
+      "pc": 2147496204,
+      "jitCompiled": 2,
+      "jitRuns": 755229,
+      "ticks": "2286485"
+    },
+    "lastRunning": {
+      "state": "Running",
+      "status": "Boot submitted to Dolphin core",
+      "pc": 2147496204,
+      "jitCompiled": 2,
+      "jitRuns": 155916665,
+      "ticks": "467770157"
+    },
+    "before": [
+      {
+        "offset": 18180220,
+        "value": 0
+      },
+      {
+        "offset": 18623480,
+        "value": 0
+      },
+      {
+        "offset": 41693440,
+        "value": 156912517
+      }
+    ],
+    "after": [
+      {
+        "offset": 18180220,
+        "value": 0
+      },
+      {
+        "offset": 18623480,
+        "value": 0
+      },
+      {
+        "offset": 41693440,
+        "value": 172216449
+      }
+    ],
+    "advancingGuestRam": true,
+    "frameVerified": false
+  },
+  "opaquePlayerSupported": false,
+  "installed": false,
+  "published": false
+}

@@ -1,0 +1,205 @@
+--- a/core/rec-wasm/rec_wasm.cpp
++++ b/core/rec-wasm/rec_wasm.cpp
+@@ -448,11 +448,6 @@
+ // diff exposes exactly which bytes production corrupts.
+ // (function-local externs: this TU already declares `vram` with C linkage
+ // inside wasm_mem_* — a file-scope C++ declaration conflicts.)
+-extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_vram_ptr()    { extern RamRegion vram; return (u32)(uintptr_t)&vram[0]; }
+-extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_vram_size()   { return VRAM_SIZE; }
+-extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_ram_ptr()     { return (u32)(uintptr_t)&mem_b[0]; }
+-extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_ram_size()    { return RAM_SIZE; }
+-extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_frame_count() { extern u32 FrameCount; return FrameCount; }
+ // Live Sh4Context pointer — lets the freeze autopsy read registers (esp. r15,
+ // the stack pointer holding the wedged token-scanner's cursor) at dump time.
+ extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_ctx_ptr()  { return (u32)(uintptr_t)&Sh4cntx; }
+@@ -467,6 +462,16 @@
+ #else
+ static inline void dispTrace(u32) {}
+ #endif
++
++extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_vram_ptr()    { extern RamRegion vram; return (u32)(uintptr_t)&vram[0]; }
++extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_vram_size()   { return VRAM_SIZE; }
++extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_ram_ptr()     { return (u32)(uintptr_t)&mem_b[0]; }
++extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_ram_size()    { return RAM_SIZE; }
++extern "C" u32 EMSCRIPTEN_KEEPALIVE fly_frame_count() { extern u32 FrameCount; return FrameCount; }
++// Counts only successful calls to runtime-compiled WASM functions.
++static double ecs_jit_dispatches = 0;
++extern "C" double EMSCRIPTEN_KEEPALIVE ecs_jit_executed_blocks() { return ecs_jit_dispatches; }
++
+ 
+ // Write/read counters for diagnostic modes
+ static u32 g_shil_write_count = 0;
+@@ -1742,6 +1747,7 @@
+ #else
+ #define EXECUTOR_MODE 6
+ #endif
++extern "C" u32 EMSCRIPTEN_KEEPALIVE ecs_jit_executor_mode() { return EXECUTOR_MODE; }
+ #define SHIL_START_BLOCK 24168000
+ 
+ // Reference executor: per-instruction via OpPtr
+@@ -3735,8 +3741,8 @@
+ 			Module._wasm_mem_write8(0, 0);
+ 			Module._wasm_mem_write16(0, 0);
+ 			Module._wasm_mem_write32(0, 0);
+-			// ifb: opcode 0 is a benign SH4 instruction, pc=0 is safe during init
+-			Module._wasm_exec_ifb(0, 0);
++			// ifb: SH4 NOP (opcode zero is illegal and can fault while BL is set).
++			Module._wasm_exec_ifb(0x0009, 0);
+ 			// shil_fb: block_vaddr 0 will miss in blockByVaddr (increments miss counter, harmless)
+ 			Module._wasm_exec_shil_fb(0, 0);
+ 			Module._wasm_sq_pref(0);
+@@ -3812,7 +3818,7 @@
+ 		Module._wasm_mem_write8(0, 0);
+ 		Module._wasm_mem_write16(0, 0);
+ 		Module._wasm_mem_write32(0, 0);
+-		Module._wasm_exec_ifb(0, 0);
++		Module._wasm_exec_ifb(0x0009, 0);
+ 		Module._wasm_exec_shil_fb(0, 0);
+ 		Module._wasm_sq_pref(0);
+ 		Module._wasm_div32u(0, 0, 0);
+@@ -3872,7 +3878,7 @@
+ 			Module._wasm_mem_write8(0, 0);
+ 			Module._wasm_mem_write16(0, 0);
+ 			Module._wasm_mem_write32(0, 0);
+-			Module._wasm_exec_ifb(0, 0);
++			Module._wasm_exec_ifb(0x0009, 0);
+ 			Module._wasm_exec_shil_fb(0, 0);
+ 			Module._wasm_sq_pref(0);
+ 			Module._wasm_div32u(0, 0, 0);
+@@ -4446,6 +4452,7 @@
+ 		wasm_execute_block(pc, ctx_ptr, ram_base);
+ #else
+ 		fn(ctx_ptr, ram_base);
++		ecs_jit_dispatches++;
+ #endif
+ 		blocks_run++;
+ 
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -617,6 +617,10 @@
+ 
+ 	option(WITH_SYSTEM_ZSTD "Use system provided zstd library" ON)
+ 	add_subdirectory(core/deps/libchdr EXCLUDE_FROM_ALL)
++	if(EMSCRIPTEN AND TARGET zlib)
++		# CMake converts unsupported SHARED to STATIC: keep Ninja outputs unique.
++		set_target_properties(zlib PROPERTIES OUTPUT_NAME z-shared-unused)
++	endif()
+ 	target_link_libraries(${PROJECT_NAME} PRIVATE chdr-static)
+ 	target_include_directories(${PROJECT_NAME} PRIVATE core/deps/libchdr/include)
+ endif()
+--- a/resources/resources.cmake
++++ b/resources/resources.cmake
+@@ -1,5 +1,7 @@
+ cmrc_add_resource_library(flycast-resources ALIAS flycast::res NAMESPACE flycast)
+ 
++# ECS browser builds ship no arcade NVMEM defaults or game-specific templates.
++if(NOT EMSCRIPTEN)
+ cmrc_add_resources(flycast-resources
+         WHENCE resources
+         resources/flash/alienfnt.nvmem.zip	# network settings
+@@ -24,6 +26,7 @@
+         resources/flash/westdrmg.nvmem.zip	# debug: comm and all errors disabled
+         resources/flash/smarinef.nvmem.zip	# standard cabinet
+         resources/picture/f355_print_template.png)
++endif()
+ 
+ cmrc_add_resources(flycast-resources
+         fonts/printer_ascii8x16.bin.zip
+--- a/core/hw/aica/aica.cpp
++++ b/core/hw/aica/aica.cpp
+@@ -7,7 +7,7 @@
+ #include "hw/sh4/sh4_sched.h"
+ #include "hw/arm7/arm7.h"
+ #include "hw/arm7/arm_mem.h"
+-#ifdef __EMSCRIPTEN__
++#if defined(__EMSCRIPTEN__) && !defined(JIT_PROD_BUILD)
+ #include <emscripten.h>
+ #endif
+ 
+@@ -89,7 +89,7 @@
+ 
+ static int AicaUpdate(int tag, int cycles, int jitter, void *arg)
+ {
+-#ifdef __EMSCRIPTEN__
++#if defined(__EMSCRIPTEN__) && !defined(JIT_PROD_BUILD)
+ 	// Render-phase timer [5]: ARM7 interpreter slice (fires at 44.1kHz —
+ 	// get_now pairs add ~1-2% skew; diagnostic-grade, not verdict-grade).
+ 	extern double g_fly_rp[10];
+@@ -107,7 +107,7 @@
+ 
+ void timeStep()
+ {
+-#ifdef __EMSCRIPTEN__
++#if defined(__EMSCRIPTEN__) && !defined(JIT_PROD_BUILD)
+ 	extern double g_fly_rp[10];
+ 	double fly_t0 = emscripten_get_now();
+ #endif
+@@ -122,7 +122,7 @@
+ 	//Make sure sh4/arm interrupt system is up to date
+ 	update_arm_interrupts();
+ 	UpdateSh4Ints();
+-#ifdef __EMSCRIPTEN__
++#if defined(__EMSCRIPTEN__) && !defined(JIT_PROD_BUILD)
+ 	g_fly_rp[5] += emscripten_get_now() - fly_t0;
+ #endif
+ }
+--- a/shell/libretro/libretro_core_options.h
++++ b/shell/libretro/libretro_core_options.h
+@@ -155,7 +155,11 @@
+          { "enabled",  NULL },
+          { NULL, NULL},
+       },
+-      "disabled",
++#ifdef __EMSCRIPTEN__
++      "enabled",
++#else
++      "disabled",
++#endif
+    },
+    {
+       CORE_OPTION_NAME "_enable_dsp",
+@@ -404,7 +408,11 @@
+          { "enabled",  NULL },
+          { NULL, NULL },
+       },
+-      "disabled",
++#ifdef __EMSCRIPTEN__
++      "enabled",
++#else
++      "disabled",
++#endif
+    },
+    {/* TODO: needs explanation */
+       CORE_OPTION_NAME "_enable_rttb",
+@@ -609,7 +617,11 @@
+          { "enabled",  NULL },
+          { NULL, NULL },
+       },
++#ifdef __EMSCRIPTEN__
++      "disabled",
++#else
+       "enabled",
++#endif
+    },
+    {
+       CORE_OPTION_NAME "_auto_skip_frame",
+--- a/shell/libretro/audiostream.cpp
++++ b/shell/libretro/audiostream.cpp
+@@ -134,7 +134,7 @@
+ u32 g_aud_shortfall_frames = 0;  /* frames the frontend refused (discarded) */
+ u32 g_aud_produced_frames = 0;   /* frames handed to audio_batch_cb */
+ 
+-#ifdef __EMSCRIPTEN__
++#if defined(__EMSCRIPTEN__) && !defined(JIT_PROD_BUILD)
+ #include <emscripten.h>
+ /* ★ AudioWorklet ring-buffer sink (2026-07-17). Replaces the RetroArch
+  * OpenAL path on WASM. Why: the OpenAL→WebAudio shim schedules each ~6ms
+@@ -326,7 +326,7 @@
+ 
+ 	int16_t *audio_out_buffer_ptr = audio_out_buffer;
+ 	g_aud_produced_frames += (u32)num_frames;
+-#ifdef __EMSCRIPTEN__
++#if defined(__EMSCRIPTEN__) && !defined(JIT_PROD_BUILD)
+ 	/* AudioWorklet sink — RetroArch's OpenAL driver (blocking writes,
+ 	 * buffer-source seam scheduling) is bypassed entirely. If the worklet
+ 	 * cannot initialize (old Safari, odd embeds) fall back to the legacy

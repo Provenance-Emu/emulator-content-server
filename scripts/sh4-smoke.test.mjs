@@ -21,8 +21,21 @@ test('original Dreamcast ELF declares SH4 and a bounded executable RAM segment',
   assert.equal(elf.readUInt32LE(ph + 20), size);
   assert.equal(elf.readUInt32LE(ph + 24), 5); // Read + execute.
   assert.equal(offset % elf.readUInt32LE(ph + 28), address % elf.readUInt32LE(ph + 28));
-  assert.equal(offset + size, elf.length);
-  assert.deepEqual(elf.subarray(offset), smoke.sh4SmokeCode());
+  assert.ok(offset + size <= elf.length);
+  assert.deepEqual(elf.subarray(offset, offset + size), smoke.sh4SmokeCode());
+});
+
+test('original ELF satisfies Flycast libelf section-header validation', () => {
+  const elf = smoke.dreamcastSmokeElf();
+  const offset = elf.readUInt32LE(32),
+    width = elf.readUInt16LE(46),
+    count = elf.readUInt16LE(48),
+    names = elf.readUInt16LE(50);
+  assert.equal(width, 40);
+  assert.ok(names < count);
+  assert.equal(offset % 4, 0);
+  assert.equal(offset + width * count, elf.length);
+  assert.deepEqual(elf.subarray(offset, offset + width), Buffer.alloc(40));
 });
 
 test('original SH4 code fills RGB565 green and keeps writing visible VRAM as its counter advances', () => {
@@ -37,7 +50,8 @@ test('original SH4 code fills RGB565 green and keeps writing visible VRAM as its
     first,
     last;
   const read = (address) => {
-    if (address === 0xa05f8044) return 0x00800000;
+    if (address === 0xa05f8044) return 0; // HLE reset has no configured pixel clock.
+    if (address === 0xa05f80e8) return 0x00000108; // Hardware reset blanks video.
     assert.ok(
       address >= base && address + 4 <= base + code.length,
       `Unexpected read ${address.toString(16)}`,
@@ -87,6 +101,7 @@ test('original SH4 code fills RGB565 green and keeps writing visible VRAM as its
   }
   assert.equal(first, 0xa5000000);
   assert.equal(video.get(0xa05f8044), 0x00800005);
+  assert.equal(video.get(0xa05f80e8), 0x00000100); // Preserve timing, clear blank_video.
   assert.equal(video.get(0xa05f805c), 0x00177d3f);
   assert.equal(video.get(0xa05f8050), 0);
   assert.deepEqual(counters, [

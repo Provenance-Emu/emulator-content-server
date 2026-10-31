@@ -80,14 +80,31 @@ const jaguarPlugin = process.env.ECS_ACCEPTANCE_JAGUAR_PLUGIN;
 const parallelPlugin = process.env.ECS_ACCEPTANCE_PARALLEL_DC_PLUGIN;
 const psxPlugin = process.env.ECS_ACCEPTANCE_PSX_PLUGIN;
 const prosystemPlugin = process.env.ECS_ACCEPTANCE_PROSYSTEM_PLUGIN;
-if (jaguarPlugin || parallelPlugin || psxPlugin || prosystemPlugin)
+const flycastPlugin = process.env.ECS_ACCEPTANCE_FLYCAST_WASM_PLUGIN;
+if (jaguarPlugin || parallelPlugin || psxPlugin || prosystemPlugin || flycastPlugin)
   test.use({
     headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1',
     ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
-      ? { launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader'] } }
+      ? {
+          launchOptions: {
+            args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+          },
+        }
       : {}),
   });
 const cases = [
+  {
+    title: 'Flycast WASM JIT Dreamcast',
+    plugin: flycastPlugin,
+    profile: 'org.flycast.wasm-jit',
+    system: 'com.provenance.dreamcast',
+    program: dreamcastSmokeElf(),
+    filename: 'original.elf',
+    needle: sh4SmokeCode(),
+    guestAddress: 0x10000,
+    counterAddress: 0xf800,
+    littleEndian: true,
+  },
   {
     title: 'Atari 7800 original cartridge',
     plugin: prosystemPlugin,

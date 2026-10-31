@@ -1,0 +1,81 @@
+{
+  "schema": "ecs.flycast-jit-acceptance/v1",
+  "date": "2026-10-30",
+  "profile": "org.flycast.wasm-jit",
+  "systems": [
+    "com.provenance.dreamcast"
+  ],
+  "loader": {
+    "bytes": 301391,
+    "sha256": "48545bfba050fc0adccebaeb9532cc60326196780532060997969138e528275c"
+  },
+  "wasm": {
+    "bytes": 8632199,
+    "sha256": "252d612e8eac2a3c1ccd95a50a612e5449e78fe3678afde4770708fe1a480221"
+  },
+  "chromium": {
+    "kind": "Full authenticated ECS player",
+    "browser": "145.0.7632.6",
+    "originalProgramSha256": "47e578357bd137ecbb59af70b8cb8d5c16843cf4d5ff97aca2911cf59d9bb6f3",
+    "counters": [
+      {
+        "offset": 106823680,
+        "counter": 368914
+      }
+    ],
+    "pixel": [
+      0,
+      252,
+      0
+    ],
+    "errors": []
+  },
+  "webkit": {
+    "kind": "Playwright WebKit 26.0; not native Safari",
+    "before": {
+      "mode": 6,
+      "executed": 4281071,
+      "counter": 4129486,
+      "frames": 318,
+      "opaque": true,
+      "isolated": false
+    },
+    "after": {
+      "mode": 6,
+      "executed": 5959895,
+      "counter": 5808310,
+      "frames": 454,
+      "opaque": true,
+      "isolated": false
+    },
+    "pixel": [
+      0,
+      252,
+      0,
+      255
+    ],
+    "elapsedMs": 2587
+  },
+  "nativeSafari": {
+    "status": "Flycast test blocked by computer-use guard after user changed to a restricted URL",
+    "baseline": {
+      "profile": "org.libretro.prosystem",
+      "browser": "Native Safari 26.6.2",
+      "opaque": true,
+      "frames": 912,
+      "pixel": [
+        16,
+        130,
+        0,
+        255
+      ]
+    }
+  },
+  "distribution": "Operator-local combined binary; source grant audit unresolved",
+  "limits": [
+    "Original program only; no commercial-game acceptance",
+    "No synchronized saves",
+    "No Naomi/Naomi2/Atomiswave firmware or game acceptance",
+    "Native Safari Flycast acceptance remains unverified"
+  ]
+}
