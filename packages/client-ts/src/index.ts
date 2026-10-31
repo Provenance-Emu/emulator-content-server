@@ -75,6 +75,8 @@ export type {
   PlayerCoreDescriptor,
   PlayerCoreResource,
   PlayerInstallation,
+  PlayerIsolationDraft,
+  PlayerIsolationSession,
   PlayerManagement,
   Problem,
   SavedSourceMatch,

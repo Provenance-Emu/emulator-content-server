@@ -72,3 +72,14 @@ export interface PlayerManagement {
   defaultProfileId: string | null;
   available: PlayerCatalogEntry[];
 }
+
+export interface PlayerIsolationDraft {
+  profileId: string;
+}
+
+/** Ephemeral local browser bootstrap. Contains no content or authentication credentials. */
+export interface PlayerIsolationSession {
+  id: string;
+  url: string;
+  expiresAt: string;
+}

@@ -69,3 +69,13 @@ test('disc profiles may declare up to512MiB content without increasing binary re
   value.player.web.maxContentBytes++;
   assert.throws(() => parseManifest(value), /content size/i);
 });
+
+test('Dolphin declares shared memory explicitly and cannot claim RetroArch save completion', () => {
+  const m = manifest();
+  const web = { ...m.player.web, runtime: 'dolphin-wasm-esm', threaded: true };
+  assert.equal(parseManifest({ ...m, player: { ...m.player, web } }).player?.web?.threaded, true);
+  for (const patch of [{ threaded: false }, { saveCompletion: 'command-reply-v1' }])
+    assert.throws(() =>
+      parseManifest({ ...m, player: { ...m.player, web: { ...web, ...patch } } }),
+    );
+});

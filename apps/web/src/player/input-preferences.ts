@@ -99,6 +99,21 @@ export function createInputPreferences(
     hasGame: !!game,
     load() {
       const patch: InputPatch = {};
+      if (core.runtime === 'dolphin-wasm-esm') {
+        const layout = defaultLayout('standard');
+        for (const orientation of ['portrait', 'landscape'] as const) {
+          const representation = layout.representations[orientation];
+          representation.controls = representation.controls.filter(
+            (control) => !['l2', 'r2'].includes(control.action),
+          );
+          for (const control of representation.controls)
+            if (control.visual.kind === 'shape') {
+              if (control.action === 'select') control.visual.label = 'Z';
+              if (control.action === 'rightStick') control.visual.label = 'C stick';
+            }
+          patch[`layout.${orientation}`] = representation;
+        }
+      }
       let warning: string | null = null;
       for (const scope of ['core', ...(game ? ['game'] : [])] as ('core' | 'game')[])
         try {

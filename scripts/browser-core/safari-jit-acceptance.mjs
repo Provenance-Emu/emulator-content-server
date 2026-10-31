@@ -78,7 +78,7 @@ button.onclick=async()=>{button.disabled=true;const start=performance.now();try{
  const [loader,wasm,program]=await assets;await connected;status.textContent='Starting opaque WASM player…';
  await rpc('init',{loader,wasm,assets:[],commands:false,shaders:{scanlines:'void main(){}',lcd:'void main(){}'},maxContentBytes:67108864});
  for(const dir of ['/ecs','/ecs/content','/ecs/saves','/ecs/states','/ecs/system'])await rpc('mkdir',dir);
- const config='video_driver = "gl"\\nvideo_vsync = "false"\\nsuspend_screensaver_enable = "false"\\naudio_driver = "rwebaudio"\\nmenu_driver = "null"\\nconfig_save_on_exit = "false"\\nsystem_directory = "/ecs/system"\\nsavefile_directory = "/ecs/saves"\\nsavestate_directory = "/ecs/states"\\ncore_options_path = "/ecs/core-options.cfg"\\n';
+ const config='video_driver = "gl"\\nvideo_vsync = "false"\\nsuspend_screensaver_enable = "false"\\naudio_enable = "false"\\n audio_driver = "rwebaudio"\\nmenu_driver = "null"\\nconfig_save_on_exit = "false"\\nsystem_directory = "/ecs/system"\\nsavefile_directory = "/ecs/saves"\\nsavestate_directory = "/ecs/states"\\ncore_options_path = "/ecs/core-options.cfg"\\n';
  await rpc('write',{path:'/ecs/config.cfg',bytes:new TextEncoder().encode(config).buffer});
  await rpc('write',{path:'/ecs/core-options.cfg',bytes:new TextEncoder().encode('reicast_hle_bios = "enabled"\\nreicast_threaded_rendering = "disabled"\\nreicast_emulate_framebuffer = "enabled"\\n').buffer});
  await rpc('write',{path:'/ecs/content/original.'+extension,bytes:program});

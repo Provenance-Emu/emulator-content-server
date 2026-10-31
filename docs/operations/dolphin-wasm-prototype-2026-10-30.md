@@ -1,5 +1,7 @@
 # Dolphin WASM JIT integration prototype — 2026-10-30
 
+Historical CPU-only receipt. The [October 31 browser integration](dolphin-browser-acceptance-2026-10-31.md) now provides real video and a separate-origin ECS player for the operator-local package. Restrictions below describe the October 30 prototype.
+
 The real Dolphin WASM binary executes an original GameCube DOL using its PPC-to-WASM JIT. The prepared ECS C ABI host and reproducible diagnostic make that result repeatable. They are **not an installed player**: the current binary requires shared memory, which the existing opaque player iframe cannot obtain. No authenticated-origin sandbox exception, header change, firmware, game image, package publication or performance claim is part of this prototype.
 
 ## Pins and actual execution

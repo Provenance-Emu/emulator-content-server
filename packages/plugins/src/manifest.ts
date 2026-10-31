@@ -87,9 +87,9 @@ export interface WebPlayerFile {
 }
 export interface WebPlayerConfig {
   profileVersion: 1;
-  runtime: 'emscripten-esm-v1' | 'retroarch-emscripten-esm';
+  runtime: 'emscripten-esm-v1' | 'retroarch-emscripten-esm' | 'dolphin-wasm-esm';
   filesystem: 'memfs';
-  threaded: false;
+  threaded: boolean;
   saveCompletion: 'none' | 'command-reply-v1';
   contentExtensions: string[];
   maxContentBytes: number;
@@ -297,14 +297,14 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     ],
     'player.web',
   );
-  if (r.profileVersion !== 1 || r.filesystem !== 'memfs' || r.threaded !== false)
+  if (r.profileVersion !== 1 || r.filesystem !== 'memfs' || typeof r.threaded !== 'boolean')
     throw new PluginError(
       'invalid-manifest',
       'Unsupported web player version, filesystem, or threading',
     );
   const runtime = oneOf(
     stringField(r, 'runtime'),
-    ['emscripten-esm-v1', 'retroarch-emscripten-esm'] as const,
+    ['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'] as const,
     'runtime',
   );
   const saveCompletion = oneOf(
@@ -312,6 +312,14 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     ['none', 'command-reply-v1'] as const,
     'saveCompletion',
   );
+  if (
+    r.threaded !== (runtime === 'dolphin-wasm-esm') ||
+    (runtime === 'dolphin-wasm-esm' && saveCompletion !== 'none')
+  )
+    throw new PluginError(
+      'invalid-manifest',
+      'Runtime threading or save completion is unsupported',
+    );
   const contentExtensions = stringArray(r.contentExtensions, 'contentExtensions');
   if (
     !contentExtensions.length ||
@@ -372,7 +380,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     profileVersion: 1,
     runtime,
     filesystem: 'memfs',
-    threaded: false,
+    threaded: r.threaded as boolean,
     saveCompletion,
     contentExtensions,
     maxContentBytes: Number(r.maxContentBytes),

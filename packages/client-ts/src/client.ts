@@ -36,6 +36,7 @@ import type {
   PlayerConfiguration,
   PlayerCoreDescriptor,
   PlayerCoreResource,
+  PlayerIsolationSession,
   PlayerManagement,
   Problem,
   SessionResponse,
@@ -261,6 +262,49 @@ export class ContentClient {
       maxBytes: 64 * 1024 * 1024,
     });
     return { loader, wasm };
+  }
+
+  async createPlayerIsolation(profileId: string): Promise<PlayerIsolationSession> {
+    validatePlayerId(profileId);
+    const response = await fetch(this.url('/api/v1/player/isolated-sessions'), {
+      method: 'POST',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify({ profileId }),
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+    const session = (await response.json()) as PlayerIsolationSession;
+    try {
+      const url = new URL(session.url);
+      if (
+        !/^[a-f0-9]{48}$/.test(session.id) ||
+        url.protocol !== 'http:' ||
+        url.hostname !== '127.0.0.1' ||
+        !url.port ||
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        url.pathname !== `/${session.id}/dolphin-sandbox.html` ||
+        url.href !== session.url ||
+        typeof session.expiresAt !== 'string' ||
+        !Number.isFinite(Date.parse(session.expiresAt))
+      )
+        throw new Error();
+    } catch {
+      throw new Error('Invalid isolated player session');
+    }
+    return session;
+  }
+  async closePlayerIsolation(id: string): Promise<void> {
+    if (!/^[a-f0-9]{48}$/.test(id)) throw new Error('Invalid isolated player session');
+    const response = await fetch(this.url(`/api/v1/player/isolated-sessions/${id}`), {
+      method: 'DELETE',
+      keepalive: true,
+      headers: this.headers(),
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
   }
 
   playerManagement(): Promise<PlayerManagement> {
@@ -1617,9 +1661,11 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     !p ||
     p.id !== id ||
     p.profileVersion !== 1 ||
-    !['emscripten-esm-v1', 'retroarch-emscripten-esm'].includes(p.runtime) ||
+    !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(p.runtime) ||
     p.filesystem !== 'memfs' ||
-    p.threaded !== false ||
+    (p.runtime === 'dolphin-wasm-esm'
+      ? p.threaded !== true || p.saveCompletion !== 'none'
+      : p.threaded !== false) ||
     !['none', 'command-reply-v1'].includes(p.saveCompletion) ||
     typeof p.name !== 'string' ||
     !p.name.length ||

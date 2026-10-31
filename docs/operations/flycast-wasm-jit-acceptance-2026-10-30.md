@@ -3,10 +3,9 @@
 The operator-local `org.flycast.wasm-jit` profile runs the real SH4-to-WebAssembly
 recompiler through ECS's existing plugin, authenticated content and opaque iframe
 paths. The original Dreamcast program advances guest RAM and renders a green
-frame in Chromium and Playwright WebKit. Native Safari Flycast acceptance remains
-unverified because the computer-use guard stopped the browser session after the
-active user page changed to a restricted URL. No interaction with that page or
-Safari security-setting change was attempted.
+frame in Chromium, Playwright WebKit, and native Safari 26.6.2. The native Safari
+retry on October 31 passed through the unchanged opaque sandbox and CSP. No Safari
+security settings were changed.
 
 ## Exact inputs and scope
 
@@ -72,10 +71,11 @@ these environments:
   green pixel `[0,252,0,255]`. The frame is opaque and not cross-origin isolated;
   no shared memory or special browser permission is required. This is WebKit
   acceptance, not native Safari acceptance.
-- **Native Safari 26.6.2 baseline:** the existing ProSystem profile rendered its
-  original program with the same sandbox/CSP, opaque origin and no isolation.
-  Flycast's native Safari run was subsequently blocked by the computer-use guard;
-  the baseline must not be reported as a native Safari Flycast pass.
+- **Native Safari 26.6.2, Flycast PASS (October 31):** actual JIT dispatches
+  `4,191,533 → 5,847,971`, guest counter `4,039,948 → 5,696,386`, frames
+  `271 → 529`, and green pixel `[0,252,0,255]`. The production opaque sandbox
+  remained non-isolated. This replaces the previously blocked Flycast attempt;
+  the earlier ProSystem baseline remains separate evidence.
 
 The opt-in `safari-jit-acceptance.mjs` serves only an explicitly selected,
 hash-checked profile and generated original program on a random loopback path.
@@ -116,9 +116,8 @@ or download URL is provided. This is distinct from runtime compatibility, which
 is now demonstrated. Fonts retain the upstream free-font notices. Upstream
 arcade flash/NVMEM presets and a game-specific print template are excluded.
 
-Dolphin's separate [prototype](dolphin-wasm-prototype-2026-10-30.md) executes an
-original PPC DOL through its real WASM JIT. Its current 1.5 GiB shared-memory,
-pthread build cannot run in the opaque player. Its ABI adapter and bounded probe
-are committed, while a cooperative non-threaded port or separately reviewed
-isolated-origin runtime remains required. No dummy frames or stub save APIs are
-reported as working Dolphin emulation.
+Dolphin's [browser integration](dolphin-browser-acceptance-2026-10-31.md) now executes
+an original PPC video program through its real WASM JIT in a separate local origin.
+Its shared-memory runtime keeps server credentials out of the core and leaves
+Flycast's opaque sandbox unchanged. GameCube-only and operator-local limits are
+recorded separately; no dummy frames or stub save APIs are reported as emulation.

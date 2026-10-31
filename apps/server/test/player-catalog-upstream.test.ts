@@ -114,7 +114,7 @@ test('requested Provenance systems have a player or an explicit installation blo
       if (!entry.available) assert.ok(entry.reason, `${entry.id} needs an installation blocker`);
     }
   }
-  for (const id of ['org.libretro.atari800', 'org.libretro.dolphin', 'org.flycast.wasm-jit']) {
+  for (const id of ['org.libretro.atari800', 'org.dolphin.wasm', 'org.flycast.wasm-jit']) {
     const entry = playerCatalog.find((candidate) => candidate.id === id);
     assert.ok(entry);
     assert.equal(entry.available, false);

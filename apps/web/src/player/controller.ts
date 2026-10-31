@@ -10,7 +10,15 @@ export type PlayerSelection =
   | { kind: 'asset'; itemId: string; assetId: string }
   | { kind: 'source'; sourceId: string; itemId?: string };
 export type PlayerClient = Partial<
-  Pick<ContentClient, 'playerProfile' | 'playerProfiles' | 'playerProfileAssets' | 'sourceGroup'>
+  Pick<
+    ContentClient,
+    | 'playerProfile'
+    | 'playerProfiles'
+    | 'playerProfileAssets'
+    | 'sourceGroup'
+    | 'createPlayerIsolation'
+    | 'closePlayerIsolation'
+  >
 > &
   Pick<
     ContentClient,
@@ -95,11 +103,21 @@ export async function startPlayer(
     }
   }
   validateCoreBytes(prepared.core, assets);
+  const createIsolation = client.createPlayerIsolation?.bind(client);
+  const closeIsolation = client.closePlayerIsolation?.bind(client);
   const loaded = await options.importer(assets.loader.bytes, {
     profile: prepared.core,
     assets: extra,
     signal: options.signal,
     inputEnabled: verifiedInputBuild(prepared.core),
+    ...(createIsolation && closeIsolation
+      ? {
+          isolation: {
+            create: createIsolation,
+            close: closeIsolation,
+          },
+        }
+      : {}),
   });
   try {
     const log = (text: string) => options.log?.(String(text).slice(0, 500));

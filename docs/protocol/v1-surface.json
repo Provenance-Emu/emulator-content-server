@@ -6,6 +6,7 @@
     "DELETE /api/v1/items/:itemId",
     "DELETE /api/v1/items/:itemId/access/:userId",
     "DELETE /api/v1/libraries/:libraryId/members/:userId",
+    "DELETE /api/v1/player/isolated-sessions/:id",
     "DELETE /api/v1/player/management/:id",
     "DELETE /api/v1/roots/:rootId",
     "DELETE /api/v1/sources/:sourceId/matches/selections/:kind",
@@ -78,6 +79,7 @@
     "POST /api/v1/library-jobs/:jobId/cancel",
     "POST /api/v1/library-jobs/:jobId/items/:sourceId/reviewed",
     "POST /api/v1/library-jobs/:jobId/resume",
+    "POST /api/v1/player/isolated-sessions",
     "POST /api/v1/player/management/install",
     "POST /api/v1/player/management/install/:id",
     "POST /api/v1/roots",
@@ -263,6 +265,26 @@
         "systems",
         "threaded",
         "wasm"
+      ]
+    },
+    "PlayerIsolationDraft": {
+      "properties": [
+        "profileId"
+      ],
+      "required": [
+        "profileId"
+      ]
+    },
+    "PlayerIsolationSession": {
+      "properties": [
+        "expiresAt",
+        "id",
+        "url"
+      ],
+      "required": [
+        "expiresAt",
+        "id",
+        "url"
       ]
     },
     "PlayerConfiguration": {

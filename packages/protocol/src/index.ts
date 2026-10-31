@@ -40,6 +40,8 @@ export type {
   PlayerCoreDescriptor,
   PlayerCoreResource,
   PlayerInstallation,
+  PlayerIsolationDraft,
+  PlayerIsolationSession,
   PlayerManagement,
   WebPlayerAsset,
   WebPlayerCatalog,

@@ -1,3 +1,4 @@
+import { approvedDolphinBuild } from './dolphin.js';
 import type { BrowserCore } from './runtime.js';
 export const actions = [
   'b',
@@ -108,9 +109,10 @@ export function actionBit(action: PadAction): number {
 }
 export function verifiedInputBuild(core: BrowserCore): boolean {
   return (
-    core.runtime === 'retroarch-emscripten-esm' &&
-    core.loader.sha256 === '4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8' &&
-    core.wasm.sha256 === 'c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205'
+    approvedDolphinBuild(core) ||
+    (core.runtime === 'retroarch-emscripten-esm' &&
+      core.loader.sha256 === '4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8' &&
+      core.wasm.sha256 === 'c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205')
   );
 }
 export function nativeInputConfig(): string {

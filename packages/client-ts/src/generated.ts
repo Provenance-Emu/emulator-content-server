@@ -84,6 +84,16 @@ export interface WebPlayerDescriptor {
   assets: WebPlayerAsset[];
 }
 
+export interface PlayerIsolationDraft {
+  profileId: string;
+}
+
+export interface PlayerIsolationSession {
+  id: string;
+  url: string;
+  expiresAt: string;
+}
+
 export interface PlayerConfiguration {
   enabled?: boolean;
   default?: boolean;

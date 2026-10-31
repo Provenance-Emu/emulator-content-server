@@ -15,9 +15,12 @@ export default defineConfig({
   fullyParallel: false,
   timeout: 30000,
   reporter: 'list',
-  use: { headless: false, actionTimeout: 5000, trace: 'off', screenshot: 'off', video: 'off' },
+  use: { headless: true, actionTimeout: 5000, trace: 'off', screenshot: 'off', video: 'off' },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    {
+      name: 'chromium',
+      use: { browserName: 'chromium', launchOptions: { args: ['--mute-audio'] } },
+    },
     {
       name: 'webkit',
       use: { browserName: 'webkit', launchOptions: executablePath ? { executablePath } : {} },

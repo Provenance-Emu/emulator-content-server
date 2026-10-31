@@ -69,6 +69,8 @@ test('metadata frames cannot become emulation acceptance and frame reads stay in
   const { module, calls } = fixture();
   const host = bindDolphinPrototype(module);
   assert.equal(host.frame(), null);
+  module.ccall = () => 'xfb:0 vi_top:0';
+  assert.equal(host.frame(), null, 'initial zero-XFB status must not count as rendered video');
   assert.ok(!calls.some(([name]) => name === 'RunFrame'));
   module.ccall = () => 'xfb:1';
   module._FrameWidth = () => 8;

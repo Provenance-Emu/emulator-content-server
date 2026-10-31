@@ -170,6 +170,26 @@ public struct WebPlayerDescriptor: Codable, Equatable, Sendable {
     }
 }
 
+public struct PlayerIsolationDraft: Codable, Equatable, Sendable {
+    public var profileId: String
+
+    public init(profileId: String) {
+        self.profileId = profileId
+    }
+}
+
+public struct PlayerIsolationSession: Codable, Equatable, Sendable {
+    public var id: String
+    public var url: String
+    public var expiresAt: String
+
+    public init(id: String, url: String, expiresAt: String) {
+        self.id = id
+        self.url = url
+        self.expiresAt = expiresAt
+    }
+}
+
 public struct PlayerConfiguration: Codable, Equatable, Sendable {
     public var enabled: Bool?
     public var default: Bool?

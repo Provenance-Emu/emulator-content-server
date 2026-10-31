@@ -136,6 +136,40 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PlayerManagement' }
+  /api/v1/player/isolated-sessions:
+    post:
+      operationId: createPlayerIsolation
+      description: Read bearer required. Local HTTP browser only; actual socket peer, Host, and exact Origin must be loopback. Creates a bounded ten-minute companion listener serving only a fixed first-party bootstrap for an enabled threaded Dolphin profile. No credentials, content, API, or registry resources are served by that listener.
+      parameters:
+        - { name: Origin, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlayerIsolationDraft' }
+      responses:
+        '201':
+          description: Separate loopback origin and random fixed bootstrap route. Four active listeners globally and two per actor. Expired or closed sessions retain 404-only origins, up to 64 listeners per main-server lifetime, to prevent origin reuse while an old iframe may still run. All listeners close with the main server.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerIsolationSession' }
+        '400': { description: Invalid request body. }
+        '401': { description: Bearer authentication required. }
+        '403': { description: Read scope or local browser origin required. }
+        '404': { description: Enabled compatible profile or fixed UI bootstrap unavailable. }
+        '429': { description: Session or creation-rate limit reached. }
+  /api/v1/player/isolated-sessions/{id}:
+    delete:
+      operationId: closePlayerIsolation
+      description: Close the caller actor's ephemeral local companion. Requires the same read bearer and local HTTP origin policy as creation. Foreign or expired session identifiers are not disclosed.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, pattern: '^[a-f0-9]{48}$' } }
+        - { name: Origin, in: header, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Session closed; origin retained as a 404-only tombstone until main-server shutdown. }
+        '401': { description: Bearer authentication required. }
+        '403': { description: Read scope or local browser origin required. }
+        '404': { description: Session unavailable to this actor. }
   /api/v1/player/profiles:
     get:
       operationId: listPlayerProfiles
@@ -1113,9 +1147,9 @@ components:
         id: { type: string, maxLength: 120, pattern: '^(?:[a-z0-9][a-z0-9_-]{0,63}|[a-z0-9]+(?:\.[a-z0-9-]+)+)$' }
         name: { type: string, maxLength: 80 }
         systems: { type: array, items: { type: string }, minItems: 1, maxItems: 64 }
-        runtime: { type: string, enum: [emscripten-esm-v1, retroarch-emscripten-esm] }
+        runtime: { type: string, enum: [emscripten-esm-v1, retroarch-emscripten-esm, dolphin-wasm-esm] }
         filesystem: { type: string, enum: [memfs] }
-        threaded: { type: boolean, enum: [false] }
+        threaded: { type: boolean, description: True only for the isolated Dolphin runtime. }
         saveCompletion: { type: string, enum: [none, command-reply-v1] }
         contentExtensions: { type: array, items: { type: string }, minItems: 1, maxItems: 32 }
         maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 536870912 }
@@ -1123,6 +1157,24 @@ components:
         loader: { $ref: '#/components/schemas/PlayerCoreResource' }
         wasm: { $ref: '#/components/schemas/PlayerCoreResource' }
         assets: { type: array, items: { $ref: '#/components/schemas/WebPlayerAsset' }, maxItems: 16 }
+      allOf:
+        - if: { properties: { runtime: { const: dolphin-wasm-esm } } }
+          then: { properties: { threaded: { const: true }, saveCompletion: { const: none } } }
+          else: { properties: { threaded: { const: false } } }
+    PlayerIsolationDraft:
+      type: object
+      additionalProperties: false
+      required: [profileId]
+      properties:
+        profileId: { type: string, minLength: 1, maxLength: 120 }
+    PlayerIsolationSession:
+      type: object
+      additionalProperties: false
+      required: [id, url, expiresAt]
+      properties:
+        id: { type: string, pattern: '^[a-f0-9]{48}$' }
+        url: { type: string, format: uri, pattern: '^http://127\.0\.0\.1:[0-9]{1,5}/[a-f0-9]{48}/dolphin-sandbox\.html$' }
+        expiresAt: { type: string, format: date-time }
     PlayerConfiguration:
       type: object
       additionalProperties: false

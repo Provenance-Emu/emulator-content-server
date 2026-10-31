@@ -160,7 +160,9 @@ export function bindDolphinPrototype(module) {
     },
     frame() {
       // The shim paints a metadata placeholder before the emulated VI emits an XFB.
-      if (!string('GetVideoStats').startsWith('xfb:')) return null;
+      const videoStats = string('GetVideoStats');
+      const sequence = /^xfb:([1-9][0-9]*)(?:\s|$)/.exec(videoStats);
+      if (!sequence) return null;
       const width = module._FrameWidth(),
         height = module._FrameHeight();
       if (
@@ -173,7 +175,13 @@ export function bindDolphinPrototype(module) {
       )
         throw new Error('Dolphin frame dimensions exceed the prototype limit');
       const bytes = memoryRange(module._FrameBuffer(), width * height * 4);
-      return { width, height, rgba: new Uint8ClampedArray(bytes) };
+      return {
+        width,
+        height,
+        sequence: Number(sequence[1]),
+        videoStats,
+        rgba: new Uint8ClampedArray(bytes),
+      };
     },
     audio(frames = 1024) {
       const capacity = module._AudioBufferFrames();

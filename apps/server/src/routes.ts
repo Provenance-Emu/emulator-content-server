@@ -216,7 +216,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         [
           "default-src 'none'",
           "script-src 'self'",
-          "frame-src 'self'",
+          "frame-src 'self' http://127.0.0.1:*",
           "style-src 'self'",
           "img-src 'self' data:",
           "connect-src 'self'",
