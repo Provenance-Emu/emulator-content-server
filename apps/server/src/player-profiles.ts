@@ -118,6 +118,7 @@ export async function loadPlayerProfiles(
             systems: player.systems,
             runtime: web.runtime,
             filesystem: web.filesystem,
+            ...(web.systemFilesDirectory ? { systemFilesDirectory: web.systemFilesDirectory } : {}),
             threaded: web.threaded,
             saveCompletion: web.saveCompletion,
             contentExtensions: web.contentExtensions,

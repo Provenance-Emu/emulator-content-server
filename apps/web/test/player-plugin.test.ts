@@ -177,3 +177,51 @@ test('a changed prepared profile or resource prevents importing any plugin code'
   assert.equal(f.events.includes('import'), false);
   assert.equal(f.uploads.length, 0);
 });
+
+test('plugin-declared support-file folders stage BIOS resources under the system root', async () => {
+  const f = fixture();
+  const resources = await f.client.playerCoreAssets(f.core.id);
+  const { sha256Bytes } = await import('@ecs/client');
+  const bios = new Uint8Array([9, 8, 7]);
+  const selected = {
+    ...profile,
+    systemFilesDirectory: 'neocd',
+    loader: {
+      ...profile.loader,
+      sizeBytes: resources.loader.bytes.length,
+      sha256: await sha256Bytes(resources.loader.bytes),
+    },
+    wasm: { ...profile.wasm, sha256: await sha256Bytes(resources.wasm.bytes) },
+    assets: [
+      {
+        name: 'bios.rom',
+        url: '/play/plugins/example/assets/bios.rom',
+        sizeBytes: bios.length,
+        sha256: await sha256Bytes(bios),
+      },
+    ],
+  };
+  f.item.systemIdentifier = 'com.provenance.gba';
+  const rom = f.manifest.files[0];
+  assert.ok(rom);
+  rom.relativePath = 'game.gba';
+  f.client.playerProfile = async () => selected;
+  f.client.playerProfileAssets = async () => ({
+    ...resources,
+    assets: [{ name: 'bios.rom', bytes: bios }],
+  });
+  const session = await startPlayer(
+    f.client,
+    { kind: 'asset', itemId: 'item', assetId: 'rom' },
+    { canvas: {} as HTMLCanvasElement, importer: f.importer, profileId: selected.id },
+  );
+  assert.deepEqual(f.fs.get('/ecs/system/neocd/bios.rom'), bios);
+  assert.equal(f.fs.has('/ecs/system/bios.rom'), false);
+  const { profileIdentity, validateProfile } = await import('../src/player/runtime.js');
+  assert.notEqual(
+    profileIdentity(selected),
+    profileIdentity({ ...selected, systemFilesDirectory: 'other' }),
+  );
+  assert.throws(() => validateProfile({ ...selected, systemFilesDirectory: '../outside' }));
+  session.releaseLoader();
+});

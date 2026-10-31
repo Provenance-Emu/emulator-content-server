@@ -246,6 +246,7 @@
         "profileVersion",
         "runtime",
         "saveCompletion",
+        "systemFilesDirectory",
         "systems",
         "threaded",
         "wasm"

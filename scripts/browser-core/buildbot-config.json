@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "emsdk": {
+    "repository": "https://github.com/emscripten-core/emsdk",
+    "revision": "93360d3670018769b424e4e8f1d3d9b26d32c977",
+    "version": "3.1.46",
+    "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8"
+  },
+  "frontend": {
+    "repository": "https://github.com/libretro/RetroArch",
+    "revision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66"
+  },
+  "cores": [
+    {
+      "id": "fceumm",
+      "repository": "https://github.com/libretro/libretro-fceumm",
+      "revision": "ac0d00a7fc01166f84c7bac01d1084ebfd2b865e",
+      "recipe": "build.mjs",
+      "rebuild": "rebuild-fceumm-source.mjs",
+      "sourceDirectory": "fceumm",
+      "rawOutput": true,
+      "licenses": [
+        "RetroArch GPL-3.0-or-later with the tracked SAVE_FILES patch",
+        "FCEUmm GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "prosystem",
+      "repository": "https://github.com/libretro/prosystem-libretro",
+      "revision": "8a88014287c7a01cd568067e5a557d0a2b2a051f",
+      "recipe": "build-prosystem.mjs",
+      "rebuild": "rebuild-prosystem-source.mjs",
+      "sourceDirectory": "prosystem",
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "ProSystem GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "pcsx-rearmed",
+      "repository": "https://github.com/libretro/pcsx_rearmed",
+      "revision": "c8816799b50388e61cfe237fe2cdbb7d8175f20a",
+      "recipe": "build-pcsx-rearmed.mjs",
+      "rebuild": "rebuild-pcsx-source.mjs",
+      "sourceDirectory": "pcsx-rearmed",
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "PCSX ReARMed GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "virtualjaguar",
+      "repository": "https://github.com/libretro/virtualjaguar-libretro",
+      "revision": "ffea7893a59dd9b9e6f9b85c51627810338b0778",
+      "recipe": "build-virtualjaguar.mjs",
+      "rebuild": "rebuild-jaguar-source.mjs",
+      "sourceDirectory": "virtualjaguar",
+      "sanitizedSourceArchive": true,
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Virtual Jaguar GPL-3.0; sanitized firmware-free source and all dependency notices required"
+      ]
+    }
+  ]
+}

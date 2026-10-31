@@ -1149,6 +1149,7 @@ components:
         systems: { type: array, items: { type: string }, minItems: 1, maxItems: 64 }
         runtime: { type: string, enum: [emscripten-esm-v1, retroarch-emscripten-esm, dolphin-wasm-esm] }
         filesystem: { type: string, enum: [memfs] }
+        systemFilesDirectory: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$', maxLength: 64, description: Optional single folder below the emulator system directory for all named support files. }
         threaded: { type: boolean, description: True only for the isolated Dolphin runtime. }
         saveCompletion: { type: string, enum: [none, command-reply-v1] }
         contentExtensions: { type: array, items: { type: string }, minItems: 1, maxItems: 32 }

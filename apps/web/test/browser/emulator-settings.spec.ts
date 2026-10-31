@@ -249,7 +249,7 @@ test('native package selection installs through the real owner API and refreshes
   ).toHaveLength(1);
 });
 
-test('Atomiswave native system-file selection stages bytes until explicit install and preserves other assets', async ({
+test('Generic firmware native selection stages bytes until explicit install and preserves other assets', async ({
   page,
   fixture,
 }, testInfo) => {
@@ -258,18 +258,22 @@ test('Atomiswave native system-file selection stages bytes until explicit instal
   const managed = listing.items[0];
   const operator = listing.items[1];
   if (!managed || !operator) throw new Error('Missing generated emulator fixture');
-  managed.profile.id = 'org.libretro.parallel-dc';
+  managed.profile.id = 'org.example.firmware';
   listing.defaultProfileId = managed.profile.id;
-  managed.profile.name = 'Arcade emulator';
-  managed.profile.systems = ['com.provenance.atomiswave'];
+  managed.profile.name = 'Firmware emulator';
+  managed.profile.systems = ['com.provenance.3do'];
   const asset = (name: string, sizeBytes: number) => ({
     name,
     sizeBytes,
     sha256: '0'.repeat(64),
     url: `/play/plugins/${managed.profile.id}/assets/${name}`,
   });
-  managed.profile.assets = [asset('support.data', 7), asset('awbios.zip', 5)];
-  operator.profile.id = 'org.example.operator-parallel-dc';
+  managed.profile.assets = [asset('support.data', 7), asset('BIOS.ROM', 5)];
+  operator.profile.id = 'org.example.operator';
+  const dolphin = playerProfile('org.example.dolphin', 'Dolphin emulator');
+  dolphin.runtime = 'dolphin-wasm-esm';
+  dolphin.threaded = true;
+  listing.items.push({ profile: dolphin, source: 'managed', enabled: true, removable: true });
   let uploads = 0;
   let uploaded: Buffer | null = null;
   let release = () => {};
@@ -281,14 +285,14 @@ test('Atomiswave native system-file selection stages bytes until explicit instal
     if (request.method() === 'GET') return route.fulfill({ json: listing });
     expect(request.method()).toBe('PUT');
     expect(new URL(request.url()).pathname).toBe(
-      '/api/v1/player/management/org.libretro.parallel-dc/system/awbios.zip',
+      '/api/v1/player/management/org.example.firmware/system/BIOS.ROM',
     );
     uploads++;
     uploaded = request.postDataBuffer();
     await held;
     managed.profile.assets = [
-      ...managed.profile.assets.filter((file) => file.name !== 'awbios.zip'),
-      asset('awbios.zip', uploaded?.length ?? 0),
+      ...managed.profile.assets.filter((file) => file.name !== 'BIOS.ROM'),
+      asset('BIOS.ROM', uploaded?.length ?? 0),
     ];
     await route.fulfill({ json: listing });
   });
@@ -298,31 +302,35 @@ test('Atomiswave native system-file selection stages bytes until explicit instal
   });
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Emulators', exact: true }).click();
-  const card = page.getByRole('article', { name: 'Arcade emulator', exact: true });
+  const card = page.getByRole('article', { name: 'Firmware emulator', exact: true });
   const fileList = card.getByRole('list', { name: 'Installed system and support files' });
   await expect(fileList).toContainText('support.data');
-  await expect(fileList).toContainText('awbios.zip');
-  await expect(card).toContainText('System files are shared with players on this server.');
-  await expect(card).toContainText('For Atomiswave, add your awbios.zip containing bios0.ic23.');
+  await expect(fileList).toContainText('BIOS.ROM');
+  await expect(card).toContainText('Use the filename required by the emulator.');
   await expect(
     page
       .getByRole('article', { name: 'Server emulator', exact: true })
       .getByLabel('Add system file', { exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole('article', { name: 'Dolphin emulator', exact: true })
+      .getByLabel('Add system file', { exact: true }),
+  ).toHaveCount(0);
   const input = card.getByLabel('Add system file', { exact: true });
   await expect(input).toHaveAttribute('type', 'file');
-  await expect(input).toHaveAttribute('accept', '.zip');
+  expect(await input.getAttribute('accept')).toBeNull();
   const install = card.getByRole('button', { name: 'Install system file', exact: true });
   await expect(install).toBeDisabled();
   const chooserEvent = page.waitForEvent('filechooser');
   await input.click();
   await (await chooserEvent).setFiles({
-    name: 'AWBIOS.ZIP',
-    mimeType: 'application/zip',
+    name: 'BIOS.ROM',
+    mimeType: 'application/octet-stream',
     buffer: Buffer.alloc(32, 4),
   });
   expect(uploads).toBe(0);
-  await expect(card.getByRole('status')).toContainText('replaces the existing AWBIOS.ZIP');
+  await expect(card.getByRole('status')).toContainText('replaces the existing BIOS.ROM');
   await install.click();
   try {
     await expect(input).toBeDisabled();
@@ -335,7 +343,7 @@ test('Atomiswave native system-file selection stages bytes until explicit instal
   await expect(install).toBeDisabled();
   expect(uploads).toBe(1);
   expect(uploaded).toEqual(Buffer.alloc(32, 4));
-  await expect(fileList.getByRole('listitem').filter({ hasText: 'awbios.zip' })).toContainText(
+  await expect(fileList.getByRole('listitem').filter({ hasText: 'BIOS.ROM' })).toContainText(
     '32 B',
   );
   await expect(fileList.getByRole('listitem').filter({ hasText: 'support.data' })).toContainText(

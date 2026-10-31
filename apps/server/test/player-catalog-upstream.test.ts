@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseManifest } from '@ecs/plugins';
 import { playerCatalog } from '../src/player-catalog.js';
+import { upstreamCorePins } from '../src/player-catalog-upstream-data.js';
 
 test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => {
   const jaguar = playerCatalog.find((entry) => entry.id === 'org.libretro.virtualjaguar');
@@ -22,7 +23,7 @@ test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => 
 
 test('upstream player catalog entries have valid pinned web-player manifests', () => {
   const entries = playerCatalog.filter((entry) => entry.upstream);
-  assert.equal(entries.length, 35);
+  assert.equal(entries.length, 49);
   for (const id of [
     'org.libretro.prboom',
     'org.libretro.ecwolf',
@@ -45,15 +46,38 @@ test('upstream player catalog entries have valid pinned web-player manifests', (
     'org.libretro.mame2003-plus',
     'org.libretro.fbneo',
     'org.libretro.vice-x64sc',
+    'org.libretro.doublecherrygb',
+    'org.libretro.genesis-plus-gx-wide',
+    'org.libretro.gearcoleco',
+    'org.libretro.handy',
+    'org.libretro.gme',
+    'org.libretro.minivmac',
+    'org.libretro.mu',
+    'org.libretro.neocd',
+    'org.libretro.o2em',
+    'org.libretro.opera',
+    'org.libretro.vecx',
+    'org.libretro.vice-x64',
+    'org.libretro.vice-xscpu64',
+    'org.libretro.fbalpha2012',
   ])
     assert.ok(
       entries.some((entry) => entry.id === id),
       `missing ${id}`,
     );
   const advertisedSystems = entries.flatMap((entry) => entry.systems);
-  assert.ok(!advertisedSystems.includes('com.provenance.fds'));
-  assert.ok(!advertisedSystems.includes('com.provenance.segacd'));
-  assert.ok(!advertisedSystems.includes('com.provenance.pcecd'));
+  for (const system of [
+    'fds',
+    'segacd',
+    'pcecd',
+    '3DO',
+    'colecovision',
+    'odyssey2',
+    'palmos',
+    'macintosh',
+    'music',
+  ])
+    assert.ok(advertisedSystems.includes(`com.provenance.${system}`));
   for (const entry of entries) {
     const { upstream } = entry;
     assert.ok(upstream);
@@ -77,7 +101,7 @@ test('upstream player catalog entries have valid pinned web-player manifests', (
     for (const resource of upstream.resources) {
       assert.match(
         resource.url,
-        /^https:\/\/web\.libretro\.com\/[a-z0-9_]+_libretro\.(?:js|wasm)$/,
+        /^https:\/\/web\.libretro\.com\/[A-Za-z0-9_]+_libretro\.(?:js|wasm)$/,
       );
       assert.match(resource.sha256, /^[a-f0-9]{64}$/);
       assert.ok(resource.sizeBytes > 0);
@@ -122,4 +146,53 @@ test('requested Provenance systems have a player or an explicit installation blo
     assert.equal(entry.sha256, null);
     assert.equal(entry.upstream, undefined);
   }
+});
+
+test('catalog refresh retains byte caps, immutable metadata provenance and explicit startup-only limits', () => {
+  assert.equal(new Set(upstreamCorePins.map((pin) => pin.id)).size, upstreamCorePins.length);
+  for (const pin of upstreamCorePins) {
+    assert.ok(pin.loaderBytes <= 8 * 1024 * 1024);
+    assert.ok(pin.wasmBytes <= 64 * 1024 * 1024);
+    assert.equal(pin.buildVersion, 'web.libretro.com 2026-10-31');
+    assert.match(
+      pin.sourceInfo,
+      /^https:\/\/raw\.githubusercontent\.com\/libretro\/libretro-super\/[a-f0-9]{40}\/dist\/info\/[A-Za-z0-9_]+_libretro\.info$/,
+    );
+    assert.match(pin.infoSha256, /^[a-f0-9]{64}$/);
+    assert.ok(pin.license);
+    const entry = playerCatalog.find((entry) => entry.id === pin.id);
+    assert.match(entry?.description ?? '', /Experimental.*startup verified.*unverified/);
+    assert.equal(entry?.upstream?.manifest.player?.web?.saveCompletion, 'none');
+  }
+  for (const [id, firmware] of [
+    ['gearcoleco', 'colecovision.rom'],
+    ['opera', 'panafz1.bin'],
+    ['o2em', 'o2rom.bin'],
+    ['mu', 'palmos41-en-m515.rom'],
+    ['minivmac', 'MacII.ROM'],
+  ]) {
+    const entry = playerCatalog.find((entry) => entry.id === `org.libretro.${id}`);
+    assert.ok(entry?.available);
+    assert.ok(entry.description.includes(firmware ?? ''));
+  }
+  for (const id of ['vecx']) {
+    const entry = playerCatalog.find((entry) => entry.id === `org.libretro.${id}`);
+    assert.equal(entry?.available, false);
+    assert.ok(entry?.reason);
+  }
+  for (const system of ['segacd', 'pcecd'])
+    for (const entry of playerCatalog.filter(
+      (entry) => entry.upstream && entry.systems.includes(`com.provenance.${system}`),
+    )) {
+      assert.ok(entry.upstream?.manifest.player?.web?.contentExtensions.includes('chd'));
+      assert.match(entry.description, /requires.*BIOS|requires.*syscard3\.pce/i);
+      assert.ok(!entry.upstream?.manifest.player?.web?.contentExtensions.includes('cue'));
+    }
+});
+
+test('NeoCD stages basename uploads in the declared system subdirectory', () => {
+  const entry = playerCatalog.find((entry) => entry.id === 'org.libretro.neocd');
+  assert.equal(entry?.available, true);
+  assert.equal(entry?.upstream?.manifest.player?.web?.systemFilesDirectory, 'neocd');
+  assert.deepEqual(entry?.upstream?.manifest.player?.web?.contentExtensions, ['chd']);
 });

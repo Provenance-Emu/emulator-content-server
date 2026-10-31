@@ -1,0 +1,109 @@
+name: Build browser core artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      core:
+        description: Pinned source recipe (artifacts only; no release)
+        required: true
+        default: prosystem
+        type: choice
+        options: [fceumm, prosystem, pcsx-rearmed, virtualjaguar]
+      publish_release:
+        description: Publish new immutable release after corresponding-source rebuild; review distribution notices first
+        required: true
+        type: boolean
+        default: false
+      verify_rebuild:
+        description: Also rebuild corresponding source and compare bytes (publication always forces this)
+        required: true
+        type: boolean
+        default: false
+      release_tag:
+        description: New browser-core-* release tag (only used for requested publication)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-core-${{ inputs.core }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      BINARYEN_CORES: '2'
+      EMCC_CORES: '2'
+      CORE: ${{ inputs.core }}
+      VERIFY_REBUILD: ${{ inputs.verify_rebuild }}
+      PUBLISH_RELEASE: ${{ inputs.publish_release }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc -b apps/server
+      - run: pnpm --filter @ecs/web exec playwright install --with-deps chromium
+      - name: Prepare pinned Emscripten SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
+          const { emsdk } = JSON.parse(readFileSync('scripts/browser-core/buildbot-config.json'));
+          const path = process.env.RUNNER_TEMP + '/emsdk';
+          execFileSync('git', ['clone', '--quiet', emsdk.repository, path], { stdio: 'inherit' });
+          execFileSync('git', ['checkout', '--detach', emsdk.revision], { cwd: path, stdio: 'inherit' });
+          execFileSync(path + '/emsdk', ['install', emsdk.version], { stdio: 'inherit' });
+          execFileSync(path + '/emsdk', ['activate', emsdk.version], { stdio: 'inherit' });
+          NODE
+      - name: Build selected core, verify opaque startup, package corresponding source
+        shell: bash
+        run: |
+          set -euo pipefail
+          NODE22="$(command -v node)"
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          EXTRA=()
+          if [[ "$VERIFY_REBUILD" == "true" || "$PUBLISH_RELEASE" == "true" ]]; then EXTRA+=(--verify-rebuild); fi
+          "$NODE22" scripts/browser-core/buildbot.mjs "$CORE" "$RUNNER_TEMP/browser-core-output" "${EXTRA[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-core-${{ inputs.core }}-${{ github.sha }}
+          path: ${{ runner.temp }}/browser-core-output/artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: inputs.publish_release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: browser-core-${{ inputs.core }}-${{ github.sha }}
+          path: release-artifacts
+      - name: Publish requested new tag with complete source and notices
+        shell: bash
+        env:
+          TAG: ${{ inputs.release_tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^browser-core-[A-Za-z0-9][A-Za-z0-9._-]{0,80}$ ]] || { echo 'A new browser-core-* tag is required'; exit 1; }
+          node -e "if(require('./release-artifacts/catalog.json').reproducible!==true)process.exit(1)"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then echo 'Existing tags are immutable'; exit 1; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then echo 'Existing releases are immutable'; exit 1; fi
+          gh release create "$TAG" release-artifacts/* --target "$GITHUB_SHA" --title "$TAG" --notes-file release-artifacts/NOTICES.txt --prerelease --latest=false

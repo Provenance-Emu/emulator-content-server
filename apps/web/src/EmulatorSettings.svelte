@@ -118,7 +118,7 @@
                 </div>
               {/if}
             {/if}
-            <EmulatorSystemFiles assets={item.profile.assets} canInstall={item.source === 'managed' && item.profile.id.endsWith('parallel-dc')}
+            <EmulatorSystemFiles assets={item.profile.assets} canInstall={item.source === 'managed' && item.profile.runtime !== 'dolphin-wasm-esm'}
               disabled={locked} oninstall={file => emulators.installSystemFile(item.profile.id, file.name, file)} />
           </article>
         {/each}

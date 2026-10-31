@@ -100,6 +100,7 @@ export function profileIdentity(core: BrowserCore): string {
     'profileVersion' in core
       ? [
           core.buildVersion,
+          core.systemFilesDirectory ?? null,
           ...core.assets.map((asset) => [asset.name, asset.sha256, asset.sizeBytes]).sort(),
         ]
       : [core.frontendCommit, core.coreCommit, core.emscriptenVersion],
@@ -118,6 +119,10 @@ export function validateProfile(core: BrowserCore): void {
       !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(
         core.runtime,
       ) ||
+      (core.systemFilesDirectory !== undefined &&
+        (typeof core.systemFilesDirectory !== 'string' ||
+          !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(core.systemFilesDirectory) ||
+          /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(core.systemFilesDirectory))) ||
       core.threaded !== (core.runtime === 'dolphin-wasm-esm') ||
       (core.runtime === 'dolphin-wasm-esm' && !approvedDolphinBuild(core)) ||
       core.filesystem !== 'memfs' ||

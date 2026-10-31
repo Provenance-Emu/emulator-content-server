@@ -353,14 +353,17 @@ export class ContentClient {
   }
   async installPlayerSystemFile(id: string, name: string, file: Blob): Promise<PlayerManagement> {
     validatePlayerId(id);
-    if (name !== 'awbios.zip' || file.size < 22 || file.size > 32 * 1024 * 1024)
-      throw new Error('Select awbios.zip (up to32MiB)');
-    const response = await fetch(this.url(`/api/v1/player/management/${id}/system/${name}`), {
-      method: 'PUT',
-      headers: { ...this.headers(), 'content-type': 'application/vnd.ecs.player-system-file' },
-      body: file,
-      redirect: 'error',
-    });
+    if (!isPlayerSystemFileName(name) || file.size < 1 || file.size > 32 * 1024 * 1024)
+      throw new Error('Select a portable system filename and a file from 1 byte to 32 MiB');
+    const response = await fetch(
+      this.url(`/api/v1/player/management/${id}/system/${encodeURIComponent(name)}`),
+      {
+        method: 'PUT',
+        headers: { ...this.headers(), 'content-type': 'application/vnd.ecs.player-system-file' },
+        body: file,
+        redirect: 'error',
+      },
+    );
     if (!response.ok) throw await failure(response);
     return response.json() as Promise<PlayerManagement>;
   }
@@ -1647,6 +1650,17 @@ function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage 
   }
 }
 
+/** A flat portable asset basename, excluding runtime configuration and executable resources. */
+export function isPlayerSystemFileName(name: string): boolean {
+  return (
+    typeof name === 'string' &&
+    /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(name) &&
+    !name.endsWith('.') &&
+    !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) &&
+    !/^(?:loader\.js|core\.wasm|plugin\.json|retroarch\.cfg)$/i.test(name)
+  );
+}
+
 function validatePlayerId(id: string): void {
   if (
     typeof id !== 'string' ||
@@ -1663,6 +1677,10 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     p.profileVersion !== 1 ||
     !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(p.runtime) ||
     p.filesystem !== 'memfs' ||
+    (p.systemFilesDirectory !== undefined &&
+      (typeof p.systemFilesDirectory !== 'string' ||
+        !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(p.systemFilesDirectory) ||
+        /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(p.systemFilesDirectory))) ||
     (p.runtime === 'dolphin-wasm-esm'
       ? p.threaded !== true || p.saveCompletion !== 'none'
       : p.threaded !== false) ||

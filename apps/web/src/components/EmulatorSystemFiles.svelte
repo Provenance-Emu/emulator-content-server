@@ -37,10 +37,9 @@
         {#each assets as asset (asset.name)}<li><span class="path">{asset.name}</span><span class="dim">{bytes(asset.sizeBytes)}</span></li>{/each}
       </ul>{/if}
     {#if canInstall}
-      <p class="dim">System files are supplied by you. System files are shared with players on this server. Games and saves stay unchanged.</p>
       <form class="settings-form" onsubmit={event => void submit(event)}>
-        <FormField label="Add system file" help="For Atomiswave, add your awbios.zip containing bios0.ic23. This file stays on the server and is not downloaded for you.">
-          {#snippet children(attributes)}<input {...attributes} bind:this={input} type="file" accept=".zip" disabled={disabled}
+        <FormField label="Add system file" help="Use the filename required by the emulator. Up to 32 MiB; shared with players on this server.">
+          {#snippet children(attributes)}<input {...attributes} bind:this={input} type="file" disabled={disabled}
               onchange={event => { selected = event.currentTarget.files?.[0] ?? null; }} />{/snippet}
         </FormField>
         {#if replaces}<p class="dim" role="status">Installing this file replaces the existing {selected?.name}.</p>{/if}

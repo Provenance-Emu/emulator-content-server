@@ -89,6 +89,7 @@ export interface WebPlayerConfig {
   profileVersion: 1;
   runtime: 'emscripten-esm-v1' | 'retroarch-emscripten-esm' | 'dolphin-wasm-esm';
   filesystem: 'memfs';
+  systemFilesDirectory?: string;
   threaded: boolean;
   saveCompletion: 'none' | 'command-reply-v1';
   contentExtensions: string[];
@@ -294,6 +295,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
       'loader',
       'wasm',
       'assets',
+      'systemFilesDirectory',
     ],
     'player.web',
   );
@@ -319,6 +321,17 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     throw new PluginError(
       'invalid-manifest',
       'Runtime threading or save completion is unsupported',
+    );
+  const systemFilesDirectory = r.systemFilesDirectory;
+  if (
+    systemFilesDirectory !== undefined &&
+    (typeof systemFilesDirectory !== 'string' ||
+      !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(systemFilesDirectory) ||
+      !portableWebPlayerName(systemFilesDirectory))
+  )
+    throw new PluginError(
+      'invalid-manifest',
+      'System-file directory must be one portable folder name',
     );
   const contentExtensions = stringArray(r.contentExtensions, 'contentExtensions');
   if (
@@ -381,6 +394,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     runtime,
     filesystem: 'memfs',
     threaded: r.threaded as boolean,
+    ...(typeof systemFilesDirectory === 'string' ? { systemFilesDirectory } : {}),
     saveCompletion,
     contentExtensions,
     maxContentBytes: Number(r.maxContentBytes),

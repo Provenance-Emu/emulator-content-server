@@ -74,6 +74,7 @@ export interface WebPlayerDescriptor {
   systems: string[];
   runtime: string;
   filesystem: string;
+  systemFilesDirectory?: string;
   threaded: boolean;
   saveCompletion: string;
   contentExtensions: string[];

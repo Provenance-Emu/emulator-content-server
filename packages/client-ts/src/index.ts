@@ -11,6 +11,7 @@ export {
   type DownloadResponse,
   type DownloadSink,
   interpretDownload,
+  isPlayerSystemFileName,
   type LibraryBrowseQuery,
   type LibraryScope,
   planResume,

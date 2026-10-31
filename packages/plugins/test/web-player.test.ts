@@ -99,3 +99,21 @@ test('only disk-backed Dolphin can declare a multi-gigabyte disc', () => {
     }),
   );
 });
+
+test('support-file folder layout is optional data and rejects paths or device names', () => {
+  const m = manifest();
+  assert.equal(
+    parseManifest({
+      ...m,
+      player: { ...m.player, web: { ...m.player.web, systemFilesDirectory: 'neocd' } },
+    }).player?.web?.systemFilesDirectory,
+    'neocd',
+  );
+  for (const name of ['../neocd', 'a/b', '.', '', 'CON', '/root', 'a.b'])
+    assert.throws(() =>
+      parseManifest({
+        ...m,
+        player: { ...m.player, web: { ...m.player.web, systemFilesDirectory: name } },
+      }),
+    );
+});

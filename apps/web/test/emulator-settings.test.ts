@@ -268,46 +268,60 @@ test('a concurrently removed emulator explains the missing entry and refreshes p
   assert.equal(changes, 1);
 });
 
-test('Atomiswave system files upload only to a managed compatible core with a bounded known filename', async () => {
+test('managed ordinary profiles accept portable system files while operator and Dolphin uploads stay unavailable', async () => {
   const f = fixture();
-  const profile = f.saved.items[0]?.profile;
-  if (!profile) throw new Error('Missing fixture');
-  profile.id = 'org.libretro.parallel-dc';
-  f.saved.defaultProfileId = profile.id;
+  const dolphin = playerProfile('org.example.dolphin');
+  dolphin.runtime = 'dolphin-wasm-esm';
+  dolphin.threaded = true;
+  f.saved.items.push({ profile: dolphin, enabled: true, source: 'managed', removable: true });
   let changes = 0;
   const settings = createEmulatorSettings(f.client, () => {
     changes++;
   });
   await settings.load();
   const file = new Blob([new Uint8Array(32)]);
-  assert.equal(await settings.installSystemFile('operator', 'awbios.zip', file), false);
-  assert.equal(await settings.installSystemFile('disabled', 'awbios.zip', file), false);
-  assert.equal(await settings.installSystemFile(profile.id, '../awbios.zip', file), false);
-  assert.equal(await settings.installSystemFile(profile.id, 'dc_boot.bin', file), false);
-  assert.equal(await settings.installSystemFile(profile.id, 'awbios.zip', new Blob()), false);
+  assert.equal(await settings.installSystemFile('operator', 'bios.bin', file), false);
+  assert.equal(await settings.installSystemFile(dolphin.id, 'bios.bin', file), false);
+  for (const name of ['../bios.bin', 'retroarch.cfg', 'CON.rom', 'loader.js']) {
+    assert.equal(await settings.installSystemFile('managed', name, file), false);
+  }
+  assert.equal(await settings.installSystemFile('managed', 'bios.bin', new Blob([])), false);
   assert.equal(
     await settings.installSystemFile(
-      profile.id,
-      'awbios.zip',
+      'managed',
+      'bios.bin',
       new Blob([new Uint8Array(32 * 1024 * 1024 + 1)]),
     ),
     false,
   );
   assert.deepEqual(f.calls, ['read']);
-  assert.equal(await settings.installSystemFile(profile.id, 'AWBIOS.ZIP', file), true);
+  assert.equal(await settings.installSystemFile('managed', 'BIOS.ROM', file), true);
   assert.equal(
-    await settings.installSystemFile(profile.id, 'awbios.zip', new Blob([new Uint8Array(48)])),
+    await settings.installSystemFile('disabled', 'disksys.fds', file),
     true,
+    'disabled managed profiles can be prepared before enabling',
   );
   assert.deepEqual(f.calls, [
     'read',
-    'system:org.libretro.parallel-dc:awbios.zip:32',
-    'system:org.libretro.parallel-dc:awbios.zip:48',
+    'system:managed:BIOS.ROM:32',
+    'system:disabled:disksys.fds:32',
   ]);
   assert.equal(changes, 2);
-  assert.equal(get(settings).listing?.items[0]?.profile.assets.length, 1);
-  assert.equal(get(settings).listing?.items[0]?.profile.assets[0]?.name, 'awbios.zip');
-  assert.equal(get(settings).listing?.items[0]?.profile.assets[0]?.sizeBytes, 48);
+  assert.equal(get(settings).listing?.items[0]?.profile.assets[0]?.name, 'BIOS.ROM');
+});
+
+test('Atomiswave archive names retain their existing canonical spelling', async () => {
+  const f = fixture();
+  const profile = f.saved.items[0]?.profile;
+  if (!profile) throw new Error('Missing fixture');
+  profile.id = 'org.libretro.parallel-dc';
+  const settings = createEmulatorSettings(f.client);
+  await settings.load();
+  assert.equal(
+    await settings.installSystemFile(profile.id, 'AWBIOS.ZIP', new Blob([new Uint8Array(32)])),
+    true,
+  );
+  assert.deepEqual(f.calls, ['read', 'system:org.libretro.parallel-dc:awbios.zip:32']);
 });
 
 test('system-file authorization failures clear management details and notify the owner session', async () => {
