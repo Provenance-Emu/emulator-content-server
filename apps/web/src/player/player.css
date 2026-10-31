@@ -556,3 +556,57 @@
     width: 100%;
   }
 }
+
+.browser-player .player-chrome[hidden],
+.browser-player .player-inspector[hidden],
+.game-view-toolbar[hidden],
+.player-release[hidden] {
+  display: none;
+}
+.browser-player.game-view {
+  padding: 0;
+  margin: 0;
+  max-width: none;
+}
+.game-view .player-workbench {
+  display: block;
+}
+.game-view .player-stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh !important;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  resize: none;
+  z-index: 10;
+}
+.game-view-toolbar {
+  position: absolute;
+  top: max(0.5rem, env(safe-area-inset-top));
+  left: max(0.5rem, env(safe-area-inset-left));
+  right: max(0.5rem, env(safe-area-inset-right));
+  z-index: 6;
+  pointer-events: none;
+}
+.game-view-toolbar button {
+  pointer-events: auto;
+  background: #171b22;
+  color: #fff;
+  border: 1px solid #78818e;
+  min-height: 44px;
+}
+.player-guidance {
+  max-width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 1.25rem;
+  color: var(--text, #eee);
+  background: var(--bg, #171b22);
+  border: 1px solid var(--border, #78818e);
+  border-radius: 0.7rem;
+}
+.player-guidance::backdrop {
+  background: #000a;
+}

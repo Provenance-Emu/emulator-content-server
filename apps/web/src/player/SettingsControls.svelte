@@ -7,7 +7,7 @@
   import type { PlayerRuntime } from './runtime.js';
   import { validShaderId, type ShaderId, type ShaderResult } from './shaders.js';
 
-  let {runtime,commands,store,initial,disabled=false,onbusy=()=>{}}:{runtime:PlayerRuntime;commands:CommandChannel|null;store:PreferenceStore;initial:PlayerPreferences;disabled?:boolean;onbusy?:(busy:boolean)=>void}=$props();
+  let {runtime,commands,store,initial,disabled=false,onbusy=()=>{},onready=()=>{}}:{runtime:PlayerRuntime;commands:CommandChannel|null;store:PreferenceStore;initial:PlayerPreferences;disabled?:boolean;onbusy?:(busy:boolean)=>void;onready?:()=>void}=$props();
   let working=$state(false),failure=$state<string|null>(null),notice=$state(''),unavailable=$state('');
   let options=$state<CoreOption[]>([]),selected=$state<CoreOption|null>(null),draft=$state(''),search=$state(''),limit=$state(64);
   let shaders=$state(false),shader=$state<ShaderId|'unknown'>('off'),shaderStatus=$state('Shaders off.'),shaderRememberable=$state(true);
@@ -52,7 +52,7 @@
       const ignored=Object.entries(initial.options).some(([key,value])=>!options.some(o=>o.key===key&&o.value===value));
       if(ignored)notice='Some remembered options were not accepted by this build. Review their current values.';
       if(initial.shader!=='off'){if(shaders)await applyShader(initial.shader,false);else notice='The remembered shader is unavailable in this build.';}
-    });
+    }).finally(()=>{if(active)onready();});
     let checking=false;
     const timer=setInterval(async()=>{
       if(!active||working||disabled||!shaders||checking)return;checking=true;const generation=shaderGeneration;

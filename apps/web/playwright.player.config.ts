@@ -11,6 +11,7 @@ export default defineConfig({
     'player-settings.spec.ts',
     'player-input.spec.ts',
     'player-skin-artwork.spec.ts',
+    'player-windows.spec.ts',
   ],
   workers: 1,
   fullyParallel: false,
