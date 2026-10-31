@@ -9,6 +9,7 @@ export default defineConfig({
     'player-sandbox.spec.ts',
     'player-capture-controls.spec.ts',
     'player-settings.spec.ts',
+    'player-input.spec.ts',
   ],
   workers: 1,
   fullyParallel: false,

@@ -1,5 +1,6 @@
 import { type CollectedAsset, type ContentClient, sha256Bytes } from '@ecs/client';
 import { CommandChannel } from './commands.js';
+import { nativeInputConfig, verifiedInputBuild } from './input-model.js';
 import { coreOptionsConfig } from './options.js';
 import type { PlayerPreferences } from './preferences.js';
 import { preparePlayer } from './preflight.js';
@@ -97,6 +98,7 @@ export async function startPlayer(
     profile: prepared.core,
     assets: extra,
     signal: options.signal,
+    inputEnabled: verifiedInputBuild(prepared.core),
   });
   try {
     const log = (text: string) => options.log?.(String(text).slice(0, 500));
@@ -141,7 +143,12 @@ export async function startPlayer(
         await runtime.FS.writeFile('/ecs/system/dc/awbios.zip', asset.bytes);
       }
     }
-    await runtime.FS.writeFile(paths.config, new TextEncoder().encode(config));
+    await runtime.FS.writeFile(
+      paths.config,
+      new TextEncoder().encode(
+        config + (verifiedInputBuild(prepared.core) ? `\n${nativeInputConfig()}` : ''),
+      ),
+    );
     await runtime.FS.writeFile(
       '/ecs/core-options.cfg',
       new TextEncoder().encode(coreOptionsConfig(options.preferences?.options ?? {})),

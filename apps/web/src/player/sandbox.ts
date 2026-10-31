@@ -1,4 +1,7 @@
 import { PREVIEW_LIMIT, pngInfo, SCREENSHOT_LIMIT } from './images.js';
+import { inputBridgeSource } from './input-bridge.js';
+import { createInputEngine } from './input-engine.js';
+import { defaultMapping, type InputInfo } from './input-model.js';
 import { validOptionKey, validOptionValue } from './options.js';
 import type { PlayerRuntime, RuntimeContext, RuntimeImporter } from './runtime.js';
 import { type DisplayInfo, validDisplaySettings } from './runtime.js';
@@ -199,6 +202,9 @@ export const importIsolatedRuntime: RuntimeImporter = async (
             maxContentBytes: context.profile?.maxContentBytes ?? LIMIT,
             commands: context.profile?.saveCompletion !== 'none',
             shaders: builtinShaders,
+            inputEnabled: context.inputEnabled === true,
+            inputModule: context.inputEnabled ? inputBridgeSource() : undefined,
+            inputConfig: context.inputEnabled ? defaultMapping() : undefined,
           },
           [script, wasm, ...assets.map((asset) => asset.bytes)],
         );
@@ -316,6 +322,86 @@ export const importIsolatedRuntime: RuntimeImporter = async (
             )
               throw new Error('Invalid shader result');
             return { selection: result.selection, status: result.status };
+          },
+          inputInfo: async () => {
+            const info = (await rpc('input-info')) as InputInfo;
+            if (
+              !info ||
+              typeof info.supported !== 'boolean' ||
+              typeof info.ready !== 'boolean' ||
+              !Array.isArray(info.devices) ||
+              info.devices.length > 16 ||
+              !Array.isArray(info.assignments) ||
+              info.assignments.length !== 4 ||
+              info.assignments.some(
+                (n) => n !== null && (!Number.isInteger(n) || n < 0 || n > 15),
+              ) ||
+              new Set(info.assignments.filter((n) => n !== null)).size !==
+                info.assignments.filter((n) => n !== null).length ||
+              !Array.isArray(info.states) ||
+              info.states.length !== 4 ||
+              info.states.some(
+                (s) =>
+                  !Number.isInteger(s.buttons) ||
+                  s.buttons < 0 ||
+                  s.buttons > 65535 ||
+                  !Array.isArray(s.axes) ||
+                  s.axes.length !== 4 ||
+                  s.axes.some((n) => !Number.isFinite(n) || Math.abs(n) > 1),
+              ) ||
+              info.devices.some(
+                (d) =>
+                  !Number.isInteger(d.index) ||
+                  d.index < 0 ||
+                  d.index > 15 ||
+                  typeof d.id !== 'string' ||
+                  d.id.length > 180 ||
+                  !['', 'standard'].includes(d.mapping) ||
+                  !Number.isInteger(d.buttons) ||
+                  d.buttons < 0 ||
+                  d.buttons > 64 ||
+                  !Number.isInteger(d.axes) ||
+                  d.axes < 0 ||
+                  d.axes > 16,
+              ) ||
+              (info.deviceError !== null &&
+                (typeof info.deviceError !== 'string' || info.deviceError.length > 300))
+            )
+              throw Error('Invalid input information');
+            if (info.capture !== null) {
+              const c = info.capture;
+              if (
+                !c ||
+                !['keyboard', 'mouse', 'controller'].includes(c.kind) ||
+                (c.kind === 'keyboard' && !createInputEngine().validKey(c.key ?? '')) ||
+                (c.kind === 'mouse' &&
+                  (!Number.isInteger(c.mouse) || Number(c.mouse) < 0 || Number(c.mouse) > 6)) ||
+                (c.kind === 'controller' &&
+                  (!c.pad ||
+                    !Number.isInteger(c.pad.index) ||
+                    c.pad.index < 0 ||
+                    c.pad.index > (c.pad.kind === 'button' ? 63 : 15) ||
+                    !['button', 'axis'].includes(c.pad.kind) ||
+                    (c.pad.kind === 'axis' && c.pad.direction !== -1 && c.pad.direction !== 1)))
+              )
+                throw Error('Invalid captured binding');
+            }
+            return info;
+          },
+          disableInput: async () => {
+            await rpc('input-disable');
+          },
+          configureInput: async (map, assignments, assignmentPort = -1) => {
+            createInputEngine().validateConfig(map);
+            await rpc('input-config', { map, assignments, assignmentPort });
+          },
+          captureInput: async (request) => {
+            await rpc('input-capture', request);
+          },
+          sendInput: (packet) => {
+            if (closed || disposed) return;
+            createInputEngine().packet(packet, 0);
+            channel.port1.postMessage({ type: 'input', value: packet });
           },
         };
         return runtime;

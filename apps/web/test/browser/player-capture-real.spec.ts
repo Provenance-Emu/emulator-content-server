@@ -11,7 +11,7 @@ import { openServer } from '../../../server/dist/src/index.js';
 
 const externalCore = process.env.ECS_ACCEPTANCE_CORE;
 if (externalCore) test.use({ headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1' });
-test('real player captures changing PNGs, links native previews, loads a browsed state and changes display settings', async ({
+test('real core preserves captures, saves and settings while keyboard, mouse, controller and touch mappings change game data', async ({
   page,
 }, testInfo) => {
   test.skip(!externalCore, 'Set ECS_ACCEPTANCE_CORE to the external pinned FCEUmm build');
@@ -19,6 +19,20 @@ test('real player captures changing PNGs, links native previews, loads a browsed
   const dir = await mkdtemp(join(tmpdir(), 'ecs-capture-real-'));
   let server: Awaited<ReturnType<typeof openServer>> | undefined;
   try {
+    await page.addInitScript(() => {
+      if (window.parent === window) return;
+      const pad = {
+        id: 'Acceptance controller',
+        index: 0,
+        connected: true,
+        mapping: 'standard',
+        buttons: Array.from({ length: 18 }, () => ({ pressed: false, touched: false, value: 0 })),
+        axes: [0, 0, 0, 0],
+        timestamp: 0,
+      };
+      Object.defineProperty(window, 'acceptancePad', { value: pad });
+      Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [pad] });
+    });
     const registry = join(dir, 'players');
     await mkdir(registry);
     await installPinnedPlayer(resolve(externalCore ?? ''), join(registry, 'fceumm'));
@@ -81,6 +95,10 @@ test('real player captures changing PNGs, links native previews, loads a browsed
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     const capture = page.getByRole('button', { name: 'Capture screenshot', exact: true });
     await expect(capture).toBeEnabled({ timeout: 45000 });
+    const input = page.getByRole('region', { name: 'Input mappings' });
+    await expect(input.getByRole('button', { name: 'Edit layout', exact: true })).toBeEnabled({
+      timeout: 15000,
+    });
     async function screenshot(name: string) {
       await capture.click();
       await expect(
@@ -126,7 +144,7 @@ test('real player captures changing PNGs, links native previews, loads a browsed
       (f) => f.kind === 'screenshot' && f.relativePath === `${state?.relativePath}.png`,
     );
     expect(preview).toBeDefined();
-    const previewBytes = (await client.collect(preview!.id)).bytes;
+    const previewBytes = (await client.collect(preview?.id)).bytes;
     expect(Array.from(previewBytes.slice(0, 8))).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     const browser = page.getByRole('region', { name: 'Save state browser' });
     await expect(browser.getByRole('img', { name: 'Preview of saved game' })).toBeVisible();
@@ -227,6 +245,12 @@ test('real player captures changing PNGs, links native previews, loads a browsed
     ).toBeVisible();
     await expect(shaders).toBeDisabled();
     await expect(
+      input.getByRole('button', { name: 'Rebind keyboard', exact: true }),
+    ).toBeDisabled();
+    await expect(
+      input.getByRole('button', { name: 'Release all controls', exact: true }),
+    ).toBeEnabled();
+    await expect(
       settings.getByRole('button', { name: 'Remember for this game', exact: true }),
     ).toBeDisabled();
     await page.unroute('**/api/v1/uploads');
@@ -234,6 +258,157 @@ test('real player captures changing PNGs, links native previews, loads a browsed
     await expect(page.getByRole('button', { name: 'Retry upload', exact: true })).toHaveCount(0);
     await expect(shaders).toBeEnabled();
     await expect(page.getByRole('alert')).toHaveCount(0);
+    await input.getByRole('button', { name: 'Configure A', exact: true }).click();
+    await input.getByRole('button', { name: 'Rebind keyboard', exact: true }).click();
+    await page.keyboard.press('c');
+    await expect(input.getByText('Keyboard: KeyC', { exact: true })).toBeVisible();
+    await input.getByRole('button', { name: 'Back to game', exact: true }).click();
+    const beforeMapped = await pixel(await screenshot('before-mapped.png'));
+    await page.frameLocator('iframe').locator('canvas').click();
+    await page.keyboard.down('c');
+    await page.waitForTimeout(150);
+    await page.keyboard.up('c');
+    const afterMapped = await pixel(await screenshot('after-mapped.png'));
+    expect(afterMapped).not.toEqual(beforeMapped);
+    await page.getByRole('button', { name: 'Touch A', exact: true }).click({ delay: 150 });
+    expect(await pixel(await screenshot('after-touch.png'))).not.toEqual(afterMapped);
+    if (testInfo.project.name === 'chromium') {
+      await page.locator('.player-stage').scrollIntoViewIfNeeded();
+      const a = await page.getByRole('button', { name: 'Touch A', exact: true }).boundingBox(),
+        up = await page.getByRole('button', { name: 'Touch ↑', exact: true }).boundingBox();
+      if (!a || !up) throw Error('Missing touch geometry');
+      const cdp = await page.context().newCDPSession(page),
+        points = [
+          { id: 1, x: a.x + a.width / 2, y: a.y + a.height / 2 },
+          { id: 2, x: up.x + up.width / 2, y: up.y + up.height / 2 },
+        ];
+      await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points });
+      await expect(input.getByRole('button', { name: 'Configure A', exact: true })).toHaveClass(
+        /pressed/,
+      );
+      await expect(input.getByRole('button', { name: 'Configure UP', exact: true })).toHaveClass(
+        /pressed/,
+      );
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [points[0]] });
+      await expect(input.getByRole('button', { name: 'Configure A', exact: true })).not.toHaveClass(
+        /pressed/,
+      );
+      await expect(input.getByRole('button', { name: 'Configure UP', exact: true })).toHaveClass(
+        /pressed/,
+      );
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+      await expect(
+        input.getByRole('button', { name: 'Configure UP', exact: true }),
+      ).not.toHaveClass(/pressed/);
+      await cdp.detach();
+    }
+    await input.getByLabel('Mouse mode', { exact: true }).selectOption('pad');
+    await input.getByRole('button', { name: 'Rebind mouse', exact: true }).click();
+    await input.getByRole('button', { name: 'Cancel binding', exact: true }).click();
+    await expect(input.getByText('Mouse: Unbound', { exact: true })).toBeVisible();
+    await input.getByRole('button', { name: 'Rebind mouse', exact: true }).click();
+    await input
+      .getByRole('group', { name: 'Binding capture' })
+      .getByText(/click or scroll inside this area/)
+      .click();
+    await expect(input.getByText('Mouse: Button 1', { exact: true })).toBeVisible();
+    await input.getByRole('button', { name: 'Back to game', exact: true }).click();
+    const beforeMouse = await pixel(await screenshot('before-mouse.png'));
+    await page.frameLocator('iframe').locator('canvas').click({ delay: 150 });
+    expect(await pixel(await screenshot('after-mouse.png'))).not.toEqual(beforeMouse);
+    await input.getByLabel('Controller', { exact: true }).selectOption('0');
+    await input.getByRole('button', { name: 'Rebind controller', exact: true }).click();
+    const guest = page.frames().find((f) => f.url().includes('/play/sandbox.html'))!;
+    const button = async (pressed: boolean) =>
+      guest.evaluate((pressed) => {
+        (
+          window as unknown as { acceptancePad: { buttons: { pressed: boolean; value: number }[] } }
+        ).acceptancePad.buttons[17] = { pressed, value: pressed ? 1 : 0 };
+      }, pressed);
+    await page.waitForTimeout(200);
+    await button(true);
+    await expect(
+      input.getByText('Controller: {"kind":"button","index":17}', { exact: true }),
+    ).toBeVisible();
+    await button(false);
+    await input.getByRole('button', { name: 'Back to game', exact: true }).click();
+    const beforePad = await pixel(await screenshot('before-pad.png'));
+    await page.waitForTimeout(200);
+    await button(true);
+    await page.waitForTimeout(150);
+    await button(false);
+    expect(await pixel(await screenshot('after-pad.png'))).not.toEqual(beforePad);
+    await input.getByLabel('Layout orientation', { exact: true }).selectOption('portrait');
+    await input.getByRole('button', { name: 'Edit layout', exact: true }).click();
+    await expect(
+      input.getByText('Controls are released while editing. The game continues running.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await input.getByLabel('Control', { exact: true }).selectOption('a');
+    await input.getByLabel('Control width').fill('70');
+    await input.getByLabel('Control width').press('Tab');
+    await input.getByRole('button', { name: 'Undo edit', exact: true }).click();
+    await expect(input.getByLabel('Control width')).toHaveValue('56');
+    await input.getByLabel('Control width').fill('70');
+    await input.getByLabel('Control width').press('Tab');
+    await input.getByLabel('Control placement').selectOption('overlay');
+    const overHeight = await page
+      .locator('.player-game')
+      .evaluate((el) => el.getBoundingClientRect().height);
+    await input.getByLabel('Control placement').selectOption('underlay');
+    const underHeight = await page
+      .locator('.player-game')
+      .evaluate((el) => el.getBoundingClientRect().height);
+    expect(underHeight).toBeLessThan(overHeight);
+    await input.getByRole('button', { name: 'Undo edit', exact: true }).click();
+    await input.getByRole('button', { name: 'Undo edit', exact: true }).click();
+    await input.getByRole('button', { name: 'Apply layout', exact: true }).click();
+    await input.getByRole('button', { name: 'Remember for this game', exact: true }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await input.getByRole('button', { name: 'Configure A', exact: true }).click();
+    await expect(input.getByText('Keyboard: KeyC', { exact: true })).toBeVisible();
+    await input.getByLabel('Layout orientation', { exact: true }).selectOption('portrait');
+    await input.getByRole('button', { name: 'Edit layout', exact: true }).click();
+    await expect(input.getByLabel('Control width')).toHaveValue('70');
+    await input.getByLabel('Control width').fill('80');
+    await input.getByLabel('Control width').press('Tab');
+    await input.getByRole('button', { name: 'Cancel edits', exact: true }).click();
+    await input.getByRole('button', { name: 'Edit layout', exact: true }).click();
+    await expect(input.getByLabel('Control width')).toHaveValue('70');
+    await input.getByRole('button', { name: 'Standard preset', exact: true }).click();
+    await input.getByRole('button', { name: 'Apply layout', exact: true }).click();
+    await page
+      .locator('.player-stage')
+      .screenshot({ path: testInfo.outputPath('touch-layout.png') });
+    const stick = page.getByRole('button', { name: 'Touch L stick', exact: true });
+    await stick.scrollIntoViewIfNeeded();
+    const bounds = await stick.boundingBox();
+    if (!bounds) throw Error('Missing stick');
+    await stick.evaluate((el) =>
+      el.addEventListener(
+        'pointerdown',
+        (e) => el.setAttribute('data-pointer', String((e as PointerEvent).pointerId)),
+        { once: true },
+      ),
+    );
+    await page.mouse.move(bounds.x + bounds.width * 0.8, bounds.y + bounds.height * 0.5);
+    await page.mouse.down();
+    await expect
+      .poll(() => input.getByLabel('Live stick axes').textContent())
+      .not.toBe('[0,0,0,0]');
+    await stick.evaluate((el) => {
+      el.dispatchEvent(
+        new PointerEvent('pointercancel', {
+          pointerId: Number(el.getAttribute('data-pointer')),
+          bubbles: true,
+        }),
+      );
+    });
+    await page.mouse.up();
+    await expect.poll(() => input.getByLabel('Live stick axes').textContent()).toBe('[0,0,0,0]');
   } finally {
     await page.goto('about:blank');
     await server?.close();

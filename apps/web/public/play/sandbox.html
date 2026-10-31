@@ -14,6 +14,7 @@
   let shaderErrors=0;
   let shaderBaseline=0,shaderState={selection:'off',status:'off'};
   let coreOptionsAvailable=false;
+  let inputAdapter;
   let display={fit:'contain',aspect:'auto',filter:'pixelated'};
   const originalGetContext=canvas.getContext.bind(canvas);
   canvas.getContext=(kind,attributes)=>{
@@ -102,6 +103,11 @@
         binaries.set(entry.name,bytes); resources.set(entry.name,blob(bytes,'application/octet-stream'));
       }
       const wasmUrl = blob(wasm,'application/wasm');
+      if(spec.inputEnabled===true){
+        if(typeof spec.inputModule!=='string'||spec.inputModule.length>131072)throw Error('Invalid input adapter');
+        const input=await import(blob(new TextEncoder().encode(spec.inputModule),'text/javascript'));
+        inputAdapter=input.default(canvas,spec.inputConfig,input.createEngine);
+      }
       const module = await import(blob(loader,'text/javascript'));
       if (typeof module.default !== 'function') throw Error('An Emscripten ES-module factory is required');
       runtime = await module.default({
@@ -125,7 +131,7 @@
         await runtime.FS.writeFile('/ecs/shaders/'+id+'.glslp',new TextEncoder().encode('shaders = "1"\nshader0 = "'+id+'.glsl"\nfilter_linear0 = "false"\n'));
       }
       const previousPostMainLoop=runtime.postMainLoop;
-      runtime.postMainLoop=function(){previousPostMainLoop?.call(runtime);frames++;applyDisplay();pendingShot?.draw();};
+      runtime.postMainLoop=function(){previousPostMainLoop?.call(runtime);frames++;applyDisplay();pendingShot?.draw();inputAdapter?.afterFrame();};
       return null;
     }
     if (!runtime) throw Error('Runtime is not initialized');
@@ -145,7 +151,11 @@
         if (!(bytes instanceof Uint8Array) || bytes.byteLength > LIMIT) throw Error('Runtime output exceeds limit');
         return new Uint8Array(bytes).buffer;
       }
-      case 'main': if (!Array.isArray(value) || value.length > 16 || value.some(arg => typeof arg !== 'string' || arg.length > 256)) throw Error('Invalid runtime arguments'); await runtime.callMain(value); return null;
+      case 'main': if (!Array.isArray(value) || value.length > 16 || value.some(arg => typeof arg !== 'string' || arg.length > 256)) throw Error('Invalid runtime arguments'); await runtime.callMain(value);inputAdapter?.start();return null;
+      case 'input-info': return inputAdapter?.info()??{supported:false,ready:false,devices:[],assignments:[null,null,null,null],states:Array.from({length:4},()=>({buttons:0,axes:[0,0,0,0]})),deviceError:null,capture:null};
+      case 'input-disable': inputAdapter?.dispose();inputAdapter=null;return null;
+      case 'input-config': if(!inputAdapter)throw Error('Input adapter unavailable');inputAdapter.configure(value.map,value.assignments,value.assignmentPort);return null;
+      case 'input-capture': if(!inputAdapter)throw Error('Input adapter unavailable');inputAdapter.capture(value);return null;
       case 'send': {
         const key=s=>typeof s==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(s)&&!['__proto__','constructor','prototype'].includes(s);
         const option=s=>typeof s==='string'&&s.length>0&&s.length<=512&&s.trim()===s&&!/[\x00-\x1f\x7f"\\|]/.test(s);
@@ -197,6 +207,7 @@
     port = event.ports[0];
     port.onmessage = event => {
       const message = event.data;
+      if(message?.type==='input'&&!closed){try{inputAdapter?.packet(message.value);}catch{log('Invalid input packet; controls released');}return;}
       if (!message || !Number.isSafeInteger(message.id) || message.id < 1 || typeof message.op !== 'string' || closed) return;
       tail = tail.then(async () => {
         try { const value = await operation(message); if (!closed) port.postMessage({type:'result',id:message.id,value},value instanceof ArrayBuffer ? [value] : []); }
@@ -207,7 +218,7 @@
     port.postMessage({type:'connected'});
   }
   addEventListener('message',connect);
-  addEventListener('pagehide',()=>{closed=true;pendingShot?.reject();port?.close();for(const url of urls)URL.revokeObjectURL(url);},{once:true});
+  addEventListener('pagehide',()=>{closed=true;inputAdapter?.dispose();pendingShot?.reject();port?.close();for(const url of urls)URL.revokeObjectURL(url);},{once:true});
   parent.postMessage({type:'ecs-player-ready',nonce},'*');
 })();
 </script></body></html>

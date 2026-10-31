@@ -5,9 +5,11 @@ export interface RuntimeContext {
   assets?: { name: string; bytes: Uint8Array<ArrayBuffer> }[];
   signal?: AbortSignal;
   timeoutMs?: number;
+  inputEnabled?: boolean;
 }
 
 import type { CommandRuntime } from './commands.js';
+import type { InputCapture, InputInfo, MappingConfig, TouchPacket } from './input-model.js';
 import type { SettingsInfo, ShaderId, ShaderResult } from './shaders.js';
 export interface PlayerRuntime extends CommandRuntime {
   FS: {
@@ -24,6 +26,15 @@ export interface PlayerRuntime extends CommandRuntime {
   setDisplay?(settings: DisplaySettings): Promise<void>;
   settingsInfo?(): Promise<SettingsInfo>;
   setShader?(id: ShaderId): Promise<ShaderResult>;
+  inputInfo?(): Promise<InputInfo>;
+  disableInput?(): Promise<void>;
+  configureInput?(
+    map: MappingConfig,
+    assignments: (number | null)[],
+    assignmentPort?: number,
+  ): Promise<void>;
+  captureInput?(request: InputCapture | null): Promise<void>;
+  sendInput?(packet: TouchPacket): void;
 }
 export interface DisplaySettings {
   fit: 'contain' | 'fill';

@@ -12,6 +12,10 @@
   import StateBrowser from './StateBrowser.svelte';
   import DisplayControls from './DisplayControls.svelte';
   import SettingsControls from './SettingsControls.svelte';
+  import InputControls from './InputControls.svelte';
+  import TouchSurface from './TouchSurface.svelte';
+  import {InputSession} from './input-session.js';
+  import {createInputPreferences} from './input-preferences.js';
   import { createPreferenceStore, type PreferenceStore, type PlayerPreferences } from './preferences.js';
   import { stateCompatibility } from './states.js';
 
@@ -34,6 +38,8 @@
   let compatible = $state(false);
   let canvas: HTMLCanvasElement;
   let stage=$state<HTMLDivElement>();
+  let gameMount=$state<HTMLDivElement>();
+  let inputSession=$state.raw<InputSession|null>(null);
   let playerBusy=$state(false),captureReady=$state(false),refresh=$state(0),pendingSave=$state(false);
   let ready = $state(false);
   let needsSignIn = $state(false);
@@ -107,6 +113,8 @@
         log(text) { logs = [...logs.slice(-7), text.slice(0, 300)]; },
       });
       if(disposed){session?.releaseLoader();return;}
+      inputSession=new InputSession(session.runtime,createInputPreferences(window.location.origin,session.prepared.core,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined));
+      void inputSession.initialize();
       if(session.runtime.focus)await session.runtime.focus();else canvas.focus();
     } catch (error) { if(!disposed)failure = `${explain(error)} Reload this page before starting again.`; }
     finally { working = false; }
@@ -118,7 +126,7 @@
     return () => {window.removeEventListener('pagehide',release);release();};
   });
 </script>
-<main>
+<main class="browser-player">
   <div class="row"><h1>Browser player</h1><a href="/ui/">{session ? 'Stop and return to library' : 'Library / sign in'}</a></div>
   <p class="dim">Installed emulator profiles · supported games and CUE/BIN discs · keyboard focus in the game display</p>
   {#if core}
@@ -163,7 +171,10 @@
       <button type="button" onclick={start} disabled={working || (!!(batteryId || stateId) && !compatible)}>Start</button>
     </section>
   {/if}
-  <div class="player-stage" bind:this={stage}><canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas></div>
+  <div class="player-workbench" class:running={!!session}>
+    <div class="player-stage" bind:this={stage}><div class="player-game" bind:this={gameMount}><canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas></div>{#if inputSession&&stage&&gameMount}<TouchSurface session={inputSession} {stage} {gameMount}/><button type="button" class="player-release" aria-label="Release all game controls" onclick={()=>inputSession?.releaseAll()}>Release controls</button>{/if}</div>
+    {#if inputSession}<InputControls session={inputSession} disabled={playerBusy||pendingSave}/>{/if}
+  </div>
   {#if working}<p role="status">Preparing complete content and core bytes…</p>{/if}
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
   {#if attempted && !session && !working}<p><a href={window.location.href}>Reload player</a></p>{/if}
