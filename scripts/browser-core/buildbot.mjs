@@ -77,6 +77,7 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
       frontend,
       core,
       plan.core.rawOutput ? join(output, 'raw-core') : player,
+      ...(plan.core.recipeArguments ?? []),
     ],
     repository,
   );

@@ -60,6 +60,63 @@
         "RetroArch GPL-3.0-or-later",
         "Virtual Jaguar GPL-3.0; sanitized firmware-free source and all dependency notices required"
       ]
+    },
+    {
+      "id": "stella2014",
+      "repository": "https://github.com/libretro/stella2014-libretro",
+      "revision": "7d1361e407e63f29e52892655069e5fb4096e691",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["stella2014"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "stella2014",
+      "software": {
+        "name": "Stella 2014 (Atari 2600)",
+        "systems": ["com.provenance.2600"],
+        "extensions": ["a26", "bin"],
+        "maxContentBytes": 1048576
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Stella 2014 (Atari 2600): GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "freeintv",
+      "repository": "https://github.com/libretro/FreeIntv",
+      "revision": "ef3e0fe322bec62a7f916c0bb0834c08c348d0b4",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["freeintv"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "freeintv",
+      "software": {
+        "name": "FreeIntv (Intellivision)",
+        "systems": ["com.provenance.intellivision"],
+        "extensions": ["int", "bin", "rom"],
+        "maxContentBytes": 1048576
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "FreeIntv (Intellivision): GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "atari800",
+      "repository": "https://github.com/libretro/libretro-atari800",
+      "revision": "4e7fbc73765c1a9670c7506616046ad1d4ccda51",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["atari800"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "atari800",
+      "software": {
+        "name": "Atari800 (Atari 5200)",
+        "systems": ["com.provenance.5200"],
+        "extensions": ["a52", "car", "bin", "rom"],
+        "maxContentBytes": 1048576
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Atari800 (Atari 5200): GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
     }
   ]
 }
