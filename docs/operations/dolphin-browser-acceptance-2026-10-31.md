@@ -1,5 +1,7 @@
 # Dolphin: genuine VI output through a separate-origin browser runtime
 
+Later October 31 update: [large-disc and Wii integration](dolphin-large-wii-2026-10-31.md) now adds disk-backed files up to 9 GiB and Wii-mode execution with GameCube-controller input. The original first-install scope below remains a historical receipt.
+
 The pinned Dolphin PPC-to-WASM JIT now boots an original generated DOL in Chromium and renders real video-interface output. This uses a separate loopback origin, a private MessagePort asset broker and blob-only runtime resources. No content-server authentication, existing opaque iframe, production endpoint, source checkout or emulator WASM was changed for the proof.
 
 ## Reproduce

@@ -139,7 +139,7 @@
     <section class="player-selectors">
       <h2>Session setup</h2>
       <label>Emulator<select bind:value={profileId} onchange={chooseProfile} disabled={working}>{#each profiles as profile (profile.id)}<option value={profile.id}>{profile.name}</option>{/each}</select></label>
-      {#if core?.runtime==='dolphin-wasm-esm'}<p class="dim">Local browser · GameCube · 512 MiB file limit · 1 controller</p>{/if}
+      {#if core?.runtime==='dolphin-wasm-esm'}<p class="dim">Local browser · GameCube / Wii · {core.maxContentBytes / 1024 ** 3} GiB file limit · GameCube controller</p>{/if}
       {#if core?.saveCompletion==='none'}<p class="dim">This profile supports playback without synchronized saves.</p>{/if}
       {#if sourceId}
         <p>Source: {source?.name}. Choose a save target explicitly; matching titles do not create an association.</p>

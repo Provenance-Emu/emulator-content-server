@@ -79,3 +79,23 @@ test('Dolphin declares shared memory explicitly and cannot claim RetroArch save 
       parseManifest({ ...m, player: { ...m.player, web: { ...web, ...patch } } }),
     );
 });
+
+test('only disk-backed Dolphin can declare a multi-gigabyte disc', () => {
+  const m = manifest();
+  const web = {
+    ...m.player.web,
+    runtime: 'dolphin-wasm-esm',
+    threaded: true,
+    maxContentBytes: 9 * 1024 ** 3,
+  };
+  assert.equal(
+    parseManifest({ ...m, player: { ...m.player, web } }).player?.web?.maxContentBytes,
+    9 * 1024 ** 3,
+  );
+  assert.throws(() =>
+    parseManifest({
+      ...m,
+      player: { ...m.player, web: { ...web, maxContentBytes: 9 * 1024 ** 3 + 1 } },
+    }),
+  );
+});

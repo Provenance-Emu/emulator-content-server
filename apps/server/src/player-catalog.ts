@@ -83,24 +83,12 @@ export const playerCatalog: readonly TrustedPlayer[] = [
   {
     id: 'org.dolphin.wasm',
     name: 'Dolphin (experimental WASM JIT)',
-    systems: ['com.provenance.gamecube'],
+    systems: ['com.provenance.gamecube', 'com.provenance.wii'],
     description:
-      'GameCube with a real PPC-to-WASM JIT in a separate local browser origin. Original-program video verified; software rendering, one controller, 512 MiB file limit.',
+      'GameCube and Wii with a real PPC-to-WASM JIT, disk-backed files up to 9 GiB, software video and GameCube-controller input. Wii Remote input and synchronized saves are unavailable.',
     available: false,
     reason:
       'Use the verified operator-local package; public distribution awaits a corresponding-source rebuild.',
-    downloadBytes: null,
-    url: null,
-    sha256: null,
-  },
-  {
-    id: 'org.dolphin.wii',
-    name: 'Dolphin (Wii)',
-    systems: ['com.provenance.wii'],
-    description: 'Wii support needs its own firmware, storage and Wii Remote integration.',
-    available: false,
-    reason:
-      'Wii NAND, input and game compatibility are not verified; the current local Dolphin profile supports GameCube only.',
     downloadBytes: null,
     url: null,
     sha256: null,

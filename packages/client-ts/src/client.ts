@@ -1675,7 +1675,7 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     p.buildVersion.length > 128 ||
     !Number.isSafeInteger(p.maxContentBytes) ||
     p.maxContentBytes <= 0 ||
-    p.maxContentBytes > 536870912
+    p.maxContentBytes > (p.runtime === 'dolphin-wasm-esm' ? 9 * 1024 ** 3 : 536870912)
   )
     throw new Error('Unsupported player profile');
   if (

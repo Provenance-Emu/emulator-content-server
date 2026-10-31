@@ -12,28 +12,48 @@ const repository = fileURLToPath(new URL('../..', import.meta.url));
 const require = createRequire(join(repository, 'apps/web/package.json'));
 const { chromium } = require('@playwright/test');
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
-const workerSource = `
+const workerSource = String.raw`
 self.onmessage=async event=>{
- const {loaderUrl,abiUrl,wasmBinary,dol}=event.data,logs=[];
+ const {loaderUrl,abiUrl,wasmBinary,dol,expectedWii}=event.data,logs=[];
  try {
   const {default:factory}=await import(loaderUrl);
   const wasmUrl=URL.createObjectURL(new Blob([wasmBinary],{type:'application/wasm'}));
   const {createDolphinPrototype}=await import(abiUrl);
-  const host=await createDolphinPrototype({factory,wasmBinary,moduleOptions:{mainScriptUrlOrBlob:loaderUrl,print:x=>logs.push(String(x)),printErr:x=>logs.push(String(x)),locateFile:name=>{if(name==='dolphin-core-upstream.wasm')return wasmUrl;throw Error('Unexpected resource '+name);}}});
+  let runtime;
+  const captureFactory=async options=>(runtime=await factory(options));
+  const host=await createDolphinPrototype({factory:captureFactory,wasmBinary,moduleOptions:{mainScriptUrlOrBlob:loaderUrl,print:x=>logs.push(String(x)),printErr:x=>logs.push(String(x)),locateFile:name=>{if(name==='dolphin-core-upstream.wasm')return wasmUrl;throw Error('Unexpected resource '+name);}}});
   host.bootDol(new Uint8Array(dol));
-  const samples=[];let frames=0,previousSequence=0,previousRuns=0;
+  const program=new Uint8Array(dol),programView=new DataView(dol),entry=programView.getUint32(0x48,false),needle=program.subarray(0x100,0x120);
+  let ramBase;const witness=()=>{
+   if(!expectedWii)return null;
+   const heap=runtime.HEAPU8,view=new DataView(heap.buffer);const cap=Math.min(heap.length,128*1024*1024);
+   if(ramBase===undefined)for(let offset=heap.indexOf(needle[0]);offset>=0&&offset<cap;offset=heap.indexOf(needle[0],offset+1)){
+    if(!needle.every((byte,index)=>heap[offset+index]===byte))continue;
+    const base=offset-(entry&0x1ffffff);if(base<0||base+0xf80c>cap)continue;
+    if((view.getUint32(base+0xf804,false)>>>16)===58&&view.getUint32(base+0xf808,false)===0x57494931){ramBase=base;break;}
+   }
+   return ramBase===undefined?null:{counter:view.getUint32(ramBase+0xf800,false),iosVersion:view.getUint32(ramBase+0xf804,false),mem2:view.getUint32(ramBase+0xf808,false)};
+  };
+  const samples=[];let frames=0,previousSequence=0,previousRuns=0,previousWitness=null,inputStage=0,pressed=false,released=false;
   const deadline=performance.now()+20000;
   while(performance.now()<deadline){
    await new Promise(r=>setTimeout(r,100));
-   const current=host.poll(),frame=host.frame();
-   samples.push({...current,ticks:String(current.ticks),xfb:frame?.sequence??0,videoStats:frame?.videoStats??null});
+   const current=host.poll(),frame=host.frame(),memory=frame?witness():null;
+   const stats=frame?.videoStats??'',mask=/\binput:([0-9a-f]+)/i.exec(stats),generation=/\bgen:([0-9]+)/.exec(stats);
+   if(expectedWii&&frame){
+    if(inputStage===0){host.input({mask:1,generation:123});inputStage=1;}
+    else if(inputStage===1&&mask&&parseInt(mask[1],16)===1&&Number(generation?.[1])===123){pressed=true;host.input({mask:0,generation:124});inputStage=2;}
+    else if(inputStage===2&&mask&&parseInt(mask[1],16)===0&&Number(generation?.[1])===124){released=true;inputStage=3;}
+   }
+   samples.push({...current,ticks:String(current.ticks),xfb:frame?.sequence??0,videoStats:frame?.videoStats??null,witness:memory});
    if(frame&&frame.sequence!==previousSequence){
     frames++;previousSequence=frame.sequence;
     postMessage({type:'frame',width:frame.width,height:frame.height,rgba:frame.rgba.buffer},[frame.rgba.buffer]);
-    if(frames>=3&&current.jitRuns>previousRuns){
-     postMessage({type:'result',pass:true,isolated:crossOriginIsolated,sharedMemory:true,frames,samples,logs});return;
+    const wiiReady=!expectedWii||(current.ticksPerSecond===729000000&&memory&&previousWitness&&memory.counter!==previousWitness.counter&&pressed&&released);
+    if(frames>=3&&current.jitRuns>previousRuns&&wiiReady){
+     postMessage({type:'result',pass:true,isolated:crossOriginIsolated,sharedMemory:true,frames,samples,logs,wii:expectedWii,gameCubePad:{pressed,released}});return;
     }
-    previousRuns=current.jitRuns;
+    previousRuns=current.jitRuns;previousWitness=memory;
    }
   }
   postMessage({type:'result',pass:false,error:'Three distinct genuine XFB frames did not arrive',frames,samples,logs});
@@ -41,11 +61,11 @@ self.onmessage=async event=>{
 };
 `;
 
-export async function runDolphinBrowserProbe(checkout, output) {
+export async function runDolphinBrowserProbe(checkout, output, { wii = false } = {}) {
   output = resolve(output);
   const receipt = prepareDolphinProbe(checkout, output);
   const nonce = randomBytes(16).toString('hex');
-  const program = dolphinVideoSmokeDol();
+  const program = dolphinVideoSmokeDol({ wii });
   await writeFile(join(output, 'original-video.dol'), program, { flag: 'wx', mode: 0o600 });
   const files = new Map([
     [
@@ -162,7 +182,7 @@ addEventListener('message',function connect(event){
     worker.terminate();for(const url of [loaderUrl,abiUrl,workerUrl])URL.revokeObjectURL(url);
    }
   };
-  worker.postMessage({loaderUrl,abiUrl,wasmBinary,dol},[wasmBinary,dol]);
+  worker.postMessage({loaderUrl,abiUrl,wasmBinary,dol,expectedWii:${wii}},[wasmBinary,dol]);
  };port.start();port.postMessage({type:'connected'});
 });parent.postMessage({type:'ready',nonce},expectedParent);
 `;
@@ -244,11 +264,13 @@ addEventListener('message',event=>{if(event.source===frame.contentWindow&&event.
   }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.length !== 4)
+  if (process.argv.length !== 4 && !(process.argv.length === 5 && process.argv[4] === '--wii'))
     throw new Error(
-      'Usage: node dolphin-browser-probe.mjs PINNED_EXTERNAL_FORK NEW_EXTERNAL_OUTPUT',
+      'Usage: node dolphin-browser-probe.mjs PINNED_EXTERNAL_FORK NEW_EXTERNAL_OUTPUT [--wii]',
     );
-  const result = await runDolphinBrowserProbe(process.argv[2], process.argv[3]);
+  const result = await runDolphinBrowserProbe(process.argv[2], process.argv[3], {
+    wii: process.argv[4] === '--wii',
+  });
   console.log(JSON.stringify(result, null, 2));
   if (!result.pass) process.exitCode = 1;
 }

@@ -1152,7 +1152,7 @@ components:
         threaded: { type: boolean, description: True only for the isolated Dolphin runtime. }
         saveCompletion: { type: string, enum: [none, command-reply-v1] }
         contentExtensions: { type: array, items: { type: string }, minItems: 1, maxItems: 32 }
-        maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 536870912 }
+        maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 9663676416, description: "Up to 9 GiB for disk-backed Dolphin; other runtimes remain limited to 512 MiB." }
         buildVersion: { type: string, maxLength: 128 }
         loader: { $ref: '#/components/schemas/PlayerCoreResource' }
         wasm: { $ref: '#/components/schemas/PlayerCoreResource' }

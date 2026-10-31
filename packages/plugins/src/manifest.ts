@@ -334,7 +334,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
   if (
     !Number.isSafeInteger(r.maxContentBytes) ||
     Number(r.maxContentBytes) <= 0 ||
-    Number(r.maxContentBytes) > 512 * 1024 * 1024
+    Number(r.maxContentBytes) > (runtime === 'dolphin-wasm-esm' ? 9 * 1024 ** 3 : 512 * 1024 ** 2)
   )
     throw new PluginError('invalid-manifest', 'Invalid web player content size limit');
   const buildVersion = shortText(stringField(r, 'buildVersion'), 'buildVersion', 128);

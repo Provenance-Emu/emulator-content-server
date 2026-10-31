@@ -7,7 +7,10 @@ export const dolphinVideoGeometry = Object.freeze({
   entry: 0x80003100,
 });
 
-export function dolphinVideoSmokeDol() {
+export function dolphinVideoSmokeDol({ wii = false } = {}) {
+  const geometry = wii
+    ? { ...dolphinVideoGeometry, entry: 0x80008000, counterAddress: 0x8000f800 }
+    : dolphinVideoGeometry;
   const code = [];
   const emit = (word) => code.push(word >>> 0);
   const d = (op, register, base, immediate) =>
@@ -16,7 +19,21 @@ export function dolphinVideoSmokeDol() {
     d(15, register, 0, value >>> 16);
     d(24, register, register, value);
   };
-  load(3, dolphinVideoGeometry.xfbAddress);
+  if (wii) {
+    emit(0x7c13faa6); // mfspr r0,HID4: preserve the Broadway BAT-enable bits
+    emit(0x7c13fba6); // mtspr HID4,r0: Dolphin detects this Wii-only initialization opcode
+    load(6, 0x90001000);
+    load(7, 0x57494931); // MEM2 only exists on Wii
+    d(36, 7, 6, 0);
+    d(32, 8, 6, 0);
+    load(6, geometry.counterAddress + 8);
+    d(36, 8, 6, 0);
+    load(6, 0x80003140);
+    d(32, 8, 6, 0); // actual IOS version installed by HLE executable boot
+    load(6, geometry.counterAddress + 4);
+    d(36, 8, 6, 0);
+  }
+  load(3, geometry.xfbAddress);
   for (const colour of [0x91369122, 0x29f0296e]) {
     load(4, colour); // green / blue in BT.601 Y0 Cb Y1 Cr order
     d(14, 5, 0, (dolphinVideoGeometry.width * dolphinVideoGeometry.height) / 4);
@@ -43,7 +60,7 @@ export function dolphinVideoSmokeDol() {
   vi16(0x48, (20 << 8) | 20); // WPL and STD: 320 pixels, 640-byte stride
   vi16(0x02, 5); // enable non-interlaced NTSC
   emit(0x7c0004ac); // sync
-  load(3, dolphinVideoGeometry.counterAddress);
+  load(3, geometry.counterAddress);
   d(14, 5, 0, 0);
   d(14, 5, 5, 1);
   d(36, 5, 3, 0);
@@ -53,11 +70,11 @@ export function dolphinVideoSmokeDol() {
   const view = new DataView(bytes.buffer);
   for (const [offset, value] of [
     [0, 0x100],
-    [0x48, dolphinVideoGeometry.entry],
+    [0x48, geometry.entry],
     [0x90, code.length * 4],
-    [0xd8, dolphinVideoGeometry.counterAddress],
+    [0xd8, geometry.counterAddress],
     [0xdc, 32],
-    [0xe0, dolphinVideoGeometry.entry],
+    [0xe0, geometry.entry],
   ])
     view.setUint32(offset, value, false);
   code.forEach((word, index) => {

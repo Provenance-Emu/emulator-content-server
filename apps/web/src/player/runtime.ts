@@ -19,6 +19,7 @@ export interface PlayerRuntime extends CommandRuntime {
     writeFile(path: string, bytes: Uint8Array): void | Promise<void>;
     readFile(path: string): Uint8Array | Promise<Uint8Array>;
   };
+  mountContentFile?(path: string, file: File): Promise<void>;
   callMain(args: string[]): void | Promise<void>;
   focus?(): void | Promise<void>;
   captureScreenshot?(): Promise<Uint8Array<ArrayBuffer>>;
@@ -136,7 +137,8 @@ export function validateProfile(core: BrowserCore): void {
       core.contentExtensions.some((extension) => !/^[a-z0-9]{1,16}$/.test(extension)) ||
       !Number.isSafeInteger(core.maxContentBytes) ||
       core.maxContentBytes < 1 ||
-      core.maxContentBytes > 512 * 1024 * 1024 ||
+      core.maxContentBytes >
+        (core.runtime === 'dolphin-wasm-esm' ? 9 * 1024 ** 3 : 512 * 1024 ** 2) ||
       !Array.isArray(core.assets) ||
       core.assets.length > 16
     )

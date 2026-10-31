@@ -1,45 +1,55 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Dolphin game display</title><style>html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;outline:none}</style></head><body><canvas id="canvas" tabindex="0" aria-label="Game display"></canvas><script type="module">
-// First-party host only. A different loopback origin receives verified bytes, never app credentials.
+// The iframe presents bounded snapshots; the dedicated worker owns all core ABI and file reads.
 const parentOrigin=__ECS_PARENT_ORIGIN__;
 const nonce=location.hash.slice(1),canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d');
-const urls=[],sizes=new Map();let port,runtime,input,started=false,closed=false,tail=Promise.resolve(),contentBytes=0,maxContentBytes=0,sequence=0,drawn=0,audio,nextAudio=0,lastAudio=0;
-let settings={fit:'contain',aspect:'auto',filter:'pixelated'};
-const log=text=>port?.postMessage({type:'log',text:String(text).slice(0,500)});
+const urls=[],pending=new Map();let port,worker,runtime,input,started=false,closed=false,initializing=false,tail=Promise.resolve(),next=0,sequence=0,drawn=0,audio,nextAudio=0,tickPending=false,capturing=false;
+let latest={video:'',jit:0,compiled:0},settings={fit:'contain',aspect:'auto',filter:'pixelated'};
+let logStart=Date.now(),logCount=0;
+const log=text=>{if(Date.now()-logStart>1000){logStart=Date.now();logCount=0;}if(!closed&&++logCount<=30)port?.postMessage({type:'log',text:String(text).slice(0,500)});};
 const blob=(bytes,type)=>{const url=URL.createObjectURL(new Blob([bytes],{type}));urls.push(url);return url;};
-const call=(name,type,types=[],args=[])=>runtime.ccall(name,type,types,args);
-const text=name=>call(name,'string');
-function range(pointer,length){if(!Number.isSafeInteger(pointer)||pointer<0||!Number.isSafeInteger(length)||length<0||pointer+length>runtime.HEAPU8.length)throw Error('Invalid emulator memory range');return runtime.HEAPU8.subarray(pointer,pointer+length);}
+// Cached aggregate diagnostics originate only from the worker's actual native getters.
+const text=name=>name==='GetVideoStats'?latest.video:'';
 function display(){canvas.style.objectFit=settings.fit==='fill'?'fill':'contain';canvas.style.imageRendering=settings.filter==='smooth'?'auto':'pixelated';canvas.style.aspectRatio=settings.aspect==='auto'?'auto':settings.aspect.replace(':',' / ');}
 const unavailableInput=()=>({supported:false,ready:false,devices:[],assignments:[null,null,null,null],states:Array.from({length:4},()=>({buttons:0,axes:[0,0,0,0]})),deviceError:null,capture:null});
 function pad(){
-  const p=navigator.getGamepads?.()[0];const buttons=[1,0,3,2,9,4,5,8,12,13,14,15];let mask=0;
+  const p=navigator.getGamepads?.()[0],buttons=[1,0,3,2,9,4,5,8,12,13,14,15];let mask=0;
   buttons.forEach((button,bit)=>{if(p?.buttons[button]?.pressed)mask|=1<<bit;});
   const axis=(index,invert=false)=>Math.max(0,Math.min(255,Math.round(128+Math.max(-1,Math.min(1,p?.axes[index]??0))*(invert?-127:127))));
-  runtime._SetInputState(mask,axis(0),axis(1,true),axis(2),axis(3,true),p?.buttons[4]?.pressed?255:0,p?.buttons[5]?.pressed?255:0,p?.buttons[1]?.pressed?255:0,p?.buttons[0]?.pressed?255:0,sequence++>>>0);
+  return [mask,axis(0),axis(1,true),axis(2),axis(3,true),p?.buttons[4]?.pressed?255:0,p?.buttons[5]?.pressed?255:0,p?.buttons[1]?.pressed?255:0,p?.buttons[0]?.pressed?255:0,sequence++>>>0];
 }
-function sound(){
-  if(audio?.state!=='running')return;
+function sound(packet){
+  if(!packet||audio?.state!=='running')return;
+  if(!Number.isInteger(packet.frames)||packet.frames<1||packet.frames>1024||!Number.isInteger(packet.rate)||packet.rate<8000||packet.rate>192000||!(packet.samples instanceof ArrayBuffer)||packet.samples.byteLength!==packet.frames*4)throw Error('Invalid audio snapshot');
   const now=audio.currentTime;if(nextAudio>now+0.15)return;
-  const capacity=runtime._AudioBufferFrames(),rate=runtime._AudioSampleRate();
-  if(!Number.isInteger(capacity)||capacity<1||capacity>65536||!Number.isInteger(rate)||rate<8000||rate>192000||runtime._AudioChannels()!==2)return;
-  const count=runtime._MixAudio(Math.min(1024,capacity));if(!Number.isInteger(count)||count<1||count>Math.min(1024,capacity))return;
-  const bytes=range(runtime._AudioBuffer(),count*4),copy=new Uint8Array(bytes.length);copy.set(bytes);const samples=new Int16Array(copy.buffer),buffer=audio.createBuffer(2,count,rate);
-  for(let channel=0;channel<2;channel++){const data=buffer.getChannelData(channel);for(let i=0;i<count;i++)data[i]=samples[i*2+channel]/32768;}
-  const source=audio.createBufferSource();source.buffer=buffer;source.connect(audio.destination);nextAudio=Math.max(nextAudio,now+0.015);source.start(nextAudio);nextAudio+=count/rate;
+  const samples=new Int16Array(packet.samples),buffer=audio.createBuffer(2,packet.frames,packet.rate);
+  for(let channel=0;channel<2;channel++){const data=buffer.getChannelData(channel);for(let i=0;i<packet.frames;i++)data[i]=samples[i*2+channel]/32768;}
+  const source=audio.createBufferSource();source.buffer=buffer;source.connect(audio.destination);nextAudio=Math.max(nextAudio,now+0.015);source.start(nextAudio);nextAudio+=packet.frames/packet.rate;
 }
-function pump(now){
-  if(closed||!started)return;
-  try{
-    runtime._PumpHostJobs();pad();
-    const stats=text('GetVideoStats'),match=/^xfb:([1-9][0-9]*)\b/.exec(stats);
-    if(match&&Number(match[1])!==drawn){
-      const width=runtime._FrameWidth(),height=runtime._FrameHeight();
-      if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>2048||height>2048)throw Error('Emulator frame exceeds display bounds');
-      const copy=new Uint8ClampedArray(width*height*4);copy.set(range(runtime._FrameBuffer(),copy.length));
-      canvas.width=width;canvas.height=height;ctx.putImageData(new ImageData(copy,width,height),0,0);drawn=Number(match[1]);input?.afterFrame();
-    }
-    if(now-lastAudio>16){lastAudio=now;sound();}
-  }catch(error){log(error.message);started=false;return;}
+function snapshot(message){
+  tickPending=false;
+  if(message.error)throw Error('Dolphin frame failed');
+  const stats=message.stats;
+  if(!stats||typeof stats.video!=='string'||stats.video.length>4096||![stats.jit,stats.compiled].every(n=>Number.isFinite(n)&&n>=0))throw Error('Invalid emulator status');
+  latest=stats;
+  if(message.frame){
+    const {width,height,pixels}=message.frame;
+    if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>2048||height>2048||!(pixels instanceof ArrayBuffer)||pixels.byteLength!==width*height*4)throw Error('Invalid video snapshot');
+    canvas.width=width;canvas.height=height;ctx.putImageData(new ImageData(new Uint8ClampedArray(pixels),width,height),0,0);drawn++;input?.afterFrame();
+  }
+  sound(message.audio);
+}
+function terminateWorker(){
+  const active=worker;worker=undefined;started=false;tickPending=false;
+  if(active){try{active.postMessage({id:++next,op:'stop'});}catch{}active.terminate();}
+  for(const task of pending.values()){clearTimeout(task.timer);task.reject(Error('Dolphin worker stopped'));}pending.clear();
+}
+function workerRpc(op,value,transfer=[]){
+  if(!worker)return Promise.reject(Error('Dolphin worker is unavailable'));
+  return new Promise((resolve,reject)=>{const id=++next,timer=setTimeout(()=>{pending.delete(id);reject(Error('Dolphin worker timed out'));terminateWorker();},75000);pending.set(id,{resolve,reject,timer});try{worker.postMessage({id,op,value},transfer);}catch(error){clearTimeout(timer);pending.delete(id);reject(error);}});
+}
+function pump(){
+  if(closed||!started||!worker)return;
+  if(!tickPending&&!capturing){tickPending=true;worker.postMessage({type:'tick',input:pad(),audio:audio?.state==='running'&&nextAudio<audio.currentTime+0.15});}
   requestAnimationFrame(pump);
 }
 function audioStart(){
@@ -49,38 +59,37 @@ function audioStart(){
 canvas.addEventListener('pointerdown',()=>{canvas.focus();audioStart();});
 async function operation({op,value}){
   if(op==='init'){
-    if(runtime||!crossOriginIsolated||typeof SharedArrayBuffer!=='function')throw Error('Dolphin requires an isolated shared-memory host');
-    if(!(value?.loader instanceof ArrayBuffer)||value.loader.byteLength>8388608||!(value.wasm instanceof ArrayBuffer)||value.wasm.byteLength>67108864||value.assets?.length)throw Error('Unsupported Dolphin resources');
-    if(!Number.isSafeInteger(value.maxContentBytes)||value.maxContentBytes<1||value.maxContentBytes>536870912)throw Error('Invalid content bound');maxContentBytes=value.maxContentBytes;
-    const digest=async(bytes)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
-    if(await digest(value.loader)!=='0bfc73fbbf370d831fbce04239f062a93f885c053a86866ce5dca3a879be331f'||await digest(value.wasm)!=='d7395b3a94080f5b7d08a0522f59096007419d117b7b0eb868246429adee6f5c')throw Error('Unreviewed Dolphin build');
-    const loader=blob(value.loader,'text/javascript'),wasm=blob(value.wasm,'application/wasm');
-    const factory=(await import(loader)).default;
-    runtime=await factory({wasmBinary:new Uint8Array(value.wasm),noInitialRun:true,noExitRuntime:true,mainScriptUrlOrBlob:loader,locateFile:name=>{if(name==='dolphin-core-upstream.wasm')return wasm;throw Error('Unexpected secondary resource');},print:log,printErr:log});
-    /* Verify initialized module memory. */
-    if(!(runtime.HEAPU8?.buffer instanceof SharedArrayBuffer)||!runtime.FS||typeof runtime.ccall!=='function')throw Error('Invalid Dolphin runtime');
-    for(const name of ['CoreInit','SetVideoBackend','SetCpuCore','SetCpuThread','SetPpcWasmJitEnabled','BootDisc','PumpHostJobs','FrameWidth','FrameHeight','FrameBuffer','GetVideoStats','SetInputState','MixAudio','AudioBuffer','AudioBufferFrames','AudioSampleRate','AudioChannels'])if(typeof runtime[`_${name}`]!=='function')throw Error('Dolphin ABI missing');
-    if(value.inputEnabled){if(typeof value.inputModule!=='string'||value.inputModule.length>131072)throw Error('Invalid input bridge');const module=await import(blob(new TextEncoder().encode(value.inputModule),'text/javascript'));input=module.default(canvas,value.inputConfig,module.createEngine);}
-    return null;
+    if(initializing||runtime||!crossOriginIsolated||typeof SharedArrayBuffer!=='function')throw Error('Dolphin requires an isolated shared-memory host');initializing=true;
+    if(!(value?.loader instanceof ArrayBuffer)||value.loader.byteLength>8388608||!(value.wasm instanceof ArrayBuffer)||value.wasm.byteLength>67108864||value.assets?.length||typeof value.workerSource!=='string'||value.workerSource.length<1||value.workerSource.length>262144)throw Error('Unsupported Dolphin resources');
+    if(!Number.isSafeInteger(value.maxContentBytes)||value.maxContentBytes<1||value.maxContentBytes>9*1024**3)throw Error('Invalid content bound');
+    try{
+      worker=new Worker(blob(value.workerSource,'text/javascript'),{type:'module',name:'ecs-dolphin-core'});
+      worker.onmessage=event=>{if(closed)return;const message=event.data;if(message?.type==='log'){log(message.text);return;}
+        if(message?.type==='tick'){try{snapshot(message);}catch(error){log(error.message);terminateWorker();}return;}
+        if(message?.type==='result'){const task=pending.get(message.id);if(!task)return;clearTimeout(task.timer);pending.delete(message.id);message.error?task.reject(Error(message.error)):task.resolve(message.value);}
+      };
+      worker.onerror=event=>{event.preventDefault();log('Dolphin worker failed');terminateWorker();};worker.onmessageerror=()=>{log('Invalid Dolphin worker message');terminateWorker();};
+      await workerRpc('init',{loader:value.loader,wasm:value.wasm,maxContentBytes:value.maxContentBytes},[value.loader,value.wasm]);
+      runtime={_GetPpcWasmBlockRunCount:()=>latest.jit,_GetPpcWasmBlockCompileCount:()=>latest.compiled};
+      /* Verify initialized module memory. */
+      if(value.inputEnabled){if(typeof value.inputModule!=='string'||value.inputModule.length>131072)throw Error('Invalid input bridge');const module=await import(blob(new TextEncoder().encode(value.inputModule),'text/javascript'));input=module.default(canvas,value.inputConfig,module.createEngine);}
+      return null;
+    }catch(error){terminateWorker();throw error;}
   }
   if(!runtime)throw Error('Dolphin is not initialized');
   switch(op){
-    case 'mkdir':if(typeof value!=='string'||!/^\/ecs(?:\/(?:content|saves|states|system))?$/.test(value))throw Error('Invalid directory');runtime.FS.mkdirTree(value);return null;
-    case 'write':{
-      const path=value?.path,bytes=value?.bytes;if(typeof path!=='string'||!/^\/ecs\/(?:content\/[A-Za-z0-9_.-]{1,100}|(?:retroarch|core-options)\.cfg)$/.test(path)||!(bytes instanceof ArrayBuffer)||started)throw Error('Invalid staged file');
-      const content=path.startsWith('/ecs/content/'),total=contentBytes-(sizes.get(path)??0)+bytes.byteLength;
-      if(content?(total>maxContentBytes||(!sizes.has(path)&&sizes.size>=128)):bytes.byteLength>65536)throw Error('Staged file exceeds limit');
-      runtime.FS.writeFile(path,new Uint8Array(bytes));if(content){contentBytes=total;sizes.set(path,bytes.byteLength);}return null;
-    }
+    case 'mkdir':return await workerRpc(op,value);
+    case 'write':if(!(value?.bytes instanceof ArrayBuffer))throw Error('Invalid staged bytes');return await workerRpc(op,value,[value.bytes]);
+    case 'mount':if(!(value?.file instanceof Blob))throw Error('Invalid disk-backed file');return await workerRpc(op,value);
     case 'main':{
-      if(started||!Array.isArray(value)||value.length!==1||typeof value[0]!=='string'||!/^\/ecs\/content\/game\.(dol|elf|iso|gcm|gcz|rvz|wia|ciso)$/.test(value[0])||!sizes.has(value[0]))throw Error('Invalid Dolphin boot target');
-      if(!call('SetVideoBackend','number',['string'],['Software Renderer'])||!call('SetCpuCore','number',['string'],['cached'])||!runtime._SetCpuThread(0))throw Error('Dolphin configuration rejected');
-      runtime._SetPpcWasmJitEnabled(1);runtime._SetPresentationScale?.(1);
-      if(runtime._CoreInit()!==1||call('BootDisc','number',['string'],[value[0]])!==1)throw Error('Dolphin boot rejected');
-      started=true;input?.start();audioStart();requestAnimationFrame(pump);log('Dolphin: software video, WASM JIT, one GameCube controller; synchronized saves unavailable.');return null;
+      if(started)throw Error('Dolphin is already running');await workerRpc(op,value);started=true;input?.start();audioStart();requestAnimationFrame(pump);log('Dolphin: worker filesystem, software video, WASM JIT, one controller; synchronized saves unavailable.');return null;
     }
+    case 'stop':try{return await workerRpc('stop');}finally{terminateWorker();}
     case 'focus':canvas.focus();return null;
-    case 'screenshot':if(!drawn)throw Error('No emulated video frame yet');return await new Promise((resolve,reject)=>canvas.toBlob(async blob=>blob?resolve(await blob.arrayBuffer()):reject(Error('Capture unavailable')),'image/png'));
+    case 'screenshot':{
+      if(!drawn)throw Error('No emulated video frame yet');capturing=true;
+      try{const frame=await workerRpc('capture');snapshot({stats:latest,frame});return await new Promise((resolve,reject)=>canvas.toBlob(async blob=>{try{if(!blob||blob.size>8*1024**2)throw Error('Capture exceeds limit');resolve(await blob.arrayBuffer());}catch(error){reject(error);}},'image/png'));}finally{capturing=false;}
+    }
     case 'display-info':return {width:drawn?canvas.width:0,height:drawn?canvas.height:0,captureReady:drawn>0,preview:false,settings};
     case 'display':if(!value||!['contain','fill'].includes(value.fit)||!['auto','4:3','16:9','1:1'].includes(value.aspect)||!['pixelated','smooth'].includes(value.filter))throw Error('Invalid display settings');settings=value;display();return null;
     case 'settings-info':return {commands:false,shaders:false};
@@ -102,5 +111,6 @@ function connect(event){
   };port.start();port.postMessage({type:'connected'});
 }
 if(/^[a-f0-9]{32}$/.test(nonce)){addEventListener('message',connect);parent.postMessage({type:'ecs-player-ready',nonce},parentOrigin);}
-addEventListener('pagehide',()=>{closed=true;started=false;input?.dispose();port?.close();void audio?.close();for(const url of urls)URL.revokeObjectURL(url);},{once:true});
+function cleanup(){if(closed)return;closed=true;terminateWorker();input?.dispose();port?.close();void audio?.close();for(const url of urls)URL.revokeObjectURL(url);}
+addEventListener('pagehide',cleanup,{once:true});addEventListener('unload',cleanup,{once:true});
 </script></body></html>

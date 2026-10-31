@@ -1,4 +1,5 @@
 import { type IsolationSession, isolatedPlayerUrl } from './dolphin.js';
+import { dolphinWorkerSource } from './dolphin-worker.js';
 import { PREVIEW_LIMIT, pngInfo, SCREENSHOT_LIMIT } from './images.js';
 import { inputBridgeSource } from './input-bridge.js';
 import { createInputEngine } from './input-engine.js';
@@ -225,6 +226,7 @@ export const importIsolatedRuntime: RuntimeImporter = async (
             commands: context.profile?.saveCompletion !== 'none',
             shaders: builtinShaders,
             inputEnabled: context.inputEnabled === true,
+            ...(dolphin ? { workerSource: dolphinWorkerSource() } : {}),
             inputModule: context.inputEnabled ? inputBridgeSource() : undefined,
             inputConfig: context.inputEnabled ? defaultMapping() : undefined,
           },
@@ -233,6 +235,20 @@ export const importIsolatedRuntime: RuntimeImporter = async (
         const contentSizes = new Map<string, number>();
         let contentBytes = 0;
         const runtime: PlayerRuntime = {
+          ...(dolphin
+            ? {
+                async mountContentFile(path: string, file: File) {
+                  if (
+                    !(file instanceof File) ||
+                    file.size < 1 ||
+                    file.size > (context.profile?.maxContentBytes ?? LIMIT) ||
+                    !/^\/ecs\/content\/game\.[a-z0-9]{1,16}$/.test(path)
+                  )
+                    throw new Error('Invalid disk-backed disc');
+                  await rpc('mount', { path, file });
+                },
+              }
+            : {}),
           FS: {
             mkdirTree: async (path) => {
               await rpc('mkdir', path);
