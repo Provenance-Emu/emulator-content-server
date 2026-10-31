@@ -8,6 +8,57 @@ export interface DiskCacheOptions {
   signal?: AbortSignal;
   /** Injection for focused filesystem tests; production uses this origin's private storage. */
   storage?: Pick<StorageManager, 'getDirectory' | 'estimate'>;
+  locks?: Pick<LockManager, 'request'>;
+}
+
+/** Version-two cache entries are always protected by these origin-scoped lifetime locks. */
+const cacheLock = (name: string) => `ecs-player-disc:${name}`;
+export async function reclaimPlayerDiscs(
+  directory: FileSystemDirectoryHandle,
+  locks?: Pick<LockManager, 'request'>,
+): Promise<void> {
+  if (!locks) return; // Never infer liveness without the browser's cross-tab lock service.
+  const entries = (
+    directory as unknown as { entries?(): AsyncIterable<[string, { kind: string }]> }
+  ).entries?.();
+  if (!entries) return;
+  let seen = 0;
+  for await (const [name, handle] of entries) {
+    if (++seen > 64) break;
+    if (
+      handle.kind !== 'file' ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.disc$/.test(name)
+    )
+      continue;
+    await locks.request(cacheLock(name), { ifAvailable: true }, async (lock) => {
+      if (lock) await directory.removeEntry(name).catch(() => {});
+    });
+  }
+}
+async function holdDisc(
+  locks: Pick<LockManager, 'request'> | undefined,
+  name: string,
+): Promise<() => Promise<void>> {
+  if (!locks) return async () => {};
+  let unlock = () => {};
+  let acquired!: () => void, failed!: (reason: unknown) => void;
+  const ready = new Promise<void>((resolve, reject) => {
+    acquired = resolve;
+    failed = reject;
+  });
+  const held = locks.request(cacheLock(name), async () => {
+    const lifetime = new Promise<void>((resolve) => {
+      unlock = resolve;
+    });
+    acquired();
+    await lifetime;
+  });
+  void held.catch(failed);
+  await ready;
+  return async () => {
+    unlock();
+    await held;
+  };
 }
 
 /** Stage with backpressure on browser disk, never an array of disc-sized memory chunks. */
@@ -24,6 +75,13 @@ export async function cachePlayerDisk(
       'Large discs need private browser disk storage. Use a supported local browser.',
     );
   options.signal?.throwIfAborted();
+  const locks = options.locks ?? globalThis.navigator?.locks;
+  // A new namespace avoids deleting pre-lock cache entries owned by older running players.
+  const directory = await (await storage.getDirectory()).getDirectoryHandle(
+    locks ? 'ecs-player-staging-v2' : 'ecs-player-staging-unlocked',
+    { create: true },
+  );
+  await reclaimPlayerDiscs(directory, locks);
   const estimate = await storage.estimate();
   if (
     typeof estimate.quota === 'number' &&
@@ -31,12 +89,15 @@ export async function cachePlayerDisk(
     estimate.quota - estimate.usage < size + 16 * 1024 ** 2
   )
     throw new Error('Not enough private browser disk space for this disc. Free space and retry.');
-  const directory = await (await storage.getDirectory()).getDirectoryHandle(
-    'ecs-player-staging-v1',
-    { create: true },
-  );
   const name = `${crypto.randomUUID()}.disc`;
-  const handle = await directory.getFileHandle(name, { create: true });
+  const unlock = await holdDisc(locks, name);
+  let handle: FileSystemFileHandle;
+  try {
+    handle = await directory.getFileHandle(name, { create: true });
+  } catch (error) {
+    await unlock();
+    throw error;
+  }
   let writer: FileSystemWritableFileStream | undefined;
   let received = 0,
     committed = false,
@@ -50,7 +111,11 @@ export async function cachePlayerDisk(
       /* Already committed or aborted. */
     }
     writer = undefined;
-    await directory.removeEntry(name).catch(() => {});
+    try {
+      await directory.removeEntry(name).catch(() => {});
+    } finally {
+      await unlock();
+    }
   };
   const sink: DownloadSink = {
     async reset() {
@@ -94,6 +159,15 @@ export async function cachePlayerDisk(
     return { file, release };
   } catch (error) {
     await release();
+    if (
+      error &&
+      typeof error === 'object' &&
+      'name' in error &&
+      error.name === 'QuotaExceededError'
+    )
+      throw new Error(
+        'The browser ran out of disk storage while preparing this disc. Free disk space and retry.',
+      );
     throw error;
   }
 }

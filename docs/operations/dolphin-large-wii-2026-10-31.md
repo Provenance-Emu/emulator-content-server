@@ -18,8 +18,10 @@ staging file before retry; cancellation, short/oversized input, verification fai
 and normal session teardown remove that session's staging file. Quota is checked
 before downloading; unavailable or insufficient browser storage fails explicitly.
 There is no fallback that collects a multi-gigabyte disc into JavaScript memory.
-Abrupt browser/process termination can leave a private staging file; scavenging
-abandoned files remains deferred. The maximum is a supported file-size bound,
+New staging files use an origin-scoped Web Lock for the whole playback lifetime.
+On a later launch, bounded scavenging removes only recognized files whose lock is
+available. Live tabs retain their files. Browsers without a lock service use a
+separate non-reclaimed namespace, and legacy staging files are not touched. The maximum is a supported file-size bound,
 not a claim that every 9 GiB image or mobile device is qualified.
 
 The browser passes a readonly File snapshot to the companion, then its dedicated
@@ -70,3 +72,13 @@ finally block. An already paused core stays paused. Failure-path tests verify
 resume behavior; a focused silent headless case produced a 320×240 PNG and verified
 that JIT execution continued afterward. Ordinary display ticks remain asynchronous.
 Dynamic game scene synchronization and audio quality remain unqualified.
+
+
+The cleanup change passed eight focused staging/locking/quota regressions and a
+silent headless 64 MiB disc boot, capture and controller test. A repeat of the full
+1.46 GB test at this later point hit the machine/browser storage quota after about
+239 MiB; its partial file was removed. This is separate from the earlier successful
+full-disc acceptance. The smaller explicit fixture exercises the same OPFS/File/
+WORKERFS/lock path within the available quota. The public 9 GiB maximum does not
+reserve disk capacity; real quotas/free space can change after an initial estimate,
+and mid-stream exhaustion now gives an actionable disk-space message.

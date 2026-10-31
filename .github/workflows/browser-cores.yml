@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       core:
-        description: Pinned source recipe (artifacts only; no release)
+        description: Pinned source recipe
         required: true
         default: prosystem
         type: choice

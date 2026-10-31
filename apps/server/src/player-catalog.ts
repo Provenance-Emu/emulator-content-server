@@ -54,8 +54,8 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     available: true,
     reason: null,
     downloadBytes: 3618571,
-    url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-prosystem.1/prosystem.ecsplayer',
-    sha256: '56c2e274e92b529111fff16f64ce3bd9f09532351f89a68969e7453bf73359d3',
+    url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/prosystem.ecsplayer',
+    sha256: 'd27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55',
   },
   {
     id: 'org.libretro.atari800',

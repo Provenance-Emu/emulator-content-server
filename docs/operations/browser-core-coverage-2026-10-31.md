@@ -85,3 +85,35 @@ Each successful job packages `.ecsplayer`, manifest, SHA256/size catalog, startu
 The new workflow/driver received focused tests and static validation; no full source compile, workflow dispatch or release was performed locally in this batch. Existing recipes have prior core acceptance evidence. A first manual dispatch is still required to establish the new Linux workflow's end-to-end build/source reproduction result. Publication fails closed if a packaged-source rebuild differs.
 
 To repeat the fresh strict inventory, run `node scripts/browser-core/audit-libretro-web.mjs --output=NEW_EXTERNAL_DIRECTORY` (optional `--cores=name,name`). After building the server package, `refresh-upstream-pins.mjs AUDIT_DIRECTORY YYYY-MM-DD NEW_JSON_SNAPSHOT` rechecks every selected artifact against startup receipts and file hashes without overwriting existing snapshots. Review the resulting data before updating the catalog; do not substitute legacy scripts or relax the sandbox to increase the count.
+
+
+## First central build and local installation
+
+The [first Linux buildbot run](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41179497749)
+completed successfully: ProSystem compiled, passed the production opaque startup
+check, rebuilt byte-for-byte from its packaged corresponding source, and published
+an immutable [experimental core release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-prosystem-2026.10.31.1).
+The release is a prerelease and does not replace the desktop latest release.
+The 3,618,571-byte package SHA256 is
+`d27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55`;
+the 84,687,336-byte corresponding-source archive SHA256 is
+`a615cf27233adf34285fd81fb778c348308e665f4c69338bc19e44b3574f0145`.
+The installation catalog now points fresh ProSystem installs to this buildbot
+release. Existing installed versions, settings, saves and library choices are not
+replaced by a catalog refresh.
+
+On the operator's local server, 26 additional profiles were installed without
+starting an emulator: 33 installed profiles now declare 45 systems including the
+existing source-built/experimental profiles. Four preferred alternatives
+(Genesis Plus GX, Gambatte, mGBA and current Snes9x) are included alongside the
+minimal system-coverage set. Firmware-dependent systems still need the owner's
+BIOS/support files; installing a profile does not qualify arbitrary games.
+All 807 existing saved metadata/artwork choices and the emulator default remain
+unchanged. Detailed local installation/verification receipts stay in ignored
+`dist-release/browser-cores-20261031`.
+
+Managed ordinary profiles can now accept flat portable BIOS/support filenames,
+with owner-only writes, 16-file/32 MiB aggregate bounds and atomic replacement.
+The optional plugin `systemFilesDirectory` places those basenames under one safe
+folder such as `neocd`. This is declarative layout data, not a per-core filesystem
+exception. Dolphin's different runtime still rejects ordinary firmware uploads.

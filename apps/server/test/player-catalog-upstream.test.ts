@@ -196,3 +196,11 @@ test('NeoCD stages basename uploads in the declared system subdirectory', () => 
   assert.equal(entry?.upstream?.manifest.player?.web?.systemFilesDirectory, 'neocd');
   assert.deepEqual(entry?.upstream?.manifest.player?.web?.contentExtensions, ['chd']);
 });
+
+test('source-built ProSystem installs use the reproducible central buildbot release', () => {
+  const entry = playerCatalog.find((core) => core.id === 'org.libretro.prosystem');
+  assert.ok(entry);
+  assert.match(entry.url ?? '', /browser-core-prosystem-2026\.10\.31\.1\/prosystem\.ecsplayer$/);
+  assert.equal(entry.downloadBytes, 3618571);
+  assert.equal(entry.sha256, 'd27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55');
+});

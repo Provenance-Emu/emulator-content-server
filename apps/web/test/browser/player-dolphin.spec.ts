@@ -62,7 +62,9 @@ for (const entry of [
       if (entry.large) {
         const gameRoot = join(directory, 'GameCube');
         await mkdir(gameRoot);
-        disc = await writeDolphinGcIso(join(gameRoot, 'original.iso'));
+        disc = await writeDolphinGcIso(join(gameRoot, 'original.iso'), {
+          logicalSize: Number(process.env.ECS_ACCEPTANCE_DOLPHIN_DISC_BYTES ?? 1459978240),
+        });
         const root = await client.addRoot({
           path: gameRoot,
           label: 'GameCube',
@@ -254,6 +256,12 @@ for (const entry of [
         ),
       );
       await page.goto('about:blank');
+    } catch (error) {
+      console.error('Dolphin acceptance failure:', {
+        alerts: await page.getByRole('alert').allTextContents(),
+        logs: await page.locator('.player-log').allTextContents(),
+      });
+      throw error;
     } finally {
       await page.goto('about:blank').catch(() => {});
       await server?.close();
