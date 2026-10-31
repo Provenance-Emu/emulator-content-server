@@ -64,3 +64,4 @@ export {
   nextMajorPath,
   PROTOCOL_VERSION,
 } from './version.js';
+export type * from './workflows.js';

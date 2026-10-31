@@ -1023,6 +1023,202 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/LibraryJobResponse'}
+  /api/v1/workflow-hosts:
+    get:
+      operationId: "listWorkflowHosts"
+      description: "Owner-only workflow management."
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostList"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+    post:
+      operationId: "createWorkflowHost"
+      description: "Owner-only workflow management."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostDraft"}}}}
+      responses: {"201": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostCreated"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-hosts/{hostId}:
+    delete:
+      operationId: "revokeWorkflowHost"
+      description: "Owner-only workflow management."
+      parameters: [{"name": "hostId","in": "path","required": true,"schema": {"type": "string"}}]
+      responses: {"204": {"description": "Workflow operation result."},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-workers/enroll:
+    post:
+      operationId: "enrollWorkflowHost"
+      description: "One-time enrollment using a ten-minute owner-issued secret; returns the worker bearer token once."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowEnrollmentDraft"}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostEnrolled"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-runs:
+    get:
+      operationId: "listWorkflowRuns"
+      description: "Owner-only workflow management."
+      parameters: [{"name": "cursor","in": "query","schema": {"type": "string"}},{"name": "limit","in": "query","schema": {"type": "integer","minimum": 1,"maximum": 100}},{"name":"libraryId","in":"query","schema":{"type":"string"}},{"name":"rootId","in":"query","schema":{"type":"string"}},{"name":"unassigned","in":"query","schema":{"type":"boolean"}}]
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunList"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+    post:
+      operationId: "createWorkflowRun"
+      description: "Owner-only workflow management."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunDraft"}}}}
+      responses: {"201": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."},"503": {"description": "Enroll a workflow host before starting cleanup."}}
+  /api/v1/workflow-runs/{runId}:
+    get:
+      operationId: "getWorkflowRun"
+      description: "Owner-only workflow management."
+      parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-runs/{runId}/findings/{findingId}/decision:
+    post:
+      operationId: "decideWorkflowFinding"
+      description: "Owner-only workflow management."
+      parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}},{"name":"findingId","in":"path","required":true,"schema":{"type":"string"}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowDecision"}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowFindingResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-runs/{runId}/cancel:
+    post:
+      operationId: "cancelWorkflowRun"
+      description: "Owner-only workflow management."
+      parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"type": "object","additionalProperties": false,"required": [],"properties": {}}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-runs/{runId}/resume:
+    post:
+      operationId: "resumeWorkflowRun"
+      description: "Owner-only workflow management."
+      parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"type": "object","additionalProperties": false,"required": [],"properties": {}}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-workers/advertise:
+    post:
+      operationId: "advertiseWorkflowHost"
+      description: "Assigned host claim, at most 20 seconds long polling. The lease field is absent when no work is available."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowAdvertisement"}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-workers/claim:
+    post:
+      operationId: "claimWorkflowRun"
+      description: "Assigned host claim, at most 20 seconds long polling. The lease field is absent when no work is available."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowClaimDraft"}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowClaimResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-workers/heartbeat:
+    post:
+      operationId: "heartbeatWorkflowRun"
+      description: "Scoped workflow host operation; this credential cannot approve or apply fixes."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHeartbeatDraft"}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowClaimResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-workers/publish:
+    post:
+      operationId: "publishWorkflowRun"
+      description: "Scoped workflow host operation; this credential cannot approve or apply fixes."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowPublishDraft"}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+  /api/v1/workflow-workers/interrupt:
+    post:
+      operationId: "interruptWorkflowRun"
+      description: "Assigned host reports interruption or private-state recovery; never approves or applies fixes."
+      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowInterruptDraft"}}}}
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow lease or state conflict."}}
+  /api/v1/workflow-workers/runs/{runId}/work:
+    get:
+      operationId: "listWorkflowWork"
+      description: "Scoped workflow host operation; this credential cannot approve or apply fixes."
+      parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}},{"name": "cursor","in": "query","schema": {"type": "string"}},{"name": "limit","in": "query","schema": {"type": "integer","minimum": 1,"maximum": 100}}]
+      responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSourceSnapshotList"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
+
+  /api/v1/workflow-workers/runs/{runId}/sources/{sourceId}/facts:
+    get:
+      operationId: "getWorkflowSourceFacts"
+      description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSourceFacts"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
+  /api/v1/workflow-workers/runs/{runId}/sources/{sourceId}/catalog:
+    post:
+      operationId: "searchWorkflowCatalog"
+      description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowCatalogResult"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": false, "required": [], "properties": {}}}}}
+  /api/v1/workflow-workers/runs/{runId}/suggestions:
+    post:
+      operationId: "submitWorkflowSuggestions"
+      description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSuggestionResponse"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSuggestionsDraft"}}}}
+  /api/v1/workflow-runs/{runId}/findings:
+    get:
+      operationId: "listWorkflowFindings"
+      description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "cursor", "in": "query", "schema": {"type": "string"}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100}}]
+      responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowFindingList"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
+
+  /api/v1/workflow-runs/{runId}/work:
+    get:
+      operationId: listWorkflowResults
+      description: Owner-only paginated inspection results, including unresolved sources.
+      parameters: [{name: runId, in: path, required: true, schema: {type: string}}, {name: cursor, in: query, schema: {type: string}}, {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100}}]
+      responses: {"200": {description: Inspection results., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowSourceSnapshotList"}}}}, "401": {description: Unauthorized.}, "403": {description: Owner required.}, "404": {description: Run unavailable.}}
+
+  /api/v1/workflow-runs/{runId}/proposals:
+    get:
+      operationId: "listWorkflowProposals"
+      description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "cursor", "in": "query", "schema": {"type": "string"}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100}}]
+      responses: {"200": {"description": "Review snapshot.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowProposalList"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
+  /api/v1/workflow-runs/{runId}/sources/{sourceId}/evidence/{evidenceId}:
+    get:
+      operationId: "getWorkflowEvidence"
+      description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "evidenceId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Review snapshot.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowEvidenceResponse"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
+  /api/v1/workflow-runs/{runId}/sources/{sourceId}/artifacts/{artifactId}/metadata:
+    get:
+      operationId: "getWorkflowArtifactMetadata"
+      description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Review snapshot.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowArtifactResponse"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
+  /api/v1/workflow-runs/{runId}/sources/{sourceId}/artifacts/{artifactId}:
+    get:
+      operationId: "readWorkflowArtifact"
+      description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Review snapshot.", "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}, "image/jpeg": {"schema": {"type": "string", "format": "binary"}}, "image/webp": {"schema": {"type": "string", "format": "binary"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
+
+  /api/v1/workflow-runs/{runId}/approvals:
+    post:
+      operationId: "approveWorkflowBatch"
+      description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{8,200}$"}}]
+      responses: {"201": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApprovalResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApprovalDraft"}}}}
+  /api/v1/workflow-approvals/{approvalId}:
+    get:
+      operationId: "getWorkflowApproval"
+      description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
+      parameters: [{"name": "approvalId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApprovalResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
+  /api/v1/workflow-approvals/{approvalId}/apply:
+    post:
+      operationId: "applyWorkflowApproval"
+      description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
+      parameters: [{"name": "approvalId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationBatchResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationDraft"}}}}
+  /api/v1/workflow-applications/{applicationId}:
+    get:
+      operationId: "getWorkflowApplicationBatch"
+      description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
+      parameters: [{"name": "applicationId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationBatchResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
+  /api/v1/workflow-runs/{runId}/applications:
+    get:
+      operationId: "listWorkflowApplications"
+      description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
+      parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "cursor", "in": "query", "schema": {"type": "string"}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100}}]
+      responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationList"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
+  /api/v1/workflow-applications/{applicationId}/sources/{sourceId}/undo:
+    post:
+      operationId: "undoWorkflowApplication"
+      description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
+      parameters: [{"name": "applicationId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
+      responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": false, "required": [], "properties": {}}}}}
+
 components:
   schemas:
     Problem:
@@ -1967,3 +2163,853 @@ components:
       properties:
         items: {type: array, items: {$ref: '#/components/schemas/LibraryJobItem'}}
         nextCursor: {type: [string, 'null']}
+
+    # Durable workflows are separate from existing scan/match jobs.
+    WorkflowScope:
+      type: object
+      additionalProperties: false
+      required: []
+      properties:
+        libraryId: {"type": "string"}
+        rootId: {"type": "string"}
+        sourceIds: {"type": "array","items": {"type": "string"},"minItems": 1,"maxItems": 1000,"uniqueItems": true}
+        unassigned: {"type": "boolean"}
+    WorkflowOptions:
+      type: object
+      additionalProperties: false
+      required: ["online", "checksum", "shareImages"]
+      properties:
+        online: {"type": "boolean"}
+        checksum: {"type": "boolean"}
+        shareImages: {"type": "boolean"}
+        providerIds: {"type": "array","items": {"type": "string"},"maxItems": 32}
+        reasonerConnectionId: {"type": "string"}
+        coverInspectorConnectionId: {"type": "string"}
+    WorkflowRunDraft:
+      type: object
+      additionalProperties: false
+      required: ["workflowId", "workflowDigest", "hostId", "scope", "options"]
+      properties:
+        workflowId: {"type": "string","maxLength": 200}
+        workflowDigest: {"type": "string","pattern": "^[a-f0-9]{64}$"}
+        hostId: {"type": "string"}
+        scope: {"$ref": "#/components/schemas/WorkflowScope"}
+        options: {"$ref": "#/components/schemas/WorkflowOptions"}
+    WorkflowRun:
+      type: object
+      additionalProperties: false
+      required: ["workflowId", "workflowDigest", "hostId", "scope", "options", "id", "actorId", "state", "revision", "total", "processed", "createdAt", "updatedAt", "error"]
+      properties:
+        workflowId: {"type": "string","maxLength": 200}
+        workflowDigest: {"type": "string","pattern": "^[a-f0-9]{64}$"}
+        hostId: {"type": "string"}
+        scope: {"$ref": "#/components/schemas/WorkflowScope"}
+        options: {"$ref": "#/components/schemas/WorkflowOptions"}
+        id: {"type": "string"}
+        actorId: {"type": "string"}
+        state: {"type": "string","enum": ["queued","running","interrupted","completed","cancelled","failed","recovery-required"]}
+        revision: {"type": "integer","minimum": 1}
+        total: {"type": "integer","minimum": 0}
+        processed: {"type": "integer","minimum": 0}
+        createdAt: {"type": "string"}
+        updatedAt: {"type": "string"}
+        error: {"type": ["string","null"]}
+    WorkflowPackageSummary:
+      type: object
+      additionalProperties: false
+      required: [id,name,version,digest,kind]
+      properties:
+        id: {type: string, maxLength: 200}
+        name: {type: string, maxLength: 80}
+        version: {type: string, maxLength: 80}
+        digest: {type: string, pattern: '^[a-f0-9]{64}$'}
+        kind: {type: string, enum: [workflow,translator,tool]}
+    WorkflowAdvertisement:
+      type: object
+      additionalProperties: false
+      required: [packages]
+      properties:
+        packages: {type: array, maxItems: 128, items: {$ref: '#/components/schemas/WorkflowPackageSummary'}}
+    WorkflowDecision:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: {type: string, enum: [keep,dismiss]}
+    WorkflowFindingResponse:
+      type: object
+      required: [finding]
+      properties:
+        finding: {$ref: '#/components/schemas/WorkflowFinding'}
+    WorkflowHost:
+      type: object
+      additionalProperties: false
+      required: ["id", "ownerId", "name", "enrolled", "revokedAt", "createdAt"]
+      properties:
+        packages: {type: array, maxItems: 128, items: {$ref: '#/components/schemas/WorkflowPackageSummary'}}
+        lastSeenAt: {type: [string,'null']}
+        id: {"type": "string"}
+        ownerId: {"type": "string"}
+        name: {"type": "string","maxLength": 80}
+        enrolled: {"type": "boolean"}
+        revokedAt: {"type": ["string","null"]}
+        createdAt: {"type": "string"}
+    WorkflowLease:
+      type: object
+      additionalProperties: false
+      required: ["runId", "hostId", "fence", "expiresAt"]
+      properties:
+        runId: {"type": "string"}
+        hostId: {"type": "string"}
+        fence: {"type": "integer","minimum": 1}
+        expiresAt: {"type": "string"}
+    WorkflowSourceSnapshot:
+      type: object
+      additionalProperties: false
+      required: ["sourceId", "indexValidator", "selectionRevision", "state"]
+      properties:
+        sourceId: {"type": "string"}
+        indexValidator: {"type": "string"}
+        selectionRevision: {"type": "integer","minimum": 0}
+        state: {"type": "string","enum": ["pending","completed"]}
+        outputJson: {type: string, maxLength: 65536}
+    WorkflowPublication:
+      type: object
+      additionalProperties: false
+      required: ["sequence", "checkpointRef", "completedSourceIds"]
+      properties:
+        sequence: {"type": "integer","minimum": 1}
+        checkpointRef: {"type": "string","minLength": 1,"maxLength": 200}
+        completedSourceIds: {"type": "array","items": {"type": "string"},"maxItems": 50,"uniqueItems": true}
+        state: {"type": "string","enum": ["running","completed"]}
+        sourceOutputs: {type: array, maxItems: 50, items: {$ref: "#/components/schemas/WorkflowSourceOutput"}}
+    WorkflowFindingDraft:
+      type: object
+      additionalProperties: false
+      required: ["sourceId", "kind", "ruleVersion", "currentValueDigest", "evidenceDigest", "reason", "evidenceIds"]
+      properties:
+        sourceId: {"type": "string"}
+        kind: {"type": "string","enum": ["identity-conflict","suspected-mismatch","missing-front-artwork","questionable-front-artwork","unavailable-selected-artwork"]}
+        ruleVersion: {"type": "string","maxLength": 120}
+        currentValueDigest: {"type": "string","pattern": "^[a-f0-9]{64}$"}
+        evidenceDigest: {"type": "string","pattern": "^[a-f0-9]{64}$"}
+        reason: {"type": "string","minLength": 1,"maxLength": 4096}
+        evidenceIds: {"type": "array","items": {"type": "string"},"maxItems": 100}
+    WorkflowFinding:
+      type: object
+      additionalProperties: false
+      required: ["sourceId", "kind", "ruleVersion", "currentValueDigest", "evidenceDigest", "reason", "evidenceIds", "id", "runId", "fingerprint", "dismissed"]
+      properties:
+        sourceId: {"type": "string"}
+        kind: {"type": "string","enum": ["identity-conflict","suspected-mismatch","missing-front-artwork","questionable-front-artwork","unavailable-selected-artwork"]}
+        ruleVersion: {"type": "string","maxLength": 120}
+        currentValueDigest: {"type": "string","pattern": "^[a-f0-9]{64}$"}
+        evidenceDigest: {"type": "string","pattern": "^[a-f0-9]{64}$"}
+        reason: {"type": "string","minLength": 1,"maxLength": 4096}
+        evidenceIds: {"type": "array","items": {"type": "string"},"maxItems": 100}
+        id: {"type": "string"}
+        runId: {"type": "string"}
+        fingerprint: {"type": "string"}
+        dismissed: {"type": "boolean"}
+    WorkflowEvidence:
+      type: object
+      additionalProperties: false
+      required: ["id", "runId", "sourceId", "kind", "sourceValidator", "providerId", "payloadJson"]
+      properties:
+        id: {"type": "string"}
+        runId: {"type": "string"}
+        sourceId: {"type": "string"}
+        kind: {"type": "string","enum": ["source-fact","catalog","filename","model-observation","tool-observation"]}
+        sourceValidator: {"type": "string"}
+        providerId: {"type": ["string","null"]}
+        payloadJson: {"type": "string","maxLength": 262144}
+    CleanupChange:
+      type: object
+      additionalProperties: false
+      required: ["action", "candidateId", "artifactId", "snapshotJson"]
+      properties:
+        action: {"type": "string","enum": ["replace-metadata","replace-system","replace-front-artwork"]}
+        candidateId: {"type": "string"}
+        artifactId: {"type": ["string","null"]}
+        snapshotJson: {"type": "string","maxLength": 262144}
+    WorkflowProposal:
+      type: object
+      additionalProperties: false
+      required: ["id", "version", "runId", "findingId", "sourceId", "sourceValidator", "selectionRevision", "currentValueDigest", "change", "evidenceIds", "reason", "digest"]
+      properties:
+        sourceName: {type: string, maxLength: 4096}
+        evidenceClass: {type: string, enum: [verified-source,saved-selection,filename,local,unverified]}
+        id: {"type": "string"}
+        version: {"type": "integer","minimum": 1}
+        runId: {"type": "string"}
+        findingId: {"type": "string"}
+        sourceId: {"type": "string"}
+        sourceValidator: {"type": "string"}
+        selectionRevision: {"type": "integer","minimum": 0}
+        currentValueDigest: {"type": "string"}
+        change: {"$ref": "#/components/schemas/CleanupChange"}
+        evidenceIds: {"type": "array","items": {"type": "string"},"maxItems": 100}
+        reason: {"type": "string","maxLength": 4096}
+        digest: {"type": "string"}
+    WorkflowArtifact:
+      type: object
+      additionalProperties: false
+      required: ["id", "runId", "sourceId", "sha256", "size", "contentType", "width", "height", "attributionJson", "expiresAt"]
+      properties:
+        id: {"type": "string"}
+        runId: {"type": "string"}
+        sourceId: {"type": "string"}
+        sha256: {"type": "string"}
+        size: {"type": "integer","minimum": 0,"maximum": 2097152}
+        contentType: {"type": "string","enum": ["image/png","image/jpeg","image/webp"]}
+        width: {"type": "integer","minimum": 1,"maximum": 16384}
+        height: {"type": "integer","minimum": 1,"maximum": 16384}
+        attributionJson: {"type": "string","maxLength": 65536}
+        expiresAt: {"type": ["string","null"]}
+    WorkflowApproval:
+      type: object
+      additionalProperties: false
+      required: ["id", "runId", "actorId", "runRevision", "proposalVersionsJson", "digest", "createdAt"]
+      properties:
+        id: {"type": "string"}
+        runId: {"type": "string"}
+        actorId: {"type": "string"}
+        runRevision: {"type": "integer","minimum": 0}
+        proposalVersionsJson: {"type": "string","maxLength": 1048576}
+        digest: {"type": "string"}
+        createdAt: {"type": "string"}
+    WorkflowApplication:
+      type: object
+      additionalProperties: false
+      required: ["id", "approvalId", "sourceId", "status", "beforeRevision", "afterRevision", "resultJson", "undoExpiresAt"]
+      properties:
+        id: {"type": "string"}
+        approvalId: {"type": "string"}
+        sourceId: {"type": "string"}
+        status: {"type": "string","enum": ["applied","conflict","failed","undone"]}
+        beforeRevision: {"type": "integer","minimum": 0}
+        afterRevision: {"type": "integer","minimum": 0}
+        resultJson: {"type": "string","maxLength": 1048576}
+        undoExpiresAt: {"type": "string"}
+    WorkflowRunList:
+      type: object
+      additionalProperties: false
+      required: ["items", "nextCursor"]
+      properties:
+        items: {"type": "array","items": {"$ref": "#/components/schemas/WorkflowRun"}}
+        nextCursor: {"type": ["string","null"]}
+    WorkflowFindingList:
+      type: object
+      additionalProperties: false
+      required: ["items", "nextCursor"]
+      properties:
+        items: {"type": "array","items": {"$ref": "#/components/schemas/WorkflowFinding"}}
+        nextCursor: {"type": ["string","null"]}
+    WorkflowProposalList:
+      type: object
+      additionalProperties: false
+      required: ["items", "nextCursor"]
+      properties:
+        findings: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/WorkflowFinding'}}
+        items: {"type": "array","items": {"$ref": "#/components/schemas/WorkflowProposal"}}
+        nextCursor: {"type": ["string","null"]}
+    WorkflowSourceSnapshotList:
+      type: object
+      additionalProperties: false
+      required: ["items", "nextCursor"]
+      properties:
+        items: {"type": "array","items": {"$ref": "#/components/schemas/WorkflowSourceSnapshot"}}
+        nextCursor: {"type": ["string","null"]}
+
+    WorkflowHostDraft:
+      type: object
+      additionalProperties: false
+      required: ["name"]
+      properties: {"name": {"type": "string","minLength": 1,"maxLength": 80}}
+
+    WorkflowHostList:
+      type: object
+      additionalProperties: false
+      required: ["items"]
+      properties: {"items": {"type": "array","items": {"$ref": "#/components/schemas/WorkflowHost"}}}
+
+    WorkflowHostCreated:
+      type: object
+      additionalProperties: false
+      required: ["host", "enrollmentToken"]
+      properties: {"host": {"$ref": "#/components/schemas/WorkflowHost"},"enrollmentToken": {"type": "string"}}
+
+    WorkflowEnrollmentDraft:
+      type: object
+      additionalProperties: false
+      required: ["enrollmentToken"]
+      properties: {"enrollmentToken": {"type": "string","minLength": 1,"maxLength": 100}}
+
+    WorkflowHostEnrolled:
+      type: object
+      additionalProperties: false
+      required: ["host", "token"]
+      properties: {"host": {"$ref": "#/components/schemas/WorkflowHost"},"token": {"type": "string"}}
+
+    WorkflowRunResponse:
+      type: object
+      additionalProperties: false
+      required: ["run"]
+      properties: {"run": {"$ref": "#/components/schemas/WorkflowRun"}}
+
+    WorkflowClaimDraft:
+      type: object
+      additionalProperties: false
+      required: []
+      properties: {"waitMs": {"type": "integer","minimum": 0,"maximum": 20000}}
+
+    WorkflowClaimResponse:
+      type: object
+      additionalProperties: false
+      required: []
+      properties: {"lease": {"$ref": "#/components/schemas/WorkflowLease"},"run": {"$ref": "#/components/schemas/WorkflowRun"}}
+
+    WorkflowHeartbeatDraft:
+      type: object
+      additionalProperties: false
+      required: ["lease"]
+      properties: {"lease": {"$ref": "#/components/schemas/WorkflowLease"}}
+
+    WorkflowPublishDraft:
+      type: object
+      additionalProperties: false
+      required: ["lease", "publication"]
+      properties: {"lease": {"$ref": "#/components/schemas/WorkflowLease"},"publication": {"$ref": "#/components/schemas/WorkflowPublication"}}
+
+    WorkflowInterruptDraft:
+      type: object
+      additionalProperties: false
+      required: [lease, recoveryRequired]
+      properties: {lease: {$ref: "#/components/schemas/WorkflowLease"}, recoveryRequired: {type: boolean}}
+
+    WorkflowSelectionSummary:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "systemId",
+          "artworkRole",
+          "contentAvailable",
+          "identityConflict"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "systemId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "artworkRole": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contentAvailable": {
+            "type": "boolean"
+          },
+          "identityConflict": {
+            "type": "boolean"
+          }
+        }
+      }
+
+    WorkflowSourceFacts:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "name",
+          "systemId",
+          "sourceValidator",
+          "selectionRevision",
+          "currentValueDigest",
+          "selected",
+          "evidenceIds"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "systemId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceValidator": {
+            "type": "string"
+          },
+          "selectionRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currentValueDigest": {
+            "type": "string"
+          },
+          "selected": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowSelectionSummary"
+            }
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100
+          }
+        }
+      }
+
+    WorkflowCatalogCandidate:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "systemId",
+          "artworkRole",
+          "providerId",
+          "evidenceClass",
+          "identityConflict",
+          "agreesWithSelection",
+          "evidenceIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "systemId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "artworkRole": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "evidenceClass": {
+            "type": "string",
+            "enum": [
+              "verified-source",
+              "saved-selection",
+              "filename",
+              "local",
+              "unverified"
+            ]
+          },
+          "identityConflict": {
+            "type": "boolean"
+          },
+          "agreesWithSelection": {
+            "type": "boolean"
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100
+          }
+        }
+      }
+
+    WorkflowCatalogProblem:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "providerId",
+          "code"
+        ],
+        "properties": {
+          "providerId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        }
+      }
+
+    WorkflowCatalogResult:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "facts",
+          "candidates",
+          "problems",
+          "supportedIdentity"
+        ],
+        "properties": {
+          "facts": {
+            "$ref": "#/components/schemas/WorkflowSourceFacts"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowCatalogCandidate"
+            },
+            "maxItems": 200
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowCatalogProblem"
+            }
+          },
+          "supportedIdentity": {
+            "type": "boolean"
+          }
+        }
+      }
+
+    WorkflowObservation:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "kind",
+          "reason",
+          "evidenceIds",
+          "candidateIds"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "identity-conflict",
+              "suspected-mismatch",
+              "missing-front-artwork",
+              "questionable-front-artwork",
+              "unavailable-selected-artwork"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100
+          },
+          "candidateIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100
+          }
+        }
+      }
+
+    WorkflowSuggestionsDraft:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "observations"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "observations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowObservation"
+            },
+            "maxItems": 100
+          },
+          "proposals": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/WorkflowProposalSuggestion"
+            }
+          }
+        }
+      }
+
+    WorkflowSuggestionResponse:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "findings"
+        ],
+        "properties": {
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowFinding"
+            }
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowProposal"
+            }
+          }
+        }
+      }
+
+    WorkflowSourceOutput:
+      type: object
+      additionalProperties: false
+      required: [sourceId, outputJson]
+      properties:
+        sourceId: {type: string}
+        outputJson: {type: string, maxLength: 65536}
+
+    WorkflowProposalSuggestion:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "findingId",
+          "action",
+          "candidateId",
+          "evidenceIds",
+          "reason"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "findingId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "replace-metadata",
+              "replace-system",
+              "replace-front-artwork"
+            ]
+          },
+          "candidateId": {
+            "type": "string"
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        }
+      }
+
+    WorkflowArtifactResponse:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact"
+        ],
+        "properties": {
+          "artifact": {
+            "$ref": "#/components/schemas/WorkflowArtifact"
+          }
+        }
+      }
+
+    WorkflowEvidenceResponse:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence"
+        ],
+        "properties": {
+          "evidence": {
+            "$ref": "#/components/schemas/WorkflowEvidence"
+          }
+        }
+      }
+
+    WorkflowProposalVersion:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "digest"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+
+    WorkflowApprovalDraft:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "runRevision",
+          "proposals"
+        ],
+        "properties": {
+          "runRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "proposals": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/WorkflowProposalVersion"
+            }
+          }
+        }
+      }
+
+    WorkflowApplicationDraft:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "applicationId"
+        ],
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,200}$"
+          }
+        }
+      }
+
+    WorkflowApprovalResponse:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "approval"
+        ],
+        "properties": {
+          "approval": {
+            "$ref": "#/components/schemas/WorkflowApproval"
+          }
+        }
+      }
+
+    WorkflowApplicationResponse:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "application"
+        ],
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/WorkflowApplication"
+          }
+        }
+      }
+
+    WorkflowApplicationBatchResponse:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "applications"
+        ],
+        "properties": {
+          "applications": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/WorkflowApplication"
+            }
+          }
+        }
+      }
+
+    WorkflowApplicationList:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/WorkflowApplication"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }

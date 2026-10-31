@@ -743,3 +743,379 @@ export interface LibraryJobItemList {
   items: LibraryJobItem[];
   nextCursor: string | null;
 }
+
+export interface WorkflowScope {
+  libraryId?: string;
+  rootId?: string;
+  sourceIds?: string[];
+  unassigned?: boolean;
+}
+
+export interface WorkflowOptions {
+  online: boolean;
+  checksum: boolean;
+  shareImages: boolean;
+  providerIds?: string[];
+  reasonerConnectionId?: string;
+  coverInspectorConnectionId?: string;
+}
+
+export interface WorkflowRunDraft {
+  workflowId: string;
+  workflowDigest: string;
+  hostId: string;
+  scope: WorkflowScope;
+  options: WorkflowOptions;
+}
+
+export interface WorkflowRun {
+  workflowId: string;
+  workflowDigest: string;
+  hostId: string;
+  scope: WorkflowScope;
+  options: WorkflowOptions;
+  id: string;
+  actorId: string;
+  state: string;
+  revision: number;
+  total: number;
+  processed: number;
+  createdAt: string;
+  updatedAt: string;
+  error: string | null;
+}
+
+export interface WorkflowPackageSummary {
+  id: string;
+  name: string;
+  version: string;
+  digest: string;
+  kind: string;
+}
+
+export interface WorkflowAdvertisement {
+  packages: WorkflowPackageSummary[];
+}
+
+export interface WorkflowDecision {
+  decision: string;
+}
+
+export interface WorkflowFindingResponse {
+  finding: WorkflowFinding;
+}
+
+export interface WorkflowHost {
+  packages?: WorkflowPackageSummary[];
+  lastSeenAt?: string | null;
+  id: string;
+  ownerId: string;
+  name: string;
+  enrolled: boolean;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface WorkflowLease {
+  runId: string;
+  hostId: string;
+  fence: number;
+  expiresAt: string;
+}
+
+export interface WorkflowSourceSnapshot {
+  sourceId: string;
+  indexValidator: string;
+  selectionRevision: number;
+  state: string;
+  outputJson?: string;
+}
+
+export interface WorkflowPublication {
+  sequence: number;
+  checkpointRef: string;
+  completedSourceIds: string[];
+  state?: string;
+  sourceOutputs?: WorkflowSourceOutput[];
+}
+
+export interface WorkflowFindingDraft {
+  sourceId: string;
+  kind: string;
+  ruleVersion: string;
+  currentValueDigest: string;
+  evidenceDigest: string;
+  reason: string;
+  evidenceIds: string[];
+}
+
+export interface WorkflowFinding {
+  sourceId: string;
+  kind: string;
+  ruleVersion: string;
+  currentValueDigest: string;
+  evidenceDigest: string;
+  reason: string;
+  evidenceIds: string[];
+  id: string;
+  runId: string;
+  fingerprint: string;
+  dismissed: boolean;
+}
+
+export interface WorkflowEvidence {
+  id: string;
+  runId: string;
+  sourceId: string;
+  kind: string;
+  sourceValidator: string;
+  providerId: string | null;
+  payloadJson: string;
+}
+
+export interface CleanupChange {
+  action: string;
+  candidateId: string;
+  artifactId: string | null;
+  snapshotJson: string;
+}
+
+export interface WorkflowProposal {
+  sourceName?: string;
+  evidenceClass?: string;
+  id: string;
+  version: number;
+  runId: string;
+  findingId: string;
+  sourceId: string;
+  sourceValidator: string;
+  selectionRevision: number;
+  currentValueDigest: string;
+  change: CleanupChange;
+  evidenceIds: string[];
+  reason: string;
+  digest: string;
+}
+
+export interface WorkflowArtifact {
+  id: string;
+  runId: string;
+  sourceId: string;
+  sha256: string;
+  size: number;
+  contentType: string;
+  width: number;
+  height: number;
+  attributionJson: string;
+  expiresAt: string | null;
+}
+
+export interface WorkflowApproval {
+  id: string;
+  runId: string;
+  actorId: string;
+  runRevision: number;
+  proposalVersionsJson: string;
+  digest: string;
+  createdAt: string;
+}
+
+export interface WorkflowApplication {
+  id: string;
+  approvalId: string;
+  sourceId: string;
+  status: string;
+  beforeRevision: number;
+  afterRevision: number;
+  resultJson: string;
+  undoExpiresAt: string;
+}
+
+export interface WorkflowRunList {
+  items: WorkflowRun[];
+  nextCursor: string | null;
+}
+
+export interface WorkflowFindingList {
+  items: WorkflowFinding[];
+  nextCursor: string | null;
+}
+
+export interface WorkflowProposalList {
+  findings?: WorkflowFinding[];
+  items: WorkflowProposal[];
+  nextCursor: string | null;
+}
+
+export interface WorkflowSourceSnapshotList {
+  items: WorkflowSourceSnapshot[];
+  nextCursor: string | null;
+}
+
+export interface WorkflowHostDraft {
+  name: string;
+}
+
+export interface WorkflowHostList {
+  items: WorkflowHost[];
+}
+
+export interface WorkflowHostCreated {
+  host: WorkflowHost;
+  enrollmentToken: string;
+}
+
+export interface WorkflowEnrollmentDraft {
+  enrollmentToken: string;
+}
+
+export interface WorkflowHostEnrolled {
+  host: WorkflowHost;
+  token: string;
+}
+
+export interface WorkflowRunResponse {
+  run: WorkflowRun;
+}
+
+export interface WorkflowClaimDraft {
+  waitMs?: number;
+}
+
+export interface WorkflowClaimResponse {
+  lease?: WorkflowLease;
+  run?: WorkflowRun;
+}
+
+export interface WorkflowHeartbeatDraft {
+  lease: WorkflowLease;
+}
+
+export interface WorkflowPublishDraft {
+  lease: WorkflowLease;
+  publication: WorkflowPublication;
+}
+
+export interface WorkflowInterruptDraft {
+  lease: WorkflowLease;
+  recoveryRequired: boolean;
+}
+
+export interface WorkflowSelectionSummary {
+  id: string;
+  kind: string;
+  title: string;
+  systemId: string | null;
+  artworkRole: string | null;
+  contentAvailable: boolean;
+  identityConflict: boolean;
+}
+
+export interface WorkflowSourceFacts {
+  sourceId: string;
+  name: string;
+  systemId: string | null;
+  sourceValidator: string;
+  selectionRevision: number;
+  currentValueDigest: string;
+  selected: WorkflowSelectionSummary[];
+  evidenceIds: string[];
+}
+
+export interface WorkflowCatalogCandidate {
+  id: string;
+  kind: string;
+  title: string;
+  systemId: string | null;
+  artworkRole: string | null;
+  providerId: string;
+  evidenceClass: string;
+  identityConflict: boolean;
+  agreesWithSelection: boolean;
+  evidenceIds: string[];
+}
+
+export interface WorkflowCatalogProblem {
+  providerId: string;
+  code: string;
+}
+
+export interface WorkflowCatalogResult {
+  facts: WorkflowSourceFacts;
+  candidates: WorkflowCatalogCandidate[];
+  problems: WorkflowCatalogProblem[];
+  supportedIdentity: boolean;
+}
+
+export interface WorkflowObservation {
+  sourceId: string;
+  kind: string;
+  reason: string;
+  evidenceIds: string[];
+  candidateIds: string[];
+}
+
+export interface WorkflowSuggestionsDraft {
+  sourceId: string;
+  observations: WorkflowObservation[];
+  proposals?: WorkflowProposalSuggestion[];
+}
+
+export interface WorkflowSuggestionResponse {
+  findings: WorkflowFinding[];
+  proposals?: WorkflowProposal[];
+}
+
+export interface WorkflowSourceOutput {
+  sourceId: string;
+  outputJson: string;
+}
+
+export interface WorkflowProposalSuggestion {
+  sourceId: string;
+  findingId: string;
+  action: string;
+  candidateId: string;
+  evidenceIds: string[];
+  reason: string;
+}
+
+export interface WorkflowArtifactResponse {
+  artifact: WorkflowArtifact;
+}
+
+export interface WorkflowEvidenceResponse {
+  evidence: WorkflowEvidence;
+}
+
+export interface WorkflowProposalVersion {
+  id: string;
+  version: number;
+  digest: string;
+}
+
+export interface WorkflowApprovalDraft {
+  runRevision: number;
+  proposals: WorkflowProposalVersion[];
+}
+
+export interface WorkflowApplicationDraft {
+  applicationId: string;
+}
+
+export interface WorkflowApprovalResponse {
+  approval: WorkflowApproval;
+}
+
+export interface WorkflowApplicationResponse {
+  application: WorkflowApplication;
+}
+
+export interface WorkflowApplicationBatchResponse {
+  applications: WorkflowApplication[];
+}
+
+export interface WorkflowApplicationList {
+  items: WorkflowApplication[];
+  nextCursor: string | null;
+}

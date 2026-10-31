@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { open } from 'node:fs/promises';
+import { crc32 as chunkCrc32 } from 'node:zlib';
 import { DomainError, isRomExtension } from '@ecs/domain';
 import { crc32, fingerprintSingleZipEntry } from '@ecs/storage';
 export async function boundedFile(path: string, max: number): Promise<Buffer> {
@@ -43,6 +44,130 @@ export function imageType(bytes: Buffer): string | null {
   )
     return 'image/webp';
   return null;
+}
+
+export interface RasterDescription {
+  contentType: string;
+  width: number;
+  height: number;
+}
+/** Inspect bounded raster containers without allocating a decoded image on the HTTP process. */
+export function describeRaster(bytes: Buffer): RasterDescription {
+  const fail = (): never => {
+    throw new DomainError(
+      'unsupported-artwork',
+      415,
+      'Artwork must be a valid bounded PNG, JPEG or WebP raster',
+    );
+  };
+  if (bytes.length > 2 * 1024 * 1024 || bytes.length < 12) fail();
+  const type = imageType(bytes);
+  let width = 0,
+    height = 0;
+  if (type === 'image/png') {
+    let offset = 8,
+      header = false,
+      data = false,
+      end = false;
+    while (offset + 12 <= bytes.length) {
+      const size = bytes.readUInt32BE(offset);
+      if (size > bytes.length - offset - 12) fail();
+      const tag = bytes.toString('ascii', offset + 4, offset + 8);
+      if (
+        chunkCrc32(bytes.subarray(offset + 4, offset + 8 + size)) !==
+        bytes.readUInt32BE(offset + 8 + size)
+      )
+        fail();
+      if (!header && tag !== 'IHDR') fail();
+      if (tag === 'IHDR') {
+        if (header || size !== 13) fail();
+        header = true;
+        width = bytes.readUInt32BE(offset + 8);
+        height = bytes.readUInt32BE(offset + 12);
+        const depth = bytes[offset + 16],
+          color = bytes[offset + 17];
+        if (
+          ![0, 2, 3, 4, 6].includes(color ?? -1) ||
+          !([0, 3].includes(color ?? -1) ? [1, 2, 4, 8, 16] : [8, 16]).includes(depth ?? -1) ||
+          (color === 3 && depth === 16) ||
+          bytes[offset + 18] !== 0 ||
+          bytes[offset + 19] !== 0 ||
+          ![0, 1].includes(bytes[offset + 20] ?? -1)
+        )
+          fail();
+      } else if (tag === 'IDAT') {
+        if (!size) fail();
+        data = true;
+      } else if (tag === 'IEND') {
+        if (size || !data || offset + 12 !== bytes.length) fail();
+        end = true;
+        break;
+      } else if (tag === 'acTL' || tag === 'fcTL' || tag === 'fdAT') fail();
+      offset += size + 12;
+    }
+    if (!header || !end) fail();
+  } else if (type === 'image/jpeg') {
+    if (bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) fail();
+    let offset = 2,
+      scan = false;
+    while (offset + 4 < bytes.length) {
+      if (bytes[offset++] !== 0xff) fail();
+      while (bytes[offset] === 0xff) offset++;
+      const tag = bytes.readUInt8(offset++);
+      if (tag === 0xda) {
+        scan = true;
+        break;
+      }
+      if (tag === 0xd8 || tag === 0xd9 || tag === 0 || tag === 1 || (tag >= 0xd0 && tag <= 0xd7))
+        fail();
+      const length = bytes.readUInt16BE(offset);
+      if (length < 2 || offset + length > bytes.length) fail();
+      if ([0xc0, 0xc1, 0xc2].includes(tag)) {
+        if (width || length < 8) fail();
+        height = bytes.readUInt16BE(offset + 3);
+        width = bytes.readUInt16BE(offset + 5);
+      }
+      offset += length;
+    }
+    if (!scan) fail();
+  } else if (type === 'image/webp') {
+    let offset = 12,
+      frame = false;
+    while (offset + 8 <= bytes.length) {
+      const tag = bytes.toString('ascii', offset, offset + 4),
+        size = bytes.readUInt32LE(offset + 4),
+        start = offset + 8;
+      if (size > bytes.length - start) fail();
+      if (tag === 'ANIM' || tag === 'ANMF') fail();
+      if (tag === 'VP8X') {
+        if (size !== 10 || width || ((bytes[start] ?? 0) & 2) !== 0) fail();
+        width = 1 + bytes.readUIntLE(start + 4, 3);
+        height = 1 + bytes.readUIntLE(start + 7, 3);
+      } else if (tag === 'VP8 ') {
+        if (frame || size < 10 || bytes.toString('hex', start + 3, start + 6) !== '9d012a') fail();
+        frame = true;
+        const w = bytes.readUInt16LE(start + 6) & 0x3fff,
+          h = bytes.readUInt16LE(start + 8) & 0x3fff;
+        if (width && (width !== w || height !== h)) fail();
+        width = w;
+        height = h;
+      } else if (tag === 'VP8L') {
+        if (frame || size < 5 || bytes[start] !== 0x2f) fail();
+        frame = true;
+        const bits = bytes.readUInt32LE(start + 1);
+        if (bits >>> 29) fail();
+        const w = 1 + (bits & 0x3fff),
+          h = 1 + ((bits >>> 14) & 0x3fff);
+        if (width && (width !== w || height !== h)) fail();
+        width = w;
+        height = h;
+      }
+      offset = start + size + (size % 2);
+    }
+    if (offset !== bytes.length || !frame) fail();
+  } else fail();
+  if (!width || !height || width > 16384 || height > 16384 || width * height > 40_000_000) fail();
+  return { contentType: type as string, width, height };
 }
 
 /** Hash in small cancellable chunks; no full-ROM allocation on the HTTP event loop. */

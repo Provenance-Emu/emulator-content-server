@@ -33,7 +33,14 @@ export { type OpenOptions, openConnector } from './open.js';
 export { pluginFile } from './paths.js';
 export { describePlayer, type PlayerDescription } from './player.js';
 export { PLAYER_PACKAGE_LIMIT, parsePlayerPackage } from './player-package.js';
-export { type LoadedPlugin, loadPlugin, loadPluginDirectory, type PluginLoad } from './registry.js';
+export {
+  type DiscoveredPlugin,
+  discoverPlugin,
+  type LoadedPlugin,
+  loadPlugin,
+  loadPluginDirectory,
+  type PluginLoad,
+} from './registry.js';
 export {
   assignBaseRevisions,
   type LocalAsset,

@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    "./workflows": {
+      "types": "./dist/src/workflows/index.d.ts",
+      "default": "./dist/src/workflows/index.js"
+    },
     ".": {
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
@@ -31,5 +35,12 @@
       "types": "./dist/src/hosted-catalog.d.ts",
       "default": "./dist/src/hosted-catalog.js"
     }
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "semver": "7.8.5"
+  },
+  "devDependencies": {
+    "@types/semver": "7.7.1"
   }
 }

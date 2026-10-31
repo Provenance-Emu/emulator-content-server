@@ -41,6 +41,11 @@ import {
   sourceMatches,
   writeSourceMatch,
 } from './source-matches.js';
+import { WorkflowApplicationRepository } from './workflow-applications.js';
+import { workflowDigest } from './workflow-data.js';
+import { WorkflowIdentityRepository } from './workflow-identities.js';
+import { WorkflowProposalRepository } from './workflow-proposals.js';
+import { WorkflowRunRepository } from './workflow-runs.js';
 
 /** Filesystem facts stay internal and never appear in API source records. */
 export interface SourceInspection {
@@ -157,6 +162,10 @@ function futureIso(ms: number): string {
 export class CatalogDatabase {
   readonly limits: CatalogLimits;
   readonly libraryJobs: LibraryJobRepository;
+  readonly workflowRuns: WorkflowRunRepository;
+  readonly workflowProposals: WorkflowProposalRepository;
+  readonly workflowIdentities: WorkflowIdentityRepository;
+  readonly workflowApplications: WorkflowApplicationRepository;
   private readonly db: DatabaseSync;
 
   constructor(filename: string, limits: Partial<CatalogLimits> = {}) {
@@ -181,8 +190,36 @@ export class CatalogDatabase {
       this.db.function('ecs_companion_extension', { deterministic: true }, (value) =>
         companionExtension(String(value ?? '')),
       );
+      this.db.function(
+        'ecs_workflow_stamp',
+        { deterministic: true },
+        (root, path, size, identity, mtime) => workflowDigest([root, path, size, identity, mtime]),
+      );
       this.migrate();
       this.libraryJobs = new LibraryJobRepository(this.db);
+      this.workflowRuns = new WorkflowRunRepository(this.db);
+      this.workflowProposals = new WorkflowProposalRepository(this.db);
+      this.workflowIdentities = new WorkflowIdentityRepository(this.db);
+      this.workflowApplications = new WorkflowApplicationRepository(
+        this.db,
+        this.workflowProposals,
+        this.workflowRuns,
+        (sourceId, actorId, action, detail) => {
+          const source = this.getSource(sourceId);
+          if (!source) throw new DomainError('not-found', 404, 'Source unavailable');
+          this.insertChange(
+            'source',
+            sourceId,
+            'upsert',
+            source.libraryId,
+            null,
+            sensitiveKind(source.kind),
+            nowIso(),
+            null,
+          );
+          this.insertAudit(actorId, action, 'source', sourceId, detail);
+        },
+      );
     } catch (error) {
       this.db.close();
       throw error;
@@ -1761,6 +1798,17 @@ export class CatalogDatabase {
         artworkRole,
       );
       if (saved.revision !== before) {
+        if (
+          kind === 'artwork' &&
+          (match
+            ? (match.artworkRole ?? match.metadata.artworkRole ?? 'front')
+            : (artworkRole ?? 'front')) === 'front'
+        )
+          this.db
+            .prepare(
+              "DELETE FROM workflow_artifact_refs WHERE reference_kind='selected' AND reference_id=?",
+            )
+            .run(`source:${sourceId}:front`);
         this.insertChange(
           'source',
           sourceId,

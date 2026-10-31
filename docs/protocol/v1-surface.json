@@ -12,6 +12,7 @@
     "DELETE /api/v1/storage-locations/:locationId",
     "DELETE /api/v1/uploads/:uploadId",
     "DELETE /api/v1/webdav-credentials/:id",
+    "DELETE /api/v1/workflow-hosts/:hostId",
     "GET /api/v1/access",
     "GET /api/v1/audit",
     "GET /api/v1/browse",
@@ -54,6 +55,20 @@
     "GET /api/v1/uploads/:uploadId",
     "GET /api/v1/users",
     "GET /api/v1/webdav-credentials",
+    "GET /api/v1/workflow-applications/:applicationId",
+    "GET /api/v1/workflow-approvals/:approvalId",
+    "GET /api/v1/workflow-hosts",
+    "GET /api/v1/workflow-runs",
+    "GET /api/v1/workflow-runs/:runId",
+    "GET /api/v1/workflow-runs/:runId/applications",
+    "GET /api/v1/workflow-runs/:runId/findings",
+    "GET /api/v1/workflow-runs/:runId/proposals",
+    "GET /api/v1/workflow-runs/:runId/sources/:sourceId/artifacts/:artifactId",
+    "GET /api/v1/workflow-runs/:runId/sources/:sourceId/artifacts/:artifactId/metadata",
+    "GET /api/v1/workflow-runs/:runId/sources/:sourceId/evidence/:evidenceId",
+    "GET /api/v1/workflow-runs/:runId/work",
+    "GET /api/v1/workflow-workers/runs/:runId/sources/:sourceId/facts",
+    "GET /api/v1/workflow-workers/runs/:runId/work",
     "GET /health",
     "GET /openapi.yaml",
     "GET /play/plugins/:id/assets/:name",
@@ -90,6 +105,22 @@
     "POST /api/v1/uploads/:uploadId/complete",
     "POST /api/v1/users",
     "POST /api/v1/webdav-credentials",
+    "POST /api/v1/workflow-applications/:applicationId/sources/:sourceId/undo",
+    "POST /api/v1/workflow-approvals/:approvalId/apply",
+    "POST /api/v1/workflow-hosts",
+    "POST /api/v1/workflow-runs",
+    "POST /api/v1/workflow-runs/:runId/approvals",
+    "POST /api/v1/workflow-runs/:runId/cancel",
+    "POST /api/v1/workflow-runs/:runId/findings/:findingId/decision",
+    "POST /api/v1/workflow-runs/:runId/resume",
+    "POST /api/v1/workflow-workers/advertise",
+    "POST /api/v1/workflow-workers/claim",
+    "POST /api/v1/workflow-workers/enroll",
+    "POST /api/v1/workflow-workers/heartbeat",
+    "POST /api/v1/workflow-workers/interrupt",
+    "POST /api/v1/workflow-workers/publish",
+    "POST /api/v1/workflow-workers/runs/:runId/sources/:sourceId/catalog",
+    "POST /api/v1/workflow-workers/runs/:runId/suggestions",
     "PUT /api/v1/access",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
@@ -1512,6 +1543,735 @@
       ]
     },
     "LibraryJobItemList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "WorkflowScope": {
+      "properties": [
+        "libraryId",
+        "rootId",
+        "sourceIds",
+        "unassigned"
+      ],
+      "required": []
+    },
+    "WorkflowOptions": {
+      "properties": [
+        "checksum",
+        "coverInspectorConnectionId",
+        "online",
+        "providerIds",
+        "reasonerConnectionId",
+        "shareImages"
+      ],
+      "required": [
+        "checksum",
+        "online",
+        "shareImages"
+      ]
+    },
+    "WorkflowRunDraft": {
+      "properties": [
+        "hostId",
+        "options",
+        "scope",
+        "workflowDigest",
+        "workflowId"
+      ],
+      "required": [
+        "hostId",
+        "options",
+        "scope",
+        "workflowDigest",
+        "workflowId"
+      ]
+    },
+    "WorkflowRun": {
+      "properties": [
+        "actorId",
+        "createdAt",
+        "error",
+        "hostId",
+        "id",
+        "options",
+        "processed",
+        "revision",
+        "scope",
+        "state",
+        "total",
+        "updatedAt",
+        "workflowDigest",
+        "workflowId"
+      ],
+      "required": [
+        "actorId",
+        "createdAt",
+        "error",
+        "hostId",
+        "id",
+        "options",
+        "processed",
+        "revision",
+        "scope",
+        "state",
+        "total",
+        "updatedAt",
+        "workflowDigest",
+        "workflowId"
+      ]
+    },
+    "WorkflowPackageSummary": {
+      "properties": [
+        "digest",
+        "id",
+        "kind",
+        "name",
+        "version"
+      ],
+      "required": [
+        "digest",
+        "id",
+        "kind",
+        "name",
+        "version"
+      ]
+    },
+    "WorkflowAdvertisement": {
+      "properties": [
+        "packages"
+      ],
+      "required": [
+        "packages"
+      ]
+    },
+    "WorkflowDecision": {
+      "properties": [
+        "decision"
+      ],
+      "required": [
+        "decision"
+      ]
+    },
+    "WorkflowFindingResponse": {
+      "properties": [
+        "finding"
+      ],
+      "required": [
+        "finding"
+      ]
+    },
+    "WorkflowHost": {
+      "properties": [
+        "createdAt",
+        "enrolled",
+        "id",
+        "lastSeenAt",
+        "name",
+        "ownerId",
+        "packages",
+        "revokedAt"
+      ],
+      "required": [
+        "createdAt",
+        "enrolled",
+        "id",
+        "name",
+        "ownerId",
+        "revokedAt"
+      ]
+    },
+    "WorkflowLease": {
+      "properties": [
+        "expiresAt",
+        "fence",
+        "hostId",
+        "runId"
+      ],
+      "required": [
+        "expiresAt",
+        "fence",
+        "hostId",
+        "runId"
+      ]
+    },
+    "WorkflowSourceSnapshot": {
+      "properties": [
+        "indexValidator",
+        "outputJson",
+        "selectionRevision",
+        "sourceId",
+        "state"
+      ],
+      "required": [
+        "indexValidator",
+        "selectionRevision",
+        "sourceId",
+        "state"
+      ]
+    },
+    "WorkflowPublication": {
+      "properties": [
+        "checkpointRef",
+        "completedSourceIds",
+        "sequence",
+        "sourceOutputs",
+        "state"
+      ],
+      "required": [
+        "checkpointRef",
+        "completedSourceIds",
+        "sequence"
+      ]
+    },
+    "WorkflowFindingDraft": {
+      "properties": [
+        "currentValueDigest",
+        "evidenceDigest",
+        "evidenceIds",
+        "kind",
+        "reason",
+        "ruleVersion",
+        "sourceId"
+      ],
+      "required": [
+        "currentValueDigest",
+        "evidenceDigest",
+        "evidenceIds",
+        "kind",
+        "reason",
+        "ruleVersion",
+        "sourceId"
+      ]
+    },
+    "WorkflowFinding": {
+      "properties": [
+        "currentValueDigest",
+        "dismissed",
+        "evidenceDigest",
+        "evidenceIds",
+        "fingerprint",
+        "id",
+        "kind",
+        "reason",
+        "ruleVersion",
+        "runId",
+        "sourceId"
+      ],
+      "required": [
+        "currentValueDigest",
+        "dismissed",
+        "evidenceDigest",
+        "evidenceIds",
+        "fingerprint",
+        "id",
+        "kind",
+        "reason",
+        "ruleVersion",
+        "runId",
+        "sourceId"
+      ]
+    },
+    "WorkflowEvidence": {
+      "properties": [
+        "id",
+        "kind",
+        "payloadJson",
+        "providerId",
+        "runId",
+        "sourceId",
+        "sourceValidator"
+      ],
+      "required": [
+        "id",
+        "kind",
+        "payloadJson",
+        "providerId",
+        "runId",
+        "sourceId",
+        "sourceValidator"
+      ]
+    },
+    "CleanupChange": {
+      "properties": [
+        "action",
+        "artifactId",
+        "candidateId",
+        "snapshotJson"
+      ],
+      "required": [
+        "action",
+        "artifactId",
+        "candidateId",
+        "snapshotJson"
+      ]
+    },
+    "WorkflowProposal": {
+      "properties": [
+        "change",
+        "currentValueDigest",
+        "digest",
+        "evidenceClass",
+        "evidenceIds",
+        "findingId",
+        "id",
+        "reason",
+        "runId",
+        "selectionRevision",
+        "sourceId",
+        "sourceName",
+        "sourceValidator",
+        "version"
+      ],
+      "required": [
+        "change",
+        "currentValueDigest",
+        "digest",
+        "evidenceIds",
+        "findingId",
+        "id",
+        "reason",
+        "runId",
+        "selectionRevision",
+        "sourceId",
+        "sourceValidator",
+        "version"
+      ]
+    },
+    "WorkflowArtifact": {
+      "properties": [
+        "attributionJson",
+        "contentType",
+        "expiresAt",
+        "height",
+        "id",
+        "runId",
+        "sha256",
+        "size",
+        "sourceId",
+        "width"
+      ],
+      "required": [
+        "attributionJson",
+        "contentType",
+        "expiresAt",
+        "height",
+        "id",
+        "runId",
+        "sha256",
+        "size",
+        "sourceId",
+        "width"
+      ]
+    },
+    "WorkflowApproval": {
+      "properties": [
+        "actorId",
+        "createdAt",
+        "digest",
+        "id",
+        "proposalVersionsJson",
+        "runId",
+        "runRevision"
+      ],
+      "required": [
+        "actorId",
+        "createdAt",
+        "digest",
+        "id",
+        "proposalVersionsJson",
+        "runId",
+        "runRevision"
+      ]
+    },
+    "WorkflowApplication": {
+      "properties": [
+        "afterRevision",
+        "approvalId",
+        "beforeRevision",
+        "id",
+        "resultJson",
+        "sourceId",
+        "status",
+        "undoExpiresAt"
+      ],
+      "required": [
+        "afterRevision",
+        "approvalId",
+        "beforeRevision",
+        "id",
+        "resultJson",
+        "sourceId",
+        "status",
+        "undoExpiresAt"
+      ]
+    },
+    "WorkflowRunList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "WorkflowFindingList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "WorkflowProposalList": {
+      "properties": [
+        "findings",
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "WorkflowSourceSnapshotList": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "WorkflowHostDraft": {
+      "properties": [
+        "name"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    "WorkflowHostList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "WorkflowHostCreated": {
+      "properties": [
+        "enrollmentToken",
+        "host"
+      ],
+      "required": [
+        "enrollmentToken",
+        "host"
+      ]
+    },
+    "WorkflowEnrollmentDraft": {
+      "properties": [
+        "enrollmentToken"
+      ],
+      "required": [
+        "enrollmentToken"
+      ]
+    },
+    "WorkflowHostEnrolled": {
+      "properties": [
+        "host",
+        "token"
+      ],
+      "required": [
+        "host",
+        "token"
+      ]
+    },
+    "WorkflowRunResponse": {
+      "properties": [
+        "run"
+      ],
+      "required": [
+        "run"
+      ]
+    },
+    "WorkflowClaimDraft": {
+      "properties": [
+        "waitMs"
+      ],
+      "required": []
+    },
+    "WorkflowClaimResponse": {
+      "properties": [
+        "lease",
+        "run"
+      ],
+      "required": []
+    },
+    "WorkflowHeartbeatDraft": {
+      "properties": [
+        "lease"
+      ],
+      "required": [
+        "lease"
+      ]
+    },
+    "WorkflowPublishDraft": {
+      "properties": [
+        "lease",
+        "publication"
+      ],
+      "required": [
+        "lease",
+        "publication"
+      ]
+    },
+    "WorkflowInterruptDraft": {
+      "properties": [
+        "lease",
+        "recoveryRequired"
+      ],
+      "required": [
+        "lease",
+        "recoveryRequired"
+      ]
+    },
+    "WorkflowSelectionSummary": {
+      "properties": [
+        "artworkRole",
+        "contentAvailable",
+        "id",
+        "identityConflict",
+        "kind",
+        "systemId",
+        "title"
+      ],
+      "required": [
+        "artworkRole",
+        "contentAvailable",
+        "id",
+        "identityConflict",
+        "kind",
+        "systemId",
+        "title"
+      ]
+    },
+    "WorkflowSourceFacts": {
+      "properties": [
+        "currentValueDigest",
+        "evidenceIds",
+        "name",
+        "selected",
+        "selectionRevision",
+        "sourceId",
+        "sourceValidator",
+        "systemId"
+      ],
+      "required": [
+        "currentValueDigest",
+        "evidenceIds",
+        "name",
+        "selected",
+        "selectionRevision",
+        "sourceId",
+        "sourceValidator",
+        "systemId"
+      ]
+    },
+    "WorkflowCatalogCandidate": {
+      "properties": [
+        "agreesWithSelection",
+        "artworkRole",
+        "evidenceClass",
+        "evidenceIds",
+        "id",
+        "identityConflict",
+        "kind",
+        "providerId",
+        "systemId",
+        "title"
+      ],
+      "required": [
+        "agreesWithSelection",
+        "artworkRole",
+        "evidenceClass",
+        "evidenceIds",
+        "id",
+        "identityConflict",
+        "kind",
+        "providerId",
+        "systemId",
+        "title"
+      ]
+    },
+    "WorkflowCatalogProblem": {
+      "properties": [
+        "code",
+        "providerId"
+      ],
+      "required": [
+        "code",
+        "providerId"
+      ]
+    },
+    "WorkflowCatalogResult": {
+      "properties": [
+        "candidates",
+        "facts",
+        "problems",
+        "supportedIdentity"
+      ],
+      "required": [
+        "candidates",
+        "facts",
+        "problems",
+        "supportedIdentity"
+      ]
+    },
+    "WorkflowObservation": {
+      "properties": [
+        "candidateIds",
+        "evidenceIds",
+        "kind",
+        "reason",
+        "sourceId"
+      ],
+      "required": [
+        "candidateIds",
+        "evidenceIds",
+        "kind",
+        "reason",
+        "sourceId"
+      ]
+    },
+    "WorkflowSuggestionsDraft": {
+      "properties": [
+        "observations",
+        "proposals",
+        "sourceId"
+      ],
+      "required": [
+        "observations",
+        "sourceId"
+      ]
+    },
+    "WorkflowSuggestionResponse": {
+      "properties": [
+        "findings",
+        "proposals"
+      ],
+      "required": [
+        "findings"
+      ]
+    },
+    "WorkflowSourceOutput": {
+      "properties": [
+        "outputJson",
+        "sourceId"
+      ],
+      "required": [
+        "outputJson",
+        "sourceId"
+      ]
+    },
+    "WorkflowProposalSuggestion": {
+      "properties": [
+        "action",
+        "candidateId",
+        "evidenceIds",
+        "findingId",
+        "reason",
+        "sourceId"
+      ],
+      "required": [
+        "action",
+        "candidateId",
+        "evidenceIds",
+        "findingId",
+        "reason",
+        "sourceId"
+      ]
+    },
+    "WorkflowArtifactResponse": {
+      "properties": [
+        "artifact"
+      ],
+      "required": [
+        "artifact"
+      ]
+    },
+    "WorkflowEvidenceResponse": {
+      "properties": [
+        "evidence"
+      ],
+      "required": [
+        "evidence"
+      ]
+    },
+    "WorkflowProposalVersion": {
+      "properties": [
+        "digest",
+        "id",
+        "version"
+      ],
+      "required": [
+        "digest",
+        "id",
+        "version"
+      ]
+    },
+    "WorkflowApprovalDraft": {
+      "properties": [
+        "proposals",
+        "runRevision"
+      ],
+      "required": [
+        "proposals",
+        "runRevision"
+      ]
+    },
+    "WorkflowApplicationDraft": {
+      "properties": [
+        "applicationId"
+      ],
+      "required": [
+        "applicationId"
+      ]
+    },
+    "WorkflowApprovalResponse": {
+      "properties": [
+        "approval"
+      ],
+      "required": [
+        "approval"
+      ]
+    },
+    "WorkflowApplicationResponse": {
+      "properties": [
+        "application"
+      ],
+      "required": [
+        "application"
+      ]
+    },
+    "WorkflowApplicationBatchResponse": {
+      "properties": [
+        "applications"
+      ],
+      "required": [
+        "applications"
+      ]
+    },
+    "WorkflowApplicationList": {
       "properties": [
         "items",
         "nextCursor"

@@ -1489,3 +1489,755 @@ public struct LibraryJobItemList: Codable, Equatable, Sendable {
         self.nextCursor = nextCursor
     }
 }
+
+public struct WorkflowScope: Codable, Equatable, Sendable {
+    public var libraryId: String?
+    public var rootId: String?
+    public var sourceIds: [String]?
+    public var unassigned: Bool?
+
+    public init(libraryId: String? = nil, rootId: String? = nil, sourceIds: [String]? = nil, unassigned: Bool? = nil) {
+        self.libraryId = libraryId
+        self.rootId = rootId
+        self.sourceIds = sourceIds
+        self.unassigned = unassigned
+    }
+}
+
+public struct WorkflowOptions: Codable, Equatable, Sendable {
+    public var online: Bool
+    public var checksum: Bool
+    public var shareImages: Bool
+    public var providerIds: [String]?
+    public var reasonerConnectionId: String?
+    public var coverInspectorConnectionId: String?
+
+    public init(online: Bool, checksum: Bool, shareImages: Bool, providerIds: [String]? = nil, reasonerConnectionId: String? = nil, coverInspectorConnectionId: String? = nil) {
+        self.online = online
+        self.checksum = checksum
+        self.shareImages = shareImages
+        self.providerIds = providerIds
+        self.reasonerConnectionId = reasonerConnectionId
+        self.coverInspectorConnectionId = coverInspectorConnectionId
+    }
+}
+
+public struct WorkflowRunDraft: Codable, Equatable, Sendable {
+    public var workflowId: String
+    public var workflowDigest: String
+    public var hostId: String
+    public var scope: WorkflowScope
+    public var options: WorkflowOptions
+
+    public init(workflowId: String, workflowDigest: String, hostId: String, scope: WorkflowScope, options: WorkflowOptions) {
+        self.workflowId = workflowId
+        self.workflowDigest = workflowDigest
+        self.hostId = hostId
+        self.scope = scope
+        self.options = options
+    }
+}
+
+public struct WorkflowRun: Codable, Equatable, Sendable {
+    public var workflowId: String
+    public var workflowDigest: String
+    public var hostId: String
+    public var scope: WorkflowScope
+    public var options: WorkflowOptions
+    public var id: String
+    public var actorId: String
+    public var state: String
+    public var revision: Int
+    public var total: Int
+    public var processed: Int
+    public var createdAt: String
+    public var updatedAt: String
+    public var error: String?
+
+    public init(workflowId: String, workflowDigest: String, hostId: String, scope: WorkflowScope, options: WorkflowOptions, id: String, actorId: String, state: String, revision: Int, total: Int, processed: Int, createdAt: String, updatedAt: String, error: String? = nil) {
+        self.workflowId = workflowId
+        self.workflowDigest = workflowDigest
+        self.hostId = hostId
+        self.scope = scope
+        self.options = options
+        self.id = id
+        self.actorId = actorId
+        self.state = state
+        self.revision = revision
+        self.total = total
+        self.processed = processed
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.error = error
+    }
+}
+
+public struct WorkflowPackageSummary: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var version: String
+    public var digest: String
+    public var kind: String
+
+    public init(id: String, name: String, version: String, digest: String, kind: String) {
+        self.id = id
+        self.name = name
+        self.version = version
+        self.digest = digest
+        self.kind = kind
+    }
+}
+
+public struct WorkflowAdvertisement: Codable, Equatable, Sendable {
+    public var packages: [WorkflowPackageSummary]
+
+    public init(packages: [WorkflowPackageSummary]) {
+        self.packages = packages
+    }
+}
+
+public struct WorkflowDecision: Codable, Equatable, Sendable {
+    public var decision: String
+
+    public init(decision: String) {
+        self.decision = decision
+    }
+}
+
+public struct WorkflowFindingResponse: Codable, Equatable, Sendable {
+    public var finding: WorkflowFinding
+
+    public init(finding: WorkflowFinding) {
+        self.finding = finding
+    }
+}
+
+public struct WorkflowHost: Codable, Equatable, Sendable {
+    public var packages: [WorkflowPackageSummary]?
+    public var lastSeenAt: String?
+    public var id: String
+    public var ownerId: String
+    public var name: String
+    public var enrolled: Bool
+    public var revokedAt: String?
+    public var createdAt: String
+
+    public init(packages: [WorkflowPackageSummary]? = nil, lastSeenAt: String? = nil, id: String, ownerId: String, name: String, enrolled: Bool, revokedAt: String? = nil, createdAt: String) {
+        self.packages = packages
+        self.lastSeenAt = lastSeenAt
+        self.id = id
+        self.ownerId = ownerId
+        self.name = name
+        self.enrolled = enrolled
+        self.revokedAt = revokedAt
+        self.createdAt = createdAt
+    }
+}
+
+public struct WorkflowLease: Codable, Equatable, Sendable {
+    public var runId: String
+    public var hostId: String
+    public var fence: Int
+    public var expiresAt: String
+
+    public init(runId: String, hostId: String, fence: Int, expiresAt: String) {
+        self.runId = runId
+        self.hostId = hostId
+        self.fence = fence
+        self.expiresAt = expiresAt
+    }
+}
+
+public struct WorkflowSourceSnapshot: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var indexValidator: String
+    public var selectionRevision: Int
+    public var state: String
+    public var outputJson: String?
+
+    public init(sourceId: String, indexValidator: String, selectionRevision: Int, state: String, outputJson: String? = nil) {
+        self.sourceId = sourceId
+        self.indexValidator = indexValidator
+        self.selectionRevision = selectionRevision
+        self.state = state
+        self.outputJson = outputJson
+    }
+}
+
+public struct WorkflowPublication: Codable, Equatable, Sendable {
+    public var sequence: Int
+    public var checkpointRef: String
+    public var completedSourceIds: [String]
+    public var state: String?
+    public var sourceOutputs: [WorkflowSourceOutput]?
+
+    public init(sequence: Int, checkpointRef: String, completedSourceIds: [String], state: String? = nil, sourceOutputs: [WorkflowSourceOutput]? = nil) {
+        self.sequence = sequence
+        self.checkpointRef = checkpointRef
+        self.completedSourceIds = completedSourceIds
+        self.state = state
+        self.sourceOutputs = sourceOutputs
+    }
+}
+
+public struct WorkflowFindingDraft: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var kind: String
+    public var ruleVersion: String
+    public var currentValueDigest: String
+    public var evidenceDigest: String
+    public var reason: String
+    public var evidenceIds: [String]
+
+    public init(sourceId: String, kind: String, ruleVersion: String, currentValueDigest: String, evidenceDigest: String, reason: String, evidenceIds: [String]) {
+        self.sourceId = sourceId
+        self.kind = kind
+        self.ruleVersion = ruleVersion
+        self.currentValueDigest = currentValueDigest
+        self.evidenceDigest = evidenceDigest
+        self.reason = reason
+        self.evidenceIds = evidenceIds
+    }
+}
+
+public struct WorkflowFinding: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var kind: String
+    public var ruleVersion: String
+    public var currentValueDigest: String
+    public var evidenceDigest: String
+    public var reason: String
+    public var evidenceIds: [String]
+    public var id: String
+    public var runId: String
+    public var fingerprint: String
+    public var dismissed: Bool
+
+    public init(sourceId: String, kind: String, ruleVersion: String, currentValueDigest: String, evidenceDigest: String, reason: String, evidenceIds: [String], id: String, runId: String, fingerprint: String, dismissed: Bool) {
+        self.sourceId = sourceId
+        self.kind = kind
+        self.ruleVersion = ruleVersion
+        self.currentValueDigest = currentValueDigest
+        self.evidenceDigest = evidenceDigest
+        self.reason = reason
+        self.evidenceIds = evidenceIds
+        self.id = id
+        self.runId = runId
+        self.fingerprint = fingerprint
+        self.dismissed = dismissed
+    }
+}
+
+public struct WorkflowEvidence: Codable, Equatable, Sendable {
+    public var id: String
+    public var runId: String
+    public var sourceId: String
+    public var kind: String
+    public var sourceValidator: String
+    public var providerId: String?
+    public var payloadJson: String
+
+    public init(id: String, runId: String, sourceId: String, kind: String, sourceValidator: String, providerId: String? = nil, payloadJson: String) {
+        self.id = id
+        self.runId = runId
+        self.sourceId = sourceId
+        self.kind = kind
+        self.sourceValidator = sourceValidator
+        self.providerId = providerId
+        self.payloadJson = payloadJson
+    }
+}
+
+public struct CleanupChange: Codable, Equatable, Sendable {
+    public var action: String
+    public var candidateId: String
+    public var artifactId: String?
+    public var snapshotJson: String
+
+    public init(action: String, candidateId: String, artifactId: String? = nil, snapshotJson: String) {
+        self.action = action
+        self.candidateId = candidateId
+        self.artifactId = artifactId
+        self.snapshotJson = snapshotJson
+    }
+}
+
+public struct WorkflowProposal: Codable, Equatable, Sendable {
+    public var sourceName: String?
+    public var evidenceClass: String?
+    public var id: String
+    public var version: Int
+    public var runId: String
+    public var findingId: String
+    public var sourceId: String
+    public var sourceValidator: String
+    public var selectionRevision: Int
+    public var currentValueDigest: String
+    public var change: CleanupChange
+    public var evidenceIds: [String]
+    public var reason: String
+    public var digest: String
+
+    public init(sourceName: String? = nil, evidenceClass: String? = nil, id: String, version: Int, runId: String, findingId: String, sourceId: String, sourceValidator: String, selectionRevision: Int, currentValueDigest: String, change: CleanupChange, evidenceIds: [String], reason: String, digest: String) {
+        self.sourceName = sourceName
+        self.evidenceClass = evidenceClass
+        self.id = id
+        self.version = version
+        self.runId = runId
+        self.findingId = findingId
+        self.sourceId = sourceId
+        self.sourceValidator = sourceValidator
+        self.selectionRevision = selectionRevision
+        self.currentValueDigest = currentValueDigest
+        self.change = change
+        self.evidenceIds = evidenceIds
+        self.reason = reason
+        self.digest = digest
+    }
+}
+
+public struct WorkflowArtifact: Codable, Equatable, Sendable {
+    public var id: String
+    public var runId: String
+    public var sourceId: String
+    public var sha256: String
+    public var size: Int
+    public var contentType: String
+    public var width: Int
+    public var height: Int
+    public var attributionJson: String
+    public var expiresAt: String?
+
+    public init(id: String, runId: String, sourceId: String, sha256: String, size: Int, contentType: String, width: Int, height: Int, attributionJson: String, expiresAt: String? = nil) {
+        self.id = id
+        self.runId = runId
+        self.sourceId = sourceId
+        self.sha256 = sha256
+        self.size = size
+        self.contentType = contentType
+        self.width = width
+        self.height = height
+        self.attributionJson = attributionJson
+        self.expiresAt = expiresAt
+    }
+}
+
+public struct WorkflowApproval: Codable, Equatable, Sendable {
+    public var id: String
+    public var runId: String
+    public var actorId: String
+    public var runRevision: Int
+    public var proposalVersionsJson: String
+    public var digest: String
+    public var createdAt: String
+
+    public init(id: String, runId: String, actorId: String, runRevision: Int, proposalVersionsJson: String, digest: String, createdAt: String) {
+        self.id = id
+        self.runId = runId
+        self.actorId = actorId
+        self.runRevision = runRevision
+        self.proposalVersionsJson = proposalVersionsJson
+        self.digest = digest
+        self.createdAt = createdAt
+    }
+}
+
+public struct WorkflowApplication: Codable, Equatable, Sendable {
+    public var id: String
+    public var approvalId: String
+    public var sourceId: String
+    public var status: String
+    public var beforeRevision: Int
+    public var afterRevision: Int
+    public var resultJson: String
+    public var undoExpiresAt: String
+
+    public init(id: String, approvalId: String, sourceId: String, status: String, beforeRevision: Int, afterRevision: Int, resultJson: String, undoExpiresAt: String) {
+        self.id = id
+        self.approvalId = approvalId
+        self.sourceId = sourceId
+        self.status = status
+        self.beforeRevision = beforeRevision
+        self.afterRevision = afterRevision
+        self.resultJson = resultJson
+        self.undoExpiresAt = undoExpiresAt
+    }
+}
+
+public struct WorkflowRunList: Codable, Equatable, Sendable {
+    public var items: [WorkflowRun]
+    public var nextCursor: String?
+
+    public init(items: [WorkflowRun], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct WorkflowFindingList: Codable, Equatable, Sendable {
+    public var items: [WorkflowFinding]
+    public var nextCursor: String?
+
+    public init(items: [WorkflowFinding], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct WorkflowProposalList: Codable, Equatable, Sendable {
+    public var findings: [WorkflowFinding]?
+    public var items: [WorkflowProposal]
+    public var nextCursor: String?
+
+    public init(findings: [WorkflowFinding]? = nil, items: [WorkflowProposal], nextCursor: String? = nil) {
+        self.findings = findings
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct WorkflowSourceSnapshotList: Codable, Equatable, Sendable {
+    public var items: [WorkflowSourceSnapshot]
+    public var nextCursor: String?
+
+    public init(items: [WorkflowSourceSnapshot], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct WorkflowHostDraft: Codable, Equatable, Sendable {
+    public var name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+}
+
+public struct WorkflowHostList: Codable, Equatable, Sendable {
+    public var items: [WorkflowHost]
+
+    public init(items: [WorkflowHost]) {
+        self.items = items
+    }
+}
+
+public struct WorkflowHostCreated: Codable, Equatable, Sendable {
+    public var host: WorkflowHost
+    public var enrollmentToken: String
+
+    public init(host: WorkflowHost, enrollmentToken: String) {
+        self.host = host
+        self.enrollmentToken = enrollmentToken
+    }
+}
+
+public struct WorkflowEnrollmentDraft: Codable, Equatable, Sendable {
+    public var enrollmentToken: String
+
+    public init(enrollmentToken: String) {
+        self.enrollmentToken = enrollmentToken
+    }
+}
+
+public struct WorkflowHostEnrolled: Codable, Equatable, Sendable {
+    public var host: WorkflowHost
+    public var token: String
+
+    public init(host: WorkflowHost, token: String) {
+        self.host = host
+        self.token = token
+    }
+}
+
+public struct WorkflowRunResponse: Codable, Equatable, Sendable {
+    public var run: WorkflowRun
+
+    public init(run: WorkflowRun) {
+        self.run = run
+    }
+}
+
+public struct WorkflowClaimDraft: Codable, Equatable, Sendable {
+    public var waitMs: Int?
+
+    public init(waitMs: Int? = nil) {
+        self.waitMs = waitMs
+    }
+}
+
+public struct WorkflowClaimResponse: Codable, Equatable, Sendable {
+    public var lease: WorkflowLease?
+    public var run: WorkflowRun?
+
+    public init(lease: WorkflowLease? = nil, run: WorkflowRun? = nil) {
+        self.lease = lease
+        self.run = run
+    }
+}
+
+public struct WorkflowHeartbeatDraft: Codable, Equatable, Sendable {
+    public var lease: WorkflowLease
+
+    public init(lease: WorkflowLease) {
+        self.lease = lease
+    }
+}
+
+public struct WorkflowPublishDraft: Codable, Equatable, Sendable {
+    public var lease: WorkflowLease
+    public var publication: WorkflowPublication
+
+    public init(lease: WorkflowLease, publication: WorkflowPublication) {
+        self.lease = lease
+        self.publication = publication
+    }
+}
+
+public struct WorkflowInterruptDraft: Codable, Equatable, Sendable {
+    public var lease: WorkflowLease
+    public var recoveryRequired: Bool
+
+    public init(lease: WorkflowLease, recoveryRequired: Bool) {
+        self.lease = lease
+        self.recoveryRequired = recoveryRequired
+    }
+}
+
+public struct WorkflowSelectionSummary: Codable, Equatable, Sendable {
+    public var id: String
+    public var kind: String
+    public var title: String
+    public var systemId: String?
+    public var artworkRole: String?
+    public var contentAvailable: Bool
+    public var identityConflict: Bool
+
+    public init(id: String, kind: String, title: String, systemId: String? = nil, artworkRole: String? = nil, contentAvailable: Bool, identityConflict: Bool) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.systemId = systemId
+        self.artworkRole = artworkRole
+        self.contentAvailable = contentAvailable
+        self.identityConflict = identityConflict
+    }
+}
+
+public struct WorkflowSourceFacts: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var name: String
+    public var systemId: String?
+    public var sourceValidator: String
+    public var selectionRevision: Int
+    public var currentValueDigest: String
+    public var selected: [WorkflowSelectionSummary]
+    public var evidenceIds: [String]
+
+    public init(sourceId: String, name: String, systemId: String? = nil, sourceValidator: String, selectionRevision: Int, currentValueDigest: String, selected: [WorkflowSelectionSummary], evidenceIds: [String]) {
+        self.sourceId = sourceId
+        self.name = name
+        self.systemId = systemId
+        self.sourceValidator = sourceValidator
+        self.selectionRevision = selectionRevision
+        self.currentValueDigest = currentValueDigest
+        self.selected = selected
+        self.evidenceIds = evidenceIds
+    }
+}
+
+public struct WorkflowCatalogCandidate: Codable, Equatable, Sendable {
+    public var id: String
+    public var kind: String
+    public var title: String
+    public var systemId: String?
+    public var artworkRole: String?
+    public var providerId: String
+    public var evidenceClass: String
+    public var identityConflict: Bool
+    public var agreesWithSelection: Bool
+    public var evidenceIds: [String]
+
+    public init(id: String, kind: String, title: String, systemId: String? = nil, artworkRole: String? = nil, providerId: String, evidenceClass: String, identityConflict: Bool, agreesWithSelection: Bool, evidenceIds: [String]) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.systemId = systemId
+        self.artworkRole = artworkRole
+        self.providerId = providerId
+        self.evidenceClass = evidenceClass
+        self.identityConflict = identityConflict
+        self.agreesWithSelection = agreesWithSelection
+        self.evidenceIds = evidenceIds
+    }
+}
+
+public struct WorkflowCatalogProblem: Codable, Equatable, Sendable {
+    public var providerId: String
+    public var code: String
+
+    public init(providerId: String, code: String) {
+        self.providerId = providerId
+        self.code = code
+    }
+}
+
+public struct WorkflowCatalogResult: Codable, Equatable, Sendable {
+    public var facts: WorkflowSourceFacts
+    public var candidates: [WorkflowCatalogCandidate]
+    public var problems: [WorkflowCatalogProblem]
+    public var supportedIdentity: Bool
+
+    public init(facts: WorkflowSourceFacts, candidates: [WorkflowCatalogCandidate], problems: [WorkflowCatalogProblem], supportedIdentity: Bool) {
+        self.facts = facts
+        self.candidates = candidates
+        self.problems = problems
+        self.supportedIdentity = supportedIdentity
+    }
+}
+
+public struct WorkflowObservation: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var kind: String
+    public var reason: String
+    public var evidenceIds: [String]
+    public var candidateIds: [String]
+
+    public init(sourceId: String, kind: String, reason: String, evidenceIds: [String], candidateIds: [String]) {
+        self.sourceId = sourceId
+        self.kind = kind
+        self.reason = reason
+        self.evidenceIds = evidenceIds
+        self.candidateIds = candidateIds
+    }
+}
+
+public struct WorkflowSuggestionsDraft: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var observations: [WorkflowObservation]
+    public var proposals: [WorkflowProposalSuggestion]?
+
+    public init(sourceId: String, observations: [WorkflowObservation], proposals: [WorkflowProposalSuggestion]? = nil) {
+        self.sourceId = sourceId
+        self.observations = observations
+        self.proposals = proposals
+    }
+}
+
+public struct WorkflowSuggestionResponse: Codable, Equatable, Sendable {
+    public var findings: [WorkflowFinding]
+    public var proposals: [WorkflowProposal]?
+
+    public init(findings: [WorkflowFinding], proposals: [WorkflowProposal]? = nil) {
+        self.findings = findings
+        self.proposals = proposals
+    }
+}
+
+public struct WorkflowSourceOutput: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var outputJson: String
+
+    public init(sourceId: String, outputJson: String) {
+        self.sourceId = sourceId
+        self.outputJson = outputJson
+    }
+}
+
+public struct WorkflowProposalSuggestion: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var findingId: String
+    public var action: String
+    public var candidateId: String
+    public var evidenceIds: [String]
+    public var reason: String
+
+    public init(sourceId: String, findingId: String, action: String, candidateId: String, evidenceIds: [String], reason: String) {
+        self.sourceId = sourceId
+        self.findingId = findingId
+        self.action = action
+        self.candidateId = candidateId
+        self.evidenceIds = evidenceIds
+        self.reason = reason
+    }
+}
+
+public struct WorkflowArtifactResponse: Codable, Equatable, Sendable {
+    public var artifact: WorkflowArtifact
+
+    public init(artifact: WorkflowArtifact) {
+        self.artifact = artifact
+    }
+}
+
+public struct WorkflowEvidenceResponse: Codable, Equatable, Sendable {
+    public var evidence: WorkflowEvidence
+
+    public init(evidence: WorkflowEvidence) {
+        self.evidence = evidence
+    }
+}
+
+public struct WorkflowProposalVersion: Codable, Equatable, Sendable {
+    public var id: String
+    public var version: Int
+    public var digest: String
+
+    public init(id: String, version: Int, digest: String) {
+        self.id = id
+        self.version = version
+        self.digest = digest
+    }
+}
+
+public struct WorkflowApprovalDraft: Codable, Equatable, Sendable {
+    public var runRevision: Int
+    public var proposals: [WorkflowProposalVersion]
+
+    public init(runRevision: Int, proposals: [WorkflowProposalVersion]) {
+        self.runRevision = runRevision
+        self.proposals = proposals
+    }
+}
+
+public struct WorkflowApplicationDraft: Codable, Equatable, Sendable {
+    public var applicationId: String
+
+    public init(applicationId: String) {
+        self.applicationId = applicationId
+    }
+}
+
+public struct WorkflowApprovalResponse: Codable, Equatable, Sendable {
+    public var approval: WorkflowApproval
+
+    public init(approval: WorkflowApproval) {
+        self.approval = approval
+    }
+}
+
+public struct WorkflowApplicationResponse: Codable, Equatable, Sendable {
+    public var application: WorkflowApplication
+
+    public init(application: WorkflowApplication) {
+        self.application = application
+    }
+}
+
+public struct WorkflowApplicationBatchResponse: Codable, Equatable, Sendable {
+    public var applications: [WorkflowApplication]
+
+    public init(applications: [WorkflowApplication]) {
+        self.applications = applications
+    }
+}
+
+public struct WorkflowApplicationList: Codable, Equatable, Sendable {
+    public var items: [WorkflowApplication]
+    public var nextCursor: String?
+
+    public init(items: [WorkflowApplication], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}

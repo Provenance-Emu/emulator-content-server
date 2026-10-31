@@ -1,4 +1,5 @@
 import { DomainError } from '@ecs/domain';
+import { WORKFLOW_SQL } from './workflow-schema.js';
 
 export interface Migration {
   version: number;
@@ -436,6 +437,7 @@ export const MIGRATIONS: readonly Migration[] = [
     CREATE INDEX library_job_items_affinity ON library_job_items(job_id,state,system_id,entity_id);
   `,
   },
+  { version: 21, sql: WORKFLOW_SQL },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

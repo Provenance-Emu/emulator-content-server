@@ -12,3 +12,4 @@ export { hashPassword, verifyPassword } from './passwords.js';
 export { RateLimiter } from './rate-limit.js';
 export { redactSecrets } from './redact.js';
 export { hashToken, type IssuedToken, issueToken, tokenHashesEqual } from './tokens.js';
+export { type WorkflowPrincipal, workflowGrantAllows } from './workflow-grants.js';

@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { ContentClient } from '@ecs/client';
 import { test as base, expect } from '@playwright/test';
 import { openServer } from '../../../server/dist/src/index.js';
+import { cleanupFixture } from './cleanup-fixture.js';
 
 async function createFixture() {
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'ecs-browser-')));
@@ -150,7 +151,12 @@ async function createFixture() {
     server.catalog.setMember(library.id, reader.id, 'reader', owner.id);
     const readerClient = new ContentClient(origin);
     const readerSession = await readerClient.login('browser-reader', password);
+    let cleanup: Awaited<ReturnType<typeof cleanupFixture>> | undefined;
     return {
+      async cleanup() {
+        cleanup ??= await cleanupFixture(client, origin, directory, library.id);
+        return cleanup;
+      },
       ...server,
       origin,
       client,
@@ -189,6 +195,7 @@ async function createFixture() {
       },
       async dispose() {
         try {
+          await cleanup?.stop();
           await server.close();
         } finally {
           await rm(directory, { recursive: true, force: true });

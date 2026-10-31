@@ -37,7 +37,7 @@ export async function stopLibraryJobs(catalog: CatalogDatabase): Promise<void> {
 export function registerLibraryJobs(
   app: FastifyInstance,
   context: ServerContext,
-  matching: SourceMatchingService,
+  matching: Pick<SourceMatchingService, 'autoMatch' | 'prepareCatalogs'>,
 ): void {
   const repository = context.catalog.libraryJobs;
   repository.recover();

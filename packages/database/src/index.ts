@@ -24,3 +24,11 @@ export {
   type LibraryJobScope,
 } from './library-jobs.js';
 export { MIGRATIONS, type Migration, pendingMigrations, SCHEMA_VERSION } from './schema.js';
+export {
+  type ApplySourceProposalGroup,
+  WorkflowApplicationRepository,
+  type WorkflowProposalVersion,
+} from './workflow-applications.js';
+export { WorkflowIdentityRepository } from './workflow-identities.js';
+export { WorkflowProposalRepository } from './workflow-proposals.js';
+export { WorkflowRunRepository } from './workflow-runs.js';

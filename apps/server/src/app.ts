@@ -27,6 +27,7 @@ import { loadPlayerProfiles } from './player-profiles.js';
 import { registerRoutes } from './routes.js';
 import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
 import { registerWebDavCredentials } from './webdav-credentials.js';
+import { authenticateWorkflowPrincipal } from './workflow-auth.js';
 
 export interface OpenServerOptions {
   dataDir: string;
@@ -154,6 +155,7 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
     bodyLimit: 1024 * 1024,
   });
   app.decorateRequest('actor', null);
+  app.decorateRequest('workflowPrincipal', null);
   // A generous socket ceiling also bounds invalid bearer attempts before authentication.
   // DAV's much smaller failed-login budget remains independent of successful reads.
   await app.register(rateLimit, {
@@ -191,12 +193,24 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
       if (request.method === 'OPTIONS') return reply.status(204).send();
     }
     request.actor = null;
+    request.workflowPrincipal = null;
     const header = request.headers.authorization;
     if (header) {
       const match = /^Bearer\s+(\S+)$/.exec(header);
       if (!match?.[1]) throw new DomainError('unauthorized', 401, 'Bearer token is required');
       const actor = context.catalog.authenticate(hashToken(match[1]));
-      if (!actor) throw new DomainError('unauthorized', 401, 'Token is invalid or expired');
+      if (!actor) {
+        const principal = authenticateWorkflowPrincipal(context, hashToken(match[1]));
+        if (
+          principal &&
+          request.routeOptions.url?.startsWith('/api/v1/workflow-workers/') &&
+          request.routeOptions.url !== '/api/v1/workflow-workers/enroll'
+        ) {
+          request.workflowPrincipal = principal;
+          return;
+        }
+        throw new DomainError('unauthorized', 401, 'Token is invalid or expired');
+      }
       request.actor = actor;
       return;
     }

@@ -80,6 +80,10 @@ import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
 import { registerSourceMatching } from './source-matching.js';
 import { registerSourceOrganization } from './source-organization.js';
+import { registerWorkflowApprovals } from './workflow-approvals.js';
+import { registerWorkflowEvidence } from './workflow-evidence.js';
+import { registerWorkflowRoutes } from './workflow-routes.js';
+import { registerWorkflowWorkerRoutes } from './workflow-workers.js';
 
 const REQUIRED_FILE_KINDS = new Set(['rom', 'bios', 'system_file']);
 
@@ -101,6 +105,10 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
   const matching = registerSourceMatching(app, context);
   registerLibraryJobs(app, context, matching);
   registerSourceOrganization(app, context);
+  registerWorkflowRoutes(app, context);
+  registerWorkflowWorkerRoutes(app, context);
+  registerWorkflowEvidence(app, context, matching);
+  registerWorkflowApprovals(app, context);
 
   const uploadMutations = new Set<string>();
   async function mutateUpload<T>(

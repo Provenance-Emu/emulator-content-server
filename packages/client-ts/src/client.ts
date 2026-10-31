@@ -1,4 +1,25 @@
 import type {
+  WorkflowApplication,
+  WorkflowApproval,
+  WorkflowArtifact,
+  WorkflowCatalogResult,
+  WorkflowEvidence,
+  WorkflowFinding,
+  WorkflowHost,
+  WorkflowLease,
+  WorkflowObservation,
+  WorkflowPackageSummary,
+  WorkflowPage,
+  WorkflowProposal,
+  WorkflowProposalSuggestion,
+  WorkflowProposalVersion,
+  WorkflowPublication,
+  WorkflowRun,
+  WorkflowRunDraft,
+  WorkflowSourceFacts,
+  WorkflowSourceSnapshot,
+} from '@ecs/protocol';
+import type {
   AccessPolicy,
   Asset,
   AuditList,
@@ -198,6 +219,202 @@ export class ContentClient {
     private readonly baseUrl: string,
     private token?: string,
   ) {}
+
+  advertiseWorkflowHost(packages: WorkflowPackageSummary[]): Promise<{ host: WorkflowHost }> {
+    return this.post('/api/v1/workflow-workers/advertise', { packages });
+  }
+  decideWorkflowFinding(
+    runId: string,
+    findingId: string,
+    decision: 'keep' | 'dismiss',
+  ): Promise<{ finding: WorkflowFinding }> {
+    return this.post(
+      `/api/v1/workflow-runs/${encodeURIComponent(runId)}/findings/${encodeURIComponent(findingId)}/decision`,
+      { decision },
+    );
+  }
+  workflowHosts(): Promise<{ items: WorkflowHost[] }> {
+    return this.getJson('/api/v1/workflow-hosts');
+  }
+  createWorkflowHost(name: string): Promise<{ host: WorkflowHost; enrollmentToken: string }> {
+    return this.post('/api/v1/workflow-hosts', { name });
+  }
+  enrollWorkflowHost(enrollmentToken: string): Promise<{ host: WorkflowHost; token: string }> {
+    return this.post('/api/v1/workflow-workers/enroll', { enrollmentToken });
+  }
+  revokeWorkflowHost(id: string): Promise<void> {
+    return this.remove(`/api/v1/workflow-hosts/${encodeURIComponent(id)}`);
+  }
+  createWorkflowRun(
+    draft: WorkflowRunDraft,
+    idempotencyKey?: string,
+  ): Promise<{ run: WorkflowRun }> {
+    return this.post('/api/v1/workflow-runs', draft, idempotencyKey);
+  }
+  workflowRuns(
+    query: {
+      cursor?: string;
+      limit?: number;
+      libraryId?: string;
+      rootId?: string;
+      unassigned?: boolean;
+    } = {},
+  ): Promise<WorkflowPage<WorkflowRun>> {
+    const params = new URLSearchParams();
+    for (const name of ['libraryId', 'rootId', 'unassigned'] as const)
+      if (query[name] !== undefined) params.set(name, String(query[name]));
+    if (query.cursor !== undefined) params.set('cursor', query.cursor);
+    if (query.limit !== undefined) params.set('limit', String(query.limit));
+    return this.getJson(`/api/v1/workflow-runs?${params}`);
+  }
+  workflowRun(id: string): Promise<{ run: WorkflowRun }> {
+    return this.getJson(`/api/v1/workflow-runs/${encodeURIComponent(id)}`);
+  }
+  cancelWorkflowRun(id: string): Promise<{ run: WorkflowRun }> {
+    return this.post(`/api/v1/workflow-runs/${encodeURIComponent(id)}/cancel`, {});
+  }
+  resumeWorkflowRun(id: string): Promise<{ run: WorkflowRun }> {
+    return this.post(`/api/v1/workflow-runs/${encodeURIComponent(id)}/resume`, {});
+  }
+  claimWorkflowRun(waitMs = 0): Promise<{ lease?: WorkflowLease; run?: WorkflowRun }> {
+    return this.post('/api/v1/workflow-workers/claim', waitMs ? { waitMs } : {});
+  }
+  heartbeatWorkflowRun(lease: WorkflowLease): Promise<{ lease: WorkflowLease }> {
+    return this.post('/api/v1/workflow-workers/heartbeat', { lease });
+  }
+  publishWorkflowRun(
+    lease: WorkflowLease,
+    publication: WorkflowPublication,
+  ): Promise<{ run: WorkflowRun }> {
+    return this.post('/api/v1/workflow-workers/publish', { lease, publication });
+  }
+  workflowWork(runId: string, cursor?: string): Promise<WorkflowPage<WorkflowSourceSnapshot>> {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    return this.getJson(
+      `/api/v1/workflow-workers/runs/${encodeURIComponent(runId)}/work?${params}`,
+    );
+  }
+  getWorkflowSourceFacts(runId: string, sourceId: string): Promise<WorkflowSourceFacts> {
+    return this.getJson(
+      `/api/v1/workflow-workers/runs/${encodeURIComponent(runId)}/sources/${encodeURIComponent(sourceId)}/facts`,
+    );
+  }
+  searchWorkflowCatalog(runId: string, sourceId: string): Promise<WorkflowCatalogResult> {
+    return this.post(
+      `/api/v1/workflow-workers/runs/${encodeURIComponent(runId)}/sources/${encodeURIComponent(sourceId)}/catalog`,
+      {},
+    );
+  }
+  submitWorkflowSuggestions(
+    runId: string,
+    sourceId: string,
+    observations: WorkflowObservation[],
+    proposals: WorkflowProposalSuggestion[] = [],
+  ): Promise<{ findings: WorkflowFinding[]; proposals?: WorkflowProposal[] }> {
+    return this.post(`/api/v1/workflow-workers/runs/${encodeURIComponent(runId)}/suggestions`, {
+      sourceId,
+      observations,
+      proposals,
+    });
+  }
+  workflowFindings(runId: string, cursor?: string): Promise<WorkflowPage<WorkflowFinding>> {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    return this.getJson(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/findings?${params}`);
+  }
+  workflowResults(runId: string, cursor?: string): Promise<WorkflowPage<WorkflowSourceSnapshot>> {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    return this.getJson(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/work?${params}`);
+  }
+  approveWorkflowBatch(
+    runId: string,
+    runRevision: number,
+    proposals: WorkflowProposalVersion[],
+    idempotencyKey: string,
+  ): Promise<{ approval: WorkflowApproval }> {
+    return this.post(
+      `/api/v1/workflow-runs/${encodeURIComponent(runId)}/approvals`,
+      { runRevision, proposals },
+      idempotencyKey,
+    );
+  }
+  applyWorkflowApproval(
+    approvalId: string,
+    applicationId: string,
+  ): Promise<{ applications: WorkflowApplication[] }> {
+    return this.post(`/api/v1/workflow-approvals/${encodeURIComponent(approvalId)}/apply`, {
+      applicationId,
+    });
+  }
+  workflowApproval(approvalId: string): Promise<{ approval: WorkflowApproval }> {
+    return this.getJson(`/api/v1/workflow-approvals/${encodeURIComponent(approvalId)}`);
+  }
+  workflowApplicationBatch(
+    applicationId: string,
+  ): Promise<{ applications: WorkflowApplication[] }> {
+    return this.getJson(`/api/v1/workflow-applications/${encodeURIComponent(applicationId)}`);
+  }
+  workflowApplications(runId: string, cursor?: string): Promise<WorkflowPage<WorkflowApplication>> {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    return this.getJson(
+      `/api/v1/workflow-runs/${encodeURIComponent(runId)}/applications?${params}`,
+    );
+  }
+  undoWorkflowApplication(
+    applicationId: string,
+    sourceId: string,
+  ): Promise<{ application: WorkflowApplication }> {
+    return this.post(
+      `/api/v1/workflow-applications/${encodeURIComponent(applicationId)}/sources/${encodeURIComponent(sourceId)}/undo`,
+      {},
+    );
+  }
+  workflowProposals(
+    runId: string,
+    cursor?: string,
+  ): Promise<WorkflowPage<WorkflowProposal> & { findings?: WorkflowFinding[] }> {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    return this.getJson(`/api/v1/workflow-runs/${encodeURIComponent(runId)}/proposals?${params}`);
+  }
+  workflowArtifact(
+    runId: string,
+    sourceId: string,
+    artifactId: string,
+    signal?: AbortSignal,
+  ): Promise<CollectedAsset> {
+    return this.collectPath(
+      `/api/v1/workflow-runs/${encodeURIComponent(runId)}/sources/${encodeURIComponent(sourceId)}/artifacts/${encodeURIComponent(artifactId)}`,
+      { maxBytes: 2 * 1024 * 1024, signal, attempts: 1 },
+    );
+  }
+  workflowArtifactInfo(
+    runId: string,
+    sourceId: string,
+    artifactId: string,
+  ): Promise<{ artifact: WorkflowArtifact }> {
+    return this.getJson(
+      `/api/v1/workflow-runs/${encodeURIComponent(runId)}/sources/${encodeURIComponent(sourceId)}/artifacts/${encodeURIComponent(artifactId)}/metadata`,
+    );
+  }
+  workflowEvidence(
+    runId: string,
+    sourceId: string,
+    evidenceId: string,
+  ): Promise<{ evidence: WorkflowEvidence }> {
+    return this.getJson(
+      `/api/v1/workflow-runs/${encodeURIComponent(runId)}/sources/${encodeURIComponent(sourceId)}/evidence/${encodeURIComponent(evidenceId)}`,
+    );
+  }
+  interruptWorkflowRun(
+    lease: WorkflowLease,
+    recoveryRequired: boolean,
+  ): Promise<{ run: WorkflowRun }> {
+    return this.post('/api/v1/workflow-workers/interrupt', { lease, recoveryRequired });
+  }
 
   async browse(query: LibraryBrowseQuery, signal?: AbortSignal): Promise<LibraryBrowsePage> {
     const params = new URLSearchParams();

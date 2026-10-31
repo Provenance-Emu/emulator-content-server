@@ -227,4 +227,5 @@ export interface AccessRequest {
 }
 
 export { detectRomSystem, isRomExtension, type RomSystemDetection } from '@ecs/protocol';
+export type * from './workflows.js';
 export type { AssetKind, GuestCapability, ItemPermission, LibraryRole };

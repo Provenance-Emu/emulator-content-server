@@ -21,6 +21,7 @@ import { matchingJob } from '@ecs/plugins/matching-host';
 import { publishedFeeds, serveFeeds } from './publish.js';
 import { reviewSignerFiles } from './sign.js';
 import { syncItem } from './sync.js';
+import { runWorkflowCommand } from './workflows/commands.js';
 
 export interface HostIo {
   log: (line: string) => void;
@@ -64,6 +65,7 @@ export async function run(
       return 0;
     }
     const directory = flag(argv, '--plugins') ?? env.ECS_PLUGINS ?? './plugins';
+    if (command === 'workflows') return await runWorkflowCommand(argv, io);
     if (command === 'providers') {
       const reply = await matchingJob({ operation: 'list', directory });
       for (const plugin of reply.plugins)
@@ -337,6 +339,12 @@ function flag(argv: readonly string[], name: string): string | undefined {
 }
 
 const HELP = [
+  'ecs-plugins workflows install --state <private dir> (--bundle <file> | --directory <dir>)',
+  'ecs-plugins workflows activate --state <private dir> --id <plugin> --digest <sha256>',
+  'ecs-plugins workflows disable --state <private dir> --id <plugin>',
+  'ecs-plugins workflows list --state <private dir>',
+  'ecs-plugins workflows install-defaults --state <private dir>',
+  'ecs-plugins workflows serve --state <private dir> --server <url> --credential-file <private file>',
   'ecs-plugins list --plugins <dir>',
   'ecs-plugins providers --plugins <dir>',
   'ecs-plugins match --plugins <dir> --input <JSON file> [--online] [--manager <id>]',

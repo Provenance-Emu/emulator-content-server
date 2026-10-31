@@ -79,6 +79,24 @@ export function matchBody(value: unknown): {
 }
 
 export interface SourceMatchingService {
+  inspect(
+    actor: Actor & { kind: 'user' },
+    sourceId: string,
+    options: ReturnType<typeof matchBody>,
+    signal: AbortSignal,
+  ): Promise<MatchingInspection>;
+  validateInspection(actor: Actor, stamps: Record<string, string>): Promise<void>;
+  readResource(
+    actor: Actor,
+    sourceId: string,
+    candidate: MatchCandidate & { providerId: string },
+    signal: AbortSignal,
+  ): Promise<{
+    bytes: Buffer;
+    contentType: string;
+    fileName: string;
+    originKind: import('@ecs/domain').AssetKind | null;
+  }>;
   prepareCatalogs?(systemIds: string[], signal: AbortSignal): Promise<void>;
   autoMatch(
     actor: Actor & { kind: 'user' },
@@ -91,6 +109,13 @@ export interface SourceMatchingService {
     suggestions: number;
     error: string | null;
   }>;
+}
+export interface MatchingInspection {
+  sourceId: string;
+  input: MatchingInput;
+  stamps: Record<string, string>;
+  candidates: (MatchCandidate & { providerId: string })[];
+  problems: { providerId: string; code: string }[];
 }
 export function registerSourceMatching(
   app: FastifyInstance,
@@ -566,6 +591,34 @@ export function registerSourceMatching(
     },
   );
   return {
+    async inspect(actor, sourceId, options, signal) {
+      signal.throwIfAborted();
+      const result = await match(actor, sourceId, options, signal);
+      const job = jobs.get(result.requestId);
+      if (!job)
+        throw new DomainError('matching-unavailable', 503, 'Matching inspection unavailable');
+      return structuredClone({
+        sourceId,
+        input: job.input,
+        stamps: Object.fromEntries(job.stamps),
+        candidates: job.candidates,
+        problems: result.problems,
+      });
+    },
+    async validateInspection(actor, stamps) {
+      for (const [id, expected] of Object.entries(stamps)) {
+        if (expected !== (await stamp(actor, id)))
+          throw new DomainError(
+            'matching-source-changed',
+            409,
+            'Source or companion changed; inspect again',
+          );
+      }
+    },
+    readResource(actor, sourceId, candidate, signal) {
+      visibleSource(context, actor, sourceId);
+      return resource(candidate, sourceId, actor, {} as FastifyRequest, null, signal);
+    },
     async prepareCatalogs(systemIds, signal) {
       for (let offset = 0; offset < Math.max(systemIds.length, 1); offset += 64) {
         signal.throwIfAborted();

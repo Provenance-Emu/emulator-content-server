@@ -1,3 +1,32 @@
+export type {
+  CleanupChange,
+  WorkflowApplication,
+  WorkflowApproval,
+  WorkflowArtifact,
+  WorkflowCatalogCandidate,
+  WorkflowCatalogResult,
+  WorkflowEvidence,
+  WorkflowFinding,
+  WorkflowFindingDraft,
+  WorkflowFindingKind,
+  WorkflowHost,
+  WorkflowLease,
+  WorkflowObservation,
+  WorkflowOptions,
+  WorkflowPackageSummary,
+  WorkflowPage,
+  WorkflowProposal,
+  WorkflowProposalSuggestion,
+  WorkflowProposalVersion,
+  WorkflowPublication,
+  WorkflowRun,
+  WorkflowRunDraft,
+  WorkflowRunState,
+  WorkflowScope,
+  WorkflowSelectionSummary,
+  WorkflowSourceFacts,
+  WorkflowSourceSnapshot,
+} from '@ecs/protocol';
 export {
   type BrowseCategory,
   type BrowseSort,
@@ -109,5 +138,4 @@ export type {
   WebPlayerCatalog,
   WebPlayerDescriptor,
 } from './generated.js';
-
 export { sha256Bytes } from './sha256.js';

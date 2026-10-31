@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PluginError } from './errors.js';
 import { type PluginManifest, parseManifest } from './manifest.js';
+import { type LoadedWorkflowPlugin, loadWorkflowPlugin } from './workflows/manifest.js';
 
 export interface LoadedPlugin {
   directory: string;
@@ -17,6 +18,18 @@ export interface PluginProblem {
 export interface PluginLoad {
   plugins: LoadedPlugin[];
   problems: PluginProblem[];
+}
+
+export type DiscoveredPlugin =
+  | { engine: 'ecs.plugin/1'; plugin: LoadedPlugin }
+  | { engine: 'ecs.plugin/2'; plugin: LoadedWorkflowPlugin };
+
+/** Mixed-version discovery is opt-in; v1 callers retain their existing result type. */
+export async function discoverPlugin(directory: string): Promise<DiscoveredPlugin> {
+  const manifest = JSON.parse(await readFile(join(directory, 'plugin.json'), 'utf8'));
+  return manifest?.engine === 'ecs.plugin/2'
+    ? { engine: 'ecs.plugin/2', plugin: await loadWorkflowPlugin(directory) }
+    : { engine: 'ecs.plugin/1', plugin: await loadPlugin(directory) };
 }
 
 /** One broken plugin is reported and the rest still load. */

@@ -7,6 +7,8 @@
   import { explain } from './lib/problems';
   import MatchingProviders from './components/MatchingProviders.svelte';
   import MatchingPanel from './MatchingPanel.svelte';
+  import LibraryCleanup from './LibraryCleanup.svelte';
+  let cleanup=$state(false),cleanupButton:HTMLButtonElement|undefined=$state();
   let {context,scope,onchanged,libraries=[],roots=[]}:{context:ServerContext;scope:LibraryScope;onchanged:()=>void;libraries?:Library[];roots?:ContentRootSummary[]}=$props();
   const controller=untrack(()=>createLibraryJobs(context.client,scope,{changed:onchanged}));
   let plugins=$state<MatchingPlugin[]>([]),providerIds=$state<string[]>([]),online=$state(true),allowExactNames=$state(true),managerId=$state('org.ecs.matches');
@@ -49,9 +51,13 @@
   }
 </script>
 
+{#if cleanup}
+<LibraryCleanup {context} {scope} {onchanged} onclose={()=>{cleanup=false;queueMicrotask(()=>cleanupButton?.focus());}} />
+{:else}
 <div class="matching-page">
 <p class="dim">Library work runs on the server and is shared across sessions. You can return while a job is running.</p>
 <div class="matching-primary-actions" aria-label="Start library work">
+  <button type="button" bind:this={cleanupButton} onclick={()=>cleanup=true}>Review library cleanup</button>
   <button type="button" class="primary" disabled={$controller.loading||!canMatch} onclick={()=>void start('match')}>Find missing artwork and details</button>
   <button type="button" disabled={$controller.loading} onclick={()=>void start('scan')}>Scan saved folders</button>
 </div>
@@ -118,3 +124,5 @@
   section[aria-label="Library job progress"] > p:first-of-type { margin-top: 0; }
   section[aria-label="Library job progress"] > p:last-of-type { margin-bottom: 0; }
 </style>
+
+{/if}
