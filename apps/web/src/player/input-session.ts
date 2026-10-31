@@ -17,6 +17,7 @@ import {
   validateLayout,
 } from './layout.js';
 import type { PlayerRuntime } from './runtime.js';
+import type { SkinLayoutPort } from './skins/types.js';
 export class InputSession {
   map: MappingConfig;
   layout: ControllerLayout;
@@ -32,6 +33,8 @@ export class InputSession {
     deviceError: null,
     capture: null,
   };
+  layoutPort?: SkinLayoutPort;
+  presentationBusy = false;
   gestureEpoch = 0;
   showTouch = true;
   orientationMode: 'auto' | 'portrait' | 'landscape' = 'auto';
@@ -125,7 +128,8 @@ export class InputSession {
     this.notify();
   }
   heartbeat(active: boolean) {
-    const next = active && this.ready && this.mode !== 'edit' && !this.capture;
+    const next =
+      active && this.ready && !this.presentationBusy && this.mode !== 'edit' && !this.capture;
     if (this.active && !next) {
       this.gestureEpoch++;
       this.sources.clear();
@@ -150,7 +154,7 @@ export class InputSession {
     }
   }
   touch(id: string, buttons: number, axes = [0, 0, 0, 0]) {
-    if (!this.ready || this.mode !== 'play' || this.capture) return;
+    if (!this.ready || this.presentationBusy || this.mode !== 'play' || this.capture) return;
     if (!this.sources.has(id) && this.sources.size >= 16) return;
     const previous = this.sources.get(id);
     if (
@@ -298,7 +302,7 @@ export class InputSession {
       if (
         JSON.stringify(next.representations[o]) !== JSON.stringify(this.layout.representations[o])
       )
-        this.changes[`layout.${o}`] = next.representations[o];
+        if (!this.layoutPort) this.changes[`layout.${o}`] = next.representations[o];
     this.layout = next;
     this.draft = null;
     this.mode = 'play';
@@ -448,14 +452,28 @@ export class InputSession {
       this.notify();
     }
   }
-  remember(scope: 'core' | 'game') {
+  async remember(scope: 'core' | 'game') {
     if (!this.ready || this.draft) throw Error('Apply or cancel layout edits first');
-    this.store.remember(scope, this.changes);
+    this.store.remember(
+      scope,
+      this.layoutPort
+        ? Object.fromEntries(Object.entries(this.changes).filter(([k]) => !k.startsWith('layout.')))
+        : this.changes,
+    );
+    try {
+      await this.layoutPort?.remember(scope);
+    } catch (e) {
+      throw Error(
+        'Mappings remembered, but skin preferences were not saved: ' +
+          (e instanceof Error ? e.message : 'storage unavailable'),
+      );
+    }
     this.message = `Remembered input changes for this ${scope}.`;
     this.notify();
   }
-  clearPreferences(scope: 'core' | 'game') {
+  async clearPreferences(scope: 'core' | 'game') {
     this.store.clear(scope);
+    await this.layoutPort?.clear(scope);
     this.message =
       'Stored input preferences cleared. Running mappings stay until changed or a fresh launch.';
     this.notify();

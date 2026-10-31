@@ -13,6 +13,8 @@ export default defineConfig({
   use: {
     actionTimeout: 4_000,
     browserName: 'chromium',
+    channel: 'chromium',
+    launchOptions: { args: ['--mute-audio'] },
     headless: true,
     trace: 'off',
     screenshot: 'off',

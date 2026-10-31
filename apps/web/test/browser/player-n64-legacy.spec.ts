@@ -79,7 +79,7 @@ function changedPixels(before: Uint8Array, after: Uint8Array): number {
 }
 const plugin = process.env.ECS_ACCEPTANCE_N64_PLUGIN,
   content = process.env.ECS_ACCEPTANCE_N64_CONTENT;
-if (plugin && content) test.use({ headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1' });
+if (plugin && content) test.use({ headless: true });
 test('real legacy N64 core renders operator homebrew and responds to controller input in the opaque player', async ({
   page,
   browser,

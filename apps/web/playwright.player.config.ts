@@ -10,14 +10,22 @@ export default defineConfig({
     'player-capture-controls.spec.ts',
     'player-settings.spec.ts',
     'player-input.spec.ts',
+    'player-skin-artwork.spec.ts',
   ],
   workers: 1,
   fullyParallel: false,
   timeout: 30000,
   reporter: 'list',
-  use: { headless: false, actionTimeout: 5000, trace: 'off', screenshot: 'off', video: 'off' },
+  use: { headless: true, actionTimeout: 5000, trace: 'off', screenshot: 'off', video: 'off' },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    {
+      name: 'chromium',
+      use: {
+        browserName: 'chromium',
+        channel: 'chromium',
+        launchOptions: { args: ['--mute-audio'] },
+      },
+    },
     {
       name: 'webkit',
       use: { browserName: 'webkit', launchOptions: executablePath ? { executablePath } : {} },

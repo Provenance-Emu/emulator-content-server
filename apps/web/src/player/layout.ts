@@ -9,16 +9,18 @@ export interface ReferenceSize {
   width: number;
   height: number;
 }
-export type LayoutAction = PadAction | 'leftStick' | 'rightStick';
+export type LayoutAction = PadAction | 'leftStick' | 'rightStick' | 'dpad' | 'combo';
 export interface LayoutControl {
   id: string;
   action: LayoutAction;
   frame: Rect;
+  buttons?: PadAction[];
   hitInsets?: { top: number; right: number; bottom: number; left: number };
   opacity: number;
   visual:
     | { kind: 'shape'; shape: 'circle' | 'rect'; label: string }
-    | { kind: 'image'; assetId: string };
+    | { kind: 'image'; assetId: string }
+    | { kind: 'hotspot' };
 }
 export interface LayoutRepresentation {
   reference: ReferenceSize;
@@ -60,19 +62,32 @@ export function hitRect(
   fit: LayoutFit,
   width: number,
   height: number,
+  safe = { top: 0, right: 0, bottom: 0, left: 0 },
 ): Rect {
   const r = transformRect(control.frame, fit),
     e = control.hitInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
-  const w = Math.min(width, Math.max(44, r.width + (e.left + e.right) * fit.scale)),
-    h = Math.min(height, Math.max(44, r.height + (e.top + e.bottom) * fit.scale));
+  const w = Math.min(
+      Math.max(0, width - safe.left - safe.right),
+      Math.max(44, r.width + (e.left + e.right) * fit.scale),
+    ),
+    h = Math.min(
+      Math.max(0, height - safe.top - safe.bottom),
+      Math.max(44, r.height + (e.top + e.bottom) * fit.scale),
+    );
   return {
     x: Math.max(
-      0,
-      Math.min(width - w, r.x + r.width / 2 - w / 2 + ((e.right - e.left) * fit.scale) / 2),
+      safe.left,
+      Math.min(
+        width - safe.right - w,
+        r.x + r.width / 2 - w / 2 + ((e.right - e.left) * fit.scale) / 2,
+      ),
     ),
     y: Math.max(
-      0,
-      Math.min(height - h, r.y + r.height / 2 - h / 2 + ((e.bottom - e.top) * fit.scale) / 2),
+      safe.top,
+      Math.min(
+        height - safe.bottom - h,
+        r.y + r.height / 2 - h / 2 + ((e.bottom - e.top) * fit.scale) / 2,
+      ),
     ),
     width: w,
     height: h,
@@ -118,7 +133,8 @@ export function validateLayout(value: unknown): ControllerLayout {
       !Array.isArray(r.controls) ||
       r.controls.length > 32 ||
       !Array.isArray(r.screens) ||
-      r.screens.length !== 1
+      r.screens.length < 1 ||
+      r.screens.length > 2
     )
       throw Error('Unsupported layout representation');
     const rect = (f: Rect, unit = false) => {
@@ -154,14 +170,12 @@ export function validateLayout(value: unknown): ControllerLayout {
       if (
         !id(c.id) ||
         seen.has(c.id) ||
-        ![...actions, 'leftStick', 'rightStick'].includes(c.action) ||
+        ![...actions, 'leftStick', 'rightStick', 'dpad', 'combo'].includes(c.action) ||
         !finite(c.opacity) ||
         c.opacity < 0.25 ||
         c.opacity > 1 ||
-        c.frame.width < 20 ||
-        c.frame.height < 20 ||
-        c.frame.width > 180 ||
-        c.frame.height > 180 ||
+        c.frame.width < 1 ||
+        c.frame.height < 1 ||
         !c.visual
       )
         throw Error('Invalid layout control');
@@ -176,6 +190,15 @@ export function validateLayout(value: unknown): ControllerLayout {
         )
       )
         throw Error('Invalid hit region');
+      if (
+        c.action === 'combo' &&
+        (!Array.isArray(c.buttons) ||
+          !c.buttons.length ||
+          c.buttons.length > 16 ||
+          new Set(c.buttons).size !== c.buttons.length ||
+          c.buttons.some((b) => !actions.includes(b)))
+      )
+        throw Error('Invalid combination');
       if (c.visual.kind === 'shape') {
         if (
           !['circle', 'rect'].includes(c.visual.shape) ||
@@ -183,7 +206,10 @@ export function validateLayout(value: unknown): ControllerLayout {
           c.visual.label.length > 24
         )
           throw Error('Invalid vector control');
-      } else if (c.visual.kind !== 'image' || !assets.has(c.visual.assetId))
+      } else if (
+        c.visual.kind !== 'hotspot' &&
+        (c.visual.kind !== 'image' || !assets.has(c.visual.assetId))
+      )
         throw Error('Missing control artwork');
     }
   }
@@ -285,4 +311,25 @@ export function setLayoutPlacement(
   screen.frame = { x: 0, y: 0, width: r.reference.width, height: gameHeight };
   for (const c of r.controls) c.frame.y = gameHeight + 14 + c.frame.y - minY;
   return r;
+}
+
+export function controlLabel(c: LayoutControl): string {
+  return c.visual.kind === 'shape'
+    ? c.visual.label
+    : c.action === 'combo'
+      ? (c.buttons ?? []).join('+').toUpperCase()
+      : c.action === 'dpad'
+        ? 'D-pad'
+        : c.action === 'leftStick'
+          ? 'L stick'
+          : c.action === 'rightStick'
+            ? 'R stick'
+            : c.action.toUpperCase();
+}
+export function controlButtons(c: LayoutControl): PadAction[] {
+  return c.action === 'combo'
+    ? (c.buttons ?? [])
+    : actions.includes(c.action as PadAction)
+      ? [c.action as PadAction]
+      : [];
 }

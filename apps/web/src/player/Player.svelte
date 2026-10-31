@@ -12,6 +12,9 @@
   import StateBrowser from './StateBrowser.svelte';
   import DisplayControls from './DisplayControls.svelte';
   import SettingsControls from './SettingsControls.svelte';
+  import SkinControls from './SkinControls.svelte';
+  import {SkinSession} from './skins/session.js';
+  import {SkinLibrary} from './skins/library.js';
   import InputControls from './InputControls.svelte';
   import TouchSurface from './TouchSurface.svelte';
   import {InputSession} from './input-session.js';
@@ -40,6 +43,10 @@
   let stage=$state<HTMLDivElement>();
   let gameMount=$state<HTMLDivElement>();
   let inputSession=$state.raw<InputSession|null>(null);
+  let skinSession=$state.raw<SkinSession|null>(null);
+  let skinRevision=$state(0);
+  const skinAssets=$derived.by(()=>{skinRevision;return skinSession?.assets??{};});
+  let unsubscribeSkins:(()=>void)|undefined;
   let playerBusy=$state(false),captureReady=$state(false),refresh=$state(0),pendingSave=$state(false);
   let ready = $state(false);
   let needsSignIn = $state(false);
@@ -114,14 +121,15 @@
       });
       if(disposed){session?.releaseLoader();return;}
       inputSession=new InputSession(session.runtime,createInputPreferences(window.location.origin,session.prepared.core,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined));
-      void inputSession.initialize();
+      const input=inputSession;const prepared=session.prepared;
+      void input.initialize().then(async()=>{if(disposed)return;skinSession=new SkinSession(input,new SkinLibrary(),`ecs.skins.v1:${encodeURIComponent(window.location.origin)}:${prepared.core.id}:${prepared.core.loader.sha256}:${prepared.core.wasm.sha256}`,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined,prepared.item?.systemIdentifier??prepared.core.systems[0]??'');unsubscribeSkins=skinSession.subscribe(()=>skinRevision++);await skinSession.initialize();});
       if(session.runtime.focus)await session.runtime.focus();else canvas.focus();
     } catch (error) { if(!disposed)failure = `${explain(error)} Reload this page before starting again.`; }
     finally { working = false; }
   }
   onMount(() => {
     void boot();
-    const release = () => { disposed=true;generation++;lifetime.abort();session?.releaseLoader(); };
+    const release = () => { disposed=true;generation++;lifetime.abort();unsubscribeSkins?.();skinSession?.dispose();session?.releaseLoader(); };
     window.addEventListener('pagehide', release, { once: true });
     return () => {window.removeEventListener('pagehide',release);release();};
   });
@@ -172,8 +180,8 @@
     </section>
   {/if}
   <div class="player-workbench" class:running={!!session}>
-    <div class="player-stage" bind:this={stage}><div class="player-game" bind:this={gameMount}><canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas></div>{#if inputSession&&stage&&gameMount}<TouchSurface session={inputSession} {stage} {gameMount}/><button type="button" class="player-release" aria-label="Release all game controls" onclick={()=>inputSession?.releaseAll()}>Release controls</button>{/if}</div>
-    {#if inputSession}<InputControls session={inputSession} disabled={playerBusy||pendingSave}/>{/if}
+    <div class="player-stage" bind:this={stage}><div class="player-game" bind:this={gameMount}><canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas></div>{#if inputSession&&stage&&gameMount}<TouchSurface session={inputSession} {stage} {gameMount} assets={skinAssets}/><button type="button" class="player-release" aria-label="Release all game controls" onclick={()=>inputSession?.releaseAll()}>Release controls</button>{/if}</div>
+    {#if inputSession}<aside class="player-inspector">{#if skinSession}<SkinControls session={skinSession} disabled={playerBusy||pendingSave}/>{/if}<InputControls session={inputSession} disabled={playerBusy||pendingSave}/></aside>{/if}
   </div>
   {#if working}<p role="status">Preparing complete content and core bytes…</p>{/if}
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}

@@ -161,7 +161,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       // clear of /api/v1, and the plugin refuses a path that leaves the
       // asset directory.
       wildcard: true,
-      setHeaders: (response) => {
+      setHeaders: (response, path) => {
         /**
          * The page keeps its bearer token in local storage, so the thing that
          * has to be impossible is injected script reading it and sending it
@@ -169,6 +169,14 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
          * and the only place a request can go is back here.
          */
         response.header('content-security-policy', UI_CONTENT_POLICY);
+        if (
+          /(?:^|[/\\])(?:import\.worker|pdf\.worker\.min)(?:-[A-Za-z0-9_-]+)?\.(?:js|mjs)$/.test(
+            path,
+          )
+        ) {
+          response.header('cross-origin-embedder-policy', 'require-corp');
+          response.header('cross-origin-resource-policy', 'same-origin');
+        }
         response.header('x-content-type-options', 'nosniff');
         response.header('referrer-policy', 'no-referrer');
       },
@@ -218,12 +226,12 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
           "script-src 'self'",
           "frame-src 'self'",
           "style-src 'self'",
-          "img-src 'self' data:",
-          "connect-src 'self'",
+          "img-src 'self' data: blob: https://raw.githubusercontent.com",
+          "connect-src 'self' https://emuskins.com https://raw.githubusercontent.com https://deltastyles.com",
           "base-uri 'none'",
           "form-action 'none'",
           "frame-ancestors 'none'",
-          "worker-src 'none'",
+          "worker-src 'self'",
         ].join('; '),
       );
       reply.header('cross-origin-opener-policy', 'same-origin');

@@ -84,7 +84,7 @@
     {/if}
     <div class="player-controls"><button type="button" disabled={blocked||s.mode==='edit'} onclick={()=>act(()=>session.remember('core'))}>Remember for this core</button>{#if session.store.hasGame}<button type="button" disabled={blocked||s.mode==='edit'} onclick={()=>act(()=>session.remember('game'))}>Remember for this game</button>{/if}</div>
     <div class="player-controls"><button type="button" disabled={blocked} onclick={()=>act(()=>session.clearPreferences('core'))}>Clear core input preferences</button>{#if session.store.hasGame}<button type="button" disabled={blocked} onclick={()=>act(()=>session.clearPreferences('game'))}>Clear game input preferences</button>{/if}</div>
-    <p class="dim">Local to this browser and exact build. Changes remain session-only until remembered. Editing supports procedural controls; skin file import comes later.</p>
+    <p class="dim">Local to this browser and exact build. Changes remain session-only until remembered. Skin imports use the same layout editor. Original artwork stays intact.</p>
   {/if}
   <p role="status">{s.message}</p>
   {#if s.failure}<p class="problem" role="alert">{s.failure}</p>{/if}

@@ -94,7 +94,7 @@ test('the public isolated play document has its own policy and reuses unchanged 
     assert.match(play.body, /Player/);
     assert.equal(
       play.headers['content-security-policy'],
-      "default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'none'",
+      "default-src 'none'; script-src 'self'; frame-src 'self'; style-src 'self'; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https://emuskins.com https://raw.githubusercontent.com https://deltastyles.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'self'",
     );
     assert.equal(play.headers['cross-origin-opener-policy'], 'same-origin');
     assert.equal(play.headers['cross-origin-embedder-policy'], 'require-corp');
@@ -113,4 +113,23 @@ test('the public isolated play document has its own policy and reuses unchanged 
     assert.equal((await app.inject({ url: '/play/not-present.js' })).statusCode, 404);
     assert.equal((await app.inject({ url: '/play/../index.html' })).statusCode, 404);
   });
+});
+
+test('first-party worker assets carry player-compatible isolation headers', async () => {
+  const assets = await mkdtemp(join(tmpdir(), 'ecs-skin-worker-'));
+  await mkdir(join(assets, 'assets'));
+  await writeFile(join(assets, 'index.html'), '<title>Library</title>');
+  await writeFile(
+    join(assets, 'assets', 'import.worker.js'),
+    'self.onmessage=()=>self.postMessage(1)',
+  );
+  try {
+    await withServer(assets, async ({ app }) => {
+      const r = await app.inject({ url: '/ui/assets/import.worker.js' });
+      assert.equal(r.headers['cross-origin-embedder-policy'], 'require-corp');
+      assert.equal(r.headers['cross-origin-resource-policy'], 'same-origin');
+    });
+  } finally {
+    await import('node:fs/promises').then((fs) => fs.rm(assets, { recursive: true, force: true }));
+  }
 });

@@ -10,7 +10,7 @@ import { installPinnedPlayer } from '../../../../scripts/browser-core/install-pl
 import { openServer } from '../../../server/dist/src/index.js';
 
 const externalCore = process.env.ECS_ACCEPTANCE_CORE;
-if (externalCore) test.use({ headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1' });
+if (externalCore) test.use({ headless: true });
 test('real FCEUmm plugin renders, accepts input, produces audio, and round-trips battery/state', async ({
   page,
   browser,

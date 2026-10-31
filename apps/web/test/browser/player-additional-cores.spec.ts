@@ -83,11 +83,16 @@ const prosystemPlugin = process.env.ECS_ACCEPTANCE_PROSYSTEM_PLUGIN;
 const flycastPlugin = process.env.ECS_ACCEPTANCE_FLYCAST_WASM_PLUGIN;
 if (jaguarPlugin || parallelPlugin || psxPlugin || prosystemPlugin || flycastPlugin)
   test.use({
-    headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1',
+    headless: true,
     ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
       ? {
           launchOptions: {
-            args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+            args: [
+              '--mute-audio',
+              '--use-gl=angle',
+              '--use-angle=swiftshader',
+              '--enable-unsafe-swiftshader',
+            ],
           },
         }
       : {}),
