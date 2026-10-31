@@ -5,7 +5,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join, resolve } from 'node:path';
 
 if (process.argv.length !== 4)
-  throw new Error('Usage: node rebuild-pcsx-source.mjs EXTRACTED_SOURCE_ROOT NEW_OUTPUT');
+  throw new Error('Usage: node rebuild-prosystem-source.mjs EXTRACTED_SOURCE_ROOT NEW_OUTPUT');
 const [root, output] = process.argv.slice(2).map((path) => resolve(path));
 if (existsSync(output)) throw new Error('Output must be new');
 const receipt = JSON.parse(readFileSync(join(root, 'ECS-BUILD.json'), 'utf8'));

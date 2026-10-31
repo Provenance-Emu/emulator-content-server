@@ -217,3 +217,85 @@ test('an exact saved cover is preferred over additional compatible formatting va
   assert.equal(automatic.length, 1);
   assert.equal(automatic[0]?.title, title);
 });
+
+test('large arcade collections fetch only the bounded front subtree and pin URLs to the root revision', async () => {
+  const root = 'a'.repeat(40),
+    child = 'b'.repeat(40),
+    urls: string[] = [];
+  const p = createLibretroProvider(
+    async (url) => {
+      const address = String(url);
+      urls.push(address);
+      assert.ok(!address.includes('recursive=1'));
+      return new Response(
+        JSON.stringify(
+          address.endsWith('/master')
+            ? {
+                sha: root,
+                truncated: false,
+                tree: [
+                  { path: 'Named_Boxarts', type: 'tree', sha: child },
+                  { path: 'Named_Snaps', type: 'tree', sha: 'c'.repeat(40) },
+                ],
+              }
+            : {
+                sha: child,
+                truncated: false,
+                tree: [
+                  { path: 'Orbit Rally (World).png', type: 'blob', size: 1000 },
+                  { path: '../Orbit.png', type: 'blob', size: 1000 },
+                  { path: 'nested/Orbit.png', type: 'blob', size: 1000 },
+                ],
+              },
+        ),
+      );
+    },
+    undefined,
+    async () => [],
+  );
+  const input: MatchingInput = {
+    name: 'Orbit Rally (World).zip',
+    systemId: 'com.provenance.mame',
+    online: true,
+    allowExactNames: true,
+    companions: [],
+  };
+  const result = await p.search(input);
+  assert.equal(urls.length, 2);
+  assert.equal(result.length, 1);
+  assert.ok(result[0]?.url?.includes(`/MAME/${root}/Named_Boxarts/`));
+  assert.ok(!result[0]?.url?.includes(`/${child}/`));
+  assert.ok(result[0]);
+  assert.equal(automaticEvidence(input, result[0]), true);
+});
+
+test('arcade front subtrees reject changed or truncated catalogs and ignore nested paths', async () => {
+  const root = 'a'.repeat(40),
+    child = 'b'.repeat(40);
+  for (const bad of [
+    { sha: 'c'.repeat(40), truncated: false },
+    { sha: child, truncated: true },
+  ]) {
+    const p = createLibretroProvider(
+      async (url) =>
+        new Response(
+          JSON.stringify(
+            String(url).endsWith('/master')
+              ? { sha: root, tree: [{ path: 'Named_Boxarts', type: 'tree', sha: child }] }
+              : { ...bad, tree: [] },
+          ),
+        ),
+      undefined,
+      async () => [],
+    );
+    await assert.rejects(
+      p.search({
+        name: 'Orbit.zip',
+        systemId: 'com.provenance.mame',
+        online: true,
+        companions: [],
+      }),
+      /lookup failed/,
+    );
+  }
+});

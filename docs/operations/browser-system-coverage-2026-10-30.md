@@ -61,3 +61,13 @@ ECS_ACCEPTANCE_PROSYSTEM_PLUGIN=/absolute/profile ECS_ACCEPTANCE_HEADLESS=1 \
 ```
 
 Corresponding-source archives include the exact frontend/core sources, build receipt, dependency notices, and `rebuild-prosystem-source.mjs`. That helper verifies output hashes when rebuilding the extracted archive without Git. The fresh source build and runtime acceptance were run here; a second byte-for-byte archive rebuild was not repeated.
+
+Published package: [v0.1.6-prosystem.1](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.6-prosystem.1),
+3,618,571 bytes, SHA-256 `56c2e274e92b529111fff16f64ce3bd9f09532351f89a68969e7453bf73359d3`.
+The release includes complete corresponding sources (83,662,064 bytes, SHA-256
+`98c90d04e1a5b4cb55bfa3b84608cb3066da06051c7a67ae890460701e20993d`),
+source rebuild helper, notices, and build/acceptance receipts. All seven uploaded
+assets matched GitHub's independent size/digest receipts before publication. The
+public package was downloaded, hash/size checked and parsed afterward. It is now
+available in the catalog and installed/enabled on the running host through the
+normal management API; the existing default core was preserved.

@@ -49,13 +49,13 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     id: 'org.libretro.prosystem',
     name: 'ProSystem (Atari 7800)',
     systems: ['com.provenance.7800'],
-    description: 'Atari 7800 cartridge games.',
-    available: false,
-    reason:
-      'A compatible browser package is being validated; the official web loader uses an older runtime.',
-    downloadBytes: null,
-    url: null,
-    sha256: null,
+    description:
+      'Software Atari 7800 core. Original cartridge rendering verified; synchronized saves and Safari compatibility are unverified.',
+    available: true,
+    reason: null,
+    downloadBytes: 3618571,
+    url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-prosystem.1/prosystem.ecsplayer',
+    sha256: '56c2e274e92b529111fff16f64ce3bd9f09532351f89a68969e7453bf73359d3',
   },
   {
     id: 'org.libretro.atari800',

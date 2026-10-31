@@ -42,3 +42,36 @@ identity, conflicting release tags, compilation boundaries, multiple scans,
 exact-cover preference and the added system/extension routing. Matching/provider,
 hosted-catalog, saved-selection, disc and artwork-role server regressions pass.
 All current local saved choices were backed up before the live acceptance pass.
+
+Large MAME and CPS collections now fetch only the front-cover subtree. Both root
+and child indexes must be complete, bounded and SHA-addressed; image URLs retain
+the root revision, not the directory tree SHA. Unrelated screenshot trees are not
+loaded. Real upstream acceptance indexed 6,060 MAME fronts and verified a pinned
+PNG with HTTP 200. Other collections retain their existing title/snapshot lookup.
+
+## Running-library acceptance
+
+The loopback LaunchAgent now uses the detached `system-artwork-20261030/server`
+snapshot. The existing committed UI snapshot was retained while another interface
+workstream was active. Before activation, the SQLite catalog, LaunchAgent and 771
+saved-choice digests were backed up privately.
+
+Two independent owner sessions joined the same shared matching job. It processed
+all 918 items in 7.7 seconds, with zero failures or skips, adding 34 front covers
+(32 Naomi and two Naomi 2) and two metadata choices (one for each board family).
+Every previous selection JSON and content byte remained identical. The library
+now has 475 metadata choices and 332 fronts; review results fell from 234 to 198,
+while 310 items remain unmatched. All 35 Jaguar CD groups retain metadata, with
+17 fronts. Temporary acceptance sessions were revoked and no jobs remain active.
+
+The new [Atari 7800 package](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.6-prosystem.1)
+was installed through the real owner-only catalog API, with the current default
+emulator preserved. Its loader/WASM digests and parsed package match the published
+pin. The package's original-program opaque-frame acceptance and remaining Safari,
+commercial-game and synchronized-save limits are recorded in the
+[browser system audit](browser-system-coverage-2026-10-30.md).
+
+The changes passed focused matching, evidence, hosted-catalog, saved-choice, disc,
+artwork-role, player-catalog and build-helper checks, plus TypeScript, Biome,
+package boundaries and the secret/fixture scan. No protocol, migration, native
+shell or desktop-installer rebuild was needed.

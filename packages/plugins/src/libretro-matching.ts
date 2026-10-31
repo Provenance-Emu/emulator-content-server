@@ -34,6 +34,7 @@ interface SystemCatalog {
   arcade?: boolean;
   artworkRepo?: string;
   branch?: string;
+  frontsOnly?: boolean;
 }
 export const LIBRETRO_SYSTEMS: Record<string, SystemCatalog> = {
   'com.provenance.2600': { platform: 'Atari - 2600', collection: 'no-intro' },
@@ -62,7 +63,7 @@ export const LIBRETRO_SYSTEMS: Record<string, SystemCatalog> = {
   'com.provenance.3DO': { platform: 'The 3DO Company - 3DO', collection: 'redump' },
   'com.provenance.neogeo': { platform: 'SNK - Neo Geo' },
   'com.provenance.neogeocd': { platform: 'SNK - Neo Geo CD', collection: 'redump' },
-  'com.provenance.mame': { platform: 'MAME' },
+  'com.provenance.mame': { platform: 'MAME', frontsOnly: true },
   'com.provenance.colecovision': { platform: 'Coleco - ColecoVision', collection: 'no-intro' },
   'com.provenance.intellivision': { platform: 'Mattel - Intellivision', collection: 'no-intro' },
   'com.provenance.odyssey2': { platform: 'Magnavox - Odyssey2', collection: 'no-intro' },
@@ -82,9 +83,9 @@ export const LIBRETRO_SYSTEMS: Record<string, SystemCatalog> = {
   'com.provenance.quake': { platform: 'Quake' },
   'com.provenance.quake2': { platform: 'Quake II' },
   'com.provenance.tic80': { platform: 'TIC-80' },
-  'com.provenance.cps1': { platform: 'FBNeo - Arcade Games' },
-  'com.provenance.cps2': { platform: 'FBNeo - Arcade Games' },
-  'com.provenance.cps3': { platform: 'FBNeo - Arcade Games' },
+  'com.provenance.cps1': { platform: 'FBNeo - Arcade Games', frontsOnly: true },
+  'com.provenance.cps2': { platform: 'FBNeo - Arcade Games', frontsOnly: true },
+  'com.provenance.cps3': { platform: 'FBNeo - Arcade Games', frontsOnly: true },
   'com.provenance.jaguar': { platform: 'Atari - Jaguar', collection: 'no-intro' },
   'com.provenance.jaguarcd': {
     platform: 'Atari - Jaguar CD',
@@ -423,6 +424,62 @@ export function createLibretroProvider(
         );
       const indexed = (async (): Promise<Artwork[]> => {
         try {
+          if (system.frontsOnly) {
+            const root = await catalogs.load(
+              `https://api.github.com/repos/libretro-thumbnails/${repo}/git/trees/${system.branch ?? 'master'}`,
+              resourceSignal,
+              256 * 1024,
+            );
+            if (!root) return emptyArt;
+            const data = JSON.parse(root) as {
+              sha?: string;
+              truncated?: boolean;
+              tree?: { path?: string; type?: string; sha?: string }[];
+            };
+            if (
+              !data.sha ||
+              !/^[a-f0-9]{40}$/.test(data.sha) ||
+              data.truncated ||
+              !Array.isArray(data.tree) ||
+              data.tree.length > 128
+            )
+              throw new Error('Incomplete artwork root');
+            const directory = data.tree.find(
+              (row) => row.path === 'Named_Boxarts' && row.type === 'tree',
+            );
+            if (!directory) return emptyArt;
+            if (!directory.sha || !/^[a-f0-9]{40}$/.test(directory.sha))
+              throw new Error('Invalid artwork subtree');
+            const index = await catalogs.load(
+              `https://api.github.com/repos/libretro-thumbnails/${repo}/git/trees/${directory.sha}`,
+              resourceSignal,
+              8 * 1024 * 1024,
+            );
+            if (!index) throw new Error('Artwork subtree unavailable');
+            return memo(`art:${repo}:fronts`, `${root}\n${index}`, () => {
+              const child = JSON.parse(index) as {
+                sha?: string;
+                truncated?: boolean;
+                tree?: { path?: string }[];
+              };
+              if (
+                child.sha !== directory.sha ||
+                child.truncated ||
+                !Array.isArray(child.tree) ||
+                child.tree.length > 30000
+              )
+                throw new Error('Incomplete artwork subtree');
+              return artworkIndex(
+                JSON.stringify({
+                  ...child,
+                  sha: data.sha,
+                  tree: child.tree
+                    .filter((row) => typeof row.path === 'string' && !/[/\\\0]/.test(row.path))
+                    .map((row) => ({ ...row, path: `Named_Boxarts/${row.path}` })),
+                }),
+              );
+            });
+          }
           const index = await catalogs.load(
             `https://api.github.com/repos/libretro-thumbnails/${repo}/git/trees/${system.branch ?? 'master'}?recursive=1`,
             resourceSignal,
