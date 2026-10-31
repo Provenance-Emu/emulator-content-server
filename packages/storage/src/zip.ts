@@ -405,9 +405,16 @@ async function readZip64EndRecord(
     reject('Split-volume ZIP64 archives are not supported');
   }
   const recordOffset = safeNumber(locator.readBigUInt64LE(8), 'ZIP64 end record offset');
+  if (recordOffset > locatorOffset - ZIP64_EOCD_FIXED_SIZE) {
+    reject('Archive ZIP64 end record overlaps its locator');
+  }
   const record = await readAt(handle, window, recordOffset, ZIP64_EOCD_FIXED_SIZE);
   if (record.readUInt32LE(0) !== ZIP64_EOCD_SIGNATURE)
     reject('Archive ZIP64 end record is missing');
+  const recordSize = record.readBigUInt64LE(4);
+  if (recordSize < 44n || BigInt(recordOffset) + 12n + recordSize !== BigInt(locatorOffset)) {
+    reject('Archive ZIP64 end record length is inconsistent with its locator');
+  }
   if (
     record.readUInt32LE(16) !== 0 ||
     record.readUInt32LE(20) !== 0 ||

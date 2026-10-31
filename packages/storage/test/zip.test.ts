@@ -728,6 +728,9 @@ for (const field of ['disk number', 'directory disk', 'disk entry count', 'membe
 
 for (const field of [
   'valid',
+  'valid extension',
+  'short record',
+  'overlong record',
   'locator disk',
   'volume count',
   'record disk',
@@ -738,9 +741,11 @@ for (const field of [
     const original = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
     const endOffset = original.length - 22;
     const end = Buffer.from(original.subarray(endOffset));
-    const record = Buffer.alloc(56);
+    const record = Buffer.alloc(field === 'valid extension' ? 60 : 56);
     record.writeUInt32LE(0x06064b50, 0);
-    record.writeBigUInt64LE(44n, 4);
+    record.writeBigUInt64LE(field === 'valid extension' ? 48n : 44n, 4);
+    if (field === 'short record') record.writeBigUInt64LE(43n, 4);
+    if (field === 'overlong record') record.writeBigUInt64LE(45n, 4);
     record.writeUInt16LE(45, 12);
     record.writeUInt16LE(45, 14);
     record.writeBigUInt64LE(1n, 24);
@@ -762,7 +767,7 @@ for (const field of [
       Buffer.concat([original.subarray(0, endOffset), record, locator, end]),
     );
     t.after(() => rm(staged.root, { recursive: true, force: true }));
-    if (field === 'valid') {
+    if (field === 'valid' || field === 'valid extension') {
       const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '0');
       assert.ok(entry);
       assert.deepEqual(
