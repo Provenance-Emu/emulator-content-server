@@ -65,7 +65,7 @@ these environments:
 - **Chromium 145, full ECS page:** authenticated original ELF upload, selected
   plugin, normal startup, real emulated RAM changes, a green compositor pixel
   `[0,252,0]`, no page errors, and the unchanged opaque sandbox. The focused case
-  passed in 26.8 seconds. Headless Chromium explicitly enables its software WebGL
+  passed again in 24.1 seconds after merging the latest controller/input UI. Headless Chromium explicitly enables its software WebGL
   renderer; this does not establish hardware GPU or game performance.
 - **Playwright WebKit 26.0, opaque runtime harness:** mode 6, successful JIT
   dispatches `4,281,071 → 5,959,895`, guest counter `4,129,486 → 5,808,310`, and
@@ -84,6 +84,16 @@ program's fixed RAM location, not a production arbitrary-memory API. It preserve
 the production sandbox/CSP and requires an advancing JIT counter, changing guest
 RAM and a real green screenshot to pass. Its local receipt is not an attestation
 from an untrusted remote browser.
+
+## Local installation
+
+The verified package is installed and enabled through the owner-only management
+API on the running local server. Reload the UI and select **Flycast (experimental
+WASM JIT)** for Dreamcast. Both installed assets were fetched through authenticated
+HTTP and checked against the accepted hashes. The existing default emulator and
+all 807 saved metadata/artwork choices are unchanged; no matching or scanning job
+was started. The private package and detailed local receipts remain in the ignored
+`dist-release/flycast-jit-20261030` directory.
 
 ## Build, validation and distribution
 
