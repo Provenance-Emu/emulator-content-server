@@ -1,4 +1,8 @@
-import type { PlayerCoreDescriptor, WebPlayerDescriptor } from '@ecs/client';
+import {
+  isPlayerCoreOptions,
+  type PlayerCoreDescriptor,
+  type WebPlayerDescriptor,
+} from '@ecs/client';
 import { approvedDolphinBuild, type IsolationBroker } from './dolphin.js';
 export type BrowserCore = PlayerCoreDescriptor | WebPlayerDescriptor;
 export interface RuntimeContext {
@@ -115,6 +119,9 @@ export function validateProfile(core: BrowserCore): void {
   if ('profileVersion' in core) {
     if (
       core.profileVersion !== 1 ||
+      (core.defaultCoreOptions !== undefined &&
+        (core.runtime !== 'retroarch-emscripten-esm' ||
+          !isPlayerCoreOptions(core.defaultCoreOptions))) ||
       !/^[a-z0-9][a-z0-9._-]{0,119}$/.test(core.id) ||
       !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(
         core.runtime,

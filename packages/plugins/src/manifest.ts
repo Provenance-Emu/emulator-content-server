@@ -90,6 +90,7 @@ export interface WebPlayerConfig {
   runtime: 'emscripten-esm-v1' | 'retroarch-emscripten-esm' | 'dolphin-wasm-esm';
   filesystem: 'memfs';
   systemFilesDirectory?: string;
+  defaultCoreOptions?: Record<string, string>;
   threaded: boolean;
   saveCompletion: 'none' | 'command-reply-v1';
   contentExtensions: string[];
@@ -296,6 +297,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
       'wasm',
       'assets',
       'systemFilesDirectory',
+      'defaultCoreOptions',
     ],
     'player.web',
   );
@@ -323,6 +325,27 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
       'Runtime threading or save completion is unsupported',
     );
   const systemFilesDirectory = r.systemFilesDirectory;
+  const defaultCoreOptions = r.defaultCoreOptions;
+  if (defaultCoreOptions !== undefined) {
+    const options = object(defaultCoreOptions, 'defaultCoreOptions');
+    if (
+      runtime !== 'retroarch-emscripten-esm' ||
+      Object.keys(options).length > 64 ||
+      Object.entries(options).some(
+        ([key, value]) =>
+          !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(key) ||
+          ['__proto__', 'constructor', 'prototype'].includes(key) ||
+          typeof value !== 'string' ||
+          !value.length ||
+          value.length > 512 ||
+          value.trim() !== value ||
+          /["\\|]/.test(value) ||
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: Prevent configuration injection.
+          /[\x00-\x1f\x7f]/.test(value),
+      )
+    )
+      throw new PluginError('invalid-manifest', 'Invalid default core options');
+  }
   if (
     systemFilesDirectory !== undefined &&
     (typeof systemFilesDirectory !== 'string' ||
@@ -395,6 +418,9 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     filesystem: 'memfs',
     threaded: r.threaded as boolean,
     ...(typeof systemFilesDirectory === 'string' ? { systemFilesDirectory } : {}),
+    ...(defaultCoreOptions !== undefined
+      ? { defaultCoreOptions: { ...(defaultCoreOptions as Record<string, string>) } }
+      : {}),
     saveCompletion,
     contentExtensions,
     maxContentBytes: Number(r.maxContentBytes),

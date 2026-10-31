@@ -181,7 +181,12 @@ export async function startPlayer(
     );
     await runtime.FS.writeFile(
       '/ecs/core-options.cfg',
-      new TextEncoder().encode(coreOptionsConfig(options.preferences?.options ?? {})),
+      new TextEncoder().encode(
+        coreOptionsConfig(
+          options.preferences?.options ?? {},
+          'profileVersion' in prepared.core ? prepared.core.defaultCoreOptions : undefined,
+        ),
+      ),
     );
     for (const file of prepared.contentFiles ?? [])
       await runtime.FS.writeFile(file.path, file.bytes);

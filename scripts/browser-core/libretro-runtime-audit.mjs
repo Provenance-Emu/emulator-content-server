@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isPlayerCoreOptions } from '../../packages/client-ts/dist/src/client.js';
 
 const repository = fileURLToPath(new URL('../..', import.meta.url));
 const require = createRequire(join(repository, 'apps/web/package.json'));
@@ -82,6 +83,7 @@ export async function smokeLibretroPairs(pairs, output) {
             originalNesPath,
             originalContentPath,
             contentExtension = 'nes',
+            coreOptions = {},
           } = pairs[smokeCursor++],
           page = await browser.newPage(),
           pageErrors = [],
@@ -98,10 +100,12 @@ export async function smokeLibretroPairs(pairs, output) {
           const nonce = randomBytes(16).toString('hex');
           if (!/^[a-z0-9]{1,12}$/.test(contentExtension))
             throw Error('Invalid original-program extension');
+          if (!isPlayerCoreOptions(coreOptions))
+            throw Error('Invalid original-program core options');
           const originalPath = originalContentPath ?? originalNesPath;
           const originalContent = originalPath ? [...(await readFile(originalPath))] : null;
           const result = await page.evaluate(
-            async ({ core, nonce, originalContent, contentExtension }) => {
+            async ({ core, nonce, originalContent, contentExtension, coreOptions }) => {
               const loader = await (await fetch(`/${core}_libretro.js`)).arrayBuffer();
               const wasm = await (await fetch(`/${core}_libretro.wasm`)).arrayBuffer();
               const frame = document.createElement('iframe');
@@ -187,9 +191,17 @@ export async function smokeLibretroPairs(pairs, output) {
                       };
                       await write(contentPath, originalContent);
                       await write(
+                        '/ecs/core-options.cfg',
+                        new TextEncoder().encode(
+                          Object.entries(coreOptions)
+                            .map(([key, value]) => `${key} = "${value}"\n`)
+                            .join(''),
+                        ),
+                      );
+                      await write(
                         '/ecs/retroarch.cfg',
                         new TextEncoder().encode(
-                          'audio_enable = "false"\nvideo_driver = "gl"\nvideo_shader_enable = "false"\nmenu_driver = "null"\nsystem_directory = "/ecs/system"\nsavefile_directory = "/ecs/saves"\nsavestate_directory = "/ecs/states"\nconfig_save_on_exit = "false"\n',
+                          'audio_enable = "false"\nvideo_driver = "gl"\nvideo_shader_enable = "false"\nmenu_driver = "null"\nsystem_directory = "/ecs/system"\nsavefile_directory = "/ecs/saves"\nsavestate_directory = "/ecs/states"\nconfig_save_on_exit = "false"\ncore_options_path = "/ecs/core-options.cfg"\n',
                         ),
                       );
                       await rpc('main', ['-v', '--config', '/ecs/retroarch.cfg', contentPath]);
@@ -244,7 +256,7 @@ export async function smokeLibretroPairs(pairs, output) {
                 frame.remove();
               }
             },
-            { core, nonce, originalContent, contentExtension },
+            { core, nonce, originalContent, contentExtension, coreOptions },
           );
           results.push({ core, ...result, pageErrors, unexpectedRequests });
         } catch (error) {

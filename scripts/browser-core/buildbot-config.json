@@ -111,12 +111,17 @@
         "name": "Atari800 (Atari 5200)",
         "systems": ["com.provenance.5200"],
         "extensions": ["a52", "car", "bin", "rom"],
-        "maxContentBytes": 1048576
+        "maxContentBytes": 1048576,
+        "defaultCoreOptions": {
+          "atari800_system": "5200"
+        },
+        "version": "1.1.0"
       },
       "licenses": [
         "RetroArch GPL-3.0-or-later",
         "Atari800 (Atari 5200): GPL-2.0-or-later; preserve all upstream dependency notices"
-      ]
+      ],
+      "patches": ["atari800-explicit-machine.patch"]
     },
     {
       "id": "pokemini",

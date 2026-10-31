@@ -10,6 +10,11 @@ test('software build plans select static single-thread targets and reject arbitr
   assert.ok(plan.frontendFlags.includes('LIBRETRO=stella2014'));
   assert.ok(plan.frontendFlags.includes('HAVE_THREADS=0'));
   assert.ok(plan.frontendFlags.includes('HAVE_AUDIOWORKLET=0'));
+  assert.deepEqual(
+    softwareCoreManifest('atari800', Buffer.from('loader'), Buffer.from([0])).player.web
+      .defaultCoreOptions,
+    { atari800_system: '5200' },
+  );
   assert.throws(() => softwareCorePlan('prosystem'), /software recipe/);
   assert.throws(() => softwareCorePlan('../../custom'), /software recipe/);
 });

@@ -1,6 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ContentClient } from '../src/client.js';
+import { ContentClient, isPlayerCoreOptions } from '../src/client.js';
+
+test('core defaults accept bounded string maps and reject config injection, prototype keys and arrays', () => {
+  assert.equal(isPlayerCoreOptions({ atari800_system: '5200' }), true);
+  for (const value of [
+    null,
+    [],
+    new Date(),
+    { x: 1 },
+    { x: '' },
+    { x: '"\na=b' },
+    { x: 'a|b' },
+    { x: 'a\\b' },
+    { constructor: 'x' },
+    JSON.parse('{"__proto__":"x"}'),
+    Object.fromEntries(Array.from({ length: 65 }, (_, i) => [`x${i}`, 'v'])),
+  ])
+    assert.equal(isPlayerCoreOptions(value), false);
+});
 
 test('emulator management uses fixed authenticated routes and bounded native package uploads', async (t) => {
   const original = globalThis.fetch;

@@ -70,7 +70,7 @@ export function softwareCoreManifest(id, loader, wasm) {
     id: `org.libretro.${id}`,
     name: core.software.name,
     kind: 'player',
-    version: '1.0.0',
+    version: core.software.version ?? '1.0.0',
     engine: 'ecs.plugin/1',
     apps: ['org.provenance-emu.provenance'],
     player: {
@@ -81,6 +81,9 @@ export function softwareCoreManifest(id, loader, wasm) {
         runtime: 'retroarch-emscripten-esm',
         filesystem: 'memfs',
         threaded: false,
+        ...(core.software.defaultCoreOptions
+          ? { defaultCoreOptions: core.software.defaultCoreOptions }
+          : {}),
         saveCompletion: 'none',
         contentExtensions: core.software.extensions,
         maxContentBytes: core.software.maxContentBytes,
@@ -152,12 +155,20 @@ export function buildSoftwareCore(frontendInput, coreInput, output, id) {
       core = join(build, id);
     snapshotSource(frontendInput, frontend, plan.frontendPin);
     snapshotSource(coreInput, core, plan.core.revision);
+    for (const patch of plan.core.patches ?? []) {
+      if (!/^[a-z0-9-]+\.patch$/.test(patch)) throw Error('Invalid source patch name');
+      run(
+        'git',
+        ['apply', '--ignore-whitespace', fileURLToPath(new URL(patch, import.meta.url))],
+        core,
+      );
+    }
     const [loader, wasm] = compile(plan, frontend, core),
       manifest = softwareCoreManifest(id, loader, wasm);
     writePlayer(output, manifest, loader, wasm);
     writeFileSync(
       `${output}.build.json`,
-      `${JSON.stringify({ id, frontendPin: plan.frontendPin, corePin: plan.core.revision, sdk: config.emsdk.version, compilerRevision: config.emsdk.compilerRevision, coreFlags: plan.coreFlags, frontendFlags: plan.frontendFlags, manifest }, null, 2)}\n`,
+      `${JSON.stringify({ id, frontendPin: plan.frontendPin, corePin: plan.core.revision, sdk: config.emsdk.version, compilerRevision: config.emsdk.compilerRevision, coreFlags: plan.coreFlags, frontendFlags: plan.frontendFlags, patches: plan.core.patches ?? [], manifest }, null, 2)}\n`,
       { flag: 'wx' },
     );
     return manifest;

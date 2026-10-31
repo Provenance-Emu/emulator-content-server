@@ -11,6 +11,7 @@ export {
   type DownloadResponse,
   type DownloadSink,
   interpretDownload,
+  isPlayerCoreOptions,
   isPlayerSystemFileName,
   type LibraryBrowseQuery,
   type LibraryScope,

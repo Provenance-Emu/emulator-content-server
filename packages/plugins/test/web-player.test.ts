@@ -36,6 +36,31 @@ test('web player profiles are optional and validated without executing code', ()
   const { web: _, ...legacy } = m.player;
   assert.equal(parseManifest({ ...m, player: legacy }).player?.web, undefined);
 });
+
+test('plugin startup options preserve safe values and reject config injection or unbounded maps', () => {
+  const m = manifest();
+  const web = { ...m.player.web, runtime: 'retroarch-emscripten-esm' };
+  const parse = (defaultCoreOptions: unknown) =>
+    parseManifest({ ...m, player: { ...m.player, web: { ...web, defaultCoreOptions } } }).player
+      ?.web;
+  assert.deepEqual(parse({ atari800_system: '5200' })?.defaultCoreOptions, {
+    atari800_system: '5200',
+  });
+  for (const options of [
+    null,
+    [],
+    { a: 1 },
+    { a: '' },
+    { a: 'x"\ny="z' },
+    { a: 'x\\y' },
+    { a: 'x|y' },
+    { a: ' x ' },
+    { constructor: 'x' },
+    JSON.parse('{"__proto__":"x"}'),
+    Object.fromEntries(Array.from({ length: 65 }, (_, i) => [`a${i}`, 'x'])),
+  ])
+    assert.throws(() => parse(options));
+});
 for (const patch of [
   { threaded: true },
   { filesystem: 'idbfs' },

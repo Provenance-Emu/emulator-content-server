@@ -29,6 +29,52 @@ const profile: WebPlayerDescriptor = {
   },
   assets: [],
 };
+
+test('plugin startup defaults are staged before main while remembered choices override them', async () => {
+  const f = fixture();
+  const resources = await f.client.playerCoreAssets(f.core.id);
+  const { sha256Bytes } = await import('@ecs/client');
+  const selected = {
+    ...profile,
+    runtime: 'retroarch-emscripten-esm' as const,
+    defaultCoreOptions: { atari800_system: '5200', region: 'NTSC' },
+    loader: {
+      ...profile.loader,
+      sizeBytes: resources.loader.bytes.length,
+      sha256: await sha256Bytes(resources.loader.bytes),
+    },
+    wasm: { ...profile.wasm, sha256: await sha256Bytes(resources.wasm.bytes) },
+  };
+  f.item.systemIdentifier = 'com.provenance.gba';
+  const rom = f.manifest.files[0];
+  assert.ok(rom);
+  rom.relativePath = 'game.gba';
+  f.client.playerProfile = async () => selected;
+  f.client.playerProfileAssets = async () => ({ ...resources, assets: [] });
+  const session = await startPlayer(
+    f.client,
+    { kind: 'asset', itemId: 'item', assetId: 'rom' },
+    {
+      canvas: {} as HTMLCanvasElement,
+      importer: f.importer,
+      profileId: selected.id,
+      preferences: { options: { region: 'PAL' }, shader: 'off' },
+    },
+  );
+  assert.equal(
+    new TextDecoder().decode(f.fs.get('/ecs/core-options.cfg')),
+    'atari800_system = "5200"\nregion = "PAL"\n',
+  );
+  assert.ok(f.events.indexOf('write:/ecs/core-options.cfg') < f.events.indexOf('main'));
+  const { profileIdentity } = await import('../src/player/runtime.js');
+  const { defaultCoreOptions: _, ...prior } = selected;
+  assert.equal(
+    profileIdentity(prior),
+    profileIdentity(selected),
+    'Defaults must not invalidate remembered per-build user preferences',
+  );
+  session.releaseLoader();
+});
 test('a compatible plugin provides a Play link with its public profile identifier', () => {
   const f = fixture();
   f.item.systemIdentifier = 'com.provenance.gba';

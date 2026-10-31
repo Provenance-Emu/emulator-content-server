@@ -28,7 +28,7 @@ export function buildPlan(id) {
     parallelism: 2,
     publication: 'none',
     acceptance: ['stella2014', 'atari800'].includes(core.id)
-      ? `production-opaque-original-${core.id === 'stella2014' ? 'a26' : 'a52'}-video`
+      ? `production-opaque-original-${core.id === 'stella2014' ? 'a26' : 'bin'}-video`
       : 'production-opaque-factory-memfs-only',
   };
 }
@@ -100,7 +100,7 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
   }
   if (id === 'atari800') {
     const { atari5200SmokeCartridge } = await import('./generate-5200-smoke.mjs');
-    contentExtension = 'a52';
+    contentExtension = 'bin';
     originalContentPath = join(output, 'original.a52');
     await writeFile(originalContentPath, atari5200SmokeCartridge(), { flag: 'wx' });
   }
@@ -110,6 +110,7 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
         core: id.replaceAll('-', '_'),
         loaderPath: join(player, web.loader.file),
         wasmPath: join(player, web.wasm.file),
+        coreOptions: web.defaultCoreOptions ?? {},
         ...(originalContentPath ? { originalContentPath, contentExtension } : {}),
       },
     ],
@@ -134,6 +135,14 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
       const tar = join(output, `${name}.tar`);
       run('git', ['archive', '--format=tar', `--prefix=${name}/`, '-o', tar, 'HEAD'], checkoutPath);
       run('tar', ['-xf', tar, '-C', source], output);
+    }
+    for (const patch of plan.core.patches ?? []) {
+      if (!/^[a-z0-9-]+\.patch$/.test(patch)) throw Error('Invalid source patch name');
+      run(
+        'git',
+        ['apply', '--ignore-whitespace', join(repository, 'scripts/browser-core', patch)],
+        join(source, plan.core.sourceDirectory),
+      );
     }
     if (plan.core.rawOutput) {
       run(
@@ -168,7 +177,13 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
       );
     } else await copyFile(`${player}.build.json`, join(source, 'ECS-BUILD.json'));
     await mkdir(join(source, 'ecs-recipes'));
-    for (const file of [plan.core.recipe, plan.core.rebuild, 'source.mjs', 'buildbot-config.json'])
+    for (const file of [
+      plan.core.recipe,
+      plan.core.rebuild,
+      'source.mjs',
+      'buildbot-config.json',
+      ...(plan.core.patches ?? []),
+    ])
       await copyFile(
         join(repository, 'scripts/browser-core', file),
         join(source, 'ecs-recipes', file),

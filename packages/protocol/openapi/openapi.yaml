@@ -1150,6 +1150,12 @@ components:
         runtime: { type: string, enum: [emscripten-esm-v1, retroarch-emscripten-esm, dolphin-wasm-esm] }
         filesystem: { type: string, enum: [memfs] }
         systemFilesDirectory: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$', maxLength: 64, description: Optional single folder below the emulator system directory for all named support files. }
+        defaultCoreOptions:
+          type: object
+          maxProperties: 64
+          propertyNames: { pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$', not: { enum: [__proto__, constructor, prototype] } }
+          additionalProperties: { type: string, minLength: 1, maxLength: 512, pattern: '^(?!\s)(?![\s\S]*\s$)[^"\\|\u0000-\u001f\u007f]+$' }
+          description: RetroArch startup defaults. Saved user options take precedence. Keys exclude prototype names; values exclude controls, quotes, backslashes, pipes and surrounding whitespace.
         threaded: { type: boolean, description: True only for the isolated Dolphin runtime. }
         saveCompletion: { type: string, enum: [none, command-reply-v1] }
         contentExtensions: { type: array, items: { type: string }, minItems: 1, maxItems: 32 }
@@ -1159,6 +1165,8 @@ components:
         wasm: { $ref: '#/components/schemas/PlayerCoreResource' }
         assets: { type: array, items: { $ref: '#/components/schemas/WebPlayerAsset' }, maxItems: 16 }
       allOf:
+        - if: { required: [defaultCoreOptions] }
+          then: { properties: { runtime: { const: retroarch-emscripten-esm } } }
         - if: { properties: { runtime: { const: dolphin-wasm-esm } } }
           then: { properties: { threaded: { const: true }, saveCompletion: { const: none } } }
           else: { properties: { threaded: { const: false } } }

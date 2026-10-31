@@ -1661,6 +1661,32 @@ export function isPlayerSystemFileName(name: string): boolean {
   );
 }
 
+/** Bounded RetroArch option defaults safe to serialize as quoted configuration. */
+export function isPlayerCoreOptions(value: unknown): value is Record<string, string> {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    ![Object.prototype, null].includes(Object.getPrototypeOf(value))
+  )
+    return false;
+  const entries = Object.entries(value);
+  return (
+    entries.length <= 64 &&
+    entries.every(
+      ([key, option]) =>
+        /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(key) &&
+        !['__proto__', 'constructor', 'prototype'].includes(key) &&
+        typeof option === 'string' &&
+        option.length > 0 &&
+        option.length <= 512 &&
+        option.trim() === option &&
+        !/["\\|]/.test(option) &&
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: Prevent configuration injection.
+        !/[\x00-\x1f\x7f]/.test(option),
+    )
+  );
+}
 function validatePlayerId(id: string): void {
   if (
     typeof id !== 'string' ||
@@ -1677,6 +1703,8 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     p.profileVersion !== 1 ||
     !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(p.runtime) ||
     p.filesystem !== 'memfs' ||
+    (p.defaultCoreOptions !== undefined &&
+      (p.runtime !== 'retroarch-emscripten-esm' || !isPlayerCoreOptions(p.defaultCoreOptions))) ||
     (p.systemFilesDirectory !== undefined &&
       (typeof p.systemFilesDirectory !== 'string' ||
         !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(p.systemFilesDirectory) ||
