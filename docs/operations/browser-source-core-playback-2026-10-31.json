@@ -1,0 +1,245 @@
+{
+  "date": "2026-10-31",
+  "scope": "Headless Chromium authenticated application playback; audio disabled before main and browser muted; isolated catalogs and pages cleaned up.",
+  "cases": [
+    {
+      "id": "org.libretro.mupen64plus-next",
+      "browser": "145.0.7632.6",
+      "kind": "n64-original",
+      "contentBytes": 4096,
+      "contentSha256": "f5b4269343decaa9b93900cf8583a311ec7fc32782a6945e9d3b77a9baa07685",
+      "firmwareSupplied": [],
+      "before": {
+        "width": 624,
+        "height": 468,
+        "colors": 35,
+        "center": [0, 128, 0, 255],
+        "digest": "f0f51fe73444dd7ba95c799c73595990ec772e72ac75b6c8bc6269c95a98ea60",
+        "titleDigest": "4c9f3f0d9f2539541301ae63d1a14dd316df635c76ade26c9fb2f801289fe508"
+      },
+      "pressed": {
+        "width": 624,
+        "height": 468,
+        "colors": 35,
+        "center": [0, 0, 128, 255],
+        "digest": "3b545109599181f985ea1519fc7f1dfafda8ba17b90bb60ba286acbe579df58c",
+        "titleDigest": "894c3b26e09f73e02d98e195c8694d5af5ea93e57d2395171bd59671da47b501"
+      },
+      "after": {
+        "width": 624,
+        "height": 468,
+        "colors": 35,
+        "center": [0, 128, 0, 255],
+        "digest": "e55615599be45ae9681ab828e5343c11c7919baeb7353a3dcddea9cfac470512",
+        "titleDigest": "4c9f3f0d9f2539541301ae63d1a14dd316df635c76ade26c9fb2f801289fe508"
+      },
+      "errors": []
+    },
+    {
+      "id": "org.libretro.mednafen-pcfx",
+      "browser": "145.0.7632.6",
+      "kind": "pcfx-homebrew",
+      "contentBytes": 8585,
+      "contentSha256": "e38c5fef93ec58f0aafcc941194ebb55368a3a8afc3390b507cc1a735831208c",
+      "firmwareSupplied": ["pcfx.rom"],
+      "before": {
+        "width": 624,
+        "height": 468,
+        "colors": 2,
+        "center": [0, 0, 0, 255],
+        "digest": "7d76a521e1c837ea36cfbcbb62b9ca9f174a3b3dba510efbc4a59ff44050d597",
+        "titleDigest": "35d0fc5adce7774d3b85924de3a9657e70a4845860e2a9d7ffd653ebaf0e498a"
+      },
+      "pressed": {
+        "width": 624,
+        "height": 468,
+        "colors": 2,
+        "center": [0, 0, 0, 255],
+        "digest": "4e7ab3e6dbb96d1881d192b0df77b3db4591fe5bf4d548de9296a6e3b47dce11",
+        "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+      },
+      "after": {
+        "width": 624,
+        "height": 468,
+        "colors": 1,
+        "center": [0, 0, 0, 255],
+        "digest": "a6b50ed413205679546f450600920204396af4112f5478b6f96db6fb9c86165a",
+        "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+      },
+      "errors": []
+    },
+    {
+      "id": "org.libretro.pokemini",
+      "browser": "145.0.7632.6",
+      "kind": "pokemini-original",
+      "contentBytes": 32768,
+      "contentSha256": "30a2a0f5b1a39375f10bf7b1d5119a2ea0d6dafe5f648a826e28672b0867f05b",
+      "firmwareSupplied": [],
+      "before": {
+        "width": 624,
+        "height": 468,
+        "colors": 8,
+        "center": [156, 178, 156, 255],
+        "digest": "189c3056c8c820a3c0fdee531f71037450775ca04f66e62f73676ecb68405823",
+        "titleDigest": "d073226592b88b71ac453ac7beb59aaa972f99aecfc06e133fecc6b07fe5ceb1"
+      },
+      "pressed": {
+        "width": 624,
+        "height": 468,
+        "colors": 9,
+        "center": [16, 40, 16, 255],
+        "digest": "97dd4abbdacd91c1caf96245481ede6e2ecf8d5db86314a1550d1b6cff530cd7",
+        "titleDigest": "327f78c70697c2b274993591827e768fe71de0a10c63a7030b8e919411c396f8"
+      },
+      "after": {
+        "width": 624,
+        "height": 468,
+        "colors": 8,
+        "center": [156, 178, 156, 255],
+        "digest": "6d589aaee9b4a002433b09fa9b7bbf1c910a68693517d90182c395b8245fa5c9",
+        "titleDigest": "d073226592b88b71ac453ac7beb59aaa972f99aecfc06e133fecc6b07fe5ceb1"
+      },
+      "errors": []
+    },
+    {
+      "id": "org.libretro.sameduck",
+      "browser": "145.0.7632.6",
+      "kind": "megaduck-original",
+      "contentBytes": 32768,
+      "contentSha256": "b761f1661d889d287de7f35e6141fe422f35695e47a48b5fa33ea8d495b9c66b",
+      "firmwareSupplied": [],
+      "before": {
+        "width": 624,
+        "height": 468,
+        "colors": 5,
+        "center": [170, 170, 170, 255],
+        "digest": "986df5c7613eecd8a4173b9c752f790dbee39abcd0fdc1212c5220e5ed16efe7",
+        "titleDigest": "94a9b0239697589201574856fb0bcb689b098a235ef46c6e7fbe93acca548def"
+      },
+      "pressed": {
+        "width": 624,
+        "height": 468,
+        "colors": 4,
+        "center": [0, 0, 0, 255],
+        "digest": "d0007a78f0d5fe30c9c181baf09ccabdc0c4aba4c35e5e18de0e4c5dc84e4de6",
+        "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+      },
+      "after": {
+        "width": 624,
+        "height": 468,
+        "colors": 5,
+        "center": [170, 170, 170, 255],
+        "digest": "e28345f02e2d30a17d42012211aeba4182ac7d27831f8b1ff9af60f11fce0d96",
+        "titleDigest": "94a9b0239697589201574856fb0bcb689b098a235ef46c6e7fbe93acca548def"
+      },
+      "errors": []
+    }
+  ],
+  "n64": {
+    "pins": {
+      "core": "15bada85906593376e8fd697f1b0b3af3a20f512",
+      "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "sdk": "3.1.46",
+      "compiler": "19607820c447a13fd8d0b7680c56148427d6e1b8"
+    },
+    "coreFlags": [
+      "platform=emscripten",
+      "CC=emcc",
+      "CXX=em++",
+      "AR=emar",
+      "STATIC_LINKING=1",
+      "GLES3=1",
+      "FORCE_GLES3=1",
+      "HAVE_PARALLEL_RSP=0",
+      "HAVE_PARALLEL_RDP=0",
+      "HAVE_THR_AL=0",
+      "LLE=0",
+      "GIT_VERSION=\" 15bada8\""
+    ],
+    "frontendFlags": [
+      "ECS_N64_LINK_OPT=0",
+      "ASSERTIONS=0",
+      "LIBRETRO=mupen64plus_next",
+      "HAVE_OPENGLES3=1",
+      "HAVE_THREADS=0",
+      "PROXY_TO_PTHREAD=0",
+      "ASYNC=1",
+      "MIN_ASYNC=0",
+      "JSPI=0",
+      "HAVE_WASMFS=0",
+      "HAVE_EXTRA_WASMFS=0",
+      "HAVE_AUDIOWORKLET=0",
+      "HAVE_7ZIP=0",
+      "HAVE_NETWORKING=0",
+      "HAVE_REWIND=0",
+      "HAVE_RUNAHEAD=0",
+      "GIT_VERSION=4d4bfc0"
+    ],
+    "publication": "operator-local only: GLideN64 GPL-2.0 upgrade permission unresolved",
+    "loaderMinifier": {
+      "tool": "tools/acorn-optimizer.js",
+      "sha256": "dbf75bcceb3806608dc96e9b8f9f318e5265948be8749f012c19a37bf88de968",
+      "passes": ["minifyWhitespace", "--exportES6"],
+      "nodeVersion": "v22.22.2",
+      "rawLoaderSha256": "11e911110b74b1e4039f5c1d09ab48d50a606acfd675151d976c5ec1b756f52d"
+    },
+    "fiberSha256": "9529b9b2b79c8d35d79f2b131769757c2f1f10fdd719edc59b6414fb70018e70",
+    "recipeSha256": "1183c280c246cdcf383b48daf65f412a25ab5211b5c9e339613cf0cf89df28a1",
+    "sourceDiffSha256": "b325ff73d5daea97dea60b930aa797454855305ca09c4509b28fd082f24fdc87",
+    "frontendDiffSha256": "161d7250d6826fddd246327fe16bc666cb73405a148b1c9eca92074c0f517390",
+    "sources": {
+      "core": "https://github.com/libretro/mupen64plus-libretro-nx",
+      "frontend": "https://github.com/libretro/RetroArch",
+      "sdk": "https://github.com/emscripten-core/emsdk"
+    },
+    "manifest": {
+      "id": "org.libretro.mupen64plus-next",
+      "name": "Mupen64Plus-Next (operator-local fiber port)",
+      "kind": "player",
+      "version": "0.1.0",
+      "engine": "ecs.plugin/1",
+      "apps": ["org.provenance-emu.provenance"],
+      "player": {
+        "systems": ["com.provenance.n64"],
+        "module": "core.wasm",
+        "web": {
+          "profileVersion": 1,
+          "runtime": "retroarch-emscripten-esm",
+          "filesystem": "memfs",
+          "threaded": false,
+          "saveCompletion": "none",
+          "contentExtensions": ["z64", "n64", "v64"],
+          "maxContentBytes": 134217728,
+          "defaultCoreOptions": {
+            "mupen64plus-cpucore": "cached_interpreter",
+            "mupen64plus-rdp-plugin": "gliden64",
+            "mupen64plus-rsp-plugin": "hle",
+            "mupen64plus-ThreadedRenderer": "False",
+            "mupen64plus-43screensize": "320x240"
+          },
+          "buildVersion": "RetroArch 4d4bfc0f / Mupen64Plus-Next 15bada85 / emcc 3.1.46 / fibers",
+          "loader": {
+            "file": "loader.js",
+            "sha256": "6db1e6fd05fbb883640eb4041bfdcdcf4353f958417c6f3aa1d350aa9933a5eb"
+          },
+          "wasm": {
+            "file": "core.wasm",
+            "sha256": "f636955f81624090048332642160c16c7f6525df1868bb867f57d4239f1315f9"
+          },
+          "assets": []
+        }
+      }
+    }
+  },
+  "pcfxHomebrew": {
+    "repository": "https://github.com/gameblabla/simplebattlefx-pcfx",
+    "revision": "50a1329a9fb45f41d6540db219cfe7fad9adeb68",
+    "license": "MIT",
+    "evidence": "After BIOS intro, title changes to the Duel/Survival menu on Start. Title-region digest excludes blinking prompt."
+  },
+  "limits": [
+    "N64 original CPU/VI/SI program does not establish RSP/RDP commercial-game or performance coverage.",
+    "PC-FX commercial disc coverage remains unverified.",
+    "No synchronized-save compatibility claimed."
+  ]
+}

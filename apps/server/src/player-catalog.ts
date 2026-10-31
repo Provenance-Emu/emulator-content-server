@@ -98,7 +98,7 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     name: 'PokeMini (Pokémon Mini)',
     systems: ['com.provenance.pokemonmini'],
     description:
-      'Pokémon Mini software core with open-source FreeBIOS. Browser startup verified; commercial games, peripherals and synchronized saves are unverified.',
+      'Pokémon Mini software core with open-source FreeBIOS. Cartridge rendering, controls and Pokémon Party Mini boot verified; peripherals and synchronized saves are unverified.',
     available: true,
     reason: null,
     downloadBytes: 3753243,
@@ -122,7 +122,7 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     name: 'SameDuck (Mega Duck)',
     systems: ['com.provenance.megaduck'],
     description:
-      'Mega Duck software core. Browser startup verified; commercial games and synchronized saves are unverified.',
+      'Mega Duck software core. Original cartridge rendering and controls verified; commercial games and synchronized saves are unverified.',
     available: true,
     reason: null,
     downloadBytes: 3614005,
@@ -134,12 +134,25 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     name: 'Beetle PC-FX (CHD)',
     systems: ['com.provenance.pcfx'],
     description:
-      'PC-FX software core with CHD support, up to 512 MiB. Upload pcfx.rom using BIOS / support files. Browser startup verified; disc boot and synchronized saves are unverified.',
+      'PC-FX software core with CHD support, up to 512 MiB. Upload pcfx.rom using BIOS / support files. CHD homebrew boot and controls verified; commercial discs and synchronized saves are unverified.',
     available: true,
     reason: null,
     downloadBytes: 4142979,
     url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/mednafen-pcfx.ecsplayer',
     sha256: '8900e3f1b32bfa0f1f7532a3b1dbe480447325eb57fb378d6a08e7d088846496',
+  },
+  {
+    id: 'org.libretro.mupen64plus-next',
+    name: 'Mupen64Plus-Next (experimental browser port)',
+    systems: ['com.provenance.n64'],
+    description:
+      'Nintendo 64 interpreter with WebGL2 and real WASM fibers. Original cartridge execution, VI video and controls verified; commercial games and synchronized saves are unverified.',
+    available: false,
+    reason:
+      'Use the operator-local source build; renderer redistribution permission remains unresolved.',
+    downloadBytes: null,
+    url: null,
+    sha256: null,
   },
   {
     id: 'org.flycast.wasm-jit',

@@ -111,8 +111,28 @@ export function verifiedInputBuild(core: BrowserCore): boolean {
   return (
     approvedDolphinBuild(core) ||
     (core.runtime === 'retroarch-emscripten-esm' &&
-      core.loader.sha256 === '4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8' &&
-      core.wasm.sha256 === 'c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205')
+      [
+        [
+          '6db1e6fd05fbb883640eb4041bfdcdcf4353f958417c6f3aa1d350aa9933a5eb',
+          'f636955f81624090048332642160c16c7f6525df1868bb867f57d4239f1315f9',
+        ],
+        [
+          '4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8',
+          'c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205',
+        ],
+        [
+          'cf903a0a6c7482e7db633334c6e55e8b371522dfa48016c8514faa37280dcdfd',
+          'f318fb9c4294db8c945af4fdeaf980371151d6ce0a48e1ddb717d82f042e443a',
+        ],
+        [
+          '9f99c8603f17664a1a635ddccb0acc89407f8ef30f9ed239c36e1f9710fb4f63',
+          'c2ca666de2dcb066fa42dad6c3d717466acee4ed785b13877a4b9a33da8f033e',
+        ],
+        [
+          'a6a89fe471d2f0f54dc0b500f01bbd6b8265623f9b30548d2ccc2b819780c4f6',
+          '1d2b7aef7b3bf7a3fe3d8c752fdfe933fe73e143f8e8716e237190823e133d57',
+        ],
+      ].some(([loader, wasm]) => core.loader.sha256 === loader && core.wasm.sha256 === wasm))
   );
 }
 export function nativeInputConfig(): string {

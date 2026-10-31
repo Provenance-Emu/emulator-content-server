@@ -5,10 +5,10 @@ systems are installable from reproducible releases in this repository:
 
 | Core / system | Release | Qualification |
 | --- | --- | --- |
-| PokeMini / Pokémon Mini | [Release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-pokemini-2026.10.31.1) | Production factory/MEMFS startup; uses upstream's original open-source FreeBIOS |
+| PokeMini / Pokémon Mini | [Release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-pokemini-2026.10.31.1) | Authenticated app cartridge execution, video and press/release input; owner Pokémon Party Mini boot; upstream open-source FreeBIOS |
 | Potator / Watara Supervision | [Release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-potator-2026.10.31.1) | Production startup plus original cartridge execution and video |
-| SameDuck / Mega Duck | [Release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-sameduck-2026.10.31.1) | Production factory/MEMFS startup |
-| Beetle PC-FX / PC-FX | [Release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-mednafen-pcfx-2026.10.31.1) | Production factory/MEMFS startup; CHD decoder compiled, complete CHD files up to 512 MiB; owner-supplied `pcfx.rom` required for disc boot |
+| SameDuck / Mega Duck | [Release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-sameduck-2026.10.31.1) | Authenticated app original cartridge execution, video and press/release input |
+| Beetle PC-FX / PC-FX | [Release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-mednafen-pcfx-2026.10.31.1) | Authenticated app CHD homebrew boot and title-to-menu input; complete CHDs up to 512 MiB; owner-supplied `pcfx.rom` required |
 
 Every successful publication rebuilt its packaged corresponding source into
 byte-identical loader/WASM files. Independently downloaded public packages also
@@ -86,8 +86,9 @@ All 807 saved metadata/artwork choice rows were preserved exactly, and health
 passed with no active library jobs. Private backups and deployment receipts are in ignored
 `dist-release/more-systems-20261031/`.
 
-PokeMini, SameDuck and PC-FX still need content-level qualification; PC-FX needs
-owner firmware. Synchronized saves remain disabled for all four new profiles.
-N64 retains its documented coroutine/renderer blockers, and Dolphin Wii Remote,
+PokeMini, SameDuck and PC-FX now have content-level qualification; see the
+[follow-up](browser-source-core-playback-2026-10-31.md) for evidence and the new
+operator-local N64 fiber port. Synchronized saves remain disabled for these profiles.
+Commercial PC-FX/Mega Duck and N64 RSP/RDP game coverage remain unverified. Dolphin Wii Remote,
 encrypted Wii media and public corresponding-source reproduction remain deferred.
 No firmware, commercial game, save or operator credential was added to Git.
