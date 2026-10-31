@@ -28,6 +28,11 @@ export function softwareCorePlan(id) {
     !/^(\.|[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)$/.test(makeDirectory)
   )
     throw Error('Unsafe software build target');
+  if (
+    core.software.archiveVariable &&
+    !['STATIC_LINKING', 'STATIC_LINKING_LINK'].includes(core.software.archiveVariable)
+  )
+    throw Error('Unsupported static archive variable');
   return {
     core,
     targetName,
@@ -38,6 +43,7 @@ export function softwareCorePlan(id) {
       'CC=emcc',
       'CXX=em++',
       'AR=emar',
+      ...(core.software.archiveVariable ? [`${core.software.archiveVariable}=1`] : []),
       `GIT_VERSION=" ${core.revision.slice(0, 7)}"`,
     ],
     frontendFlags: [

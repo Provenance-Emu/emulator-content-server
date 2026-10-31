@@ -132,7 +132,8 @@
         "extensions": ["min"],
         "maxContentBytes": 2097152,
         "makeDirectory": ".",
-        "targetName": "pokemini"
+        "targetName": "pokemini",
+        "archiveVariable": "STATIC_LINKING_LINK"
       },
       "licenses": [
         "RetroArch GPL-3.0-or-later",
@@ -174,7 +175,8 @@
         "extensions": ["bin"],
         "maxContentBytes": 1048576,
         "makeDirectory": "libretro",
-        "targetName": "sameduck"
+        "targetName": "sameduck",
+        "archiveVariable": "STATIC_LINKING"
       },
       "licenses": [
         "RetroArch GPL-3.0-or-later",

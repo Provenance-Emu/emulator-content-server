@@ -46,6 +46,8 @@ test('software packages bind actual artifacts to system, extension and firmware-
 test('nested and differently named core targets build the selected frontend and bitcode', () => {
   assert.equal(softwareCorePlan('potator').makeDirectory, 'platform/libretro');
   assert.equal(softwareCorePlan('sameduck').makeDirectory, 'libretro');
+  assert.ok(softwareCorePlan('pokemini').coreFlags.includes('STATIC_LINKING_LINK=1'));
+  assert.ok(softwareCorePlan('sameduck').coreFlags.includes('STATIC_LINKING=1'));
   const pcfx = softwareCorePlan('mednafen-pcfx');
   assert.equal(pcfx.targetName, 'mednafen_pcfx');
   assert.ok(pcfx.frontendFlags.includes('LIBRETRO=mednafen_pcfx'));
