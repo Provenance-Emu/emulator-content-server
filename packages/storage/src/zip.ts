@@ -359,6 +359,7 @@ interface EndRecord {
   totalEntries: number;
   directorySize: number;
   directoryOffset: number;
+  directoryLimit: number;
 }
 
 async function readEndRecord(handle: FileHandle, window: VirtualWindow): Promise<EndRecord | null> {
@@ -379,6 +380,7 @@ async function readEndRecord(handle: FileHandle, window: VirtualWindow): Promise
       totalEntries: tail.readUInt16LE(offset + 10),
       directorySize: tail.readUInt32LE(offset + 12),
       directoryOffset: tail.readUInt32LE(offset + 16),
+      directoryLimit: window.length - tailLength + offset,
     };
     const zip64 =
       end.totalEntries === UINT16_SENTINEL ||
@@ -426,6 +428,7 @@ async function readZip64EndRecord(
     totalEntries: safeNumber(record.readBigUInt64LE(32), 'Archive entry count'),
     directorySize: safeNumber(record.readBigUInt64LE(40), 'Central directory size'),
     directoryOffset: safeNumber(record.readBigUInt64LE(48), 'Central directory offset'),
+    directoryLimit: recordOffset,
   };
 }
 
@@ -443,8 +446,8 @@ async function readCentralDirectory(
   if (end.directorySize > maxDirectoryBytes) {
     reject('Archive central directory is too large to parse');
   }
-  if (end.directoryOffset + end.directorySize > window.length) {
-    reject('Archive central directory falls outside the archive');
+  if (end.directoryOffset + end.directorySize > end.directoryLimit) {
+    reject('Archive central directory overlaps its end records');
   }
   const directory = await readAt(handle, window, end.directoryOffset, end.directorySize);
   const records: CentralRecord[] = [];

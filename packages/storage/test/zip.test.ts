@@ -731,6 +731,7 @@ for (const field of [
   'valid extension',
   'short record',
   'overlong record',
+  'directory overlap',
   'locator disk',
   'volume count',
   'record disk',
@@ -750,7 +751,10 @@ for (const field of [
     record.writeUInt16LE(45, 14);
     record.writeBigUInt64LE(1n, 24);
     record.writeBigUInt64LE(1n, 32);
-    record.writeBigUInt64LE(BigInt(end.readUInt32LE(12)), 40);
+    record.writeBigUInt64LE(
+      BigInt(end.readUInt32LE(12)) + (field === 'directory overlap' ? 1n : 0n),
+      40,
+    );
     record.writeBigUInt64LE(BigInt(end.readUInt32LE(16)), 48);
     const locator = Buffer.alloc(20);
     locator.writeUInt32LE(0x07064b50, 0);
@@ -779,6 +783,32 @@ for (const field of [
         code: 'archive-rejected',
         status: 422,
       });
+    }
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}
+
+for (const overlap of [false, true]) {
+  test(`classic ZIP directory ${overlap ? 'cannot overlap its end record' : 'allows an archive comment'}`, async (t) => {
+    const original = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
+    const end = original.length - 22;
+    const comment = Buffer.from('generated archive comment');
+    original.writeUInt16LE(comment.length, end + 20);
+    if (overlap) original.writeUInt32LE(original.readUInt32LE(end + 12) + 1, end + 12);
+    const staged = await stageArchive(Buffer.concat([original, comment]));
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    if (overlap) {
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+    } else {
+      const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '0');
+      assert.ok(entry);
+      assert.deepEqual(
+        await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+        Buffer.from('DATA'),
+      );
     }
     assert.deepEqual(await cachedFiles(staged.root), []);
   });
