@@ -4,6 +4,27 @@ import { parseManifest } from '@ecs/plugins';
 import { playerCatalog } from '../src/player-catalog.js';
 import { upstreamCorePins } from '../src/player-catalog-upstream-data.js';
 
+test('new source-built systems have one installable immutable package each', () => {
+  for (const [id, system] of [
+    ['pokemini', 'pokemonmini'],
+    ['potator', 'supervision'],
+    ['sameduck', 'megaduck'],
+    ['mednafen-pcfx', 'pcfx'],
+  ]) {
+    const entries = playerCatalog.filter((entry) => entry.id === `org.libretro.${id}`);
+    assert.equal(entries.length, 1);
+    const [entry] = entries;
+    assert.equal(entry?.available, true);
+    assert.deepEqual(entry.systems, [`com.provenance.${system}`]);
+    assert.equal(
+      entry.url,
+      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-${id}-2026.10.31.${id === 'atari800' ? 2 : 1}/${id}.ecsplayer`,
+    );
+    assert.match(entry.sha256 ?? '', /^[a-f0-9]{64}$/);
+    assert.ok((entry.downloadBytes ?? 0) > 0);
+  }
+});
+
 test('source-built Atari and Intellivision cores are installable from immutable central releases', () => {
   for (const [id, system] of [
     ['stella2014', '2600'],
@@ -17,7 +38,7 @@ test('source-built Atari and Intellivision cores are installable from immutable 
     assert.deepEqual(entry.systems, [`com.provenance.${system}`]);
     assert.equal(
       entry.url,
-      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-${id}-2026.10.31.1/${id}.ecsplayer`,
+      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-${id}-2026.10.31.${id === 'atari800' ? 2 : 1}/${id}.ecsplayer`,
     );
     assert.match(entry.sha256 ?? '', /^[a-f0-9]{64}$/);
     assert.ok((entry.downloadBytes ?? 0) > 0);

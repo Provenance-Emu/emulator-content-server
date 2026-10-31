@@ -1,5 +1,8 @@
 # Source-built Atari and Intellivision cores, 2026-10-31
 
+Follow-up: [four more systems and the raw Atari 5200 cartridge fix](browser-more-systems-2026-10-31.md).
+Atari800 1.1.0 supersedes this page's initial package for new installs.
+
 Three additional profiles are now installable from this repository's central
 browser-core buildbot. The buildbot supports seven source recipes in total.
 The [machine-readable receipt](browser-source-cores-2026-10-31.json) records

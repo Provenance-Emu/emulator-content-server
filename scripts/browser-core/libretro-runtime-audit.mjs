@@ -84,6 +84,7 @@ export async function smokeLibretroPairs(pairs, output) {
             originalContentPath,
             contentExtension = 'nes',
             coreOptions = {},
+            expectedPixel = null,
           } = pairs[smokeCursor++],
           page = await browser.newPage(),
           pageErrors = [],
@@ -102,10 +103,24 @@ export async function smokeLibretroPairs(pairs, output) {
             throw Error('Invalid original-program extension');
           if (!isPlayerCoreOptions(coreOptions))
             throw Error('Invalid original-program core options');
+          if (
+            expectedPixel !== null &&
+            (!Array.isArray(expectedPixel) ||
+              expectedPixel.length !== 4 ||
+              expectedPixel.some((x) => !Number.isInteger(x) || x < 0 || x > 255))
+          )
+            throw Error('Invalid expected pixel');
           const originalPath = originalContentPath ?? originalNesPath;
           const originalContent = originalPath ? [...(await readFile(originalPath))] : null;
           const result = await page.evaluate(
-            async ({ core, nonce, originalContent, contentExtension, coreOptions }) => {
+            async ({
+              core,
+              nonce,
+              originalContent,
+              contentExtension,
+              coreOptions,
+              expectedPixel,
+            }) => {
               const loader = await (await fetch(`/${core}_libretro.js`)).arrayBuffer();
               const wasm = await (await fetch(`/${core}_libretro.wasm`)).arrayBuffer();
               const frame = document.createElement('iframe');
@@ -206,6 +221,14 @@ export async function smokeLibretroPairs(pairs, output) {
                       );
                       await rpc('main', ['-v', '--config', '/ecs/retroarch.cfg', contentPath]);
                       const deadline = performance.now() + 10000;
+                      const matchesPixel = (pixel) =>
+                        expectedPixel
+                          ? expectedPixel.every(
+                              (value, index) => Math.abs(pixel[index] - value) <= 4,
+                            )
+                          : pixel[2] >= pixel[0] + 30 &&
+                            pixel[2] >= pixel[1] + 30 &&
+                            pixel[3] === 255;
                       while (!(await rpc('display-info')).captureReady) {
                         if (performance.now() > deadline)
                           throw Error('Original program did not render');
@@ -225,20 +248,11 @@ export async function smokeLibretroPairs(pairs, output) {
                         pixel = [
                           ...context.getImageData(canvas.width >> 1, canvas.height >> 1, 1, 1).data,
                         ];
-                        if (
-                          pixel[2] >= pixel[0] + 30 &&
-                          pixel[2] >= pixel[1] + 30 &&
-                          pixel[3] === 255
-                        )
-                          break;
+                        if (matchesPixel(pixel)) break;
                         if (performance.now() > deadline)
                           throw Error(`Original program blue palette output missing: ${pixel}`);
                         await new Promise((done) => setTimeout(done, 100));
-                      } while (
-                        pixel[2] < pixel[0] + 30 ||
-                        pixel[2] < pixel[1] + 30 ||
-                        pixel[3] !== 255
-                      );
+                      } while (!matchesPixel(pixel));
                     }
                   })(),
                 ]);
@@ -256,7 +270,7 @@ export async function smokeLibretroPairs(pairs, output) {
                 frame.remove();
               }
             },
-            { core, nonce, originalContent, contentExtension, coreOptions },
+            { core, nonce, originalContent, contentExtension, coreOptions, expectedPixel },
           );
           results.push({ core, ...result, pageErrors, unexpectedRequests });
         } catch (error) {

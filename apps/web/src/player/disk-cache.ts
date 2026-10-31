@@ -88,7 +88,9 @@ export async function cachePlayerDisk(
     typeof estimate.usage === 'number' &&
     estimate.quota - estimate.usage < size + 16 * 1024 ** 2
   )
-    throw new Error('Not enough private browser disk space for this disc. Free space and retry.');
+    throw new Error(
+      'Not enough browser storage for this disc. Try a regular browser window or free disk space, then reload.',
+    );
   const name = `${crypto.randomUUID()}.disc`;
   const unlock = await holdDisc(locks, name);
   let handle: FileSystemFileHandle;
@@ -166,7 +168,7 @@ export async function cachePlayerDisk(
       error.name === 'QuotaExceededError'
     )
       throw new Error(
-        'The browser ran out of disk storage while preparing this disc. Free disk space and retry.',
+        'Browser storage limit reached. Try a regular browser window or free disk space, then reload.',
       );
     throw error;
   }

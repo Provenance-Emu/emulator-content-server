@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { ContentClient } from '@ecs/client';
-import { expect, test } from '@playwright/test';
+import { type BrowserContext, chromium, expect, test } from '@playwright/test';
 import { writeDolphinGcIso } from '../../../../scripts/browser-core/dolphin-gc-iso-smoke.mjs';
 import { dolphinVideoSmokeDol } from '../../../../scripts/browser-core/dolphin-video-smoke.mjs';
 import { openServer } from '../../../server/dist/src/index.js';
@@ -27,9 +27,20 @@ for (const entry of [
     test.setTimeout(entry.large ? 240_000 : 120_000);
     const directory = await mkdtemp(join(tmpdir(), 'ecs-dolphin-player-'));
     const errors: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
+    let diskContext: BrowserContext | undefined;
     let server: Awaited<ReturnType<typeof openServer>> | undefined;
     try {
+      // Incognito OPFS can have a small memory-backed quota. A fresh persistent
+      // headless context exercises ordinary desktop disk storage without granting
+      // unlimited storage or opening the user's browser/profile.
+      if (entry.large) {
+        diskContext = await chromium.launchPersistentContext(join(directory, 'browser'), {
+          headless: true,
+          args: ['--mute-audio'],
+        });
+        page = diskContext.pages()[0] ?? (await diskContext.newPage());
+      }
+      page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
       const registry = join(directory, 'players');
       await mkdir(registry);
       await cp(resolve(plugin ?? ''), join(registry, 'dolphin'), { recursive: true });
@@ -264,6 +275,7 @@ for (const entry of [
       throw error;
     } finally {
       await page.goto('about:blank').catch(() => {});
+      await diskContext?.close();
       await server?.close();
       await rm(directory, { recursive: true, force: true });
     }

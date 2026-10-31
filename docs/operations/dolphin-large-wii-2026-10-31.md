@@ -1,5 +1,9 @@
 # Dolphin: disk-backed large discs and Wii execution
 
+Follow-up: [the current full-size acceptance](browser-more-systems-2026-10-31.md#large-disc-acceptance-quota)
+passes with a fresh persistent headless profile. Temporary-context storage limits
+and their user-facing guidance are documented there.
+
 The operator-local Dolphin profile now accepts files up to **9 GiB** and advertises
 GameCube and Wii. Silent headless ECS acceptance passed three independent cases:
 an original GameCube DOL, a Wii DOL, and a full-size **1,459,978,240-byte GameCube ISO**.

@@ -27,8 +27,8 @@ export function buildPlan(id) {
     emsdk: buildbotConfig.emsdk,
     parallelism: 2,
     publication: 'none',
-    acceptance: ['stella2014', 'atari800'].includes(core.id)
-      ? `production-opaque-original-${core.id === 'stella2014' ? 'a26' : 'bin'}-video`
+    acceptance: ['stella2014', 'atari800', 'potator'].includes(core.id)
+      ? `production-opaque-original-${{ stella2014: 'a26', atari800: 'bin', potator: 'sv' }[core.id]}-video`
       : 'production-opaque-factory-memfs-only',
   };
 }
@@ -104,13 +104,23 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
     originalContentPath = join(output, 'original.a52');
     await writeFile(originalContentPath, atari5200SmokeCartridge(), { flag: 'wx' });
   }
+  if (id === 'potator') {
+    const { supervisionSmokeCartridge } = await import('./generate-supervision-smoke.mjs');
+    contentExtension = 'sv';
+    originalContentPath = join(output, 'original.sv');
+    await writeFile(originalContentPath, supervisionSmokeCartridge(), { flag: 'wx' });
+  }
   const smoke = await smokeLibretroPairs(
     [
       {
         core: id.replaceAll('-', '_'),
         loaderPath: join(player, web.loader.file),
         wasmPath: join(player, web.wasm.file),
-        coreOptions: web.defaultCoreOptions ?? {},
+        coreOptions: {
+          ...web.defaultCoreOptions,
+          ...(id === 'potator' ? { potator_palette: 'potator_blue' } : {}),
+        },
+        ...(id === 'potator' ? { expectedPixel: [0, 101, 173, 255] } : {}),
         ...(originalContentPath ? { originalContentPath, contentExtension } : {}),
       },
     ],

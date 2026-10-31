@@ -270,7 +270,7 @@ test('mid-stream browser quota failure removes partial data and gives a disk-spa
       },
       { storage: f.storage },
     ),
-    /ran out of disk storage/,
+    /regular browser window/,
   );
   assert.equal(f.metrics().removes, 1);
 });
