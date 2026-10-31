@@ -813,3 +813,39 @@ for (const overlap of [false, true]) {
     assert.deepEqual(await cachedFiles(staged.root), []);
   });
 }
+
+for (const compress of [false, true]) {
+  for (const alias of [false, true]) {
+    test(`ZIP repeated names with ${compress ? 'deflated' : 'stored'} bodies ${alias ? 'reject aliased local headers' : 'allow distinct local headers'}`, async (t) => {
+      const body = Buffer.from('generated payload');
+      const archive = buildZip([
+        { name: 'same.bin', body, compress },
+        { name: 'same.bin', body, compress },
+      ]);
+      const directory = archive.readUInt32LE(archive.length - 6);
+      if (alias) archive.writeUInt32LE(0, directory + 46 + Buffer.byteLength('same.bin') + 42);
+      const staged = await stageArchive(archive);
+      t.after(() => rm(staged.root, { recursive: true, force: true }));
+      if (alias) {
+        await assert.rejects(listVirtualEntries(staged.root, staged.sha256, staged.registry), {
+          code: 'archive-rejected',
+          status: 422,
+        });
+        await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '1'), {
+          code: 'archive-rejected',
+          status: 422,
+        });
+        assert.deepEqual(await cachedFiles(staged.root), []);
+      } else {
+        for (const id of ['0', '1']) {
+          const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, id);
+          assert.ok(entry);
+          assert.deepEqual(
+            await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+            body,
+          );
+        }
+      }
+    });
+  }
+}

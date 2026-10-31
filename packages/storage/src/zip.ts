@@ -451,7 +451,7 @@ async function readCentralDirectory(
   }
   const directory = await readAt(handle, window, end.directoryOffset, end.directorySize);
   const records: CentralRecord[] = [];
-  const memberOffsets: number[] = [];
+  const memberOffsets = new Set<number>();
   let cursor = 0;
   for (let index = 0; index < end.totalEntries; index += 1) {
     if (cursor + CENTRAL_FIXED_SIZE > directory.length) reject('Archive central directory is torn');
@@ -486,7 +486,10 @@ async function readCentralDirectory(
     if (record.localHeaderOffset >= end.directoryOffset) {
       reject('Archive entry header falls outside the member data area');
     }
-    memberOffsets.push(record.localHeaderOffset);
+    if (memberOffsets.has(record.localHeaderOffset)) {
+      reject('Archive entries share a local header');
+    }
+    memberOffsets.add(record.localHeaderOffset);
     if (record.name.endsWith('/')) continue;
     if (record.compressedSize === 0 && record.uncompressedSize > 0) {
       reject('Archive entry declares expansion from no compressed bytes');
@@ -500,7 +503,7 @@ async function readCentralDirectory(
     }
     records.push(record);
   }
-  const orderedOffsets = [...new Set(memberOffsets)].sort((a, b) => a - b);
+  const orderedOffsets = [...memberOffsets].sort((a, b) => a - b);
   const bounds = new Map(
     orderedOffsets.map((offset, index) => [
       offset,
