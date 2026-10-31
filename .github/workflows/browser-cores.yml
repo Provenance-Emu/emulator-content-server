@@ -8,7 +8,7 @@ on:
         required: true
         default: prosystem
         type: choice
-        options: [fceumm, prosystem, pcsx-rearmed, virtualjaguar, stella2014, freeintv, atari800]
+        options: [fceumm, prosystem, pcsx-rearmed, virtualjaguar, stella2014, freeintv, atari800, pokemini, potator, sameduck, mednafen-pcfx]
       publish_release:
         description: Publish new immutable release after corresponding-source rebuild; review distribution notices first
         required: true

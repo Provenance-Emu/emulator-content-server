@@ -21,6 +21,10 @@ test('software packages bind actual artifacts to system, extension and firmware-
     ['stella2014', 'com.provenance.2600', ['a26', 'bin'], 1048576],
     ['freeintv', 'com.provenance.intellivision', ['int', 'bin', 'rom'], 1048576],
     ['atari800', 'com.provenance.5200', ['a52', 'car', 'bin', 'rom'], 1048576],
+    ['pokemini', 'com.provenance.pokemonmini', ['min'], 2097152],
+    ['potator', 'com.provenance.supervision', ['sv', 'bin'], 1048576],
+    ['sameduck', 'com.provenance.megaduck', ['bin'], 1048576],
+    ['mednafen-pcfx', 'com.provenance.pcfx', ['chd'], 536870912],
   ];
   for (const [id, system, extensions, maxContentBytes] of cases) {
     const manifest = softwareCoreManifest(id, loader, wasm);
@@ -37,4 +41,13 @@ test('software packages bind actual artifacts to system, extension and firmware-
     );
     assert.equal(manifest.player.web.wasm.sha256, createHash('sha256').update(wasm).digest('hex'));
   }
+});
+
+test('nested and differently named core targets build the selected frontend and bitcode', () => {
+  assert.equal(softwareCorePlan('potator').makeDirectory, 'platform/libretro');
+  assert.equal(softwareCorePlan('sameduck').makeDirectory, 'libretro');
+  const pcfx = softwareCorePlan('mednafen-pcfx');
+  assert.equal(pcfx.targetName, 'mednafen_pcfx');
+  assert.ok(pcfx.frontendFlags.includes('LIBRETRO=mednafen_pcfx'));
+  assert.equal(pcfx.makeDirectory, '.');
 });

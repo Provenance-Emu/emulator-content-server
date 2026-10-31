@@ -21,8 +21,17 @@ const repository = fileURLToPath(new URL('../..', import.meta.url));
 export function softwareCorePlan(id) {
   const core = config.cores.find((core) => core.id === id && core.software);
   if (!core) throw Error('Unknown software recipe');
+  const targetName = core.software.targetName ?? id;
+  const makeDirectory = core.software.makeDirectory ?? '.';
+  if (
+    !/^[a-z0-9_]+$/.test(targetName) ||
+    !/^(\.|[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)$/.test(makeDirectory)
+  )
+    throw Error('Unsafe software build target');
   return {
     core,
+    targetName,
+    makeDirectory,
     frontendPin: config.frontend.revision,
     coreFlags: [
       'platform=emscripten',
@@ -32,7 +41,7 @@ export function softwareCorePlan(id) {
       `GIT_VERSION=" ${core.revision.slice(0, 7)}"`,
     ],
     frontendFlags: [
-      `LIBRETRO=${id}`,
+      `LIBRETRO=${targetName}`,
       'HAVE_THREADS=0',
       'PROXY_TO_PTHREAD=0',
       'HAVE_WASMFS=0',
@@ -98,15 +107,16 @@ function compiler(root) {
     throw Error('Pinned Emscripten compiler required');
 }
 function compile(plan, frontend, core) {
-  run('emmake', ['make', '-j2', ...plan.coreFlags], core);
+  const makeRoot = join(core, plan.makeDirectory);
+  run('emmake', ['make', '-j2', ...plan.coreFlags], makeRoot);
   copyFileSync(
-    join(core, `${plan.core.id}_libretro_emscripten.bc`),
+    join(makeRoot, `${plan.targetName}_libretro_emscripten.bc`),
     join(frontend, 'libretro_emscripten.bc'),
   );
   run('emmake', ['make', '-j2', '-f', 'Makefile.emscripten', ...plan.frontendFlags], frontend);
   return [
-    readFileSync(join(frontend, `${plan.core.id}_libretro.js`)),
-    readFileSync(join(frontend, `${plan.core.id}_libretro.wasm`)),
+    readFileSync(join(frontend, `${plan.targetName}_libretro.js`)),
+    readFileSync(join(frontend, `${plan.targetName}_libretro.wasm`)),
   ];
 }
 function writePlayer(output, manifest, loader, wasm) {

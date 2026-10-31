@@ -117,6 +117,90 @@
         "RetroArch GPL-3.0-or-later",
         "Atari800 (Atari 5200): GPL-2.0-or-later; preserve all upstream dependency notices"
       ]
+    },
+    {
+      "id": "pokemini",
+      "repository": "https://github.com/libretro/PokeMini",
+      "revision": "132111b76343559860532a1ccc094f93f1ed5650",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["pokemini"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "pokemini",
+      "software": {
+        "name": "PokeMini (Pokémon Mini)",
+        "systems": ["com.provenance.pokemonmini"],
+        "extensions": ["min"],
+        "maxContentBytes": 2097152,
+        "makeDirectory": ".",
+        "targetName": "pokemini"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "PokeMini (Pokémon Mini): GPL-3.0-or-later; includes original open-source FreeBIOS and its generating source"
+      ]
+    },
+    {
+      "id": "potator",
+      "repository": "https://github.com/libretro/potator",
+      "revision": "227c5f6f3ce74d32e9002ce24c1420288559a860",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["potator"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "potator",
+      "software": {
+        "name": "Potator (Supervision)",
+        "systems": ["com.provenance.supervision"],
+        "extensions": ["sv", "bin"],
+        "maxContentBytes": 1048576,
+        "makeDirectory": "platform/libretro",
+        "targetName": "potator"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Potator (Supervision): Unlicense; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "sameduck",
+      "repository": "https://github.com/libretro/sameduck",
+      "revision": "040e19c379f00dae10afe0eb0c1b2b019b985bbe",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["sameduck"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "sameduck",
+      "software": {
+        "name": "SameDuck (Mega Duck)",
+        "systems": ["com.provenance.megaduck"],
+        "extensions": ["bin"],
+        "maxContentBytes": 1048576,
+        "makeDirectory": "libretro",
+        "targetName": "sameduck"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "SameDuck (Mega Duck): MIT; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "mednafen-pcfx",
+      "repository": "https://github.com/libretro/beetle-pcfx-libretro",
+      "revision": "c1650bad5fbdcc3c3ccd45e29e3983e1ccf16cff",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["mednafen-pcfx"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "mednafen-pcfx",
+      "software": {
+        "name": "Beetle PC-FX (CHD)",
+        "systems": ["com.provenance.pcfx"],
+        "extensions": ["chd"],
+        "maxContentBytes": 536870912,
+        "makeDirectory": ".",
+        "targetName": "mednafen_pcfx"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Beetle PC-FX (CHD): GPL-2.0-or-later; libchdr BSD-3-Clause and all dependency notices retained"
+      ]
     }
   ]
 }
