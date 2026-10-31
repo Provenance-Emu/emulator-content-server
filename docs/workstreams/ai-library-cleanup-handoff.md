@@ -6,7 +6,7 @@ Updated 2026-10-30. The user explicitly deferred built-in AI-provider/API-key cl
 
 - Worktree: `/Users/jmattiello/.codex/worktrees/ai-library-cleanup/emulator-content-server`
 - Branch: `codex/ai-library-cleanup`, baseline `adbdcb1088cfb780481250151343b579d393cfda`.
-- The user authorized a local cleanup checkpoint commit on 2026-10-30. Locate it with `git log -1 codex/ai-library-cleanup`. Nothing has been pushed, merged or released. Preserve this branch/worktree when archiving the chat.
+- Checkpoint `4752fd9a1e73aa9ab3dcc51f68e82d9736d74c58` is committed and pushed to `origin/codex/ai-library-cleanup` with user authorization. It has not been merged or released. Preserve this unique branch/worktree when archiving the chat.
 - Primary checkout has unrelated concurrent changes; do not overwrite it or silently merge this batch.
 - Plan/spec: `docs/superpowers/plans/2026-10-29-ai-library-cleanup.md` and `docs/superpowers/specs/2026-10-29-ai-library-cleanup-design.md`.
 - Ignored execution ledger, per-task logs and deferred draft: `.superpowers/sdd/2026-10-29-ai-library-cleanup/`.
@@ -47,7 +47,14 @@ Use Node 22.22.2 from `/Users/jmattiello/.nvm/versions/node/v22.22.2/bin` (prepe
 
 ## Follow-up tracking and core distribution discussion
 
-The user asked whether to use GitHub tickets/branches, pointing to libretro/virtualjaguar-libretro. Its roadmap issue #371 uses milestones, epics and native sub-issues as planning records, with technical evidence in repository docs. Recommended here: small issues for inbound MCP control/debugging, cleanup retention/recovery/review, and browser-core distribution; short-lived implementation branches tied to issues. No GitHub issue or project was created in this checkpoint.
+GitHub now tracks the next actions:
+
+- [#27 — MCP: scoped agent control and debugging](https://github.com/Provenance-Emu/emulator-content-server/issues/27). Includes a permanent link to this handoff at checkpoint `4752fd9`.
+- [#28 — Cleanup: artifact retention, backup recovery, and focused review](https://github.com/Provenance-Emu/emulator-content-server/issues/28).
+- [#29 — Cores: upstream-first WASM artifacts with pinned catalog updates](https://github.com/Provenance-Emu/emulator-content-server/issues/29). Official compatible binaries are the default; custom builds need a documented gap. A channel points to immutable matched artifacts, and a separate artifact repository is deferred until justified.
+
+
+The user asked whether to use GitHub tickets/branches, pointing to libretro/virtualjaguar-libretro. Its roadmap issue #371 uses milestones, epics and native sub-issues as planning records, with technical evidence in repository docs. Recommended here: small issues for inbound MCP control/debugging, cleanup retention/recovery/review, and browser-core distribution; short-lived implementation branches tied to issues. The follow-up issues below were created after the checkpoint at the user's request; no project board was created.
 
 The user questioned per-core tags, suggested a single updated bundle or a separate artifact repository, and asked why ECS builds/hosts cores already available from Libretro. Preserve an upstream-first direction: use official compatible artifacts by default, build only missing/incompatible/patched cases, and distinguish building from serving a pinned local cache. The existing dated inventory in `docs/operations/libretro-web-core-inventory-2026-10-28.md` recorded 88 official names, 87 startup-compatible JS/WASM pairs, 35 catalogued profiles and 31 eligible installers; these are historical factory checks, not full game compatibility. Live upstream Emscripten archives remain available. Current custom builds need an individual compatibility/patch rationale rather than a blanket self-build policy.
 
