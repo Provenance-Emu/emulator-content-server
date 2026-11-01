@@ -2,7 +2,7 @@ name: Nightly distributions
 
 on:
   pull_request:
-    paths: ['.github/workflows/nightly.yml', 'scripts/*nightly*', 'scripts/bundle.mjs', 'scripts/publish-desktop.mjs', 'scripts/package-macos.mjs']
+    paths: ['.github/workflows/nightly.yml', 'scripts/*nightly*', 'scripts/bundle.mjs', 'scripts/publish-desktop.mjs', 'scripts/test-desktop-package.mjs', 'scripts/package-macos.mjs']
   schedule:
     - cron: '17 6 * * *'
   workflow_dispatch:
@@ -39,6 +39,7 @@ jobs:
       - run: pnpm build
       - run: pnpm ui
       - run: pnpm secret-scan
+      - run: node --test scripts/test-desktop-package.mjs
       - name: Build self-contained server archive
         run: pnpm exec node scripts/package-nightly.mjs
       - name: Smoke test extracted distribution
