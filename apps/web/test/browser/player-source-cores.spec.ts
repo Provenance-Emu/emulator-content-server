@@ -12,8 +12,15 @@ interface Input {
   id: string;
   label?: string;
   bootMs?: number;
-  analog?: { x: number; y: number; holdMs: number };
-  actions?: { key: string; mask: number; holdMs: number; waitMs: number }[];
+  bootReference?: string;
+  analog?: { x: number; y: number; holdMs: number; idleMs?: number; guestStallMs?: number };
+  actions?: {
+    key: string;
+    mask: number;
+    holdMs: number;
+    waitMs: number;
+    beforeImage?: string;
+  }[];
   system: string;
   package: string;
   content: string;
@@ -103,6 +110,52 @@ async function gameCheckpoint(frame: Frame, path: string, minimumColors = 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw lastError ?? Error('No game checkpoint available');
+}
+
+// External owner captures make menu navigation conditional on the displayed screen.
+// No reference artwork or game captures are stored in the repository.
+async function waitForReference(frame: Frame, path: string) {
+  const png = [...(await readFile(path))];
+  await expect
+    .poll(
+      async () =>
+        frame
+          .evaluate(async (png) => {
+            const current = await (
+              globalThis as unknown as {
+                __ecsSourceCapture(): Promise<ArrayBuffer>;
+              }
+            ).__ecsSourceCapture();
+            const images = await Promise.all(
+              [current, new Uint8Array(png)].map(async (bytes) => {
+                const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 48;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) throw Error('Reference canvas unavailable');
+                ctx.drawImage(bitmap, 0, 0, 64, 48);
+                bitmap.close();
+                return ctx.getImageData(0, 0, 64, 48).data;
+              }),
+            );
+            const currentPixels = images[0],
+              referencePixels = images[1];
+            if (!currentPixels || !referencePixels) throw Error('Reference images unavailable');
+            let difference = 0;
+            for (let i = 0; i < currentPixels.length; i += 4) {
+              for (let c = 0; c < 3; c++)
+                difference += Math.abs((currentPixels[i + c] ?? 0) - (referencePixels[i + c] ?? 0));
+            }
+            return difference / (64 * 48 * 3);
+          }, png)
+          .catch((error) => {
+            if (String(error).includes('No new game frame available')) return 255;
+            throw error;
+          }),
+      { timeout: 90_000, intervals: [500, 1000] },
+    )
+    .toBeLessThan(20);
 }
 
 async function stableMonoPicture(frame: Frame) {
@@ -202,7 +255,11 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
           let body = await response.text();
           body = body.replace(
             'async function operation(message) {',
-            'globalThis.__ecsSourceStats=()=>({frames,input:inputAdapter?.info(),packets:globalThis.__ecsSourcePackets,focused:document.hasFocus(),element:document.activeElement?.id});globalThis.__ecsSourceCapture=()=>capture();async function operation(message) {',
+            'globalThis.__ecsSourceStats=()=>({frames,input:inputAdapter?.info(),active:globalThis.__ecsEngine?.active,native:globalThis.__ecsNativePolls,packets:globalThis.__ecsSourcePackets,focused:document.hasFocus(),element:document.activeElement?.id});globalThis.__ecsSourceCapture=()=>capture();async function operation(message) {',
+          );
+          body = body.replace(
+            'input.default(canvas,spec.inputConfig,input.createEngine)',
+            'input.default(canvas,spec.inputConfig,()=>globalThis.__ecsEngine=input.createEngine())',
           );
           body = body.replace(
             'catch { if (!closed) port.postMessage',
@@ -216,7 +273,7 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
             throw Error('Audio-off injection point missing; refusing to launch');
           body = body.replace(
             'await runtime.callMain(value);',
-            "runtime.FS.writeFile('/ecs/retroarch.cfg',new TextEncoder().encode(new TextDecoder().decode(runtime.FS.readFile('/ecs/retroarch.cfg'))+'\\naudio_enable = \"false\"\\n'));await runtime.callMain(value);",
+            "runtime.FS.writeFile('/ecs/retroarch.cfg',new TextEncoder().encode(new TextDecoder().decode(runtime.FS.readFile('/ecs/retroarch.cfg'))+'\\naudio_enable = \"false\"\\n'));const nativeGetter=navigator.getGamepads.bind(navigator);const nativeStats=globalThis.__ecsNativePolls={count:0,analogCount:0,lastAxes:[0,0,0,0]};Object.defineProperty(navigator,'getGamepads',{configurable:true,value(){const pads=nativeGetter();nativeStats.count++;nativeStats.lastAxes=Array.from(pads[0]?.axes??[]);if(nativeStats.lastAxes.some(x=>Math.abs(x)>0.4))nativeStats.analogCount++;return pads;}});await runtime.callMain(value);",
           );
           await route.fulfill({ response, body });
         });
@@ -249,6 +306,8 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
               globalThis as unknown as {
                 __ecsSourceStats(): {
                   frames: number;
+                  active: boolean;
+                  native: { count: number; analogCount: number; lastAxes: number[] };
                   input: {
                     supported: boolean;
                     ready: boolean;
@@ -274,10 +333,12 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
         if (input.kind === 'n64-owned') {
           const started = Date.now();
           const initialFrames = (await stats()).frames;
+          let analogEvidence: unknown;
           await expect
             .poll(async () => (await picture(frame)).colors, { timeout: 60_000 })
             .toBeGreaterThan(16);
           await page.waitForTimeout(input.bootMs ?? 8000);
+          if (input.bootReference) await waitForReference(frame, input.bootReference);
           await mkdir(testInfo.outputDir, { recursive: true });
           const checkpoints = [
             {
@@ -290,6 +351,9 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
           await frame.locator('canvas').focus();
           await expect.poll(() => frame.evaluate(() => document.activeElement?.id)).toBe('canvas');
           for (const [index, action] of (input.actions ?? []).entries()) {
+            if (action.beforeImage) await waitForReference(frame, action.beforeImage);
+            // Lifecycle/watchdog recovery requires a neutral heartbeat before a new press.
+            await expect.poll(async () => (await stats()).active, { timeout: 15_000 }).toBe(true);
             await page.keyboard.down(action.key);
             await expect
               .poll(async () => ((await stats()).input.states[0]?.buttons ?? 0) & action.mask)
@@ -309,6 +373,11 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
             });
           }
           if (input.analog) {
+            checkpoints.push({
+              stage: 'analog-before',
+              picture: await gameCheckpoint(frame, testInfo.outputPath('analog-before.png'), 16),
+            });
+            const pollsBefore = (await stats()).native.analogCount;
             const stick = page.getByRole('button', { name: 'Touch L stick', exact: true });
             await stick.scrollIntoViewIfNeeded();
             await page.evaluate(() => {
@@ -339,23 +408,43 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
               y = box.y + box.height / 2;
             await page.mouse.move(x, y);
             await page.mouse.down();
+            if (input.analog.guestStallMs) {
+              await frame.evaluate((duration) => {
+                const end = performance.now() + duration;
+                while (performance.now() < end) {
+                  /* Reproduce a long synchronous core frame. */
+                }
+                // Exercise a native poll before queued host heartbeats can be delivered.
+                navigator.getGamepads();
+              }, input.analog.guestStallMs);
+            }
+            if (input.analog.idleMs) await page.waitForTimeout(input.analog.idleMs);
             await page.mouse.move(
               x + input.analog.x * box.width * 0.5,
               y + input.analog.y * box.height * 0.5,
               { steps: 1 },
             );
             await expect
-              .poll(async () => (await stats()).input.states[0]?.axes[0] ?? 0)
+              .poll(async () => (await stats()).input.states[0]?.axes[0] ?? 0, { timeout: 15_000 })
               .toBeGreaterThan(0.4);
             await page.waitForTimeout(input.analog.holdMs);
+            await expect
+              .poll(async () => (await stats()).native.analogCount, { timeout: 15_000 })
+              .toBeGreaterThan(pollsBefore + 2);
             checkpoints.push({
               stage: 'analog-held',
               picture: await gameCheckpoint(frame, testInfo.outputPath('analog-held.png'), 16),
             });
+            const held = await stats();
+            expect(held.input.states[0]?.axes[0]).toBeGreaterThan(0.4);
             await page.mouse.up();
             await expect
               .poll(async () => (await stats()).input.states[0]?.axes ?? [])
               .toEqual([0, 0, 0, 0]);
+            await expect
+              .poll(async () => (await stats()).native.lastAxes, { timeout: 15_000 })
+              .toEqual([0, 0, 0, 0]);
+            analogEvidence = { held, released: await stats() };
             checkpoints.push({
               stage: 'analog-released',
               picture: await gameCheckpoint(frame, testInfo.outputPath('analog-released.png'), 16),
@@ -381,6 +470,8 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
                 contentSha256: createHash('sha256').update(content).digest('hex'),
                 actions: input.actions,
                 analog: input.analog,
+                nativePolls: (await stats()).native,
+                analogEvidence,
                 checkpoints,
                 errors,
               },
@@ -519,7 +610,7 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
             () => (globalThis as unknown as { __ecsPointerEvents?: unknown[] }).__ecsPointerEvents,
           )
           .catch(() => undefined);
-        console.error('Core acceptance failed', {
+        const diagnostics = {
           id: input.id,
           cause: String(error),
           inputDiagnostics,
@@ -529,7 +620,10 @@ for (const short of ['pokemini', 'sameduck', 'mednafen-pcfx', 'mupen64plus-next'
           logs: await page.locator('.player-log').allTextContents(),
           detail,
           runtimeErrors,
-        });
+        };
+        await mkdir(testInfo.outputDir, { recursive: true });
+        await writeFile(testInfo.outputPath('failure.json'), JSON.stringify(diagnostics, null, 2));
+        console.error('Core acceptance failed', diagnostics);
         throw error;
       } finally {
         await page.goto('about:blank').catch(() => {});

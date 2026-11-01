@@ -131,13 +131,43 @@ test('standard Svelte touch stick reaches the sandbox virtual pad and releases t
       .toEqual([0, 0, 0, 0]);
     const released = await stats();
     expect(released.info.states[0].axes).toEqual([0, 0, 0, 0]);
+    // A centered, still-owned gesture must recover after a long guest frame.
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    const guest = page.frames().find((frame) => frame.url().includes('/play/sandbox.html'));
+    if (!guest) throw Error('Touch guest missing');
+    await guest.evaluate(() => {
+      const end = performance.now() + 900;
+      while (performance.now() < end) {
+        /* Deliberately exceed the real watchdog. */
+      }
+      navigator.getGamepads();
+    });
+    await page.waitForTimeout(400);
+    await page.mouse.move(x - box.width * 0.4, y, { steps: 5 });
+    await expect
+      .poll(async () => (await stats()).pad.axes[0], { timeout: 15000 })
+      .toBeLessThan(-0.4);
+    const recovered = await stats();
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await stats()).pad.axes, { timeout: 10000 })
+      .toEqual([0, 0, 0, 0]);
     expect(errors).toEqual([]);
     console.log(
       'Touch surface bridge/UI evidence',
-      JSON.stringify({ held: held.pad.axes, released: released.pad.axes }),
+      JSON.stringify({
+        held: held.pad.axes,
+        released: released.pad.axes,
+        recovered: recovered.pad.axes,
+      }),
     );
     await testInfo.attach('touch-surface-bridge-evidence', {
-      body: JSON.stringify({ kind: 'synthetic bridge/UI only', held, released, errors }, null, 2),
+      body: JSON.stringify(
+        { kind: 'synthetic bridge/UI only', held, released, recovered, errors },
+        null,
+        2,
+      ),
       contentType: 'application/json',
     });
   } catch (error) {

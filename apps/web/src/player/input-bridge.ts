@@ -46,6 +46,7 @@ export function installInputAdapter(
     capture: InputCapture | null = null,
     captured: CapturedBinding | null = null,
     captureNeutral = false;
+  let heartbeatTask: ReturnType<typeof setTimeout> | undefined;
   const native = navigator.getGamepads?.bind(navigator),
     previous = Object.getOwnPropertyDescriptor(navigator, 'getGamepads');
   const keys = new Set<string>(),
@@ -132,7 +133,6 @@ export function installInputAdapter(
     flushKeys();
   }
   function poll() {
-    checkHeartbeat();
     const devices = physical();
     for (let port = 0; port < 4; port++) {
       const index = assignments[port],
@@ -371,6 +371,10 @@ export function installInputAdapter(
     disposed = true;
     release();
     clearInterval(timer);
+    if (heartbeatTask !== undefined) {
+      clearTimeout(heartbeatTask);
+      heartbeatTask = undefined;
+    }
     if (installed) {
       if (started) for (const p of pads) event('gamepaddisconnected', { ...p, connected: false });
       if (previous) Object.defineProperty(navigator, 'getGamepads', previous);
@@ -416,9 +420,25 @@ export function installInputAdapter(
   function checkHeartbeat() {
     const wasActive = engine.active;
     engine.tick(performance.now());
-    if (wasActive && !engine.active) release();
+    if (wasActive && !engine.active) {
+      // Preserve only the recovery permission established by this watchdog expiry.
+      engine.release(true);
+      padArmed.fill(false);
+      keys.clear();
+      flushMouse();
+      releasePointers();
+      flushKeys();
+    }
   }
-  const timer = setInterval(checkHeartbeat, 100);
+  const timer = setInterval(() => {
+    if (heartbeatTask !== undefined) return;
+    // A synchronous guest frame cannot deliver host messages. Give queued packets
+    // one event-loop task to arrive before deciding that their heartbeat expired.
+    heartbeatTask = setTimeout(() => {
+      heartbeatTask = undefined;
+      if (!disposed) checkHeartbeat();
+    }, 0);
+  }, 100);
   return {
     start() {
       if (installed && !started) {
