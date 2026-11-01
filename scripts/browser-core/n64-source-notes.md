@@ -22,6 +22,12 @@ source-only changes replace the unsupported signal coroutine with real
 Emscripten fibers, use a signature-correct coroutine entry callback, free
 completed fibers, select GLES3 by the target, and namespace the core's vendored
 graphics and audio symbols. No missing WASM import or coroutine is fabricated.
+On Emscripten, GLideN64's color-reader factory selects its real direct
+`glReadPixels` backend. The SDK rejects `GL_MAP_READ_BIT`, so the native GLES3
+pixel-buffer readback path cannot copy rendered frames back to emulated RDRAM.
+The compiler regression builds the original and patched factories against the
+pinned headers and checks their emitted LLVM IR. Non-Emscripten selection
+remains unchanged behind the target guard.
 
 LLVM compiles the core and frontend objects at their normal optimization level.
 Final Binaryen optimization is disabled for this bounded proof build. Its
@@ -32,6 +38,10 @@ would enable Emscripten's development assertions. The pinned SDK's
 `tools/acorn-optimizer.js` then prints the loader with `minifyWhitespace`,
 removing comments without changing identifiers or code. The build rejects
 imports, workers and worklets using the production loader capability scan.
+The N64 profile requests the standard input layout so its analog stick is
+available. Local profile version 0.2.1 adds this metadata to the verified
+0.2.0 ReadPixels binary pair; that metadata update does not rebuild either
+binary or change the profile ID.
 
 The lifecycle regression executes the actual fiber backend as WebAssembly under
 Node. It checks independent suspended stack state, nested fiber switching,

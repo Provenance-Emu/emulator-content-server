@@ -113,6 +113,10 @@ export function verifiedInputBuild(core: BrowserCore): boolean {
     (core.runtime === 'retroarch-emscripten-esm' &&
       [
         [
+          '51cb1b66fc012518164808de6abd8d4574a5a87744130ffe354e65da6014590c',
+          'f194d6674d31e367c4e004078015d04aa58b5fa48f87d1e4cb2333277aa8b2f5',
+        ],
+        [
           '6db1e6fd05fbb883640eb4041bfdcdcf4353f958417c6f3aa1d350aa9933a5eb',
           'f636955f81624090048332642160c16c7f6525df1868bb867f57d4239f1315f9',
         ],

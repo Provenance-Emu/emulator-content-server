@@ -114,6 +114,27 @@ function outsideRepository(path) {
   if (!isAbsolute(within) && within !== '..' && !within.startsWith('../'))
     throw Error('N64 source and player artifacts must remain outside the repository');
 }
+export function patchN64ReadbackSource(path) {
+  const source = readFileSync(path, 'utf8');
+  const start =
+    'graphics::ColorBufferReader * ContextImpl::createColorBufferReader(CachedTexture * _pTexture)\n{\n';
+  const end =
+    '\treturn new ColorBufferReaderWithReadPixels(_pTexture);\n}\n\n/*---------------Shaders';
+  if (source.split(start).length !== 2 || source.split(end).length !== 2)
+    throw Error('N64 WebGL readback patch input mismatch');
+  writeFileSync(
+    path,
+    source
+      .replace(
+        start,
+        `${start}#if defined(__EMSCRIPTEN__)\n\treturn new ColorBufferReaderWithReadPixels(_pTexture);\n#else\n`,
+      )
+      .replace(
+        end,
+        '\treturn new ColorBufferReaderWithReadPixels(_pTexture);\n#endif\n}\n\n/*---------------Shaders',
+      ),
+  );
+}
 export function patchN64Source(core) {
   function replace(file, original, replacement) {
     const path = join(core, file),
@@ -184,6 +205,7 @@ export function patchN64Source(core) {
     '    char* newPath;\n\n    // Workaround',
     '    char* newPath;\n\n#ifdef __EMSCRIPTEN__\n    if (!game_thread)\n        return false;\n#endif\n\n    // Workaround',
   );
+  patchN64ReadbackSource(join(core, 'GLideN64/src/Graphics/OpenGLContext/opengl_ContextImpl.cpp'));
 }
 function compile(root) {
   const core = join(root, 'mupen64plus-next'),
@@ -208,12 +230,12 @@ function compile(root) {
     },
   ];
 }
-function manifest(loader, wasm) {
+export function n64Manifest(loader, wasm) {
   return {
     id: 'org.libretro.mupen64plus-next',
     name: 'Mupen64Plus-Next (operator-local fiber port)',
     kind: 'player',
-    version: '0.1.0',
+    version: '0.2.1',
     engine: 'ecs.plugin/1',
     apps: ['org.provenance-emu.provenance'],
     player: {
@@ -224,6 +246,7 @@ function manifest(loader, wasm) {
         runtime: 'retroarch-emscripten-esm',
         filesystem: 'memfs',
         threaded: false,
+        defaultInputLayout: 'standard',
         saveCompletion: 'none',
         contentExtensions: ['z64', 'n64', 'v64'],
         maxContentBytes: 134217728,
@@ -234,7 +257,7 @@ function manifest(loader, wasm) {
           'mupen64plus-ThreadedRenderer': 'False',
           'mupen64plus-43screensize': '320x240',
         },
-        buildVersion: `RetroArch 4d4bfc0f / Mupen64Plus-Next 15bada85 / emcc ${n64Pins.sdk} / fibers`,
+        buildVersion: `RetroArch 4d4bfc0f / Mupen64Plus-Next 15bada85 / emcc ${n64Pins.sdk} / fibers / readpixels`,
         loader: { file: 'loader.js', sha256: hash(loader) },
         wasm: { file: 'core.wasm', sha256: hash(wasm) },
         assets: [],
@@ -282,7 +305,7 @@ export function completeN64SourceBuild(root, output) {
   if (JSON.stringify(receipt.pins) !== JSON.stringify(n64Pins))
     throw Error('Wrong N64 source pins');
   const [loader, wasm, loaderMinifier] = compile(root),
-    profile = manifest(loader, wasm);
+    profile = n64Manifest(loader, wasm);
   if (
     receipt.manifest &&
     (profile.player.web.loader.sha256 !== receipt.manifest.player.web.loader.sha256 ||

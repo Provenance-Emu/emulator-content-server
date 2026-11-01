@@ -144,6 +144,7 @@ public struct WebPlayerDescriptor: Codable, Equatable, Sendable {
     public var runtime: String
     public var filesystem: String
     public var systemFilesDirectory: String?
+    public var defaultInputLayout: String?
     public var defaultCoreOptions: [String: String]?
     public var threaded: Bool
     public var saveCompletion: String
@@ -154,7 +155,7 @@ public struct WebPlayerDescriptor: Codable, Equatable, Sendable {
     public var wasm: PlayerCoreResource
     public var assets: [WebPlayerAsset]
 
-    public init(profileVersion: Int, id: String, name: String, systems: [String], runtime: String, filesystem: String, systemFilesDirectory: String? = nil, defaultCoreOptions: [String: String]? = nil, threaded: Bool, saveCompletion: String, contentExtensions: [String], maxContentBytes: Int64, buildVersion: String, loader: PlayerCoreResource, wasm: PlayerCoreResource, assets: [WebPlayerAsset]) {
+    public init(profileVersion: Int, id: String, name: String, systems: [String], runtime: String, filesystem: String, systemFilesDirectory: String? = nil, defaultInputLayout: String? = nil, defaultCoreOptions: [String: String]? = nil, threaded: Bool, saveCompletion: String, contentExtensions: [String], maxContentBytes: Int64, buildVersion: String, loader: PlayerCoreResource, wasm: PlayerCoreResource, assets: [WebPlayerAsset]) {
         self.profileVersion = profileVersion
         self.id = id
         self.name = name
@@ -162,6 +163,7 @@ public struct WebPlayerDescriptor: Codable, Equatable, Sendable {
         self.runtime = runtime
         self.filesystem = filesystem
         self.systemFilesDirectory = systemFilesDirectory
+        self.defaultInputLayout = defaultInputLayout
         self.defaultCoreOptions = defaultCoreOptions
         self.threaded = threaded
         self.saveCompletion = saveCompletion

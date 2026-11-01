@@ -19,6 +19,9 @@ pairs. These four pinned pairs now enable it too. Changing either loader or WASM
 hash disables the bridge until that build is qualified. No player sandbox or
 loader capability restrictions were relaxed.
 
+The [real-game follow-up](n64-real-games-2026-10-31.md) qualifies five owner games
+and adds plugin-declared touch defaults; the original results below remain historical.
+
 ## N64 source port
 
 The source recipe uses real Emscripten fibers with full Asyncify. Its lifecycle

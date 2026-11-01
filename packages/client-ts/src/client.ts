@@ -1703,6 +1703,8 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     p.profileVersion !== 1 ||
     !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(p.runtime) ||
     p.filesystem !== 'memfs' ||
+    (p.defaultInputLayout !== undefined &&
+      !['compact', 'standard'].includes(p.defaultInputLayout)) ||
     (p.defaultCoreOptions !== undefined &&
       (p.runtime !== 'retroarch-emscripten-esm' || !isPlayerCoreOptions(p.defaultCoreOptions))) ||
     (p.systemFilesDirectory !== undefined &&

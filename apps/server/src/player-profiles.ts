@@ -119,6 +119,7 @@ export async function loadPlayerProfiles(
             runtime: web.runtime,
             filesystem: web.filesystem,
             ...(web.systemFilesDirectory ? { systemFilesDirectory: web.systemFilesDirectory } : {}),
+            ...(web.defaultInputLayout ? { defaultInputLayout: web.defaultInputLayout } : {}),
             ...(web.defaultCoreOptions ? { defaultCoreOptions: web.defaultCoreOptions } : {}),
             threaded: web.threaded,
             saveCompletion: web.saveCompletion,

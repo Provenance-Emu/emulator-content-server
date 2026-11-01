@@ -115,7 +115,7 @@ test('multiple player profiles serve only snapshotted declared resources with re
     assert.equal((await server.app.inject({ url })).statusCode, 404);
 });
 
-test('declared startup defaults survive the manifest to HTTP descriptor boundary', async (t) => {
+test('declared startup and touch defaults survive the manifest to HTTP descriptor boundary', async (t) => {
   const f = await fixture(t);
   const m = manifest();
   await f.install('defaults', {
@@ -126,6 +126,7 @@ test('declared startup defaults survive the manifest to HTTP descriptor boundary
         ...m.player.web,
         runtime: 'retroarch-emscripten-esm',
         defaultCoreOptions: { atari800_system: '5200' },
+        defaultInputLayout: 'standard',
       },
     },
   } as ReturnType<typeof manifest>);
@@ -145,6 +146,7 @@ test('declared startup defaults survive the manifest to HTTP descriptor boundary
   const response = await server.app.inject({ url: '/api/v1/player/profiles/org.example.player' });
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.json().defaultCoreOptions, { atari800_system: '5200' });
+  assert.equal(response.json().defaultInputLayout, 'standard');
 });
 test('legacy profile stays the default alongside sorted installed plugin profiles', async (t) => {
   const f = await fixture(t);

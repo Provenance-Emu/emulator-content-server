@@ -1,0 +1,786 @@
+{
+  "date": "2026-10-31",
+  "scope": "Authenticated app playback with owner-supplied cartridges, muted headless Chromium software WebGL; boot/menu qualification, not full gameplay or performance qualification.",
+  "games": [
+    {
+      "id": "org.libretro.mupen64plus-next",
+      "label": "Super Mario 64 USA",
+      "kind": "n64-owned",
+      "browser": "145.0.7632.6",
+      "elapsedMs": 57843,
+      "contentBytes": 8388608,
+      "contentSha256": "17ce077343c6133f8c9f2d6d6d9a4ab62c8cd2aa57c40aea1f490b4c8bb21d91",
+      "actions": [
+        {
+          "key": "Enter",
+          "mask": 8,
+          "holdMs": 1000,
+          "waitMs": 4000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 4000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 5000
+        },
+        {
+          "key": "Enter",
+          "mask": 8,
+          "holdMs": 1000,
+          "waitMs": 4000
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "boot",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1,
+            "center": [0, 0, 0, 255],
+            "digest": "a6b50ed413205679546f450600920204396af4112f5478b6f96db6fb9c86165a",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-1",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 2,
+            "center": [255, 255, 255, 255],
+            "digest": "9868b23baf5ba25ec83214559cbbe0e69d7d9e988a2b0240737294b8e13d5e95",
+            "titleDigest": "8854dab88357b3ed12f11ea5c0e32eabeeb859b0fc69768f2edb6ae61f9eebf3"
+          }
+        },
+        {
+          "stage": "action-2",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 2,
+            "center": [255, 255, 255, 255],
+            "digest": "9868b23baf5ba25ec83214559cbbe0e69d7d9e988a2b0240737294b8e13d5e95",
+            "titleDigest": "8854dab88357b3ed12f11ea5c0e32eabeeb859b0fc69768f2edb6ae61f9eebf3"
+          }
+        },
+        {
+          "stage": "action-3",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 20521,
+            "center": [208, 199, 178, 255],
+            "digest": "41c8ac1014fced85cc84aa134d87ff5a08d3317f349ad6aa1d0893823123e57c",
+            "titleDigest": "74a3e6a18252fb9191f23eab2e485b3be86649ea4fea022c03af75b9fde3b777"
+          }
+        },
+        {
+          "stage": "action-4",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 20607,
+            "center": [208, 199, 178, 255],
+            "digest": "02d9a3175d72f5ea8ec032b944740c0405f10f5fb16c1f59d6cf4453c8a9ab8a",
+            "titleDigest": "e4e8f9d7a8ab136e5e6cea7cb6e82ee5274791c40c3350fa7e97b15996c121cf"
+          }
+        }
+      ],
+      "errors": [],
+      "mainLoopTicks": 1380
+    },
+    {
+      "id": "org.libretro.mupen64plus-next",
+      "label": "Mario Kart 64 USA",
+      "kind": "n64-owned",
+      "browser": "145.0.7632.6",
+      "elapsedMs": 67107,
+      "contentBytes": 12582912,
+      "contentSha256": "a8588ffdfb628c0433a2a18664cf68942812b975d16ae4d8b1c66f2045920065",
+      "actions": [
+        {
+          "key": "Enter",
+          "mask": 8,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "boot",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 9215,
+            "center": [74, 107, 255, 255],
+            "digest": "9db3546f1facc4b40d4dba4a0a0e2ee914b8f98284eb24b1ec519de9520f8486",
+            "titleDigest": "fed097aa01726d3d168b81b71251834d8fdbb950751937b1eeadbb9b52ca53c8"
+          }
+        },
+        {
+          "stage": "action-1",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 2323,
+            "center": [197, 140, 140, 255],
+            "digest": "b7eb0f8aedc8a44b0ff6cd661e0a1d8cf7f9ca36741b649cabb27ac72f07a1a8",
+            "titleDigest": "bca195c5e0cf674cfdc50c0e06db7ade3a877b3ea1989e7580023c2ec831b9eb"
+          }
+        },
+        {
+          "stage": "action-2",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1062,
+            "center": [0, 255, 16, 255],
+            "digest": "066cbfe6fe9f22dbb80cd4e2d00ae8ae78c5b29bf7dc4e29908e6372d3d05560",
+            "titleDigest": "bca195c5e0cf674cfdc50c0e06db7ade3a877b3ea1989e7580023c2ec831b9eb"
+          }
+        },
+        {
+          "stage": "action-3",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1063,
+            "center": [0, 255, 16, 255],
+            "digest": "54e6caf5719e0cdfb188a48c141995165bdafcea07cca9c630fac9484613db96",
+            "titleDigest": "bca195c5e0cf674cfdc50c0e06db7ade3a877b3ea1989e7580023c2ec831b9eb"
+          }
+        },
+        {
+          "stage": "action-4",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1063,
+            "center": [0, 255, 16, 255],
+            "digest": "4d08e62fa5a421b507e5a81e27b07472d9f90ddb8146bef6022ec634345dc53b",
+            "titleDigest": "bca195c5e0cf674cfdc50c0e06db7ade3a877b3ea1989e7580023c2ec831b9eb"
+          }
+        },
+        {
+          "stage": "action-5",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 4413,
+            "center": [140, 197, 140, 255],
+            "digest": "dfef619076f2a0ca514937c87ae882f96447be159b40c63e11f60880eecf7bfb",
+            "titleDigest": "689e3b35ea8f1d805620152bae445715f6edae3630a2f948f21a50bba0f764e7"
+          }
+        },
+        {
+          "stage": "action-6",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1908,
+            "center": [49, 49, 33, 255],
+            "digest": "04d929f80b012c2405ebf8c8a7f19b5c452360591a4582651f9810ea0d91380b",
+            "titleDigest": "689e3b35ea8f1d805620152bae445715f6edae3630a2f948f21a50bba0f764e7"
+          }
+        },
+        {
+          "stage": "action-7",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 2612,
+            "center": [0, 0, 0, 255],
+            "digest": "668cb5609f4a4fd9c94cdf0f399c67abb87c9b26afa7b69622148d013af13d0e",
+            "titleDigest": "57b7b3d29160349bfb75a415431c5e8302a1ca5893c1891dd157a39ed0784965"
+          }
+        },
+        {
+          "stage": "action-8",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 3087,
+            "center": [0, 0, 0, 255],
+            "digest": "bdea10070568b37ccddfac6e6530f0ba0eca5647d6d9f3f13b707be350a1dae8",
+            "titleDigest": "5c617f220bcf6c82b5f0e1ba524259bea1453086c2784f2aa894a0d7504974f5"
+          }
+        }
+      ],
+      "errors": [],
+      "mainLoopTicks": 3916
+    },
+    {
+      "id": "org.libretro.mupen64plus-next",
+      "label": "Resident Evil 2 USA",
+      "kind": "n64-owned",
+      "browser": "145.0.7632.6",
+      "elapsedMs": 51233,
+      "contentBytes": 67108864,
+      "contentSha256": "34347cc53968095f920080891c7291d46eda5d8647c2527ffe48ab74c0b4b344",
+      "actions": [
+        {
+          "key": "Enter",
+          "mask": 8,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "boot",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 6141,
+            "center": [195, 195, 195, 255],
+            "digest": "5e38c2e17ec13102c530070f9652408b0e22a1a066899965d61edbafce100d77",
+            "titleDigest": "463146a7a875e92805697ddaf8d842cb69466443a382f7044e9e42935d8db88d"
+          }
+        },
+        {
+          "stage": "action-1",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 9892,
+            "center": [0, 0, 0, 255],
+            "digest": "9f4d7cfabd175f5b82c39897978d0f1c48370b37dec6cc53866856c46e5abb03",
+            "titleDigest": "eebd7a4bdbb4260eb7412d058f6a448e18db9301a879b4b547791b33fb311a34"
+          }
+        },
+        {
+          "stage": "action-2",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 12613,
+            "center": [8, 8, 8, 255],
+            "digest": "685033c5bb14bfde73949a1d40d57168916390faa5e91b02df088978155e84db",
+            "titleDigest": "57f65cc41e144bcbf58147cb64ae14390b997ead783cdca9f884d31e4d173d3c"
+          }
+        },
+        {
+          "stage": "action-3",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 12543,
+            "center": [8, 8, 8, 255],
+            "digest": "123cdc428a852494ebee9a0b9103c49482df4782a82a735d62bcee9a92179c50",
+            "titleDigest": "88db35df3a9e7f17c6f414001f27069c27c0d9455ee6fd6f3e972783b27d6932"
+          }
+        },
+        {
+          "stage": "action-4",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 12613,
+            "center": [8, 8, 8, 255],
+            "digest": "685033c5bb14bfde73949a1d40d57168916390faa5e91b02df088978155e84db",
+            "titleDigest": "57f65cc41e144bcbf58147cb64ae14390b997ead783cdca9f884d31e4d173d3c"
+          }
+        },
+        {
+          "stage": "action-5",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 12543,
+            "center": [8, 8, 8, 255],
+            "digest": "123cdc428a852494ebee9a0b9103c49482df4782a82a735d62bcee9a92179c50",
+            "titleDigest": "88db35df3a9e7f17c6f414001f27069c27c0d9455ee6fd6f3e972783b27d6932"
+          }
+        }
+      ],
+      "errors": [],
+      "mainLoopTicks": 3373
+    },
+    {
+      "id": "org.libretro.mupen64plus-next",
+      "label": "GoldenEye USA",
+      "kind": "n64-owned",
+      "browser": "145.0.7632.6",
+      "elapsedMs": 98001,
+      "contentBytes": 12582912,
+      "contentSha256": "33d4609661bd207d22146463e64edbcc5cc9a21668f4f8e450642d2a2f6d2de8",
+      "actions": [
+        {
+          "key": "Enter",
+          "mask": 8,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "boot",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 220,
+            "center": [144, 144, 144, 255],
+            "digest": "3590eebfdf08e00bff511392f20bf64ca0a8a58d3eea53bd5a22fee536289c2b",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-1",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1,
+            "center": [0, 0, 0, 255],
+            "digest": "a6b50ed413205679546f450600920204396af4112f5478b6f96db6fb9c86165a",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-2",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 18,
+            "center": [0, 0, 0, 255],
+            "digest": "4fd20ec96a7a89a41a9fef9426fd587f76806c7408582e138fd732cab4c5be76",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-3",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1540,
+            "center": [0, 0, 0, 255],
+            "digest": "804f7433375ff5d1b768c66927323024fab7f334bc97f93e758e2e6a0ba707f6",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-4",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1,
+            "center": [0, 0, 0, 255],
+            "digest": "a6b50ed413205679546f450600920204396af4112f5478b6f96db6fb9c86165a",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-5",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 3414,
+            "center": [202, 195, 157, 255],
+            "digest": "d0b18b36f977b11cffc419cecd8d293088705e73a01b1510dee2ef9aff704d91",
+            "titleDigest": "39c3d5b66e0b1e31542e4f6d314184b3412aa79bb2e4ba887c7b683ee759c057"
+          }
+        },
+        {
+          "stage": "action-6",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1560,
+            "center": [12, 12, 9, 255],
+            "digest": "a8b440a2a2b6e2fcce9b60bdb619e73db9db5ea03e618479beaa5e811cfc3f9f",
+            "titleDigest": "4c2ce9fd8cbb244c4803774e2d24edcd03d2b4e83ca2577079cbfcb34b0f255c"
+          }
+        }
+      ],
+      "errors": [],
+      "mainLoopTicks": 969
+    },
+    {
+      "id": "org.libretro.mupen64plus-next",
+      "label": "Pokemon Stadium 2 USA",
+      "kind": "n64-owned",
+      "browser": "145.0.7632.6",
+      "elapsedMs": 76561,
+      "contentBytes": 67108864,
+      "contentSha256": "8160abe7d4b9734317000c44e9f882efefe4cc6359eacded98be62f2811e40a9",
+      "actions": [
+        {
+          "key": "Enter",
+          "mask": 8,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        },
+        {
+          "key": "z",
+          "mask": 1,
+          "holdMs": 1000,
+          "waitMs": 3000
+        }
+      ],
+      "checkpoints": [
+        {
+          "stage": "boot",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 2566,
+            "center": [52, 30, 20, 255],
+            "digest": "4c99695bed5adc8d33175f3d5eead8b86aa80898eb821acb556b6a62ddcee4b4",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-1",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 1,
+            "center": [0, 0, 0, 255],
+            "digest": "a6b50ed413205679546f450600920204396af4112f5478b6f96db6fb9c86165a",
+            "titleDigest": "05eadff01ac742ee9514a18f9cb5af02d6265c6edfb8e06ce417b6c6a8ac774c"
+          }
+        },
+        {
+          "stage": "action-2",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 44504,
+            "center": [253, 138, 146, 255],
+            "digest": "7c03cba10b3e263a13d383088f29a68781c3ed00789e0ba8d00b1fff2f5e1cf3",
+            "titleDigest": "d98b958297468e89f7df1e3b8cb3f405ae6677d82c5bcb8edde8e6e2c3a6becd"
+          }
+        },
+        {
+          "stage": "action-3",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 10680,
+            "center": [0, 0, 0, 255],
+            "digest": "4f9b5bc162c4d593bdf5e06b3adaa171d98c627907d32b078ea8ffb3a06e911c",
+            "titleDigest": "df76a9248849300fc448877204e95cd45a09fef3e67843154a9de15950385101"
+          }
+        },
+        {
+          "stage": "action-4",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 25761,
+            "center": [159, 158, 144, 255],
+            "digest": "5f979d0cefef71f24b8ee42d2c66f3cd6d14047a389bf9779d42caa7f5e0763b",
+            "titleDigest": "3cfbf6c57cdb53fb9e4aaea10e005448d3baeb43215ea42fa7351a979438ef96"
+          }
+        },
+        {
+          "stage": "action-5",
+          "picture": {
+            "width": 624,
+            "height": 468,
+            "colors": 25430,
+            "center": [159, 159, 144, 255],
+            "digest": "7f6b1664e5634557b653aa5b0cc8cdc4df8abaf70691ea40e413a860c77795d1",
+            "titleDigest": "dd7f3726bd4d7b3a55c330e03a4fa114b7436d5a4fb547ce2019ac4418af6391"
+          }
+        }
+      ],
+      "errors": [],
+      "mainLoopTicks": 1273
+    }
+  ],
+  "binaryBuild": {
+    "pins": {
+      "core": "15bada85906593376e8fd697f1b0b3af3a20f512",
+      "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "sdk": "3.1.46",
+      "compiler": "19607820c447a13fd8d0b7680c56148427d6e1b8"
+    },
+    "coreFlags": [
+      "platform=emscripten",
+      "CC=emcc",
+      "CXX=em++",
+      "AR=emar",
+      "STATIC_LINKING=1",
+      "GLES3=1",
+      "FORCE_GLES3=1",
+      "HAVE_PARALLEL_RSP=0",
+      "HAVE_PARALLEL_RDP=0",
+      "HAVE_THR_AL=0",
+      "LLE=0",
+      "GIT_VERSION=\" 15bada8\""
+    ],
+    "frontendFlags": [
+      "ECS_N64_LINK_OPT=0",
+      "ASSERTIONS=0",
+      "LIBRETRO=mupen64plus_next",
+      "HAVE_OPENGLES3=1",
+      "HAVE_THREADS=0",
+      "PROXY_TO_PTHREAD=0",
+      "ASYNC=1",
+      "MIN_ASYNC=0",
+      "JSPI=0",
+      "HAVE_WASMFS=0",
+      "HAVE_EXTRA_WASMFS=0",
+      "HAVE_AUDIOWORKLET=0",
+      "HAVE_7ZIP=0",
+      "HAVE_NETWORKING=0",
+      "HAVE_REWIND=0",
+      "HAVE_RUNAHEAD=0",
+      "GIT_VERSION=4d4bfc0"
+    ],
+    "loaderMinifier": {
+      "tool": "tools/acorn-optimizer.js",
+      "sha256": "dbf75bcceb3806608dc96e9b8f9f318e5265948be8749f012c19a37bf88de968",
+      "passes": ["minifyWhitespace", "--exportES6"],
+      "nodeVersion": "v22.22.2",
+      "rawLoaderSha256": "383295db41ec6ce23517fa32b6b9e7bbc4a4500193c153dc9868c8798a91a6df"
+    },
+    "fiberSha256": "9529b9b2b79c8d35d79f2b131769757c2f1f10fdd719edc59b6414fb70018e70",
+    "recipeSha256": "8ee5a9b47e24f5ae3965e2caa148fe3a9dccae86be1df0160b9bbb133ec34233",
+    "sourceDiffSha256": "64903564ffb17c7a20a0d13d7393c6149be18cc49c6fdf3203ac19aeaa8ba9ec",
+    "frontendDiffSha256": "161d7250d6826fddd246327fe16bc666cb73405a148b1c9eca92074c0f517390",
+    "sources": {
+      "core": "https://github.com/libretro/mupen64plus-libretro-nx",
+      "frontend": "https://github.com/libretro/RetroArch",
+      "sdk": "https://github.com/emscripten-core/emsdk"
+    },
+    "manifest": {
+      "id": "org.libretro.mupen64plus-next",
+      "name": "Mupen64Plus-Next (operator-local fiber port)",
+      "kind": "player",
+      "version": "0.2.0",
+      "engine": "ecs.plugin/1",
+      "apps": ["org.provenance-emu.provenance"],
+      "player": {
+        "systems": ["com.provenance.n64"],
+        "module": "core.wasm",
+        "web": {
+          "profileVersion": 1,
+          "runtime": "retroarch-emscripten-esm",
+          "filesystem": "memfs",
+          "threaded": false,
+          "saveCompletion": "none",
+          "contentExtensions": ["z64", "n64", "v64"],
+          "maxContentBytes": 134217728,
+          "defaultCoreOptions": {
+            "mupen64plus-cpucore": "cached_interpreter",
+            "mupen64plus-rdp-plugin": "gliden64",
+            "mupen64plus-rsp-plugin": "hle",
+            "mupen64plus-ThreadedRenderer": "False",
+            "mupen64plus-43screensize": "320x240"
+          },
+          "buildVersion": "RetroArch 4d4bfc0f / Mupen64Plus-Next 15bada85 / emcc 3.1.46 / fibers / readpixels",
+          "loader": {
+            "file": "loader.js",
+            "sha256": "51cb1b66fc012518164808de6abd8d4574a5a87744130ffe354e65da6014590c"
+          },
+          "wasm": {
+            "file": "core.wasm",
+            "sha256": "f194d6674d31e367c4e004078015d04aa58b5fa48f87d1e4cb2333277aa8b2f5"
+          },
+          "assets": []
+        }
+      }
+    }
+  },
+  "metadataOnlyUpdate": {
+    "kind": "metadata-only",
+    "binaryBuildPerformed": false,
+    "previousReceiptSha256": "f95274ec7d1e21a20f4156a8f33285fdb271d0f0c056c4145a9a21f19d9fc306",
+    "changedManifestFields": ["version", "player.web.defaultInputLayout"],
+    "reusedBinaryPair": {
+      "loader": "51cb1b66fc012518164808de6abd8d4574a5a87744130ffe354e65da6014590c",
+      "wasm": "f194d6674d31e367c4e004078015d04aa58b5fa48f87d1e4cb2333277aa8b2f5"
+    },
+    "profileVersion": "0.2.1",
+    "profileId": "org.libretro.mupen64plus-next",
+    "defaultInputLayout": "standard",
+    "recipeSha256": "146c4263acb840c877f66d686f57eab2051857f40ee7f48749ee0b6a9dade859",
+    "manifestSha256": "086f3708ee465c31befff3d710504b54258b2b21334a13e0975648017ee5a221"
+  },
+  "package": {
+    "bytes": 14877743,
+    "sha256": "76cbaaebe6ba2ddf2272023849acbe057b17148b201d11e57f642c0d7c4afe7f"
+  },
+  "profile": {
+    "id": "org.libretro.mupen64plus-next",
+    "name": "Mupen64Plus-Next (operator-local fiber port)",
+    "kind": "player",
+    "version": "0.2.1",
+    "engine": "ecs.plugin/1",
+    "apps": ["org.provenance-emu.provenance"],
+    "player": {
+      "systems": ["com.provenance.n64"],
+      "module": "core.wasm",
+      "web": {
+        "profileVersion": 1,
+        "runtime": "retroarch-emscripten-esm",
+        "filesystem": "memfs",
+        "threaded": false,
+        "defaultInputLayout": "standard",
+        "saveCompletion": "none",
+        "contentExtensions": ["z64", "n64", "v64"],
+        "maxContentBytes": 134217728,
+        "defaultCoreOptions": {
+          "mupen64plus-cpucore": "cached_interpreter",
+          "mupen64plus-rdp-plugin": "gliden64",
+          "mupen64plus-rsp-plugin": "hle",
+          "mupen64plus-ThreadedRenderer": "False",
+          "mupen64plus-43screensize": "320x240"
+        },
+        "buildVersion": "RetroArch 4d4bfc0f / Mupen64Plus-Next 15bada85 / emcc 3.1.46 / fibers / readpixels",
+        "loader": {
+          "file": "loader.js",
+          "sha256": "51cb1b66fc012518164808de6abd8d4574a5a87744130ffe354e65da6014590c"
+        },
+        "wasm": {
+          "file": "core.wasm",
+          "sha256": "f194d6674d31e367c4e004078015d04aa58b5fa48f87d1e4cb2333277aa8b2f5"
+        },
+        "assets": []
+      }
+    }
+  },
+  "limits": [
+    "Frontend loop counters include paused/repeated frames and are not an emulation FPS benchmark.",
+    "No audio, synchronized-save, native Safari or complete commercial-game compatibility claim.",
+    "Real-game movement tests remain under investigation after zero-axis gestures and runtime startup timeouts under extreme host load."
+  ],
+  "uiBridge": {
+    "kind": "isolated-component-acceptance",
+    "components": [
+      "TouchSurface",
+      "InputControls",
+      "InputSession",
+      "input preferences",
+      "opaque sandbox input bridge and engine"
+    ],
+    "guest": "synthetic 2D navigator-gamepad frame pump; no emulator qualification claim",
+    "headless": true,
+    "muted": true,
+    "dragAxes": [0.7647062087441511, 0, 0, 0],
+    "releasedAxes": [0, 0, 0, 0],
+    "result": "passed"
+  }
+}

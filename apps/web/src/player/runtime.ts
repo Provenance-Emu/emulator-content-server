@@ -119,6 +119,8 @@ export function validateProfile(core: BrowserCore): void {
   if ('profileVersion' in core) {
     if (
       core.profileVersion !== 1 ||
+      (core.defaultInputLayout !== undefined &&
+        !['compact', 'standard'].includes(core.defaultInputLayout)) ||
       (core.defaultCoreOptions !== undefined &&
         (core.runtime !== 'retroarch-emscripten-esm' ||
           !isPlayerCoreOptions(core.defaultCoreOptions))) ||

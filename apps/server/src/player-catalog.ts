@@ -146,7 +146,7 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     name: 'Mupen64Plus-Next (experimental browser port)',
     systems: ['com.provenance.n64'],
     description:
-      'Nintendo 64 interpreter with WebGL2 and real WASM fibers. Original cartridge execution, VI video and controls verified; commercial games and synchronized saves are unverified.',
+      'Experimental Nintendo 64 interpreter with WebGL2 and real WASM fibers. Real-game boot and menu input verified; performance, broader compatibility and synchronized saves remain unverified.',
     available: false,
     reason:
       'Use the operator-local source build; renderer redistribution permission remains unresolved.',

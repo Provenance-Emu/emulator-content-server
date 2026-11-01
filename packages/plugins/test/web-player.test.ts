@@ -142,3 +142,14 @@ test('support-file folder layout is optional data and rejects paths or device na
       }),
     );
 });
+
+test('plugins declare a bounded touch preset without executable layout data', () => {
+  const m = manifest();
+  const parse = (defaultInputLayout: unknown) =>
+    parseManifest({ ...m, player: { ...m.player, web: { ...m.player.web, defaultInputLayout } } })
+      .player?.web as unknown as Record<string, unknown>;
+  for (const layout of ['compact', 'standard'])
+    assert.equal(parse(layout).defaultInputLayout, layout);
+  for (const value of [null, true, '', 'custom', { controls: [] }])
+    assert.throws(() => parse(value));
+});

@@ -91,6 +91,7 @@ export interface WebPlayerConfig {
   filesystem: 'memfs';
   systemFilesDirectory?: string;
   defaultCoreOptions?: Record<string, string>;
+  defaultInputLayout?: 'compact' | 'standard';
   threaded: boolean;
   saveCompletion: 'none' | 'command-reply-v1';
   contentExtensions: string[];
@@ -298,6 +299,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
       'assets',
       'systemFilesDirectory',
       'defaultCoreOptions',
+      'defaultInputLayout',
     ],
     'player.web',
   );
@@ -325,6 +327,14 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
       'Runtime threading or save completion is unsupported',
     );
   const systemFilesDirectory = r.systemFilesDirectory;
+  const defaultInputLayout =
+    r.defaultInputLayout === undefined
+      ? undefined
+      : oneOf(
+          stringField(r, 'defaultInputLayout'),
+          ['compact', 'standard'] as const,
+          'defaultInputLayout',
+        );
   const defaultCoreOptions = r.defaultCoreOptions;
   if (defaultCoreOptions !== undefined) {
     const options = object(defaultCoreOptions, 'defaultCoreOptions');
@@ -418,6 +428,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     filesystem: 'memfs',
     threaded: r.threaded as boolean,
     ...(typeof systemFilesDirectory === 'string' ? { systemFilesDirectory } : {}),
+    ...(defaultInputLayout === undefined ? {} : { defaultInputLayout }),
     ...(defaultCoreOptions !== undefined
       ? { defaultCoreOptions: { ...(defaultCoreOptions as Record<string, string>) } }
       : {}),

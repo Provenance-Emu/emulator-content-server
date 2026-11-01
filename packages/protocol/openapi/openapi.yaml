@@ -1150,6 +1150,7 @@ components:
         runtime: { type: string, enum: [emscripten-esm-v1, retroarch-emscripten-esm, dolphin-wasm-esm] }
         filesystem: { type: string, enum: [memfs] }
         systemFilesDirectory: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$', maxLength: 64, description: Optional single folder below the emulator system directory for all named support files. }
+        defaultInputLayout: { type: string, enum: [compact, standard], description: Default touch-controller preset. Saved user layouts take precedence. }
         defaultCoreOptions:
           type: object
           maxProperties: 64
