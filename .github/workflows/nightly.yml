@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: nightly-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   server:
@@ -41,7 +41,7 @@ jobs:
       - run: pnpm secret-scan
       - run: node --test scripts/test-desktop-package.mjs
       - name: Build self-contained server archive
-        run: pnpm exec node scripts/package-nightly.mjs
+        run: pnpm package:nightly
       - name: Smoke test extracted distribution
         run: node scripts/smoke-nightly.mjs dist-release/nightly/Emulation-Server-nightly-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
       - uses: actions/upload-artifact@v4
