@@ -1,8 +1,6 @@
 name: Nightly distributions
 
 on:
-  pull_request:
-    paths: ['.github/workflows/nightly.yml', 'scripts/*nightly*', 'scripts/bundle.mjs', 'scripts/publish-desktop.mjs', 'scripts/test-desktop-package.mjs', 'scripts/package-macos.mjs']
   schedule:
     - cron: '17 6 * * *'
   workflow_dispatch:
@@ -12,7 +10,7 @@ permissions:
 
 concurrency:
   group: nightly-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   server:
@@ -125,8 +123,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Never let a slow build overwrite a newer main snapshot.
-          test "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" = "$GITHUB_SHA" || exit 0
+          # Runs on main serialize through the workflow concurrency group. Publish
+          # this tested commit even if main advanced while installers were building.
           cat > "$RUNNER_TEMP/nightly-notes.md" <<NOTES
           Automated test builds from commit $GITHUB_SHA.
 
