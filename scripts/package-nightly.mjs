@@ -46,14 +46,31 @@ await writeFile(
 );
 const output = resolve('dist-release/nightly');
 await mkdir(output, { recursive: true });
-const archive = join(output, `${name}.tar.gz`);
-// bsdtar is available on Windows runners; no build tool is needed to extract.
-execFileSync('tar', ['-czf', archive, '-C', dirname(stage), name], { stdio: 'inherit' });
+const extension = platform === 'windows' ? '.zip' : '.tar.gz';
+const archive = join(output, `${name}${extension}`);
+if (platform === 'windows') {
+  // Windows' bundled bsdtar crashes while creating this dependency tree. Use a native ZIP.
+  execFileSync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      '$ErrorActionPreference = "Stop"; Compress-Archive -LiteralPath $env:ECS_NIGHTLY_STAGE -DestinationPath $env:ECS_NIGHTLY_ARCHIVE -CompressionLevel Optimal -Force',
+    ],
+    {
+      stdio: 'inherit',
+      env: { ...process.env, ECS_NIGHTLY_STAGE: stage, ECS_NIGHTLY_ARCHIVE: archive },
+    },
+  );
+} else {
+  execFileSync('tar', ['-czf', archive, '-C', dirname(stage), name], { stdio: 'inherit' });
+}
 const digest = createHash('sha256')
   .update(await readFile(archive))
   .digest('hex');
 await writeFile(
   join(output, `SHA256SUMS-server-${platform}-${process.arch}.txt`),
-  `${digest}  ${name}.tar.gz\n`,
+  `${digest}  ${name}${extension}\n`,
 );
 console.log(archive);

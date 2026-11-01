@@ -30,8 +30,24 @@ async function assertContainedLinks(directory, root) {
   }
 }
 try {
-  execFileSync('tar', ['-xzf', archive, '-C', temporary]);
-  const root = join(temporary, basename(archive, '.tar.gz'));
+  if (process.platform === 'win32') {
+    execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        '$ErrorActionPreference = "Stop"; Expand-Archive -LiteralPath $env:ECS_NIGHTLY_ARCHIVE -DestinationPath $env:ECS_NIGHTLY_EXTRACT',
+      ],
+      {
+        stdio: 'inherit',
+        env: { ...process.env, ECS_NIGHTLY_ARCHIVE: archive, ECS_NIGHTLY_EXTRACT: temporary },
+      },
+    );
+  } else {
+    execFileSync('tar', ['-xzf', archive, '-C', temporary]);
+  }
+  const root = join(temporary, basename(archive).replace(/\.(?:tar\.gz|zip)$/, ''));
   await assertContainedLinks(root, await realpath(root));
   const metadata = JSON.parse(await readFile(join(root, 'BUILD.json'), 'utf8'));
   assert.equal(metadata.arch, process.arch);
