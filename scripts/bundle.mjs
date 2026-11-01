@@ -24,7 +24,7 @@ async function detachBuildFiles(directory) {
 }
 
 /** Deploy the already built production graph and its first-party web interface. */
-export async function bundle(destination, stdio = 'inherit') {
+export async function bundle(destination, stdio = 'inherit', { portable = false } = {}) {
   const target = resolve(destination);
   const existing = await lstat(target).catch((error) => {
     if (error.code === 'ENOENT') return null;
@@ -48,6 +48,7 @@ export async function bundle(destination, stdio = 'inherit') {
       '@provenance-content/server',
       'deploy',
       '--prod',
+      ...(portable ? ['--config.node-linker=hoisted'] : []),
       '--legacy',
       '--no-force',
       target,

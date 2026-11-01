@@ -1,18 +1,38 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { lstat, mkdtemp, readdir, readFile, readlink, realpath, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { basename, join, resolve } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const archive = resolve(process.argv[2]);
 const temporary = await mkdtemp(join(tmpdir(), 'ecs-nightly-smoke-'));
 let child;
+
+async function assertContainedLinks(directory, root) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if ((await lstat(path)).isSymbolicLink()) {
+      assert.ok(
+        !isAbsolute(await readlink(path)),
+        'Archive must not contain absolute build-machine links',
+      );
+      const target = relative(root, await realpath(path));
+      assert.ok(
+        target !== '..' && !target.startsWith(`..${sep}`) && !isAbsolute(target),
+        'Extracted dependency must remain inside the archive',
+      );
+    } else if (entry.isDirectory()) {
+      await assertContainedLinks(path, root);
+    }
+  }
+}
 try {
   execFileSync('tar', ['-xzf', archive, '-C', temporary]);
   const root = join(temporary, basename(archive, '.tar.gz'));
+  await assertContainedLinks(root, await realpath(root));
   const metadata = JSON.parse(await readFile(join(root, 'BUILD.json'), 'utf8'));
   assert.equal(metadata.arch, process.arch);
   const node = join(root, 'runtime', process.platform === 'win32' ? 'node.exe' : 'node');

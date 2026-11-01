@@ -15,7 +15,8 @@ const version = (await readFile('.nvmrc', 'utf8')).trim();
 if (process.versions.node !== version) throw new Error(`Packaging requires Node ${version}`);
 const name = `Emulation-Server-nightly-${platform}-${process.arch}`;
 const stage = resolve('dist/nightly', name);
-await bundle(join(stage, 'server'));
+// Hoisted deployment avoids absolute Windows junctions and extraction privileges.
+await bundle(join(stage, 'server'), 'inherit', { portable: true });
 await mkdir(join(stage, 'runtime'));
 await copyFile(
   process.execPath,
@@ -46,7 +47,7 @@ await writeFile(
 const output = resolve('dist-release/nightly');
 await mkdir(output, { recursive: true });
 const archive = join(output, `${name}.tar.gz`);
-// bsdtar is available on Windows runners and preserves pnpm's production symlink graph.
+// bsdtar is available on Windows runners; no build tool is needed to extract.
 execFileSync('tar', ['-czf', archive, '-C', dirname(stage), name], { stdio: 'inherit' });
 const digest = createHash('sha256')
   .update(await readFile(archive))
