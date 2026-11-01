@@ -187,14 +187,6 @@ export async function fingerprintSingleZipEntry(
     const header = await readAt(handle, root, record.localHeaderOffset, LOCAL_FIXED_SIZE);
     if ((header.readUInt16LE(6) & UNSUPPORTED_FINGERPRINT_FLAGS) !== 0)
       reject('Encrypted archive entries are not fingerprinted');
-    const localName = await readAt(
-      handle,
-      root,
-      record.localHeaderOffset + LOCAL_FIXED_SIZE,
-      header.readUInt16LE(26),
-    );
-    if (localName.toString('utf8') !== record.name)
-      reject('Archive local name disagrees with the central directory');
     limited.throwIfAborted();
     const md5 = createHash('md5');
     let crc = 0xffffffff,
@@ -671,6 +663,15 @@ async function dataOffset(
     record.localHeaderOffset + LOCAL_FIXED_SIZE + header.readUInt16LE(26) + header.readUInt16LE(28);
   if (offset + record.compressedSize > record.dataEnd) {
     reject('Archive entry bytes overlap another member or the central directory');
+  }
+  const localName = await readAt(
+    handle,
+    window,
+    record.localHeaderOffset + LOCAL_FIXED_SIZE,
+    header.readUInt16LE(26),
+  );
+  if (localName.toString('utf8') !== record.name) {
+    reject('Archive local name disagrees with the central directory');
   }
   return offset;
 }

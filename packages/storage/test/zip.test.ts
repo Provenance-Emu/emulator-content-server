@@ -880,3 +880,21 @@ test('ZIP preserves Unicode names and ordinary punctuation', async (t) => {
     Buffer.from('DATA'),
   );
 });
+
+for (const compress of [false, true]) {
+  for (const localName of ['different.bin', '../escape.bin', 'generated\0bin']) {
+    test(`ZIP local name ${JSON.stringify(localName)} must match its directory (${compress ? 'deflated' : 'stored'})`, async (t) => {
+      const archive = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA'), compress }]);
+      const name = Buffer.from(localName);
+      assert.equal(name.length, archive.readUInt16LE(26));
+      name.copy(archive, 30);
+      const staged = await stageArchive(archive);
+      t.after(() => rm(staged.root, { recursive: true, force: true }));
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      assert.deepEqual(await cachedFiles(staged.root), []);
+    });
+  }
+}
