@@ -38,7 +38,7 @@ export async function bundle(destination, stdio = 'inherit') {
   // Windows cannot execute pnpm.cmd directly without a shell. Invoke pnpm's JS entrypoint.
   const pnpmScript = process.env.npm_execpath;
   if (process.platform === 'win32' && !pnpmScript) {
-    throw new Error('On Windows, run bundling with pnpm exec node or pnpm bundle');
+    throw new Error('On Windows, run bundling through a pnpm package script');
   }
   const deployed = spawnSync(
     pnpmScript ? process.execPath : 'pnpm',

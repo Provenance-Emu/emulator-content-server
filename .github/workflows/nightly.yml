@@ -1,9 +1,6 @@
 name: Nightly distributions
 
 on:
-  push:
-    branches: [main]
-    paths-ignore: ['docs/**', '**/*.md']
   pull_request:
     paths: ['.github/workflows/nightly.yml', 'scripts/*nightly*', 'scripts/bundle.mjs', 'scripts/publish-desktop.mjs', 'scripts/package-macos.mjs']
   schedule:

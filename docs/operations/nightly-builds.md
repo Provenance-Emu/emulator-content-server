@@ -1,6 +1,6 @@
 # Nightly installation and testing
 
-Download from the stable [nightly release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly). CI replaces these files after all server and desktop jobs pass on main, on the daily schedule, or by manual dispatch on main. The release notes link the exact source commit and build run. A failed matrix leaves the previous nightly in place. Nightlies are for testing: back up your data before upgrading; restoring that backup is required to downgrade a database.
+Download from the stable [nightly release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly). CI replaces these files after all server and desktop jobs pass on the daily main schedule or by manual dispatch on main. The release notes link the exact source commit and build run. A failed matrix leaves the previous nightly in place. Nightlies are for testing: back up your data before upgrading; restoring that backup is required to downgrade a database.
 
 ## Choose a download
 
