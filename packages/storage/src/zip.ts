@@ -648,6 +648,7 @@ function applyZip64Extra(record: CentralRecord, extra: Buffer): void {
 }
 
 function isUnsafeName(name: string): boolean {
+  if (name.includes('\0')) return true;
   if (name === '' || name.startsWith('/') || name.startsWith('\\')) return true;
   if (/^[a-zA-Z]:/.test(name)) return true;
   return name.split(/[/\\]/).includes('..');

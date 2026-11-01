@@ -849,3 +849,34 @@ for (const compress of [false, true]) {
     });
   }
 }
+
+for (const compress of [false, true]) {
+  for (const name of ['\0generated.bin', 'generated\0.bin', 'generated.bin\0']) {
+    test(`ZIP rejects NUL in ${JSON.stringify(name)} (${compress ? 'deflated' : 'stored'})`, async (t) => {
+      const staged = await stageArchive([{ name, body: Buffer.from('DATA'), compress }]);
+      t.after(() => rm(staged.root, { recursive: true, force: true }));
+      await assert.rejects(listVirtualEntries(staged.root, staged.sha256, staged.registry), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      assert.deepEqual(await cachedFiles(staged.root), []);
+    });
+  }
+}
+
+test('ZIP preserves Unicode names and ordinary punctuation', async (t) => {
+  const name = 'generated/遊戲 (édition 1).bin';
+  const staged = await stageArchive([{ name, body: Buffer.from('DATA') }]);
+  t.after(() => rm(staged.root, { recursive: true, force: true }));
+  const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '0');
+  assert.ok(entry);
+  assert.equal(entry.logicalPath, name);
+  assert.deepEqual(
+    await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+    Buffer.from('DATA'),
+  );
+});
