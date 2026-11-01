@@ -1,0 +1,146 @@
+name: Nightly distributions
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  server:
+    name: Server (${{ matrix.platform }}-${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, platform: linux, arch: x64, extension: tar.gz }
+          - { os: windows-latest, platform: windows, arch: x64, extension: zip }
+          - { os: macos-15, platform: macos, arch: arm64, extension: tar.gz }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm ui
+      - run: pnpm secret-scan
+      - run: node --test scripts/test-desktop-package.mjs
+      - name: Build self-contained server archive
+        run: pnpm package:nightly
+      - name: Smoke test extracted distribution
+        run: node scripts/smoke-nightly.mjs dist-release/nightly/Emulation-Server-nightly-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.extension }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist-release/nightly/*
+          if-no-files-found: error
+          retention-days: 7
+
+  desktop:
+    name: Desktop (${{ matrix.platform }}-${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, platform: linux, arch: x64 }
+          - { os: windows-latest, platform: windows, arch: x64 }
+          - { os: macos-15, platform: macos, arch: arm64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tray/src-tauri -> target
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc -b packages/client-ts
+      - name: Check desktop interface and generated native fixtures
+        run: pnpm --filter @ecs/tray check
+      - run: cargo test --locked --manifest-path apps/tray/src-tauri/Cargo.toml
+      - name: Build unsigned nightly installers
+        shell: bash
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          case "$RUNNER_OS" in
+            Windows) pnpm --filter @ecs/tray tauri build --ci --bundles msi ;;
+            Linux) pnpm --filter @ecs/tray tauri build --ci --bundles deb,appimage ;;
+            macOS) pnpm --filter @ecs/tray tauri build --ci --bundles app && node scripts/package-macos.mjs ;;
+          esac
+      - name: Stage installers and checksums
+        run: node scripts/publish-desktop.mjs nightly apps/tray/src-tauri/target/release/bundle --stage-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist-release/desktop/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Update stable nightly release
+    needs: [server, desktop]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-release/all
+          merge-multiple: true
+      - name: Verify complete release checksums
+        working-directory: dist-release/all
+        run: |
+          cat SHA256SUMS-*.txt > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+          test "$(wc -l < SHA256SUMS.txt)" -eq 7
+      - name: Publish verified artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Runs on main serialize through the workflow concurrency group. Publish
+          # this tested commit even if main advanced while installers were building.
+          cat > "$RUNNER_TEMP/nightly-notes.md" <<NOTES
+          Automated test builds from commit $GITHUB_SHA.
+
+          [Installation and testing guide](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md)
+          [Build and smoke-test evidence](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
+
+          Server archives include Node.js and the web interface. Desktop installers are API companions; run the server separately. All nightly installers are unsigned and macOS nightlies are not notarized.
+
+          Platforms: Linux x64 (Ubuntu 24.04), Windows x64, macOS arm64 (Apple Silicon). Other architectures and GUI interaction are unverified. Emulator cores, ROMs, BIOS files and user data are not included. Back up data before testing; database downgrades require restoring a backup.
+
+          The nightly tag and its files are replaced after a complete successful matrix. Verify your download against SHA256SUMS.txt from the same build.
+          NOTES
+          if gh release view nightly >/dev/null 2>&1; then
+            gh release upload nightly dist-release/all/* --clobber
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit nightly --title 'Emulation Server nightly' --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --latest=false
+          else
+            gh release create nightly dist-release/all/* --target "$GITHUB_SHA" --title 'Emulation Server nightly' --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --latest=false
+          fi

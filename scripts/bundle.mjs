@@ -24,7 +24,7 @@ async function detachBuildFiles(directory) {
 }
 
 /** Deploy the already built production graph and its first-party web interface. */
-export async function bundle(destination, stdio = 'inherit') {
+export async function bundle(destination, stdio = 'inherit', { portable = false } = {}) {
   const target = resolve(destination);
   const existing = await lstat(target).catch((error) => {
     if (error.code === 'ENOENT') return null;
@@ -35,13 +35,20 @@ export async function bundle(destination, stdio = 'inherit') {
   }
   const web = resolve(root, 'apps/web/dist');
   await stat(resolve(web, 'index.html'));
+  // Windows cannot execute pnpm.cmd directly without a shell. Invoke pnpm's JS entrypoint.
+  const pnpmScript = process.env.npm_execpath;
+  if (process.platform === 'win32' && !pnpmScript) {
+    throw new Error('On Windows, run bundling through a pnpm package script');
+  }
   const deployed = spawnSync(
-    'pnpm',
+    pnpmScript ? process.execPath : 'pnpm',
     [
+      ...(pnpmScript ? [pnpmScript] : []),
       '--filter',
       '@provenance-content/server',
       'deploy',
       '--prod',
+      ...(portable ? ['--config.node-linker=hoisted'] : []),
       '--legacy',
       '--no-force',
       target,
