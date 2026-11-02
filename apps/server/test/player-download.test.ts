@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { DomainError } from '@ecs/domain';
 import { parsePlayerPackage } from '@ecs/plugins';
 import type { TrustedPlayer } from '../src/player-catalog.js';
 import { downloadCatalogPlayer } from '../src/player-download.js';
@@ -9,6 +10,31 @@ const loader = Buffer.from('export default async()=>({FS:{},callMain(){}});');
 const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
 const hash = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const files = [loader, wasm];
+
+test('a changed packaged download is reported as an invalid request, not an internal error', async (t) => {
+  const core: TrustedPlayer = entry();
+  delete core.upstream;
+  core.url = 'https://github.com/example/generated/releases/download/v1/core.ecsplayer';
+  core.sha256 = '0'.repeat(64);
+  const header = Buffer.from(
+    JSON.stringify({
+      manifest: entry().upstream.manifest,
+      files: [
+        { name: 'loader.js', size: loader.length },
+        { name: 'core.wasm', size: wasm.length },
+      ],
+    }),
+  );
+  const prefix = Buffer.alloc(4);
+  prefix.writeUInt32BE(header.length);
+  const body = Buffer.concat([prefix, header, ...files]);
+  core.downloadBytes = body.length;
+  t.mock.method(globalThis, 'fetch', async () => new Response(body));
+  await assert.rejects(
+    downloadCatalogPlayer(core),
+    (error: unknown) => error instanceof DomainError && error.status === 400,
+  );
+});
 function entry(): TrustedPlayer & { upstream: NonNullable<TrustedPlayer['upstream']> } {
   return {
     id: 'org.example.upstream',

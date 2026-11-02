@@ -8,8 +8,12 @@ import type { FastifyInstance } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
 import { readRegular } from './player-assets.js';
+import { PlayerPackageCache } from './player-cache.js';
 import { playerCatalog, type TrustedPlayer } from './player-catalog.js';
-import { downloadCatalogPlayer } from './player-download.js';
+import {
+  createPlayerCatalogSnapshot,
+  type PlayerCatalogSnapshot,
+} from './player-catalog-snapshot.js';
 import { MAX_PLAYER_PROFILES, MAX_PLAYER_SNAPSHOT_BYTES } from './player-limits.js';
 import { loadPlayerProfiles, type PlayerProfileAssets } from './player-profiles.js';
 
@@ -25,11 +29,17 @@ export class PlayerManager {
   private tail: Promise<unknown> = Promise.resolve();
   private root: string;
   private stateFile: string;
+  private catalog: readonly TrustedPlayer[];
+  private catalogSnapshot: PlayerCatalogSnapshot;
+  private packageCache: PlayerPackageCache;
   constructor(
     private context: ServerContext,
     private operators: ReadonlyMap<string, PlayerProfileAssets>,
-    private catalog: readonly TrustedPlayer[] = playerCatalog,
+    catalog: readonly TrustedPlayer[] = playerCatalog,
   ) {
+    this.catalogSnapshot = createPlayerCatalogSnapshot(catalog);
+    this.catalog = this.catalogSnapshot.entries;
+    this.packageCache = new PlayerPackageCache(join(context.dataDir, 'player-cache'));
     this.legacy = context.player;
     this.root = join(context.dataDir, 'players');
     this.stateFile = join(context.dataDir, 'player-settings.json');
@@ -133,7 +143,9 @@ export class PlayerManager {
         removable: this.managed.has(id),
       })),
       defaultProfileId: this.context.defaultPlayerProfileId,
-      available: this.catalog.map(({ url: _, sha256: __, upstream: ___, ...entry }) => entry),
+      available: this.catalog.map(
+        ({ url: _, sha256: __, upstream: ___, provenance: ____, ...entry }) => entry,
+      ),
     };
   }
   private serial<T>(operation: () => Promise<T>): Promise<T> {
@@ -367,7 +379,7 @@ export class PlayerManager {
       if (!entry)
         throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
       if (this.all.has(id)) throw new DomainError('conflict', 409, 'Emulator is already installed');
-      const bytes = await downloadCatalogPlayer(entry);
+      const bytes = await this.packageCache.download(this.catalogSnapshot, id);
       return this.installBytes(bytes);
     });
   }

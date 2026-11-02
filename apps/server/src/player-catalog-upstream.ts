@@ -67,6 +67,12 @@ export const upstreamPlayerCatalog: readonly TrustedPlayer[] = CORE_PINS.map((pi
     downloadBytes: pin.loaderBytes + pin.wasmBytes,
     url: null,
     sha256: null,
+    provenance: {
+      sourceInfo: pin.sourceInfo,
+      infoSha256: pin.infoSha256,
+      license: pin.license,
+      firmware: pin.firmware,
+    },
     upstream: {
       manifest: plugin,
       resources: [

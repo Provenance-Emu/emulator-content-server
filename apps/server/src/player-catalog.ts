@@ -4,6 +4,12 @@ import { upstreamPlayerCatalog } from './player-catalog-upstream.js';
 export interface TrustedPlayer extends PlayerCatalogEntry {
   url: string | null;
   sha256: string | null;
+  provenance?: {
+    sourceInfo: string;
+    infoSha256?: string;
+    license: string;
+    firmware?: { path: string; optional: boolean }[];
+  };
   upstream?: {
     manifest: PluginManifest;
     resources: { url: string; file: string; sha256: string; sizeBytes: number }[];
