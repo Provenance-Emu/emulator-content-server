@@ -272,20 +272,35 @@ export class PlayerManager {
   systemFile(id: string, name: string, bytes: Buffer) {
     return this.serial(async () => {
       if (!this.all.has(id)) throw new DomainError('not-found', 404, 'Emulator is not installed');
-      if (id !== 'org.libretro.parallel-dc' || !this.managed.has(id))
+      const current = this.all.get(id);
+      if (!this.managed.has(id) || current?.descriptor.runtime === 'dolphin-wasm-esm')
         throw new DomainError(
           'forbidden',
           403,
-          'System files can be added only to the managed Dreamcast/arcade emulator',
+          'System files require a managed emulator with firmware support',
         );
-      if (name !== 'awbios.zip' || !validAtomiswaveArchive(bytes))
+      if (
+        !validSystemFileName(name) ||
+        !Buffer.isBuffer(bytes) ||
+        bytes.length < 1 ||
+        bytes.length > 32 * 1024 * 1024
+      )
         throw new DomainError(
           'invalid-request',
           400,
-          'Select awbios.zip containing bios0.ic23 (131072bytes), up to32MiB',
+          'Select a portable system filename and a file from 1 byte to 32 MiB',
         );
-      const current = this.all.get(id);
+      if (id === 'org.libretro.parallel-dc' && name.toLowerCase() === 'awbios.zip') {
+        name = 'awbios.zip';
+        if (!validAtomiswaveArchive(bytes))
+          throw new DomainError(
+            'invalid-request',
+            400,
+            'Select awbios.zip containing bios0.ic23 (131072 bytes), up to 32 MiB',
+          );
+      }
       if (!current) throw new DomainError('not-found', 404, 'Emulator is not installed');
+      const replacing = (existing: string) => existing.toLowerCase() === name.toLowerCase();
       const source = join(this.root, id),
         stage = join(this.context.dataDir, `player-staging-${randomUUID()}`),
         next = join(stage, id),
@@ -300,23 +315,23 @@ export class PlayerManager {
         [web.wasm.file, current.wasm],
       ]);
       for (const spec of web.assets)
-        if (spec.name !== name) {
+        if (!replacing(spec.name)) {
           const value = current.assets.get(spec.name);
           if (!value) throw new Error('Missing player resource');
           files.set(spec.file, value);
         }
-      web.assets = web.assets.filter((a) => a.name !== name);
+      web.assets = web.assets.filter((a) => !replacing(a.name));
       if (
         web.assets.length >= 16 ||
         [...current.assets]
-          .filter(([n]) => n !== name)
+          .filter(([n]) => !replacing(n))
           .reduce((total, [, b]) => total + b.length, bytes.length) >
           32 * 1024 * 1024
       )
         throw new DomainError('conflict', 409, 'Emulator system-file limit reached');
       web.assets.push({
         name,
-        file: `system-${randomUUID()}.zip`,
+        file: `system-${randomUUID()}.bin`,
         sha256: createHash('sha256').update(bytes).digest('hex'),
       });
       const installedFile = web.assets.at(-1);
@@ -356,6 +371,17 @@ export class PlayerManager {
       return this.installBytes(bytes);
     });
   }
+}
+
+// Match manifest portability rules; runtime configuration and executable resources stay reserved.
+function validSystemFileName(name: string): boolean {
+  return (
+    typeof name === 'string' &&
+    /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(name) &&
+    !name.endsWith('.') &&
+    !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) &&
+    !/^(?:loader\.js|core\.wasm|plugin\.json|retroarch\.cfg)$/i.test(name)
+  );
 }
 
 function validAtomiswaveArchive(bytes: Buffer) {

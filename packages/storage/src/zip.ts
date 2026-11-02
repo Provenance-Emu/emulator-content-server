@@ -187,14 +187,6 @@ export async function fingerprintSingleZipEntry(
     const header = await readAt(handle, root, record.localHeaderOffset, LOCAL_FIXED_SIZE);
     if ((header.readUInt16LE(6) & UNSUPPORTED_FINGERPRINT_FLAGS) !== 0)
       reject('Encrypted archive entries are not fingerprinted');
-    const localName = await readAt(
-      handle,
-      root,
-      record.localHeaderOffset + LOCAL_FIXED_SIZE,
-      header.readUInt16LE(26),
-    );
-    if (localName.toString('utf8') !== record.name)
-      reject('Archive local name disagrees with the central directory');
     limited.throwIfAborted();
     const md5 = createHash('md5');
     let crc = 0xffffffff,
@@ -359,6 +351,7 @@ interface EndRecord {
   totalEntries: number;
   directorySize: number;
   directoryOffset: number;
+  directoryLimit: number;
 }
 
 async function readEndRecord(handle: FileHandle, window: VirtualWindow): Promise<EndRecord | null> {
@@ -379,6 +372,7 @@ async function readEndRecord(handle: FileHandle, window: VirtualWindow): Promise
       totalEntries: tail.readUInt16LE(offset + 10),
       directorySize: tail.readUInt32LE(offset + 12),
       directoryOffset: tail.readUInt32LE(offset + 16),
+      directoryLimit: window.length - tailLength + offset,
     };
     const zip64 =
       end.totalEntries === UINT16_SENTINEL ||
@@ -405,9 +399,16 @@ async function readZip64EndRecord(
     reject('Split-volume ZIP64 archives are not supported');
   }
   const recordOffset = safeNumber(locator.readBigUInt64LE(8), 'ZIP64 end record offset');
+  if (recordOffset > locatorOffset - ZIP64_EOCD_FIXED_SIZE) {
+    reject('Archive ZIP64 end record overlaps its locator');
+  }
   const record = await readAt(handle, window, recordOffset, ZIP64_EOCD_FIXED_SIZE);
   if (record.readUInt32LE(0) !== ZIP64_EOCD_SIGNATURE)
     reject('Archive ZIP64 end record is missing');
+  const recordSize = record.readBigUInt64LE(4);
+  if (recordSize < 44n || BigInt(recordOffset) + 12n + recordSize !== BigInt(locatorOffset)) {
+    reject('Archive ZIP64 end record length is inconsistent with its locator');
+  }
   if (
     record.readUInt32LE(16) !== 0 ||
     record.readUInt32LE(20) !== 0 ||
@@ -419,6 +420,7 @@ async function readZip64EndRecord(
     totalEntries: safeNumber(record.readBigUInt64LE(32), 'Archive entry count'),
     directorySize: safeNumber(record.readBigUInt64LE(40), 'Central directory size'),
     directoryOffset: safeNumber(record.readBigUInt64LE(48), 'Central directory offset'),
+    directoryLimit: recordOffset,
   };
 }
 
@@ -436,12 +438,12 @@ async function readCentralDirectory(
   if (end.directorySize > maxDirectoryBytes) {
     reject('Archive central directory is too large to parse');
   }
-  if (end.directoryOffset + end.directorySize > window.length) {
-    reject('Archive central directory falls outside the archive');
+  if (end.directoryOffset + end.directorySize > end.directoryLimit) {
+    reject('Archive central directory overlaps its end records');
   }
   const directory = await readAt(handle, window, end.directoryOffset, end.directorySize);
   const records: CentralRecord[] = [];
-  const memberOffsets: number[] = [];
+  const memberOffsets = new Set<number>();
   let cursor = 0;
   for (let index = 0; index < end.totalEntries; index += 1) {
     if (cursor + CENTRAL_FIXED_SIZE > directory.length) reject('Archive central directory is torn');
@@ -476,7 +478,10 @@ async function readCentralDirectory(
     if (record.localHeaderOffset >= end.directoryOffset) {
       reject('Archive entry header falls outside the member data area');
     }
-    memberOffsets.push(record.localHeaderOffset);
+    if (memberOffsets.has(record.localHeaderOffset)) {
+      reject('Archive entries share a local header');
+    }
+    memberOffsets.add(record.localHeaderOffset);
     if (record.name.endsWith('/')) continue;
     if (record.compressedSize === 0 && record.uncompressedSize > 0) {
       reject('Archive entry declares expansion from no compressed bytes');
@@ -490,7 +495,7 @@ async function readCentralDirectory(
     }
     records.push(record);
   }
-  const orderedOffsets = [...new Set(memberOffsets)].sort((a, b) => a - b);
+  const orderedOffsets = [...memberOffsets].sort((a, b) => a - b);
   const bounds = new Map(
     orderedOffsets.map((offset, index) => [
       offset,
@@ -635,6 +640,7 @@ function applyZip64Extra(record: CentralRecord, extra: Buffer): void {
 }
 
 function isUnsafeName(name: string): boolean {
+  if (name.includes('\0')) return true;
   if (name === '' || name.startsWith('/') || name.startsWith('\\')) return true;
   if (/^[a-zA-Z]:/.test(name)) return true;
   return name.split(/[/\\]/).includes('..');
@@ -657,6 +663,15 @@ async function dataOffset(
     record.localHeaderOffset + LOCAL_FIXED_SIZE + header.readUInt16LE(26) + header.readUInt16LE(28);
   if (offset + record.compressedSize > record.dataEnd) {
     reject('Archive entry bytes overlap another member or the central directory');
+  }
+  const localName = await readAt(
+    handle,
+    window,
+    record.localHeaderOffset + LOCAL_FIXED_SIZE,
+    header.readUInt16LE(26),
+  );
+  if (localName.toString('utf8') !== record.name) {
+    reject('Archive local name disagrees with the central directory');
   }
   return offset;
 }

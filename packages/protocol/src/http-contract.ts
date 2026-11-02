@@ -3,6 +3,8 @@ export const HTTP_OPERATIONS = [
   'GET /openapi.yaml',
   'GET /api/v1/capabilities',
   'GET /api/v1/player/core',
+  'POST /api/v1/player/isolated-sessions',
+  'DELETE /api/v1/player/isolated-sessions/:id',
   'GET /api/v1/systems',
   'POST /api/v1/auth/bootstrap',
   'POST /api/v1/auth/login',

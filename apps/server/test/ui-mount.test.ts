@@ -94,7 +94,7 @@ test('the public isolated play document has its own policy and reuses unchanged 
     assert.match(play.body, /Player/);
     assert.equal(
       play.headers['content-security-policy'],
-      "default-src 'none'; script-src 'self'; frame-src 'self'; style-src 'self'; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https://emuskins.com https://raw.githubusercontent.com https://deltastyles.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'self'",
+      "default-src 'none'; script-src 'self'; frame-src 'self' http://127.0.0.1:*; style-src 'self'; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https://emuskins.com https://raw.githubusercontent.com https://deltastyles.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'self'",
     );
     assert.equal(play.headers['cross-origin-opener-policy'], 'same-origin');
     assert.equal(play.headers['cross-origin-embedder-policy'], 'require-corp');

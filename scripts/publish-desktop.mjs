@@ -4,9 +4,9 @@ import { copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { extname, join, resolve } from 'node:path';
 
 const tag = process.argv[2];
-if (!tag || !/^v[0-9][a-zA-Z0-9.-]*$/.test(tag))
+if (!tag || (tag !== 'nightly' && !/^v[0-9][a-zA-Z0-9.-]*$/.test(tag)))
   throw new Error('A version release tag is required');
-const version = tag.slice(1);
+const version = tag === 'nightly' ? tag : tag.slice(1);
 const platform = process.platform;
 const suffixes =
   platform === 'win32' ? ['.msi'] : platform === 'linux' ? ['.deb', '.AppImage'] : ['.dmg'];
@@ -43,4 +43,6 @@ for (const extension of suffixes) {
 }
 const sums = join(output, `SHA256SUMS-desktop-${platform}-${process.arch}.txt`);
 await writeFile(sums, `${checksums.join('\n')}\n`);
-execFileSync('gh', ['release', 'upload', tag, ...assets, sums], { stdio: 'inherit' });
+if (!process.argv.includes('--stage-only')) {
+  execFileSync('gh', ['release', 'upload', tag, ...assets, sums], { stdio: 'inherit' });
+}

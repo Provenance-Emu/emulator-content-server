@@ -47,21 +47,35 @@
     "elapsedMs": 2587
   },
   "nativeSafari": {
-    "status": "Flycast test blocked by computer-use guard after user changed to a restricted URL",
-    "baseline": {
-      "profile": "org.libretro.prosystem",
-      "browser": "Native Safari 26.6.2",
+    "status": "PASS",
+    "browser": "Native Safari 26.6.2",
+    "pass": true,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+    "before": {
+      "mode": 6,
+      "executed": 4191533,
+      "counter": 4039948,
+      "frames": 271,
       "opaque": true,
-      "frames": 912,
-      "pixel": [16, 130, 0, 255]
-    }
+      "isolated": false
+    },
+    "after": {
+      "mode": 6,
+      "executed": 5847971,
+      "counter": 5696386,
+      "frames": 529,
+      "opaque": true,
+      "isolated": false
+    },
+    "pixel": [0, 252, 0, 255],
+    "elapsedMs": 3267,
+    "scope": "Original generated ELF in production opaque sandbox with unchanged CSP; no browser security settings changed"
   },
   "distribution": "Operator-local combined binary; source grant audit unresolved",
   "limits": [
     "Original program only; no commercial-game acceptance",
     "No synchronized saves",
-    "No Naomi/Naomi2/Atomiswave firmware or game acceptance",
-    "Native Safari Flycast acceptance remains unverified"
+    "No Naomi/Naomi2/Atomiswave firmware or game acceptance"
   ],
   "localInstallation": {
     "profileId": "org.flycast.wasm-jit",

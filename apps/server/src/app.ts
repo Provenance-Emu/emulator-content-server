@@ -23,6 +23,7 @@ import { FolderWatcher } from './folder-watcher.js';
 import { sendProblem } from './http.js';
 import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
 import { loadPlayerAssets, registerPlayerAssets } from './player-assets.js';
+import { registerPlayerIsolation } from './player-isolation.js';
 import { loadPlayerProfiles } from './player-profiles.js';
 import { registerRoutes } from './routes.js';
 import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
@@ -246,6 +247,7 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
   registerWebDav(app, context);
   registerRoutes(app, context);
   registerPlayerManagement(app, context);
+  registerPlayerIsolation(app, context);
   registerPlayerAssets(app, context);
   registerWebDavCredentials(app, context);
   return app;

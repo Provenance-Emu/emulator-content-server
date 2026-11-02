@@ -1,0 +1,63 @@
+{
+  "schema": "ecs.dolphin-browser-acceptance/v1",
+  "date": "2026-10-31",
+  "profile": "org.dolphin.wasm",
+  "browser": "145.0.7632.6",
+  "runtime": "dolphin-wasm-esm",
+  "threaded": true,
+  "loader": {
+    "url": "/play/plugins/org.dolphin.wasm/loader.js",
+    "sha256": "0bfc73fbbf370d831fbce04239f062a93f885c053a86866ce5dca3a879be331f",
+    "sizeBytes": 266969
+  },
+  "wasm": {
+    "url": "/play/plugins/org.dolphin.wasm/core.wasm",
+    "sha256": "d7395b3a94080f5b7d08a0522f59096007419d117b7b0eb868246429adee6f5c",
+    "sizeBytes": 15175335
+  },
+  "programSha256": "7d6123b0dad9d74883586dd366b10774a7b411ff5d177d3464ea7bdac6084ce7",
+  "isolation": {
+    "isolated": true,
+    "shared": true,
+    "parentBlocked": true,
+    "credentialsAbsent": true
+  },
+  "before": {
+    "jit": 8331091,
+    "compiled": 6,
+    "video": "xfb:4 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:4 updates:53 input:0 gen:51 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:72.6 avg:69.6 max:72.6 decode:0.5 avg:0.6 max:0.9 vo_sync:0.0/max0.0 vo_pub:0.6/max1.5 vo_total:0.7/max3.2 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+  },
+  "pressed": {
+    "video": "xfb:6 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:6 updates:69 input:1 gen:68 buttons:100 stick:128,128 fastsw:0 coreprof xfb_dt:66.6 avg:68.7 max:72.6 decode:0.5 avg:0.6 max:0.9 vo_sync:0.0/max0.0 vo_pub:0.6/max1.5 vo_total:0.7/max3.2 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+  },
+  "after": {
+    "jit": 23149081,
+    "video": "xfb:9 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:9 updates:94 input:0 gen:92 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:70.2 avg:68.4 max:72.6 decode:0.5 avg:0.6 max:0.9 vo_sync:0.0/max0.0 vo_pub:0.6/max1.5 vo_total:0.7/max3.2 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+  },
+  "pixels": {
+    "width": 320,
+    "height": 240,
+    "top": [0, 255, 1, 255],
+    "bottom": [0, 0, 255, 255]
+  },
+  "errors": [],
+  "testSeconds": 9.8,
+  "limits": [
+    "GameCube only; commercial games/GPU/audio not qualified",
+    "512 MiB staged file limit; fixed 1.5 GiB shared WASM memory",
+    "One controller; synchronized saves unavailable",
+    "Local browser on the server computer only",
+    "64 companion origins per server lifetime; restart after limit",
+    "Best-effort framebuffer snapshot; dynamic tearing contract deferred"
+  ],
+  "localInstallation": {
+    "installed": true,
+    "enabled": true,
+    "source": "managed",
+    "defaultUnchanged": true,
+    "assetHashesVerified": true,
+    "companionBootstrapAndRetirementVerified": true,
+    "savedChoicesPreserved": 807,
+    "activeJobs": 0
+  }
+}

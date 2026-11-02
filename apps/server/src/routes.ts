@@ -224,7 +224,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         [
           "default-src 'none'",
           "script-src 'self'",
-          "frame-src 'self'",
+          "frame-src 'self' http://127.0.0.1:*",
           "style-src 'self'",
           "img-src 'self' data: blob: https://raw.githubusercontent.com",
           "connect-src 'self' https://emuskins.com https://raw.githubusercontent.com https://deltastyles.com",

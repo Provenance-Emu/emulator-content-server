@@ -66,6 +66,117 @@ test('watchdog/inactive and invalid packets release all input, stale packets can
   );
   assert.equal(e.sample(0).buttons, 0);
 });
+test('a fresh centered owned stick can rearm after watchdog expiry without replaying held input', () => {
+  const e = createInputEngine();
+  const owned = (x: number) => [{ id: 'finger', port: 0, buttons: 0, axes: [x, 0, 0, 0] }];
+  e.packet({ sequence: 1, active: true, sources: [] }, 0);
+  e.packet({ sequence: 2, active: true, sources: owned(0.8) }, 1);
+  assert.equal(e.sample(0).axes[0], 0.8);
+  e.tick(800);
+  assert.equal(e.active, false);
+  assert.deepEqual(e.sample(0), { buttons: 0, axes: [0, 0, 0, 0] });
+  e.packet({ sequence: 2, active: true, sources: owned(0) }, 801);
+  assert.equal(e.active, false, 'a stale neutral packet cannot rearm');
+  e.packet({ sequence: 3, active: true, sources: owned(0.8) }, 802);
+  assert.equal(e.active, false, 'a fresh but held stick cannot rearm');
+  assert.equal(e.sample(0).axes[0], 0);
+  e.packet({ sequence: 4, active: true, sources: owned(0) }, 803);
+  assert.equal(e.active, true, 'centering is neutral even while the pointer remains owned');
+  assert.equal(e.sample(0).axes[0], 0);
+  e.packet({ sequence: 5, active: true, sources: owned(0.8) }, 804);
+  assert.equal(e.sample(0).axes[0], 0.8);
+});
+test('watchdog rearm requires each source to be neutral, rather than cancelling held states', () => {
+  const e = createInputEngine();
+  e.packet({ sequence: 1, active: true, sources: [] }, 0);
+  e.tick(800);
+  e.packet(
+    {
+      sequence: 2,
+      active: true,
+      sources: [
+        { id: 'left', port: 0, buttons: 0, axes: [-0.8, 0, 0, 0] },
+        { id: 'right', port: 0, buttons: 0, axes: [0.8, 0, 0, 0] },
+      ],
+    },
+    801,
+  );
+  assert.equal(e.active, false);
+  e.packet(
+    {
+      sequence: 3,
+      active: true,
+      sources: [
+        { id: 'finger', port: 0, buttons: 0, axes: [0, 0, 0, 0] },
+        { id: 'held', port: 1, buttons: 256, axes: [0, 0, 0, 0] },
+      ],
+    },
+    802,
+  );
+  assert.equal(e.active, false);
+  assert.deepEqual(e.sample(1), { buttons: 0, axes: [0, 0, 0, 0] });
+  e.packet(
+    {
+      sequence: 4,
+      active: true,
+      sources: [
+        { id: 'finger', port: 0, buttons: 0, axes: [0, 0, 0, 0] },
+        { id: 'held', port: 1, buttons: 0, axes: [0, 0, 0, 0] },
+      ],
+    },
+    803,
+  );
+  assert.equal(e.active, true);
+});
+test('explicit lifecycle loss and invalid packets still require an empty packet to rearm', () => {
+  const e = createInputEngine();
+  const centered = [{ id: 'finger', port: 0, buttons: 0, axes: [0, 0, 0, 0] }];
+  e.packet({ sequence: 1, active: true, sources: [] }, 0);
+  e.tick(800);
+  e.packet({ sequence: 2, active: false, sources: [] }, 801);
+  e.tick(1600);
+  e.packet({ sequence: 3, active: true, sources: centered }, 1601);
+  assert.equal(e.active, false);
+  e.tick(2400);
+  e.packet({ sequence: 4, active: true, sources: centered }, 2401);
+  assert.equal(e.active, false, 'timing out while disarmed cannot override lifecycle loss');
+  e.packet({ sequence: 5, active: true, sources: [] }, 2402);
+  assert.equal(e.active, true);
+  e.tick(3200);
+  assert.throws(() =>
+    e.packet(
+      {
+        sequence: 6,
+        active: true,
+        sources: [{ id: 'invalid', port: 4, buttons: 0, axes: [0, 0, 0, 0] }],
+      },
+      3201,
+    ),
+  );
+  e.packet({ sequence: 7, active: true, sources: centered }, 3202);
+  assert.equal(e.active, false, 'invalid input removes watchdog-only rearm permission');
+  e.packet({ sequence: 8, active: true, sources: [] }, 3203);
+  assert.equal(e.active, true);
+});
+test('ordinary release revokes watchdog recovery and preserving it cannot create permission', () => {
+  const e = createInputEngine();
+  const centered = [{ id: 'finger', port: 0, buttons: 0, axes: [0, 0, 0, 0] }];
+  e.release(true);
+  e.packet({ sequence: 1, active: true, sources: centered }, 0);
+  assert.equal(e.active, false, 'preserve before a valid expiry grants nothing');
+  e.packet({ sequence: 2, active: true, sources: [] }, 1);
+  e.tick(800);
+  e.release(true);
+  e.packet({ sequence: 3, active: true, sources: centered }, 801);
+  assert.equal(e.active, true, 'watchdog cleanup can retain existing recovery permission');
+  e.tick(1600);
+  e.release();
+  e.release(true);
+  e.packet({ sequence: 4, active: true, sources: centered }, 1601);
+  assert.equal(e.active, false, 'ordinary release revokes permission permanently');
+  e.packet({ sequence: 5, active: true, sources: [] }, 1602);
+  assert.equal(e.active, true);
+});
 test('cancel removes pending tap only for its own pointer and abandoned IDs cannot grow unbounded', () => {
   const e = createInputEngine();
   e.packet({ sequence: 1, active: true, sources: [] }, 0);

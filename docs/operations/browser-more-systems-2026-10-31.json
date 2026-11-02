@@ -1,0 +1,227 @@
+{
+  "date": "2026-10-31",
+  "profiles": [
+    {
+      "id": "org.libretro.pokemini",
+      "version": "1.0.0",
+      "sourceRevision": "132111b76343559860532a1ccc094f93f1ed5650",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "patches": [],
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41232769898",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-pokemini-2026.10.31.1",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "pokemini.ecsplayer",
+          "sizeBytes": 3753243,
+          "sha256": "74a012e237becb5078eea5edd91887b220463e1227b0b36bb35a30381fc57765"
+        },
+        {
+          "file": "pokemini.source.tar.gz",
+          "sizeBytes": 84766667,
+          "sha256": "7bdb562ac7c5cee8e4ece42e6653401e91bba5eed1741c6706e4c92ce8b2efee"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 2048,
+          "sha256": "770635309cf14315dad53b309bada9f5842845c0a7ae443149e1e48a1a240bef"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 942,
+          "sha256": "2539b866babe00da3d3fe11c33bbdeae25b71045fa96f5955ba31221215a9d27"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 214,
+          "sha256": "acf60e5cdf3b5a35754171955cec114d56a9d06511d0184ae9a0efcf3865ce91"
+        }
+      ]
+    },
+    {
+      "id": "org.libretro.potator",
+      "version": "1.0.0",
+      "sourceRevision": "227c5f6f3ce74d32e9002ce24c1420288559a860",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "patches": [],
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41232435590",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-potator-2026.10.31.1",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "potator.ecsplayer",
+          "sizeBytes": 3586352,
+          "sha256": "03d3ca2fbc4d6ddf49bb021856e48fd0e093191df0f4aa30659ff09a2673a80b"
+        },
+        {
+          "file": "potator.source.tar.gz",
+          "sizeBytes": 84570095,
+          "sha256": "efbcdfdbec0a7035115ceef33a37a4c03c90f16b7e867dd63cd832b83c79d88b"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 1954,
+          "sha256": "4737e99adefa422512631cdf851283b7f1b78eb55c9ee23426fcf9c1809b71cf"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 951,
+          "sha256": "121101a18e33b786de6e9beb784e5aff947c26ccd8bde886453782854a4a1591"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 213,
+          "sha256": "f11e7aa64e8f69888236e111b2ac7cb2b7c5cf2a11a748e20b6ffbaab1ce9e66"
+        }
+      ]
+    },
+    {
+      "id": "org.libretro.sameduck",
+      "version": "1.0.0",
+      "sourceRevision": "040e19c379f00dae10afe0eb0c1b2b019b985bbe",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "patches": [],
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41232772034",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-sameduck-2026.10.31.1",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "sameduck.ecsplayer",
+          "sizeBytes": 3614005,
+          "sha256": "454a5a918a3652d8b4e106f0c62ffbf84d9a838ff1617570fc6056ae1ee12f48"
+        },
+        {
+          "file": "sameduck.source.tar.gz",
+          "sizeBytes": 85613300,
+          "sha256": "778db81165c216fc023696d194b23dc6b569772bc71a6d7a44d358802619b014"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 1961,
+          "sha256": "a78ad4f055cc5ad91fc92111832b1cf196b1dc7fa753379ce8e88e1188de26be"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 935,
+          "sha256": "ba21ac0ebeb4d212e33c7ee03ce07cec011aee71d945ae47064ecd379fe45131"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 214,
+          "sha256": "60f166caff32edd2c54a8233dc1f84312df040411c2f2c78ac7466bb30022e4f"
+        }
+      ]
+    },
+    {
+      "id": "org.libretro.mednafen-pcfx",
+      "version": "1.0.0",
+      "sourceRevision": "c1650bad5fbdcc3c3ccd45e29e3983e1ccf16cff",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "patches": [],
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41232440298",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-mednafen-pcfx-2026.10.31.1",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "mednafen-pcfx.ecsplayer",
+          "sizeBytes": 4142979,
+          "sha256": "8900e3f1b32bfa0f1f7532a3b1dbe480447325eb57fb378d6a08e7d088846496"
+        },
+        {
+          "file": "mednafen-pcfx.source.tar.gz",
+          "sizeBytes": 85511927,
+          "sha256": "6851fb1c8ad64076917c48f7a972ed9c87c6087925ddb69396cfccf7dc0da20f"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 1993,
+          "sha256": "0cce439edadc2364381df0a9e847b6c860791a231be1a8dacc211e65cbbeafeb"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 941,
+          "sha256": "cbd8e78242fb6e6c7572902bc3a53009bb53b16bf41b583dea345d06a0033762"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 219,
+          "sha256": "50e13f0246b0da118806fa5235cb8d9618dfc201171bf5610b3c58bba41f8792"
+        }
+      ]
+    },
+    {
+      "id": "org.libretro.atari800",
+      "version": "1.1.0",
+      "sourceRevision": "4e7fbc73765c1a9670c7506616046ad1d4ccda51",
+      "frontendRevision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "patches": ["atari800-explicit-machine.patch"],
+      "workflowRun": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41233220558",
+      "release": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/browser-core-atari800-2026.10.31.2",
+      "reproducible": true,
+      "artifacts": [
+        {
+          "file": "atari800.ecsplayer",
+          "sizeBytes": 4082548,
+          "sha256": "740025c312e6d5f602f2efc74b9b681f14cd445b4057ce4b0bda0aa15b417676"
+        },
+        {
+          "file": "atari800.source.tar.gz",
+          "sizeBytes": 86503686,
+          "sha256": "eddd87be440f3a3ed1c971a86fd1ef5f6ee21e582b67d7678972ded60e0bc436"
+        },
+        {
+          "file": "NOTICES.txt",
+          "sizeBytes": 2093,
+          "sha256": "5e71750b8329a3005dbaa8ff7f48c5edb7f15e0459e1f93978ae06cdd4f87c0c"
+        },
+        {
+          "file": "plugin.json",
+          "sizeBytes": 1050,
+          "sha256": "244e105f851325a54bda65a41167d1e899fc2586754d0e2f9939800ba3aff557"
+        },
+        {
+          "file": "smokes.json",
+          "sizeBytes": 258,
+          "sha256": "7fc97c195d3a5da867c19fb6f0b5e7999de9643069e46246a58d2c73c4db4861"
+        }
+      ]
+    }
+  ],
+  "acceptance": {
+    "headless": true,
+    "muted": true,
+    "productionSandboxSha256": "3d24095174a75d7db28e8a2dfc67f1d2e63a40bfc674c7f470234a13bba945d4",
+    "supervision": {
+      "centerPixel": [0, 97, 173, 255],
+      "content": "Entirely original 16 KiB CPU-generated shade-1 cartridge",
+      "pageErrors": 0,
+      "unexpectedRequests": 0
+    },
+    "atari5200": {
+      "centerPixel": [74, 65, 173, 255],
+      "content": "Entirely original raw .bin cartridge; default 5200 option with explicit-machine source patch",
+      "pageErrors": 0,
+      "unexpectedRequests": 0
+    },
+    "largeGameCube": {
+      "logicalBytes": 1459978240,
+      "elapsedSeconds": 12.1,
+      "context": "fresh persistent headless profile, ordinary quota, muted",
+      "receipt": "external private acceptance artifact; not a ROM fixture"
+    }
+  },
+  "localDeployment": {
+    "installedProfiles": 40,
+    "declaredSystems": 51,
+    "savedChoicesPreserved": 807,
+    "settingsUnchanged": true,
+    "defaultUnchanged": true,
+    "atariVersion": "1.1.0",
+    "activeJobs": 0
+  }
+}

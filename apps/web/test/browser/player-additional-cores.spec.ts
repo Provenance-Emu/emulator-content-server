@@ -84,18 +84,14 @@ const flycastPlugin = process.env.ECS_ACCEPTANCE_FLYCAST_WASM_PLUGIN;
 if (jaguarPlugin || parallelPlugin || psxPlugin || prosystemPlugin || flycastPlugin)
   test.use({
     headless: true,
-    ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
-      ? {
-          launchOptions: {
-            args: [
-              '--mute-audio',
-              '--use-gl=angle',
-              '--use-angle=swiftshader',
-              '--enable-unsafe-swiftshader',
-            ],
-          },
-        }
-      : {}),
+    launchOptions: {
+      args: [
+        '--mute-audio',
+        ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
+          ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
+          : []),
+      ],
+    },
   });
 const cases = [
   {

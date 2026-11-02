@@ -1,5 +1,6 @@
 import { type CollectedAsset, type ContentClient, sha256Bytes } from '@ecs/client';
 import { CommandChannel } from './commands.js';
+import type { cachePlayerDisk } from './disk-cache.js';
 import { nativeInputConfig, verifiedInputBuild } from './input-model.js';
 import { coreOptionsConfig } from './options.js';
 import type { PlayerPreferences } from './preferences.js';
@@ -10,7 +11,17 @@ export type PlayerSelection =
   | { kind: 'asset'; itemId: string; assetId: string }
   | { kind: 'source'; sourceId: string; itemId?: string };
 export type PlayerClient = Partial<
-  Pick<ContentClient, 'playerProfile' | 'playerProfiles' | 'playerProfileAssets' | 'sourceGroup'>
+  Pick<
+    ContentClient,
+    | 'playerProfile'
+    | 'playerProfiles'
+    | 'playerProfileAssets'
+    | 'sourceGroup'
+    | 'downloadTo'
+    | 'downloadSourceTo'
+    | 'createPlayerIsolation'
+    | 'closePlayerIsolation'
+  >
 > &
   Pick<
     ContentClient,
@@ -26,6 +37,7 @@ export type PlayerClient = Partial<
     | 'upload'
   >;
 export interface StartOptions {
+  stageDisk?: typeof cachePlayerDisk;
   expectedProfile?: import('./runtime.js').BrowserCore;
   profileId?: string;
   signal?: AbortSignal;
@@ -64,44 +76,55 @@ export async function startPlayer(
   options: StartOptions,
 ) {
   const prepared = await preparePlayer(client, selection, options);
-  const assets:
-    | {
-        loader: CollectedAsset;
-        wasm: CollectedAsset;
-        assets?: { name: string; bytes: Uint8Array<ArrayBuffer> }[];
-      }
-    | undefined =
-    'profileVersion' in prepared.core
-      ? await client.playerProfileAssets?.(prepared.core.id)
-      : await client.playerCoreAssets(prepared.core.id);
-  if (!assets) throw new Error('Selected emulator resources are unavailable');
-  options.signal?.throwIfAborted();
-  const extra = assets.assets ?? [];
-  if ('profileVersion' in prepared.core) {
-    if (
-      (await sha256Bytes(assets.loader.bytes)) !== prepared.core.loader.sha256 ||
-      (await sha256Bytes(assets.wasm.bytes)) !== prepared.core.wasm.sha256 ||
-      extra.length !== prepared.core.assets.length
-    )
-      throw new Error('Emulator profile changed; reload before starting');
-    for (const spec of prepared.core.assets) {
-      const file = extra.find((asset) => asset.name === spec.name);
-      if (
-        !file ||
-        file.bytes.byteLength !== spec.sizeBytes ||
-        (await sha256Bytes(file.bytes)) !== spec.sha256
-      )
-        throw new Error('Emulator resource changed; reload before starting');
-    }
-  }
-  validateCoreBytes(prepared.core, assets);
-  const loaded = await options.importer(assets.loader.bytes, {
-    profile: prepared.core,
-    assets: extra,
-    signal: options.signal,
-    inputEnabled: verifiedInputBuild(prepared.core),
-  });
+  let loaded: Awaited<ReturnType<RuntimeImporter>> | undefined;
   try {
+    const assets:
+      | {
+          loader: CollectedAsset;
+          wasm: CollectedAsset;
+          assets?: { name: string; bytes: Uint8Array<ArrayBuffer> }[];
+        }
+      | undefined =
+      'profileVersion' in prepared.core
+        ? await client.playerProfileAssets?.(prepared.core.id)
+        : await client.playerCoreAssets(prepared.core.id);
+    if (!assets) throw new Error('Selected emulator resources are unavailable');
+    options.signal?.throwIfAborted();
+    const extra = assets.assets ?? [];
+    if ('profileVersion' in prepared.core) {
+      if (
+        (await sha256Bytes(assets.loader.bytes)) !== prepared.core.loader.sha256 ||
+        (await sha256Bytes(assets.wasm.bytes)) !== prepared.core.wasm.sha256 ||
+        extra.length !== prepared.core.assets.length
+      )
+        throw new Error('Emulator profile changed; reload before starting');
+      for (const spec of prepared.core.assets) {
+        const file = extra.find((asset) => asset.name === spec.name);
+        if (
+          !file ||
+          file.bytes.byteLength !== spec.sizeBytes ||
+          (await sha256Bytes(file.bytes)) !== spec.sha256
+        )
+          throw new Error('Emulator resource changed; reload before starting');
+      }
+    }
+    validateCoreBytes(prepared.core, assets);
+    const createIsolation = client.createPlayerIsolation?.bind(client);
+    const closeIsolation = client.closePlayerIsolation?.bind(client);
+    loaded = await options.importer(assets.loader.bytes, {
+      profile: prepared.core,
+      assets: extra,
+      signal: options.signal,
+      inputEnabled: verifiedInputBuild(prepared.core),
+      ...(createIsolation && closeIsolation
+        ? {
+            isolation: {
+              create: createIsolation,
+              close: closeIsolation,
+            },
+          }
+        : {}),
+    });
     const log = (text: string) => options.log?.(String(text).slice(0, 500));
     const runtime = await loaded.factory({
       wasmBinary: assets.wasm.bytes,
@@ -137,8 +160,14 @@ export async function startPlayer(
       throw new Error('Unsupported core: MEMFS and callMain exports are required');
     for (const dir of ['/ecs', '/ecs/content', '/ecs/saves', '/ecs/states', '/ecs/system'])
       await runtime.FS.mkdirTree(dir);
+    const systemDirectory =
+      'profileVersion' in prepared.core && prepared.core.systemFilesDirectory
+        ? `/ecs/system/${prepared.core.systemFilesDirectory}`
+        : '/ecs/system';
+    if (extra.length && systemDirectory !== '/ecs/system')
+      await runtime.FS.mkdirTree(systemDirectory);
     for (const asset of extra) {
-      await runtime.FS.writeFile(`/ecs/system/${asset.name}`, asset.bytes);
+      await runtime.FS.writeFile(`${systemDirectory}/${asset.name}`, asset.bytes);
       if (prepared.core.id === 'org.libretro.parallel-dc' && asset.name === 'awbios.zip') {
         await runtime.FS.mkdirTree('/ecs/system/dc');
         await runtime.FS.writeFile('/ecs/system/dc/awbios.zip', asset.bytes);
@@ -152,14 +181,27 @@ export async function startPlayer(
     );
     await runtime.FS.writeFile(
       '/ecs/core-options.cfg',
-      new TextEncoder().encode(coreOptionsConfig(options.preferences?.options ?? {})),
+      new TextEncoder().encode(
+        coreOptionsConfig(
+          options.preferences?.options ?? {},
+          'profileVersion' in prepared.core ? prepared.core.defaultCoreOptions : undefined,
+        ),
+      ),
     );
     for (const file of prepared.contentFiles ?? [])
       await runtime.FS.writeFile(file.path, file.bytes);
-    await runtime.FS.writeFile(
-      contentPath(prepared.core, prepared.contentExtension),
-      prepared.content,
-    );
+    if (prepared.disk) {
+      if (!runtime.mountContentFile)
+        throw new Error('This runtime cannot mount a disk-backed disc');
+      await runtime.mountContentFile(
+        contentPath(prepared.core, prepared.contentExtension),
+        prepared.disk.file,
+      );
+    } else
+      await runtime.FS.writeFile(
+        contentPath(prepared.core, prepared.contentExtension),
+        prepared.content,
+      );
     if (prepared.battery) await runtime.FS.writeFile(paths.battery_save, prepared.battery.bytes);
     if (prepared.state) await runtime.FS.writeFile(paths.save_state, prepared.state.bytes);
     options.signal?.throwIfAborted();
@@ -190,9 +232,20 @@ export async function startPlayer(
           })
         : null;
     if (prepared.state) await saves?.loadSelectedState();
-    return { runtime, commands, saves, prepared, releaseLoader: loaded.release };
+    const release = loaded.release;
+    return {
+      runtime,
+      commands,
+      saves,
+      prepared,
+      releaseLoader() {
+        release();
+        void prepared.disk?.release();
+      },
+    };
   } catch (error) {
-    loaded.release();
+    loaded?.release();
+    await prepared.disk?.release();
     throw error;
   }
 }

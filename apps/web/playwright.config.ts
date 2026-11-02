@@ -16,6 +16,7 @@ export default defineConfig({
     channel: 'chromium',
     launchOptions: { args: ['--mute-audio'] },
     headless: true,
+    launchOptions: { args: ['--mute-audio'] },
     trace: 'off',
     screenshot: 'off',
     video: 'off',

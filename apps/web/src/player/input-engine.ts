@@ -25,6 +25,7 @@ export function createInputEngine() {
     pending = new Map<string, { port: number; buttons: number }>();
   let active = false,
     armed = false,
+    watchdogRearm = false,
     lastHeartbeat = -Infinity,
     sequence = 0,
     polled = false;
@@ -32,9 +33,10 @@ export function createInputEngine() {
     Array.isArray(a) &&
     a.length === 4 &&
     a.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 1);
-  function release() {
+  function release(preserveWatchdogRearm = false) {
     sources.clear();
     pending.clear();
+    if (!preserveWatchdogRearm) watchdogRearm = false;
   }
   function source(id: string, port: number, buttons: number, axes: number[]) {
     if (!active || !armed) return;
@@ -117,8 +119,14 @@ export function createInputEngine() {
       }
       active = true;
       if (!armed) {
-        if (value.sources.length === 0) armed = true;
-        else return;
+        if (
+          value.sources.length === 0 ||
+          (watchdogRearm &&
+            value.sources.every((s) => s.buttons === 0 && s.axes.every((n) => n === 0)))
+        ) {
+          armed = true;
+          watchdogRearm = false;
+        } else return;
       }
       for (const id of value.cancelled ?? []) clear(`touch:${id}`, true);
       const ids = new Set(value.sources.map((s) => `touch:${s.id}`));
@@ -133,9 +141,11 @@ export function createInputEngine() {
   }
   function tick(now: number) {
     if (now - lastHeartbeat > 750) {
+      // Only an armed session may recover with a fresh, fully neutral owned source.
+      if (active && armed) watchdogRearm = true;
       active = false;
       armed = false;
-      release();
+      release(true);
     }
   }
   function sample(port: number, consume = true) {

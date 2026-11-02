@@ -1,3 +1,4 @@
+import { isPlayerCoreOptions } from '@ecs/client';
 export interface CoreOption {
   key: string;
   value: string;
@@ -67,7 +68,7 @@ export function parseOptions(raw: string, key?: string, detail = key !== undefin
     return result;
   });
 }
-export function coreOptionsConfig(options: Record<string, string>): string {
+export function coreOptionsConfig(options: Record<string, string>, defaults?: unknown): string {
   if (
     !options ||
     typeof options !== 'object' ||
@@ -75,6 +76,10 @@ export function coreOptionsConfig(options: Record<string, string>): string {
     Object.keys(options).length > 512
   )
     throw new Error('Invalid core options');
+  if (defaults !== undefined && !isPlayerCoreOptions(defaults))
+    throw new Error('Invalid default core options');
+  options = { ...(defaults as Record<string, string> | undefined), ...options };
+  if (Object.keys(options).length > 512) throw new Error('Core options exceed limit');
   let result = '';
   for (const [key, value] of Object.entries(options).sort(([a], [b]) => a.localeCompare(b))) {
     if (!validOptionKey(key) || !validOptionValue(value))

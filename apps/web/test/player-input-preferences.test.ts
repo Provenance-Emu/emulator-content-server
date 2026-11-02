@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createInputPreferences } from '../src/player/input-preferences.js';
+import { defaultLayout } from '../src/player/layout.js';
+import { type BrowserCore, profileIdentity } from '../src/player/runtime.js';
 import { fixture } from './player-fixture.js';
 
 test('input preferences merge only edited keys, isolate builds, and reject connection-index persistence', () => {
@@ -91,4 +93,51 @@ test('game overrides may use a key freed by an inherited core mapping', () => {
   assert.equal(store.load().map.ports[0]?.keys.a, 'KeyZ');
   assert.equal(store.load().map.ports[0]?.keys.b, undefined);
   assert.equal(store.load().warning, null);
+});
+
+test('plugin touch defaults expose sticks while saved layouts and bindings retain precedence', () => {
+  const data = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      data.set(k, v);
+    },
+    removeItem: (k: string) => {
+      data.delete(k);
+    },
+  };
+  const base = {
+    ...fixture().core,
+    profileVersion: 1,
+    buildVersion: 'test',
+    assets: [],
+    contentExtensions: ['nes'],
+  };
+  const standard = { ...base, defaultInputLayout: 'standard' } as unknown as BrowserCore;
+  const compact = { ...base, defaultInputLayout: 'compact' } as unknown as BrowserCore;
+  assert.equal(profileIdentity(standard), profileIdentity(compact));
+  const store = createInputPreferences('http://ecs.test', standard, 'item:1', storage);
+  assert.ok(
+    store.load().layout.representations.landscape.controls.some((c) => c.action === 'leftStick'),
+  );
+  assert.equal(data.size, 0);
+  store.remember('core', {
+    'key.0.a': 'KeyC',
+    'layout.landscape': defaultLayout('compact').representations.landscape,
+  });
+  assert.ok(
+    !store.load().layout.representations.landscape.controls.some((c) => c.action === 'leftStick'),
+  );
+  assert.ok(
+    store.load().layout.representations.portrait.controls.some((c) => c.action === 'leftStick'),
+  );
+  const custom = defaultLayout('standard').representations.landscape;
+  const screen = custom.screens[0];
+  assert.ok(screen);
+  screen.frame.x = 15;
+  screen.frame.width -= 15;
+  store.remember('game', { 'layout.landscape': custom });
+  const restored = createInputPreferences('http://ecs.test', compact, 'item:1', storage).load();
+  assert.equal(restored.layout.representations.landscape.screens[0]?.frame.x, 15);
+  assert.equal(restored.map.ports[0]?.keys.a, 'KeyC');
 });

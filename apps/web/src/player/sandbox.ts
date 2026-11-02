@@ -1,3 +1,5 @@
+import { type IsolationSession, isolatedPlayerUrl } from './dolphin.js';
+import { dolphinWorkerSource } from './dolphin-worker.js';
 import { PREVIEW_LIMIT, pngInfo, SCREENSHOT_LIMIT } from './images.js';
 import { inputBridgeSource } from './input-bridge.js';
 import { createInputEngine } from './input-engine.js';
@@ -31,12 +33,35 @@ export const importIsolatedRuntime: RuntimeImporter = async (
       if (disposed || context.signal?.aborted) throw new Error('Emulator startup was cancelled');
       if (loader.byteLength > 8 * 1024 * 1024 || options.wasmBinary.byteLength > LIMIT)
         throw new Error('Core artifact exceeds limit');
+      const timeout = context.timeoutMs ?? 30000;
+      if (!Number.isSafeInteger(timeout) || timeout < 10 || timeout > 30000)
+        throw new Error('Invalid runtime deadline');
+      const profile = context.profile,
+        broker = context.isolation;
+      const dolphin = profile?.runtime === 'dolphin-wasm-esm';
+      if (dolphin && (globalThis.crossOriginIsolated !== true || !context.isolation))
+        throw new Error(
+          'Dolphin needs the isolated browser-player page on the server computer. Open the game from /play/.',
+        );
+      let isolation: IsolationSession | undefined;
+      let isolatedUrl: URL | undefined;
+      if (dolphin && broker && profile) {
+        isolation = await broker.create(profile.id);
+        try {
+          isolatedUrl = isolatedPlayerUrl(isolation, window.location.origin);
+          if (disposed || context.signal?.aborted)
+            throw new Error('Emulator startup was cancelled');
+        } catch (error) {
+          await broker.close(isolation.id).catch(() => {});
+          throw error;
+        }
+      }
       const oldDisplay = options.canvas.style.display;
       const oldHidden = options.canvas.hidden;
       const frame = document.createElement('iframe');
-      frame.setAttribute('sandbox', 'allow-scripts');
+      frame.setAttribute('sandbox', dolphin ? 'allow-scripts allow-same-origin' : 'allow-scripts');
       frame.referrerPolicy = 'no-referrer';
-      frame.allow = 'gamepad *; autoplay *; fullscreen *';
+      frame.allow = `gamepad *; autoplay *; fullscreen *${dolphin ? '; cross-origin-isolated *' : ''}`;
       frame.allowFullscreen = true;
       frame.title = 'Isolated game display';
       frame.className = options.canvas.className;
@@ -45,7 +70,8 @@ export const importIsolatedRuntime: RuntimeImporter = async (
       frame.style.height = '100%';
       const entropy = crypto.getRandomValues(new Uint8Array(16));
       const nonce = Array.from(entropy, (b) => b.toString(16).padStart(2, '0')).join('');
-      frame.src = `/play/sandbox.html#${nonce}`;
+      frame.src = `${isolatedUrl?.href ?? '/play/sandbox.html'}#${nonce}`;
+      const expectedOrigin = isolatedUrl?.origin ?? 'null';
       const channel = new MessageChannel();
       let next = 0,
         closed = false,
@@ -60,12 +86,6 @@ export const importIsolatedRuntime: RuntimeImporter = async (
           op: string;
         }
       >();
-      const timeout = context.timeoutMs ?? 30000;
-      if (!Number.isSafeInteger(timeout) || timeout < 10 || timeout > 30000) {
-        channel.port1.close();
-        channel.port2.close();
-        throw new Error('Invalid runtime deadline');
-      }
       let handshakeResolve: () => void, handshakeReject: (error: Error) => void;
       const handshake = new Promise<void>((resolve, reject) => {
         handshakeResolve = resolve;
@@ -86,6 +106,7 @@ export const importIsolatedRuntime: RuntimeImporter = async (
         channel.port1.close();
         channel.port2.close();
         frame.remove();
+        if (isolation) void context.isolation?.close(isolation.id).catch(() => {});
         options.canvas.hidden = oldHidden;
         options.canvas.style.display = oldDisplay;
         handshakeReject(error);
@@ -101,16 +122,18 @@ export const importIsolatedRuntime: RuntimeImporter = async (
           closed ||
           ready ||
           event.source !== frame.contentWindow ||
-          event.origin !== 'null' ||
+          event.origin !== expectedOrigin ||
           event.data?.type !== 'ecs-player-ready' ||
           event.data.nonce !== nonce
         )
           return;
         ready = true;
         window.removeEventListener('message', onready);
-        frame.contentWindow?.postMessage({ type: 'ecs-player-connect', nonce }, '*', [
-          channel.port2,
-        ]);
+        frame.contentWindow?.postMessage(
+          { type: 'ecs-player-connect', nonce },
+          dolphin ? expectedOrigin : '*',
+          [channel.port2],
+        );
       }
       channel.port1.onmessage = (event) => {
         if (closed) return;
@@ -203,6 +226,7 @@ export const importIsolatedRuntime: RuntimeImporter = async (
             commands: context.profile?.saveCompletion !== 'none',
             shaders: builtinShaders,
             inputEnabled: context.inputEnabled === true,
+            ...(dolphin ? { workerSource: dolphinWorkerSource() } : {}),
             inputModule: context.inputEnabled ? inputBridgeSource() : undefined,
             inputConfig: context.inputEnabled ? defaultMapping() : undefined,
           },
@@ -211,6 +235,20 @@ export const importIsolatedRuntime: RuntimeImporter = async (
         const contentSizes = new Map<string, number>();
         let contentBytes = 0;
         const runtime: PlayerRuntime = {
+          ...(dolphin
+            ? {
+                async mountContentFile(path: string, file: File) {
+                  if (
+                    !(file instanceof File) ||
+                    file.size < 1 ||
+                    file.size > (context.profile?.maxContentBytes ?? LIMIT) ||
+                    !/^\/ecs\/content\/game\.[a-z0-9]{1,16}$/.test(path)
+                  )
+                    throw new Error('Invalid disk-backed disc');
+                  await rpc('mount', { path, file });
+                },
+              }
+            : {}),
           FS: {
             mkdirTree: async (path) => {
               await rpc('mkdir', path);

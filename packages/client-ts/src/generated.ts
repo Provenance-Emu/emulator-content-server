@@ -74,6 +74,9 @@ export interface WebPlayerDescriptor {
   systems: string[];
   runtime: string;
   filesystem: string;
+  systemFilesDirectory?: string;
+  defaultInputLayout?: string;
+  defaultCoreOptions?: Record<string, unknown>;
   threaded: boolean;
   saveCompletion: string;
   contentExtensions: string[];
@@ -82,6 +85,16 @@ export interface WebPlayerDescriptor {
   loader: PlayerCoreResource;
   wasm: PlayerCoreResource;
   assets: WebPlayerAsset[];
+}
+
+export interface PlayerIsolationDraft {
+  profileId: string;
+}
+
+export interface PlayerIsolationSession {
+  id: string;
+  url: string;
+  expiresAt: string;
 }
 
 export interface PlayerConfiguration {

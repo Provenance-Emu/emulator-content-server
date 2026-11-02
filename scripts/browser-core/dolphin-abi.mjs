@@ -15,6 +15,7 @@ export const DOLPHIN_ABI_EXPORTS = Object.freeze([
   'GetPpcWasmBlockRunCount',
   'GetCoreTicksLow',
   'GetCoreTicksHigh',
+  'GetCoreTicksPerSecond',
   'GetVideoStats',
   'FrameWidth',
   'FrameHeight',
@@ -66,7 +67,7 @@ export function dolphinSmokeDol() {
   return bytes;
 }
 
-/** Bound this diagnostic loader to complete DOLs in GameCube MEM1. */
+/** Bound this diagnostic loader to complete DOLs in MEM1; original probes place counters in BSS. */
 export function validateDolphinDol(bytes) {
   if (!(bytes instanceof Uint8Array) || bytes.length < 0x100 || bytes.length > MAX_DOL_BYTES)
     throw new Error('Diagnostic DOL must be between 256 bytes and 1 MiB');
@@ -100,7 +101,7 @@ export function validateDolphinDol(bytes) {
       ranges.some((range) => bss < range.end && bss + size > range.start))
   )
     throw new Error('DOL BSS exceeds memory bounds or overlaps a section');
-  return { entry, counter: 0x80004000 };
+  return { entry, counter: bss };
 }
 
 /** Bind only actual emulation APIs: RunFrame and SaveState are upstream diagnostic stubs. */
@@ -151,6 +152,7 @@ export function bindDolphinPrototype(module) {
         state: string('GetCoreStateName'),
         status: string('GetCoreStatus'),
         pc: module._GetPPCPC() >>> 0,
+        ticksPerSecond: module._GetCoreTicksPerSecond(),
         jitCompiled: module._GetPpcWasmBlockCompileCount(),
         jitRuns: module._GetPpcWasmBlockRunCount(),
         ticks:
@@ -160,7 +162,9 @@ export function bindDolphinPrototype(module) {
     },
     frame() {
       // The shim paints a metadata placeholder before the emulated VI emits an XFB.
-      if (!string('GetVideoStats').startsWith('xfb:')) return null;
+      const videoStats = string('GetVideoStats');
+      const sequence = /^xfb:([1-9][0-9]*)(?:\s|$)/.exec(videoStats);
+      if (!sequence) return null;
       const width = module._FrameWidth(),
         height = module._FrameHeight();
       if (
@@ -173,7 +177,13 @@ export function bindDolphinPrototype(module) {
       )
         throw new Error('Dolphin frame dimensions exceed the prototype limit');
       const bytes = memoryRange(module._FrameBuffer(), width * height * 4);
-      return { width, height, rgba: new Uint8ClampedArray(bytes) };
+      return {
+        width,
+        height,
+        sequence: Number(sequence[1]),
+        videoStats,
+        rgba: new Uint8ClampedArray(bytes),
+      };
     },
     audio(frames = 1024) {
       const capacity = module._AudioBufferFrames();

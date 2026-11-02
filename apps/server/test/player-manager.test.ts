@@ -7,7 +7,11 @@ import test from 'node:test';
 import { issueToken } from '@ecs/auth';
 import { openServer } from '../src/index.js';
 
-function bundle(id = 'org.example.player', systems = ['com.provenance.nes']) {
+function bundle(
+  id = 'org.example.player',
+  systems = ['com.provenance.nes'],
+  runtime = 'emscripten-esm-v1',
+) {
   const loader = Buffer.from('export default async()=>({FS:{},callMain(){}});'),
     wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
   const hash = (b: Buffer) => createHash('sha256').update(b).digest('hex');
@@ -23,9 +27,9 @@ function bundle(id = 'org.example.player', systems = ['com.provenance.nes']) {
       module: 'core.wasm',
       web: {
         profileVersion: 1,
-        runtime: 'emscripten-esm-v1',
+        runtime,
         filesystem: 'memfs',
-        threaded: false,
+        threaded: runtime === 'dolphin-wasm-esm',
         saveCompletion: 'none',
         contentExtensions: ['nes'],
         maxContentBytes: 1024,
@@ -293,5 +297,170 @@ test('Atomiswave is offered only after owner-supplied system-file installation, 
   assert.equal(
     (await f.server.app.inject({ url: `/play/plugins/${id}/core.wasm` })).rawPayload.length,
     8,
+  );
+});
+
+test('managed system files preserve basenames, owner authorization and atomic case-insensitive replacement', async (t) => {
+  const f = await fixture(t, true),
+    id = 'org.example.firmware';
+  const installed = await f.server.app.inject({
+    method: 'POST',
+    url: '/api/v1/player/management/install',
+    headers: { ...f.headers, 'content-type': 'application/vnd.ecs.player-package' },
+    payload: bundle(id).bytes,
+  });
+  assert.equal(installed.statusCode, 200, installed.body);
+  const headers = { ...f.headers, 'content-type': 'application/vnd.ecs.player-system-file' };
+  const put = (
+    name: string,
+    payload = Buffer.from([1]),
+    profile = id,
+    h: Record<string, string> = headers,
+  ) =>
+    f.server.app.inject({
+      method: 'PUT',
+      url: `/api/v1/player/management/${profile}/system/${encodeURIComponent(name)}`,
+      headers: h,
+      payload,
+    });
+  assert.equal(
+    (
+      await put('bios.bin', Buffer.from([1]), id, {
+        'content-type': headers['content-type'],
+      } as typeof headers)
+    ).statusCode,
+    403,
+  );
+  assert.equal(
+    (await put('bios.bin', Buffer.from([1]), 'org.example.player')).statusCode,
+    403,
+    'operator files remain immutable',
+  );
+  const user = await f.server.app.inject({
+    method: 'POST',
+    url: '/api/v1/users',
+    headers: f.headers,
+    payload: { username: 'reader', password: 'generated-password' },
+  });
+  assert.equal(user.statusCode, 201);
+  const login = await f.server.app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/login',
+    payload: { username: 'reader', password: 'generated-password' },
+  });
+  assert.equal(login.statusCode, 200);
+  assert.equal(
+    (
+      await put('bios.bin', Buffer.from([1]), id, {
+        ...headers,
+        authorization: `Bearer ${login.json().token}`,
+      })
+    ).statusCode,
+    403,
+    'authenticated readers cannot install firmware',
+  );
+
+  for (const name of [
+    '../bios.bin',
+    'dir/bios.bin',
+    'dir\\bios.bin',
+    'bios.',
+    'CON.rom',
+    'LPT1',
+    'loader.js',
+    'CORE.WASM',
+    'plugin.json',
+    'retroarch.cfg',
+    'bad\n.bin',
+  ]) {
+    const result = await put(name);
+    assert.equal(result.statusCode, 400, `${name}: ${result.body}`);
+  }
+  assert.equal((await put('bios.bin', Buffer.alloc(0))).statusCode, 400);
+  for (const name of ['BIOS.ROM', 'support.dat', 'boot.wad', 'disksys.fds', 'firmware']) {
+    const result = await put(name);
+    assert.equal(result.statusCode, 200, result.body);
+  }
+  const replacement = await put('bios.rom', Buffer.from([2, 3]));
+  assert.equal(replacement.statusCode, 200, replacement.body);
+  assert.equal(
+    replacement.json().items.find((item: { profile: { id: string } }) => item.profile.id === id)
+      .profile.assets.length,
+    5,
+  );
+  assert.deepEqual(
+    (await f.server.app.inject({ url: `/play/plugins/${id}/assets/bios.rom` })).rawPayload,
+    Buffer.from([2, 3]),
+  );
+  assert.equal(
+    (await f.server.app.inject({ url: `/play/plugins/${id}/assets/BIOS.ROM` })).statusCode,
+    404,
+  );
+  const manifestPath = join(f.dataDir, 'players', id, 'plugin.json'),
+    before = await readFile(manifestPath);
+  const statePath = join(f.dataDir, 'player-settings.json'),
+    state = await readFile(statePath);
+  await rm(statePath);
+  await mkdir(statePath);
+  try {
+    assert.equal(
+      (await put('bios.rom', Buffer.from([9]))).statusCode,
+      500,
+      'failed activation rolls back the profile',
+    );
+    assert.deepEqual(await readFile(manifestPath), before);
+    assert.deepEqual(
+      (await f.server.app.inject({ url: `/play/plugins/${id}/assets/bios.rom` })).rawPayload,
+      Buffer.from([2, 3]),
+    );
+  } finally {
+    await rm(statePath, { recursive: true });
+    await writeFile(statePath, state);
+  }
+  assert.deepEqual(
+    (await f.server.app.inject({ url: `/play/plugins/${id}/core.wasm` })).rawPayload,
+    bundle(id).wasm,
+  );
+});
+
+test('system-file count and total bytes remain bounded and Dolphin firmware uploads are unavailable', async (t) => {
+  const f = await fixture(t),
+    id = 'org.example.bounded';
+  const packageHeaders = { ...f.headers, 'content-type': 'application/vnd.ecs.player-package' };
+  for (const [profile, runtime] of [
+    [id, 'emscripten-esm-v1'],
+    ['org.example.dolphin', 'dolphin-wasm-esm'],
+  ]) {
+    const result = await f.server.app.inject({
+      method: 'POST',
+      url: '/api/v1/player/management/install',
+      headers: packageHeaders,
+      payload: bundle(profile, ['com.provenance.nes'], runtime).bytes,
+    });
+    assert.equal(result.statusCode, 200, result.body);
+  }
+  const put = (name: string, payload: Buffer, profile = id) =>
+    f.server.app.inject({
+      method: 'PUT',
+      url: `/api/v1/player/management/${profile}/system/${name}`,
+      headers: { ...f.headers, 'content-type': 'application/vnd.ecs.player-system-file' },
+      payload,
+    });
+  assert.equal((await put('bios.bin', Buffer.from([1]), 'org.example.dolphin')).statusCode, 403);
+  assert.equal((await put('large.bin', Buffer.alloc(32 * 1024 * 1024 + 1))).statusCode, 413);
+  assert.equal((await put('large.bin', Buffer.alloc(32 * 1024 * 1024))).statusCode, 200);
+  assert.equal((await put('extra.bin', Buffer.from([1]))).statusCode, 409);
+  assert.equal(
+    (await put('LARGE.BIN', Buffer.from([1]))).statusCode,
+    200,
+    'replacement subtracts the retired bytes',
+  );
+  for (let i = 0; i < 15; i++)
+    assert.equal((await put(`file${i}.bin`, Buffer.from([i]))).statusCode, 200);
+  assert.equal((await put('seventeenth.bin', Buffer.from([1]))).statusCode, 409);
+  assert.equal(
+    (await put('FILE0.BIN', Buffer.from([2]))).statusCode,
+    200,
+    'replacement is allowed at the count limit',
   );
 });

@@ -251,6 +251,7 @@ test('profile assets validate fixed routes, declared bounds, and cryptographic h
 
 test('a larger installed core catalog accepts 64 unique profiles and rejects 65', async (t) => {
   let count = 64;
+  let defaultInputLayout: unknown;
   const profile = (i: number) => {
     const id = `org.example.core${i}`,
       base = `/play/plugins/${id}`;
@@ -258,6 +259,7 @@ test('a larger installed core catalog accepts 64 unique profiles and rejects 65'
       profileVersion: 1,
       id,
       name: `Generated core ${i}`,
+      ...(defaultInputLayout === undefined ? {} : { defaultInputLayout }),
       systems: ['com.provenance.nes'],
       runtime: 'emscripten-esm-v1',
       filesystem: 'memfs',
@@ -278,6 +280,15 @@ test('a larger installed core catalog accepts 64 unique profiles and rejects 65'
     }),
   );
   assert.equal((await client().playerProfiles()).items.length, 64);
+  for (const layout of ['compact', 'standard']) {
+    defaultInputLayout = layout;
+    assert.equal((await client().playerProfiles()).items.length, 64);
+  }
+  for (const value of [null, true, 'custom', { controls: [] }]) {
+    defaultInputLayout = value;
+    await assert.rejects(client().playerProfiles(), /player profile/);
+  }
+  defaultInputLayout = undefined;
   count = 65;
   await assert.rejects(client().playerProfiles(), /Invalid player catalog/);
 });

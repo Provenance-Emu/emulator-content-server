@@ -1,4 +1,9 @@
-import type { PlayerCoreDescriptor, WebPlayerDescriptor } from '@ecs/client';
+import {
+  isPlayerCoreOptions,
+  type PlayerCoreDescriptor,
+  type WebPlayerDescriptor,
+} from '@ecs/client';
+import { approvedDolphinBuild, type IsolationBroker } from './dolphin.js';
 export type BrowserCore = PlayerCoreDescriptor | WebPlayerDescriptor;
 export interface RuntimeContext {
   profile?: BrowserCore;
@@ -6,6 +11,7 @@ export interface RuntimeContext {
   signal?: AbortSignal;
   timeoutMs?: number;
   inputEnabled?: boolean;
+  isolation?: IsolationBroker;
 }
 
 import type { CommandRuntime } from './commands.js';
@@ -17,6 +23,7 @@ export interface PlayerRuntime extends CommandRuntime {
     writeFile(path: string, bytes: Uint8Array): void | Promise<void>;
     readFile(path: string): Uint8Array | Promise<Uint8Array>;
   };
+  mountContentFile?(path: string, file: File): Promise<void>;
   callMain(args: string[]): void | Promise<void>;
   focus?(): void | Promise<void>;
   captureScreenshot?(): Promise<Uint8Array<ArrayBuffer>>;
@@ -97,6 +104,7 @@ export function profileIdentity(core: BrowserCore): string {
     'profileVersion' in core
       ? [
           core.buildVersion,
+          core.systemFilesDirectory ?? null,
           ...core.assets.map((asset) => [asset.name, asset.sha256, asset.sizeBytes]).sort(),
         ]
       : [core.frontendCommit, core.coreCommit, core.emscriptenVersion],
@@ -111,9 +119,21 @@ export function validateProfile(core: BrowserCore): void {
   if ('profileVersion' in core) {
     if (
       core.profileVersion !== 1 ||
+      (core.defaultInputLayout !== undefined &&
+        !['compact', 'standard'].includes(core.defaultInputLayout)) ||
+      (core.defaultCoreOptions !== undefined &&
+        (core.runtime !== 'retroarch-emscripten-esm' ||
+          !isPlayerCoreOptions(core.defaultCoreOptions))) ||
       !/^[a-z0-9][a-z0-9._-]{0,119}$/.test(core.id) ||
-      !['emscripten-esm-v1', 'retroarch-emscripten-esm'].includes(core.runtime) ||
-      core.threaded !== false ||
+      !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(
+        core.runtime,
+      ) ||
+      (core.systemFilesDirectory !== undefined &&
+        (typeof core.systemFilesDirectory !== 'string' ||
+          !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(core.systemFilesDirectory) ||
+          /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(core.systemFilesDirectory))) ||
+      core.threaded !== (core.runtime === 'dolphin-wasm-esm') ||
+      (core.runtime === 'dolphin-wasm-esm' && !approvedDolphinBuild(core)) ||
       core.filesystem !== 'memfs' ||
       !['none', 'command-reply-v1'].includes(core.saveCompletion) ||
       !Array.isArray(core.systems) ||
@@ -131,7 +151,8 @@ export function validateProfile(core: BrowserCore): void {
       core.contentExtensions.some((extension) => !/^[a-z0-9]{1,16}$/.test(extension)) ||
       !Number.isSafeInteger(core.maxContentBytes) ||
       core.maxContentBytes < 1 ||
-      core.maxContentBytes > 512 * 1024 * 1024 ||
+      core.maxContentBytes >
+        (core.runtime === 'dolphin-wasm-esm' ? 9 * 1024 ** 3 : 512 * 1024 ** 2) ||
       !Array.isArray(core.assets) ||
       core.assets.length > 16
     )
@@ -173,6 +194,10 @@ export function validateCoreBytes(
     ![0, 97, 115, 109, 1, 0, 0, 0].every((byte, index) => assets.wasm.bytes[index] === byte)
   )
     throw new Error('Invalid core artifact size or WASM header');
+  if (core.runtime === 'dolphin-wasm-esm') {
+    if (!approvedDolphinBuild(core)) throw new Error('Unsupported threaded Dolphin build');
+    return; // The separate-origin host permits only this reviewed pthread pair.
+  }
   const loader = new TextDecoder('utf-8', { fatal: true }).decode(assets.loader.bytes);
   if (
     /\bimport\b\s*(?!\s*\.)|\b(?:Worker|SharedWorker)\s*\(|\b(?:audioWorklet|paintWorklet)\b|\bimportScripts\s*\(/.test(

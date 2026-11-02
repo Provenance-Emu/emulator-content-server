@@ -1,0 +1,214 @@
+{
+  "date": "2026-11-01",
+  "scope": "Brief real Super Mario 64 gameplay through authenticated application playback, headless muted Chromium software WebGL. No full playthrough, performance, audio or save qualification.",
+  "game": {
+    "id": "org.libretro.mupen64plus-next",
+    "label": "Super Mario 64 castle gameplay recovery",
+    "browser": "145.0.7632.6",
+    "elapsedMs": 165430,
+    "contentBytes": 8388608,
+    "contentSha256": "17ce077343c6133f8c9f2d6d6d9a4ab62c8cd2aa57c40aea1f490b4c8bb21d91",
+    "analog": {
+      "x": 0.8,
+      "y": 0,
+      "holdMs": 6000,
+      "guestStallMs": 900,
+      "idleMs": 400
+    },
+    "nativePolls": {
+      "count": 7784,
+      "analogCount": 440,
+      "lastAxes": [0, 0, 0, 0]
+    },
+    "checkpoints": [
+      {
+        "stage": "boot",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 14676,
+          "center": [241, 176, 120, 255],
+          "digest": "3b045c3602170941d16eb1f387484a45781520b2737c6c08834a9d1621854ce3",
+          "titleDigest": "86227a44832c44eb07332ca833a1e3eed0707585eea6a3fd8f066e6b2529e579"
+        }
+      },
+      {
+        "stage": "action-1",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 7351,
+          "center": [185, 136, 7, 255],
+          "digest": "f50d0d6bd9fc2532237ceed28ea1419e9de08435b5f37146b02d512dcadef738",
+          "titleDigest": "30f2f8e07d0630b1072e632e055f6f1be51781bfa1daaf82e899c27c29bf491e"
+        }
+      },
+      {
+        "stage": "action-2",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 20521,
+          "center": [208, 199, 178, 255],
+          "digest": "b3edfd7ff7ec05e3931d11e6a7d5e18e44464d50fe4617f687ff7a5783df6347",
+          "titleDigest": "f36717496858322c3dbc899d849793d1cf2f026784e12e5f515ee01ee5be61fe"
+        }
+      },
+      {
+        "stage": "action-3",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17838,
+          "center": [105, 0, 0, 255],
+          "digest": "f702a6974ea4be80d3a4ca4ce283641f30e12c3974854680accdec973e3d8bd8",
+          "titleDigest": "eed26d9e57a4750d4a48d40cb32b1cd2ab432bc5eeb1de73360cde3cfdd30876"
+        }
+      },
+      {
+        "stage": "action-4",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17868,
+          "center": [105, 0, 0, 255],
+          "digest": "26615a67d081d47f58f1292aa5f7e871b04073bc8ab5ee98cb8cf12d17427fd4",
+          "titleDigest": "4f14b64bb7cf3f2149790e09431c3170d35e6b61ff446f5e40e730743fcd9b81"
+        }
+      },
+      {
+        "stage": "action-5",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 18434,
+          "center": [255, 0, 0, 255],
+          "digest": "b1701768f3f7d81362af3c38d8e509177d2c42fa0bc558d34257ebb69869ed18",
+          "titleDigest": "b9332acb0653c0a5c7c2588b40bd736134dae5b39013f1f660de7cc6e598a9e2"
+        }
+      },
+      {
+        "stage": "action-6",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17443,
+          "center": [51, 206, 2, 255],
+          "digest": "0b4b0e7b31ef30bc7cef5988035c6f098c5676d9dcfcff89c7b2eece728f4576",
+          "titleDigest": "fee460a41588dcf4a1efa916e989ca0940a8e46c593af0774b3bf3fb17f420df"
+        }
+      },
+      {
+        "stage": "action-7",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17103,
+          "center": [246, 0, 0, 255],
+          "digest": "55dcf90a8c21091b92018c0facddb022be4f5bfdb81ff518a9068e4ff3713d3a",
+          "titleDigest": "2341da087695ff6a2933afca92511a9ff22e8739d6394c2f409adcc60214302b"
+        }
+      },
+      {
+        "stage": "action-8",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17184,
+          "center": [232, 0, 0, 255],
+          "digest": "68b9c2bdb0184aba8830f80f2129e877ed79625d8b373626779af8f1f24a5076",
+          "titleDigest": "8ea25d1e84b539fa62936754777740f1dc3ef29d722db79bedc46775f3bd6b43"
+        }
+      },
+      {
+        "stage": "action-9",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17117,
+          "center": [232, 0, 0, 255],
+          "digest": "cc8e861aeb8820668421e85ee4d27c22fb89c3c2be64e11518786b0fb01440b8",
+          "titleDigest": "f0cfe1b62351db9bf39bacd558024a80a47a19e2f239b2f8438740909f65d0bb"
+        }
+      },
+      {
+        "stage": "action-10",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17138,
+          "center": [233, 0, 0, 255],
+          "digest": "c7fb300365edb2ba74e1350007c544688ea5323778401d5ab2234254cff91225",
+          "titleDigest": "28f553aa438dfd58f942f4d98802eca36fae0a200de5a14d84a9ae5b9fb7860c"
+        }
+      },
+      {
+        "stage": "analog-before",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 17206,
+          "center": [254, 0, 0, 255],
+          "digest": "443c8ee8313af95000d97eb8a74ac712dc6225e3e36880366c7e1f57ed015156",
+          "titleDigest": "051de8d02b08faae3e0a1c73c8c9c8ff0a2c0817fef689f8ce656ac426787601"
+        }
+      },
+      {
+        "stage": "analog-held",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 15788,
+          "center": [247, 237, 114, 255],
+          "digest": "bcd751b12dccaff4e5934e00401c31f5e68f1f4e414747d7823fe18d506d9f79",
+          "titleDigest": "c2ca131c96437ee6b6d5c24b0febb3181b54e09a2eed73ece7fb1bd7e5c4fa91"
+        }
+      },
+      {
+        "stage": "analog-released",
+        "picture": {
+          "width": 624,
+          "height": 468,
+          "colors": 8252,
+          "center": [252, 235, 120, 255],
+          "digest": "5ebe6703090b5a4bc661b707f7231a19f6b072ca27c5e1175341211d0237b8c1",
+          "titleDigest": "0feb4d9cec5ad9eac20a758a869b43aad233e6dca1c1bbbeac3fba7f24df3734"
+        }
+      }
+    ],
+    "errors": []
+  },
+  "inputEvidence": {
+    "heldActive": true,
+    "held": {
+      "buttons": 0,
+      "axes": [0.7645246222498773, 0, 0, 0]
+    },
+    "released": {
+      "buttons": 0,
+      "axes": [0, 0, 0, 0]
+    },
+    "nativeAxesAfterRelease": [0, 0, 0, 0]
+  },
+  "captureReview": "Tutorial closed; Mario and the camera move across the castle grounds between the before and held checkpoints. Native axes return to zero after release.",
+  "core": {
+    "version": "0.2.1",
+    "loaderSha256": "51cb1b66fc012518164808de6abd8d4574a5a87744130ffe354e65da6014590c",
+    "wasmSha256": "f194d6674d31e367c4e004078015d04aa58b5fa48f87d1e4cb2333277aa8b2f5",
+    "binaryChanges": false
+  },
+  "qualificationLimits": [
+    "Mario Kart race attempt stopped after no first capture by its deadline",
+    "Native Safari, sustained performance, synchronized saves and broader game coverage remain unqualified",
+    "Native poll counts are diagnostic; they are not emulated FPS"
+  ],
+  "localUi": {
+    "health": true,
+    "player": "player-DUsiKKpf.js",
+    "servedPlayerHash": "3e486da01ceee9ad5ff6ae8f266d812182bc160ee749fa8ff75e688072aef411",
+    "settingsUnchanged": true,
+    "profileUnchanged": true,
+    "oldAssetsRetained": true,
+    "restartRequired": false
+  }
+}
