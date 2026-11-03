@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import fs, { mkdtemp, rm } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
@@ -36,7 +37,12 @@ function generated(id: string, revision = 1) {
   return { ...fixture, bytes: Buffer.concat([prefix, header, ...fixture.files]) };
 }
 
-async function fixture(t: TestContext, downloading: ReturnType<typeof generated>, fail = false) {
+async function fixture(
+  t: TestContext,
+  downloading: ReturnType<typeof generated>,
+  fail = false,
+  catalog = [downloading.entry],
+) {
   const dataDir = await mkdtemp(join(tmpdir(), 'ecs-player-concurrency-'));
   t.after(() => rm(dataDir, { recursive: true, force: true }));
   const context = {
@@ -44,7 +50,7 @@ async function fixture(t: TestContext, downloading: ReturnType<typeof generated>
     playerProfiles: new Map(),
     defaultPlayerProfileId: null,
   } as unknown as ServerContext;
-  const manager = new PlayerManager(context, new Map(), [downloading.entry]);
+  const manager = new PlayerManager(context, new Map(), catalog);
   await manager.initialize();
   const started = signal();
   const release = signal();
@@ -111,6 +117,18 @@ for (const fail of [false, true]) {
     assert.equal(f.context.playerProfiles.has(downloading.entry.id), !fail);
     assert.deepEqual(f.context.playerProfiles.get(uploaded.entry.id)?.loader, uploaded.loader);
     assert.equal(f.context.defaultPlayerProfileId, uploaded.entry.id);
+    if (fail) {
+      f.network.mock.restore();
+      t.mock.method(
+        globalThis,
+        'fetch',
+        async (url: string) =>
+          new Response(url.endsWith('.wasm') ? downloading.wasm : downloading.loader),
+      );
+      await f.manager.installCatalog(downloading.entry.id);
+      assert.deepEqual(f.context.playerProfiles.get(downloading.entry.id)?.wasm, downloading.wasm);
+      assert.equal(f.context.defaultPlayerProfileId, uploaded.entry.id);
+    }
   });
 }
 
@@ -185,4 +203,89 @@ test('concurrent catalog requests activate one complete version and reject the d
   assert.ok(rejected.reason instanceof DomainError && rejected.reason.status === 409);
   assert.deepEqual(f.context.playerProfiles.get(downloading.entry.id)?.loader, downloading.loader);
   assert.deepEqual(f.context.playerProfiles.get(downloading.entry.id)?.wasm, downloading.wasm);
+});
+
+test('catalog preparation stays bounded while an earlier activation waits on disk', {
+  timeout: 30000,
+}, async (t) => {
+  const first = generated('org.example.first'),
+    second = generated('org.example.second', 2),
+    existing = generated('org.example.existing');
+  for (const [index, player] of [first, second].entries()) {
+    assert.ok(player.entry.upstream);
+    for (const resource of player.entry.upstream.resources)
+      resource.url = `https://web.libretro.com/queue_${index}_libretro.${resource.file.endsWith('.wasm') ? 'wasm' : 'js'}`;
+  }
+  const f = await fixture(t, first, false, [first.entry, second.entry]);
+  await f.manager.install(existing.bytes);
+  f.network.mock.restore();
+  const secondStarted = signal(),
+    activationStarted = signal(),
+    allowActivation = signal();
+  t.mock.method(globalThis, 'fetch', async (url: string) => {
+    const player = url.includes('queue_0_') ? first : second;
+    if (player === first) {
+      f.started.resolve();
+      await f.release.promise;
+    } else secondStarted.resolve();
+    return new Response(url.endsWith('.wasm') ? player.wasm : player.loader);
+  });
+  const installs = Promise.allSettled([
+    f.manager.installCatalog(first.entry.id),
+    f.manager.installCatalog(second.entry.id),
+  ]);
+  let restoreWrites = () => {};
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await whileDownloading(f.started.promise);
+    // Drain earlier preflights before releasing the first download.
+    await whileDownloading(f.manager.configure(existing.entry.id, { default: true }));
+    const write = fs.writeFile;
+    const writes = t.mock.method(
+      fs,
+      'writeFile',
+      async (...args: Parameters<typeof fs.writeFile>) => {
+        if (
+          typeof args[0] === 'string' &&
+          args[0].startsWith(join(f.context.dataDir, 'player-settings-'))
+        ) {
+          activationStarted.resolve();
+          await allowActivation.promise;
+        }
+        return write(...args);
+      },
+    );
+    restoreWrites = () => {
+      writes.mock.restore();
+      syncBuiltinESMExports();
+    };
+    syncBuiltinESMExports();
+    f.release.resolve();
+    await whileDownloading(activationStarted.promise);
+    const advanced = await Promise.race([
+      secondStarted.promise.then(() => true),
+      new Promise<boolean>((resolve) => {
+        deadline = setTimeout(() => resolve(false), 2000);
+      }),
+    ]);
+    assert.equal(
+      advanced,
+      false,
+      'Another catalog download accumulated behind a blocked activation',
+    );
+    allowActivation.resolve();
+    assert.deepEqual(
+      (await installs).map((result) => result.status),
+      ['fulfilled', 'fulfilled'],
+    );
+    assert.equal(f.context.defaultPlayerProfileId, existing.entry.id);
+    assert.deepEqual(f.context.playerProfiles.get(first.entry.id)?.wasm, first.wasm);
+    assert.deepEqual(f.context.playerProfiles.get(second.entry.id)?.wasm, second.wasm);
+  } finally {
+    clearTimeout(deadline);
+    f.release.resolve();
+    allowActivation.resolve();
+    await installs;
+    restoreWrites();
+  }
 });

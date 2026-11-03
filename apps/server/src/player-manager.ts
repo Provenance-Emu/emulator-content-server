@@ -27,6 +27,7 @@ export class PlayerManager {
   private managed = new Set<string>();
   private settings: Settings = { disabled: [], defaultId: null };
   private tail: Promise<unknown> = Promise.resolve();
+  private catalogTail: Promise<unknown> = Promise.resolve();
   private root: string;
   private stateFile: string;
   private catalog: readonly TrustedPlayer[];
@@ -380,10 +381,15 @@ export class PlayerManager {
         throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
       if (this.all.has(id)) throw new DomainError('conflict', 409, 'Emulator is already installed');
     });
-    // Network/cache work must not hold the queue used by unrelated owner mutations.
-    const bytes = await this.packageCache.download(this.catalogSnapshot, id);
-    // installBytes rechecks conflicts against current state before atomically activating.
-    return this.serial(() => this.installBytes(bytes));
+    // Bound catalog preparation through activation, so downloaded packages cannot
+    // accumulate behind slow mutations. Network work never holds the mutation queue.
+    const result = this.catalogTail.then(async () => {
+      const bytes = await this.packageCache.download(this.catalogSnapshot, id);
+      // Recheck conflicts against current state before atomically activating.
+      return this.serial(() => this.installBytes(bytes));
+    });
+    this.catalogTail = result.catch(() => {});
+    return result;
   }
 }
 

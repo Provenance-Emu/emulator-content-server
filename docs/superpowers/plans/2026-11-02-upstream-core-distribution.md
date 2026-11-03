@@ -61,4 +61,12 @@ Files: modify `player-manager.ts`, add integration coverage to `player-manager.t
 Ruling: Execute natively after the user's explicit approval to proceed; no additional planning approval loop.
 Ruling: Cache admission skips new entries when capacity is exhausted instead of evicting retained versions; this preserves offline rollback candidates without retention machinery.
 
-Review: Sonnet 5 found no correctness bug or material design gap. The existing management queue waits behind downloads; crash cleanup remains manual and documented. Neither blocks this pre-release batch.
+Review: Sonnet 5 found no correctness bug or material design gap in the initial batch. It noted that the existing management queue waited behind downloads; crash cleanup remains manual and documented.
+
+Follow-up: `978ddca` moves network/cache work outside the mutation queue while
+preserving serialized preflight and activation. Catalog preparation now also
+has its own queue through activation, preventing downloaded packages from
+accumulating behind slow mutations. A generated-fixture regression holds the
+first activation's disk write open and verifies the next download waits; it
+failed before this boundedness change. Existing tests retain settings, uploads,
+firmware, removal, duplicate/conflict handling and preflight ordering coverage.

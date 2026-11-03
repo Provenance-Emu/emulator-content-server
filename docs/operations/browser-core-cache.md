@@ -10,6 +10,10 @@ uploads, firmware changes or removals. Initial checks and final activation stay
 serialized. Activation checks the current installed IDs again: if another
 request installs the same ID while the download is pending, the catalog install
 returns a conflict and preserves that installation, its firmware and settings.
+Catalog preparation has its own queue through activation, so downloaded packages
+cannot accumulate in memory behind a slow settings write or installation. Only
+one catalog request per manager prepares a package at a time; subsequent requests
+can retry after failures. Preflight ordering with earlier removals is preserved.
 
 Each manager captures a version-1 immutable catalog snapshot. Its SHA-256
 identity covers canonical JSON for every entry, including matched resource
