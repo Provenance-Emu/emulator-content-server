@@ -1039,6 +1039,16 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireUser(request, 'read');
     const { rootId } = request.params as { rootId: string };
     const root = requireVisibleRoot(catalog, actor, rootId);
+    // This synchronous adapter must reject an existing reservation rather than
+    // wait for a job whose caller may itself be holding that reservation.
+    const releaseRoots = reserveContentRoots(
+      catalog,
+      catalog
+        .listContentRoots()
+        .filter((candidate) => candidate.libraryId === root.libraryId)
+        .map((candidate) => candidate.id),
+    );
+    releaseRoots();
     return enqueueRootScan(catalog, root, actor.userId);
   });
 
