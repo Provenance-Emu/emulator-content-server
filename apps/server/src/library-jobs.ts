@@ -14,6 +14,9 @@ interface ScanResult {
   online: boolean;
   count: number;
 }
+interface ScanOutcome {
+  failure?: 'conflict' | 'failed';
+}
 const queues = new WeakMap<
   CatalogDatabase,
   {
@@ -77,9 +80,24 @@ export function registerLibraryJobs(
     }
   }
   const waiters = new Map<string, Set<() => void>>();
+  const scanOutcomes = new Map<string, Map<string, ScanOutcome>>();
+  function scanOutcome(id: string, rootId: string): ScanOutcome {
+    let roots = scanOutcomes.get(id);
+    if (!roots) {
+      roots = new Map();
+      scanOutcomes.set(id, roots);
+    }
+    let outcome = roots.get(rootId);
+    if (!outcome) {
+      outcome = {};
+      roots.set(rootId, outcome);
+    }
+    return outcome;
+  }
   function notify(id: string): void {
     for (const resolve of waiters.get(id) ?? []) resolve();
     waiters.delete(id);
+    scanOutcomes.delete(id);
   }
   async function stop(): Promise<void> {
     closing = true;
@@ -98,6 +116,9 @@ export function registerLibraryJobs(
         { online: false, checksum: false },
         actorId,
       );
+      // Retain the typed outcome for every caller sharing this job, even after
+      // notification releases the queue's transient bookkeeping.
+      const outcome = scanOutcome(result.job.id, root.id);
       wake();
       while (!closing) {
         const job = getJob(result.job.id);
@@ -110,6 +131,14 @@ export function registerLibraryJobs(
       }
       const saved = repository.scanResult(result.job.id, root.id);
       if (saved) return saved;
+      if (outcome.failure === 'conflict')
+        throw new DomainError(
+          'conflict',
+          409,
+          'A scan is already pending or conflicts with another operation.',
+        );
+      if (outcome.failure === 'failed')
+        throw new DomainError('scan-failed', 500, 'Scan failed. Retry scan.');
       throw new DomainError(
         'scan-interrupted',
         409,
@@ -204,6 +233,9 @@ export function registerLibraryJobs(
                 await pause(100, undefined, { signal: abort.signal });
                 continue;
               }
+              if (next.job.kind === 'scan')
+                scanOutcome(next.job.id, entry.sourceId).failure =
+                  error instanceof DomainError && error.status === 409 ? 'conflict' : 'failed';
               repository.finishItem(next.job.id, {
                 ...entry,
                 status: 'failed',
