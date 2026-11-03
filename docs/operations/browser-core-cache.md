@@ -4,6 +4,13 @@ Catalog installs retain verified packages in `<data-directory>/player-cache`.
 The owner installation route and public API response stay unchanged. Package
 uploads and operator-managed player directories keep their existing behavior.
 
+Catalog downloads and cache verification run outside the management mutation
+queue, so a slow upstream request does not block owner configuration, package
+uploads, firmware changes or removals. Initial checks and final activation stay
+serialized. Activation checks the current installed IDs again: if another
+request installs the same ID while the download is pending, the catalog install
+returns a conflict and preserves that installation, its firmware and settings.
+
 Each manager captures a version-1 immutable catalog snapshot. Its SHA-256
 identity covers canonical JSON for every entry, including matched resource
 hashes/sizes, runtime manifest and retained upstream core-info/license/firmware

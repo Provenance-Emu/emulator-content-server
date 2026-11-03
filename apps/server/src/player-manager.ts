@@ -373,15 +373,17 @@ export class PlayerManager {
       return this.view();
     });
   }
-  installCatalog(id: string) {
-    return this.serial(async () => {
+  async installCatalog(id: string) {
+    await this.serial(async () => {
       const entry = this.catalog.find((p) => p.id === id && p.available);
       if (!entry)
         throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
       if (this.all.has(id)) throw new DomainError('conflict', 409, 'Emulator is already installed');
-      const bytes = await this.packageCache.download(this.catalogSnapshot, id);
-      return this.installBytes(bytes);
     });
+    // Network/cache work must not hold the queue used by unrelated owner mutations.
+    const bytes = await this.packageCache.download(this.catalogSnapshot, id);
+    // installBytes rechecks conflicts against current state before atomically activating.
+    return this.serial(() => this.installBytes(bytes));
   }
 }
 
