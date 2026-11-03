@@ -6,6 +6,49 @@ import { catalogJson } from './player-catalog-snapshot.js';
 
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
+/** Shared by network redirects and operator-selected catalog validation. */
+function assertDownloadUrl(url: string, source: 'package' | 'upstream') {
+  const parsed = new URL(url);
+  const trusted =
+    source === 'upstream'
+      ? parsed.hostname === 'web.libretro.com' &&
+        /^\/[A-Za-z0-9_]+_libretro\.(?:js|wasm)$/.test(parsed.pathname) &&
+        !parsed.search
+      : ['github.com', 'release-assets.githubusercontent.com'].includes(parsed.hostname);
+  if (
+    parsed.protocol !== 'https:' ||
+    parsed.username ||
+    parsed.password ||
+    parsed.port ||
+    parsed.hash ||
+    !trusted
+  )
+    throw new Error('Untrusted emulator download');
+}
+
+/** Validate complete data-only descriptors without downloading or executing software. */
+export function validateCatalogPlayerDescriptor(entry: TrustedPlayer): void {
+  if (entry.upstream) {
+    if (entry.url !== null || entry.sha256 !== null) throw new Error('Ambiguous player source');
+    const { manifest, resources } = checkedUpstream(entry);
+    if (catalogJson(manifest.player?.systems) !== catalogJson(entry.systems))
+      throw new Error('Player systems do not match the manifest');
+    for (const resource of resources) assertDownloadUrl(resource.url, 'upstream');
+  } else if (entry.url !== null || entry.sha256 !== null || entry.available) {
+    if (
+      !entry.url ||
+      !entry.sha256 ||
+      !/^[a-f0-9]{64}$/.test(entry.sha256) ||
+      !Number.isSafeInteger(entry.downloadBytes) ||
+      (entry.downloadBytes ?? 0) < 1 ||
+      (entry.downloadBytes ?? 0) > PLAYER_PACKAGE_LIMIT
+    )
+      throw new Error('Invalid player package pin');
+    assertDownloadUrl(entry.url, 'package');
+  } else if (entry.downloadBytes !== null)
+    throw new Error('Unavailable player has no download source');
+}
+
 /** Download only server-curated, byte-pinned software. Never accepts a client URL. */
 export async function downloadCatalogPlayer(entry: TrustedPlayer): Promise<Buffer> {
   if (!entry.available)
@@ -121,22 +164,7 @@ async function downloadPlayer(
       throw new Error('Invalid size');
     let url = initial;
     for (let redirects = 0; redirects <= 3; redirects++) {
-      const parsed = new URL(url);
-      const trusted =
-        source === 'upstream'
-          ? parsed.hostname === 'web.libretro.com' &&
-            /^\/[a-z0-9_]+_libretro\.(?:js|wasm)$/.test(parsed.pathname) &&
-            !parsed.search
-          : ['github.com', 'release-assets.githubusercontent.com'].includes(parsed.hostname);
-      if (
-        parsed.protocol !== 'https:' ||
-        parsed.username ||
-        parsed.password ||
-        parsed.port ||
-        parsed.hash ||
-        !trusted
-      )
-        throw new Error('Untrusted emulator download');
+      assertDownloadUrl(url, source);
       const response = await fetch(url, {
         redirect: 'manual',
         signal: controller.signal,

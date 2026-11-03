@@ -4,6 +4,49 @@ Catalog installs retain verified packages in `<data-directory>/player-cache`.
 The owner installation route and public API response stay unchanged. Package
 uploads and operator-managed player directories keep their existing behavior.
 
+## Select a reviewed catalog independently of the application
+
+Export the bundled catalog to a new file and keep the printed snapshot ID:
+
+```sh
+ecs player-catalog export --to /absolute/catalog-v1.json
+ecs serve --data /absolute/content-data \
+  --player-catalog /absolute/catalog-v1.json \
+  --player-catalog-id <printed-snapshot-id>
+```
+
+The ID is SHA-256 over the canonical version-1 catalog payload, excluding the
+embedded `id` field. It is not a hash of the JSON file's raw bytes. Export stages
+and publishes a complete file without replacing an existing name. It captures
+the bundled curated entries; it does not fetch or requalify upstream artifacts.
+
+For a later reviewed catalog, retain a new file and its independently approved
+ID, then restart with that pair. Both settings are required. Equivalent
+environment variables are `ECS_PLAYER_CATALOG` and `ECS_PLAYER_CATALOG_ID`;
+explicit flags override the corresponding environment values. `ecs service
+install` accepts the same flags and saves both values in its registration.
+Without either setting, the server uses its bundled catalog as before.
+
+The operator-approved ID is the trust anchor. Merely copying the ID from an
+untrusted file does not establish trust. The loader bounds files to 1 MiB and
+64 catalog entries, rejects symlink files and malformed/unknown schema fields,
+and validates every entry's source host, sizes, resource hashes, manifest,
+runtime and metadata before initializing server data. It accepts version 1
+only and fails closed instead of silently falling back to another catalog.
+Resource downloads still use the existing HTTPS host allowlist. This option
+does not accept a catalog URL or a URL from an HTTP client.
+
+Selecting a new or older catalog never replaces an installed profile or its
+firmware/settings. New installs use that selected catalog's exact descriptors.
+An owner can explicitly remove a profile and reinstall using a retained older
+catalog and its verified cached package, including offline. Removal retains the
+package cache, but follows the existing removal behavior for that installation's
+user-supplied firmware. This is catalog rollback and explicit reinstall, not an
+in-place installed-version rollback feature. Keep older reviewed files and pins
+alongside their packages; this does not introduce automatic remote channels.
+
+## Cache and activation behavior
+
 Catalog downloads and cache verification run outside the management mutation
 queue, so a slow upstream request does not block owner configuration, package
 uploads, firmware changes or removals. Initial checks and final activation stay

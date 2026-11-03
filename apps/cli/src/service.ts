@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { assertListenPolicy } from '@ecs/auth';
 import { CatalogDatabase } from '@ecs/database';
+import { type PlayerCatalogSelection, playerCatalogSelection } from './player-catalog-options.js';
 
 export const LAUNCH_AGENT = 'app.emulator-content-server.plist';
 export const SYSTEMD_UNIT = 'ecs.service';
@@ -23,6 +24,7 @@ export interface ServiceSpec {
   chdmanPath?: string;
   playerDir?: string;
   playerPluginsDir?: string;
+  playerCatalogSnapshot?: PlayerCatalogSelection;
   allowLan: boolean;
   publicInternet: boolean;
   tlsTerminated: boolean;
@@ -70,6 +72,14 @@ export function serveArguments(spec: ServiceSpec): string[] {
     if (!isAbsolute(spec.playerPluginsDir))
       throw new Error('Player plugins directory must be absolute');
     args.push('--player-plugins', spec.playerPluginsDir);
+  }
+  if (spec.playerCatalogSnapshot !== undefined) {
+    const selected = playerCatalogSelection(
+      spec.playerCatalogSnapshot.file,
+      spec.playerCatalogSnapshot.id,
+    );
+    if (!selected) throw new Error('Missing player-catalog selection');
+    args.push('--player-catalog', selected.file, '--player-catalog-id', selected.id);
   }
   if (spec.allowLan) args.push('--allow-lan');
   if (spec.publicInternet) args.push('--public');

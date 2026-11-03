@@ -69,8 +69,10 @@ complete packages before activation, but had no retained verified download
 cache. The approved first batch now adds [immutable catalog receipts and a
 bounded verified local cache](./browser-core-cache.md). Installed profiles and
 retained packages survive upstream outages. Duplicate installation remains
-rejected rather than offering installed-version selection or rollback. Upstream
-pins are still curated in the application; there is no live remote channel.
+rejected rather than offering installed-version selection or rollback. The
+bundled upstream pins remain curated in the application; operators can also select a
+reviewed catalog file and expected ID independently. There is no live remote
+channel.
 
 The first batch retains matched resources, runtime requirements and available
 upstream provenance/license metadata. Complete the corresponding-source/notice

@@ -11,6 +11,19 @@ const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
 const hash = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const files = [loader, wasm];
 
+test('official mixed-case core filenames remain eligible under the upstream host policy', async (t) => {
+  const core = entry();
+  for (const resource of core.upstream.resources)
+    resource.url = `https://web.libretro.com/DoubleCherryGB_libretro.${resource.file.endsWith('.wasm') ? 'wasm' : 'js'}`;
+  t.mock.method(
+    globalThis,
+    'fetch',
+    async (url: string) => new Response(url.endsWith('.wasm') ? wasm : loader),
+  );
+  const parsed = parsePlayerPackage(await downloadCatalogPlayer(core));
+  assert.deepEqual(parsed.files.get('core.wasm'), wasm);
+});
+
 test('a changed packaged download is reported as an invalid request, not an internal error', async (t) => {
   const core: TrustedPlayer = entry();
   delete core.upstream;
