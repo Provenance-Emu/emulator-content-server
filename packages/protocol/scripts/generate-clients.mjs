@@ -128,7 +128,7 @@ function refName(ref) {
 }
 
 function safeSwift(name) {
-  return name === 'protocol' ? '`protocol`' : name;
+  return ['protocol', 'default'].includes(name) ? `\`${name}\`` : name;
 }
 
 function assertSame(file, expected) {

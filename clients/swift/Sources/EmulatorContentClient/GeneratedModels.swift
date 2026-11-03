@@ -198,11 +198,11 @@ public struct PlayerIsolationSession: Codable, Equatable, Sendable {
 
 public struct PlayerConfiguration: Codable, Equatable, Sendable {
     public var enabled: Bool?
-    public var default: Bool?
+    public var `default`: Bool?
 
-    public init(enabled: Bool? = nil, default: Bool? = nil) {
+    public init(enabled: Bool? = nil, `default`: Bool? = nil) {
         self.enabled = enabled
-        self.default = default
+        self.`default` = `default`
     }
 }
 

@@ -12,48 +12,17 @@
         "bytes": 27140,
         "width": 1264,
         "height": 948,
-        "center": [
-          60,
-          190,
-          255,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [60, 190, 255, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "afterInput": {
         "bytes": 27908,
         "width": 1264,
         "height": 948,
-        "center": [
-          93,
-          150,
-          255,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [93, 150, 255, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
-      "restoredBattery": [
-        1,
-        167
-      ]
+      "restoredBattery": [1, 167]
     },
     {
       "browser": "chromium",
@@ -63,48 +32,17 @@
         "bytes": 42582,
         "width": 1264,
         "height": 948,
-        "center": [
-          42,
-          183,
-          209,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [42, 183, 209, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "afterInput": {
         "bytes": 46331,
         "width": 1264,
         "height": 948,
-        "center": [
-          68,
-          141,
-          209,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [68, 141, 209, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
-      "restoredBattery": [
-        1,
-        167
-      ]
+      "restoredBattery": [1, 167]
     },
     {
       "browser": "webkit",
@@ -114,48 +52,17 @@
         "bytes": 24395,
         "width": 1264,
         "height": 948,
-        "center": [
-          60,
-          190,
-          255,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [60, 190, 255, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "afterInput": {
         "bytes": 25042,
         "width": 1264,
         "height": 948,
-        "center": [
-          93,
-          150,
-          255,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [93, 150, 255, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
-      "restoredBattery": [
-        1,
-        167
-      ]
+      "restoredBattery": [1, 167]
     },
     {
       "browser": "webkit",
@@ -165,48 +72,17 @@
         "bytes": 38186,
         "width": 1264,
         "height": 948,
-        "center": [
-          42,
-          183,
-          209,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [42, 183, 209, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "afterInput": {
         "bytes": 41719,
         "width": 1264,
         "height": 948,
-        "center": [
-          68,
-          141,
-          209,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [68, 141, 209, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
-      "restoredBattery": [
-        1,
-        167
-      ]
+      "restoredBattery": [1, 167]
     },
     {
       "browser": "iphone-webkit",
@@ -216,48 +92,17 @@
         "bytes": 19654,
         "width": 1122,
         "height": 843,
-        "center": [
-          60,
-          190,
-          255,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [60, 190, 255, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "afterInput": {
         "bytes": 20360,
         "width": 1122,
         "height": 843,
-        "center": [
-          93,
-          150,
-          255,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [93, 150, 255, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
-      "restoredBattery": [
-        1,
-        167
-      ]
+      "restoredBattery": [1, 167]
     },
     {
       "browser": "iphone-webkit",
@@ -267,48 +112,17 @@
         "bytes": 32767,
         "width": 1122,
         "height": 843,
-        "center": [
-          40,
-          142,
-          241,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [40, 142, 241, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "afterInput": {
         "bytes": 35816,
         "width": 1122,
         "height": 843,
-        "center": [
-          64,
-          110,
-          241,
-          255
-        ],
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "center": [64, 110, 241, 255],
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
-      "restoredBattery": [
-        1,
-        167
-      ]
+      "restoredBattery": [1, 167]
     }
   ],
   "limitations": [

@@ -158,6 +158,7 @@
       case 'input-capture': if(!inputAdapter)throw Error('Input adapter unavailable');inputAdapter.capture(value);return null;
       case 'send': {
         const key=s=>typeof s==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(s)&&!['__proto__','constructor','prototype'].includes(s);
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentionally reject control bytes in commands.
         const option=s=>typeof s==='string'&&s.length>0&&s.length<=512&&s.trim()===s&&!/[\x00-\x1f\x7f"\\|]/.test(s);
         if(typeof value!=='string'||value.length>660)throw Error('Invalid core command');
         const query=/^GET_CORE_OPTION(?: ([^ ]+))?$/.exec(value),set=/^SET_CORE_OPTION ([^ ]+) (.+)$/.exec(value);
@@ -188,13 +189,13 @@
         try{
           const errors=shaderErrors,start=frames;shaderBaseline=errors;
           if(!nativeShader(value))throw Error('Shader rejected');
-          if(value==='off')return shaderState={selection:'off',status:'off'};
+          if(value==='off'){shaderState={selection:'off',status:'off'};return shaderState;}
           const end=Date.now()+5000;
           while(frames<start+3&&Date.now()<end&&!closed)await new Promise(resolve=>setTimeout(resolve,20));
           if(closed||frames<start+3||shaderErrors!==errors)throw Error('Shader did not render cleanly');
-          return shaderState={selection:value,status:'requested'};
+          shaderState={selection:value,status:'requested'};return shaderState;
         }catch{
-          return shaderState=recoverShader();
+          shaderState=recoverShader();return shaderState;
         }
       }
       case 'focus': canvas.focus(); return null;
