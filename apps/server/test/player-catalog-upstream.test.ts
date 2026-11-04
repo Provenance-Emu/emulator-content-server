@@ -4,6 +4,38 @@ import { parseManifest } from '@ecs/plugins';
 import { playerCatalog } from '../src/player-catalog.js';
 import { upstreamCorePins } from '../src/player-catalog-upstream-data.js';
 
+test('PCSX ReARMed defaults to one matched official pair while retaining existing media/runtime limits', () => {
+  const entries = playerCatalog.filter((entry) => entry.id === 'org.libretro.pcsx-rearmed');
+  assert.equal(entries.length, 1);
+  const entry = entries[0];
+  assert.ok(entry?.upstream);
+  assert.equal(entry.url, null);
+  assert.equal(entry.sha256, null);
+  assert.equal(entry.available, true);
+  const web = entry.upstream.manifest.player?.web;
+  assert.ok(web);
+  assert.equal(web.runtime, 'retroarch-emscripten-esm');
+  assert.equal(web.threaded, false);
+  assert.equal(web.saveCompletion, 'none');
+  assert.equal(web.maxContentBytes, 512 * 1024 * 1024);
+  assert.deepEqual(web.contentExtensions, ['exe', 'chd', 'pbp', 'iso']);
+  assert.match(web.buildVersion, /2026-11-04/);
+  assert.deepEqual(
+    entry.upstream.resources.map((resource) => resource.url),
+    [
+      'https://web.libretro.com/pcsx_rearmed_libretro.js',
+      'https://web.libretro.com/pcsx_rearmed_libretro.wasm',
+    ],
+  );
+  assert.equal(
+    web.loader.sha256,
+    'ae951cae109011f8bf44fa05e60ee289b0fe0f9869c02252aea0ed27f6106262',
+  );
+  assert.equal(web.wasm.sha256, '664646841190f0ee5ea4af8cfc6c97d15fab30e161ede3b592b51da699a4a371');
+  assert.match(entry.provenance?.sourceInfo ?? '', /43c6483ae90d5c5a9a6073465ec0902515a6ef8a/);
+  assert.ok(entry.provenance?.license);
+});
+
 test('new source-built systems have one installable immutable package each', () => {
   for (const [id, system] of [
     ['pokemini', 'pokemonmini'],
@@ -64,7 +96,7 @@ test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => 
 
 test('upstream player catalog entries have valid pinned web-player manifests', () => {
   const entries = playerCatalog.filter((entry) => entry.upstream);
-  assert.equal(entries.length, 49);
+  assert.equal(entries.length, 50);
   for (const id of [
     'org.libretro.prboom',
     'org.libretro.ecwolf',
@@ -76,7 +108,7 @@ test('upstream player catalog entries have valid pinned web-player manifests', (
     assert.equal(entry.available, false);
     assert.ok(entry.reason);
   }
-  assert.ok(!entries.some((entry) => entry.id === 'org.libretro.pcsx-rearmed'));
+  assert.ok(entries.some((entry) => entry.id === 'org.libretro.pcsx-rearmed'));
   for (const id of [
     'org.libretro.gearboy',
     'org.libretro.mgba',
@@ -195,7 +227,10 @@ test('catalog refresh retains byte caps, immutable metadata provenance and expli
   for (const pin of upstreamCorePins) {
     assert.ok(pin.loaderBytes <= 8 * 1024 * 1024);
     assert.ok(pin.wasmBytes <= 64 * 1024 * 1024);
-    assert.equal(pin.buildVersion, 'web.libretro.com 2026-10-31');
+    assert.equal(
+      pin.buildVersion,
+      `web.libretro.com ${pin.id === 'org.libretro.pcsx-rearmed' ? '2026-11-04' : '2026-10-31'}`,
+    );
     assert.match(
       pin.sourceInfo,
       /^https:\/\/raw\.githubusercontent\.com\/libretro\/libretro-super\/[a-f0-9]{40}\/dist\/info\/[A-Za-z0-9_]+_libretro\.info$/,

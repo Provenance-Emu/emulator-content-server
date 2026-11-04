@@ -40,18 +40,6 @@ export const playerCatalog: readonly TrustedPlayer[] = [
     sha256: 'b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de',
   },
   {
-    id: 'org.libretro.pcsx-rearmed',
-    name: 'PCSX ReARMed (PlayStation)',
-    systems: ['com.provenance.psx'],
-    description:
-      'Software PlayStation core with BIOS-free HLE boot. Original program rendering verified; synchronized saves and multi-file layouts are unavailable.',
-    available: true,
-    reason: null,
-    downloadBytes: 4446467,
-    url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-cores.1/pcsx-rearmed.ecsplayer',
-    sha256: '1a1f37934f601d49ed00d6f69c998860c5283c3ddfde8774ef6dfd4badb9b3ad',
-  },
-  {
     id: 'org.libretro.prosystem',
     name: 'ProSystem (Atari 7800)',
     systems: ['com.provenance.7800'],

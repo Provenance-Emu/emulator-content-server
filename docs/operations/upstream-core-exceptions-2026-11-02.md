@@ -36,7 +36,7 @@ that no other upstream artifact or future release exists.
 | ECS core / checked upstream name | Fresh result | Distribution decision |
 | --- | --- | --- |
 | FCEUmm / `fceumm` | Official pair passes factory startup | Keep the patched ECS package for its explicit save-completion contract. Upstream startup does not establish that contract. Do not rebuild merely to refresh upstream bytes. |
-| PCSX ReARMed / `pcsx_rearmed` | Official pair passes factory startup and generated EXE rendering without firmware | Candidate to migrate upstream. The current ECS recipe records no source patches and advertises no synchronized saves. Original-program HLE/video passed; qualify the other advertised single-file formats before replacing the catalog entry. |
+| PCSX ReARMed / `pcsx_rearmed` | Official pair passes factory startup and generated EXE rendering without firmware | Migrated new default installs to the pinned official pair after the [2026-11-04 EXE/ISO/Mode 2 CHD acceptance](./upstream-pcsx-acceptance-2026-11-04.md). Existing installs and historical packages remain pinned; PBP and commercial compatibility remain unqualified. |
 | Virtual Jaguar / `virtualjaguar` | Official pair passes factory startup | Retain the custom exception. The ECS recipe removes four embedded boot-ROM arrays, forces CD HLE at boot and disc insertion, and rejects real-firmware-only paths. Factory startup cannot establish equivalent firmware removal or CD behavior in the upstream pair. |
 | ProSystem / `prosystem` | Legacy loader fails startup | Retain custom compatible frontend linking. Revisit when a compatible final upstream pair is available. |
 | Stella 2014 / `stella2014` | Legacy loader fails startup | Same compatibility exception; no blanket rebuild requirement. |

@@ -1,5 +1,10 @@
 # Pinned browser core build
 
+PCSX ReARMed's default catalog profile now uses the pinned official web pair;
+see [the 2026-11-04 acceptance](../../docs/operations/upstream-pcsx-acceptance-2026-11-04.md).
+Its source build recipe remains for reproducing historical packages or a
+documented compatibility exception, rather than routine upstream refreshes.
+
 See [browser playback operations](../../docs/operations/browser-playback.md) for the exact base/core/SDK and operator trust requirements. `build.mjs` accepts external frontend and core checkouts plus a new/empty operator directory. It checks source identity and the exact patch before cloning committed sources into fresh temporary build directories and invoking the upstream build with two workers. Build checkouts force canonical LF independently of user Git settings; permitted working patches are compared by canonical Git blob content. Ignored/untracked objects and config files from operator checkouts never enter the build; original checkouts are not cleaned or modified. No emulator binaries or media belong in this directory.
 
 `retroarch-save-files.patch` modifies RetroArch's GPL-3.0-or-later `save.c`, copyright Daniel De Matteis and Brad Parker. Its context remains under the upstream license; see the [pinned source and license](https://github.com/libretro/RetroArch/blob/4d4bfc0fbaacca30d433e5c11b0b2b5242141b66/COPYING). The patch prevents absent RTC memory from falsely failing a completed SRAM save and does not suppress real write errors or make a core without any save memory report success.

@@ -1,4 +1,4 @@
-/** Fresh official artifacts; startup-only in the unchanged production opaque sandbox. */
+/** Pinned official artifacts; qualification scope is recorded per profile and in operations receipts. */
 export interface UpstreamCorePin {
   id: string;
   name: string;
@@ -19,6 +19,42 @@ export interface UpstreamCorePin {
   systemFilesDirectory?: string;
 }
 export const upstreamCorePins: readonly UpstreamCorePin[] = [
+  {
+    id: 'org.libretro.pcsx-rearmed',
+    name: 'PCSX ReARMed (PlayStation)',
+    systems: ['com.provenance.psx'],
+    module: 'pcsx_rearmed_libretro.wasm',
+    buildVersion: 'web.libretro.com 2026-11-04',
+    extensions: ['exe', 'chd', 'pbp', 'iso'],
+    loaderBytes: 271454,
+    loaderSha256: 'ae951cae109011f8bf44fa05e60ee289b0fe0f9869c02252aea0ed27f6106262',
+    wasmBytes: 4495078,
+    wasmSha256: '664646841190f0ee5ea4af8cfc6c97d15fab30e161ede3b592b51da699a4a371',
+    sourceInfo:
+      'https://raw.githubusercontent.com/libretro/libretro-super/43c6483ae90d5c5a9a6073465ec0902515a6ef8a/dist/info/pcsx_rearmed_libretro.info',
+    infoSha256: '83e98e7b7068b99330db52741a369f217ebadcdbd1eb182a5a435c76ab6ae704',
+    license: 'GPLv2',
+    firmware: [
+      {
+        path: 'scph5500.bin',
+        optional: true,
+      },
+      {
+        path: 'scph5501.bin',
+        optional: true,
+      },
+      {
+        path: 'scph5502.bin',
+        optional: true,
+      },
+      {
+        path: 'psxonpsp660.bin',
+        optional: true,
+      },
+    ],
+    notes:
+      'Official pair; original EXE, ISO and Mode 2 CHD HLE video verified without firmware. PBP, commercial games, input, audio and synchronized saves remain unqualified. Single-file media only; no firmware supplied.',
+  },
   {
     id: 'org.libretro.gearboy',
     name: 'Gearboy (Game Boy / Color)',
