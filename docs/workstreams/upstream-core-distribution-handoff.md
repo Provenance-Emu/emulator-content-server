@@ -95,3 +95,17 @@ starting another core-distribution implementation batch. Its
 [updated handoff](./ai-library-cleanup-handoff.md) records scope and validation.
 The earlier instruction to preserve `99cf326` applies until the unique native
 cleanup history has been merged and published. #27 remains a separate MCP scope.
+
+## Provenance-only snapshot regression — 2026-11-05
+
+A generated-package cache regression now exercises adding source/notice/build
+receipt pins while retaining identical package bytes. An older pinned catalog
+reinstalls offline after restart. The enriched descriptor requires its own
+verified cache entry; after that package is retained, both snapshots reinstall
+offline and both receipt files parse under their independent expected IDs.
+Only the package URL is fetched; provenance references remain metadata.
+All 47 focused catalog/cache/selection/provenance tests passed on Node 22.22.2.
+
+The native cleanup checkpoint and #28 retention/recovery follow-up were signed
+and published to main as `7ab22ac`. The original cleanup branch's unique commits
+are included, and its merged local and remote branch names were retired.

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { parsePlayerPackage } from '@ecs/plugins';
 import { PlayerPackageCache } from '../src/player-cache.js';
+import { parsePlayerCatalogSnapshot } from '../src/player-catalog-file.js';
 import {
   createPlayerCatalogSnapshot,
   playerCatalogEntryId,
@@ -207,4 +208,69 @@ test('independent cache instances cannot overwrite a published version', async (
   ]);
   assert.deepEqual(results[0], results[1]);
   assert.equal((await readdir(f.directory)).length, 2);
+});
+
+test('provenance-only catalog updates preserve offline reuse through the older pinned snapshot', async (t) => {
+  const f = await fixture(t);
+  const generated = online(t);
+  const bytes = await downloadCatalogPlayer(generated.entry);
+  generated.mocked.mock.restore();
+  const oldEntry = structuredClone(generated.entry);
+  delete oldEntry.upstream;
+  oldEntry.url = 'https://github.com/example/generated/releases/download/v1/core.ecsplayer';
+  oldEntry.sha256 = createHash('sha256').update(bytes).digest('hex');
+  oldEntry.downloadBytes = bytes.length;
+  const oldSnapshot = createPlayerCatalogSnapshot([oldEntry]);
+  const initial = t.mock.method(globalThis, 'fetch', async () => new Response(bytes));
+  await f.cache.download(oldSnapshot, oldEntry.id);
+  initial.mock.restore();
+
+  const updatedEntry = structuredClone(oldEntry);
+  updatedEntry.provenance = {
+    sourceInfo: 'https://example.com/build.json',
+    infoSha256: 'a'.repeat(64),
+    license: 'Generated fixture',
+    sourceMapping: 'release-receipt',
+    artifacts: [
+      { kind: 'source', url: 'https://example.com/source', sha256: 'b'.repeat(64), sizeBytes: 10 },
+      {
+        kind: 'notices',
+        url: 'https://example.com/notices',
+        sha256: 'c'.repeat(64),
+        sizeBytes: 10,
+      },
+      {
+        kind: 'build',
+        url: 'https://example.com/build.json',
+        sha256: 'a'.repeat(64),
+        sizeBytes: 10,
+      },
+    ],
+  };
+  const updatedSnapshot = createPlayerCatalogSnapshot([updatedEntry]);
+  assert.notEqual(oldSnapshot.id, updatedSnapshot.id);
+  assert.notEqual(playerCatalogEntryId(oldEntry), playerCatalogEntryId(updatedEntry));
+  assert.equal(oldEntry.sha256, updatedEntry.sha256);
+  offline(t);
+  const restarted = new PlayerPackageCache(f.directory);
+  assert.deepEqual(await restarted.download(oldSnapshot, oldEntry.id), bytes);
+  await assert.rejects(restarted.download(updatedSnapshot, updatedEntry.id));
+  const urls: string[] = [];
+  const refreshed = t.mock.method(globalThis, 'fetch', async (url: string) => {
+    urls.push(url);
+    return new Response(bytes);
+  });
+  assert.deepEqual(await restarted.download(updatedSnapshot, updatedEntry.id), bytes);
+  assert.deepEqual(urls, [updatedEntry.url]);
+  refreshed.mock.restore();
+  for (const snapshot of [oldSnapshot, updatedSnapshot]) {
+    const receipt = JSON.parse(
+      await readFile(join(f.directory, `catalog-${snapshot.id}.json`), 'utf8'),
+    );
+    assert.deepEqual(parsePlayerCatalogSnapshot(receipt, snapshot.id), snapshot);
+    assert.deepEqual(
+      await new PlayerPackageCache(f.directory).download(snapshot, oldEntry.id),
+      bytes,
+    );
+  }
 });
