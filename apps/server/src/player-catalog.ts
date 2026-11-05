@@ -1,5 +1,6 @@
 import type { PluginManifest } from '@ecs/plugins';
 import type { PlayerCatalogEntry } from '@ecs/protocol';
+import { customPlayerProvenance } from './player-catalog-provenance.js';
 import { upstreamPlayerCatalog } from './player-catalog-upstream.js';
 export interface TrustedPlayer extends PlayerCatalogEntry {
   url: string | null;
@@ -9,13 +10,21 @@ export interface TrustedPlayer extends PlayerCatalogEntry {
     infoSha256?: string;
     license: string;
     firmware?: { path: string; optional: boolean }[];
+    /** Published receipt linkage, not an independent source rebuild or license audit. */
+    sourceMapping?: 'release-receipt' | 'unverified';
+    artifacts?: {
+      kind: 'source' | 'notices' | 'build';
+      url: string;
+      sha256: string;
+      sizeBytes: number;
+    }[];
   };
   upstream?: {
     manifest: PluginManifest;
     resources: { url: string; file: string; sha256: string; sizeBytes: number }[];
   };
 }
-export const playerCatalog: readonly TrustedPlayer[] = [
+const catalogEntries: readonly TrustedPlayer[] = [
   {
     id: 'org.libretro.fceumm',
     name: 'FCEUmm (NES)',
@@ -192,3 +201,8 @@ export const playerCatalog: readonly TrustedPlayer[] = [
   },
   ...upstreamPlayerCatalog,
 ];
+
+export const playerCatalog: readonly TrustedPlayer[] = catalogEntries.map((entry) => {
+  const provenance = customPlayerProvenance[entry.id];
+  return provenance ? { ...entry, provenance } : entry;
+});

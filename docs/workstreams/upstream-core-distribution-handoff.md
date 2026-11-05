@@ -33,20 +33,21 @@ iteration locally reproduced the exact CI assertion. The test now explicitly
 controls only that fixture root's enumeration order so it actually exercises
 the old-name/new-name duplicate-identity race. Production scanning is unchanged.
 The adverse-order reproduction and all 13 source-scan tests pass on Node 22.22.2;
-the affected TypeScript build, Biome and whitespace checks pass. The new push
-gets normal CI; do not treat the previous failed run as a core-distribution
-regression or claim the new full CI run has already passed.
+the affected TypeScript build, Biome and whitespace checks pass. The signed
+fix was published as `373fa2a`. Its [Linux CI verification](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41948499469)
+passed, including the configured dependency audit.
 
 ## Remaining #29 acceptance work
 
-The main remaining evidence gap is completeness of corresponding-source/build
-and license-notice records across retained custom artifacts and upstream pairs.
+Eight retained custom packages now have release-linked source, notice and build
+receipt pins. Corresponding-source/build and license-notice completeness remain
+open across legacy custom artifacts and upstream pairs.
 Current upstream profiles retain exact artifact pins and pinned core-info
 metadata/license/firmware facts. The official web host does not supply an exact
 source-to-binary build mapping in the inspected receipts. Preserve that unknown;
 do not invent a source revision or claim that a repository link proves an exact
-binary build. Review actual existing release source/notice assets before adding
-new publication or mirroring.
+binary build. The inspected existing release source/notice assets are linked
+in the dated provenance audit below.
 
 An automatic channel and in-place installed-version switching are still
 unimplemented. #29 permits a channel; it does not require building one. Current
@@ -59,19 +60,28 @@ the documented approach; a dedicated artifact repository is not justified yet.
 
 ## Ownership and completion eligibility
 
-Publication of this bounded follow-up is pending: the configured 1Password SSH
-signer returned `failed to fill whole buffer`, so Git did not create the commit.
-The test fix and this document remain staged in the primary checkout; main and
-origin/main still point at `b7c86ad`. Signing was not disabled. Finish the signed
-commit and authorized push before marking this follow-up done or archiving it
-as a finished task.
+The configured 1Password SSH signing retry succeeded. The CI-fixture fix and
+initial handoff were signed and pushed to main in `373fa2a`. The corresponding
+[Linux CI run](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41948499469)
+passed.
+
+The next bounded batch retains published source, notice and build-receipt pins
+for eight custom packages and explicitly unverified metadata for FCEUmm/Jaguar.
+The [dated provenance audit](../operations/custom-core-provenance-2026-11-04.md)
+records verification scope and outstanding gaps. Source rebuilds and complete
+license-notice audits remain outstanding, as do exact upstream build mappings.
 
 This checkout remains on `main`. No second ECS worktree or agent lane was
 started. `codex/ai-library-cleanup` and its remote at `99cf326` retain two unique
 unmerged commits for #27/#28. Their recovery/retention work and review remain
 unfinished; preserve that branch rather than archiving it to reduce sessions.
 
-The bounded CI-fixture follow-up and this handoff can be considered complete
-after publication. #29 itself remains open for the provenance/notice acceptance
-audit above. A session may be paused or archived only with this handoff retained;
+The bounded CI-fixture follow-up has been published. #29 itself remains open
+for the provenance/notice acceptance audit above. A session may be paused or archived only with this handoff retained;
 that would not mean the epic or the separate cleanup branch has been completed.
+
+The provenance batch passed the focused server/CLI catalog, cache, download and
+manager tests on Node 22.22.2. Server/CLI TypeScript builds, affected Biome checks,
+client drift, secret/fixture scan, package boundaries and whitespace checks passed.
+All eight static receipt/notice pins were compared with downloaded release bytes,
+and source pins were compared with their published receipts.

@@ -98,6 +98,8 @@ function checkEntry(value: unknown): TrustedPlayer {
       'infoSha256',
       'license',
       'firmware',
+      'sourceMapping',
+      'artifacts',
     ]);
     if (
       !text(provenance.sourceInfo, 4096) ||
@@ -108,6 +110,45 @@ function checkEntry(value: unknown): TrustedPlayer {
       invalid();
     const url = new URL(provenance.sourceInfo);
     if (url.protocol !== 'https:' || url.username || url.password) invalid();
+    if (
+      provenance.sourceMapping !== undefined &&
+      (typeof provenance.sourceMapping !== 'string' ||
+        !['release-receipt', 'unverified'].includes(provenance.sourceMapping))
+    )
+      invalid();
+    if (provenance.artifacts !== undefined) {
+      if (!Array.isArray(provenance.artifacts) || provenance.artifacts.length > 16) invalid();
+      const urls = new Set<string>();
+      for (const item of provenance.artifacts) {
+        const artifact = object(item, ['kind', 'url', 'sha256', 'sizeBytes']);
+        if (
+          typeof artifact.kind !== 'string' ||
+          !['source', 'notices', 'build'].includes(artifact.kind) ||
+          !text(artifact.url, 4096) ||
+          typeof artifact.sha256 !== 'string' ||
+          !SHA256.test(artifact.sha256) ||
+          !Number.isSafeInteger(artifact.sizeBytes) ||
+          Number(artifact.sizeBytes) < 1 ||
+          urls.has(artifact.url)
+        )
+          invalid();
+        const link = new URL(artifact.url);
+        if (link.protocol !== 'https:' || link.username || link.password) invalid();
+        urls.add(artifact.url);
+      }
+    }
+    if (provenance.sourceMapping === 'release-receipt') {
+      const artifacts = provenance.artifacts as Record<string, unknown>[] | undefined;
+      const builds = artifacts?.filter((artifact) => artifact.kind === 'build');
+      if (
+        !artifacts?.some((artifact) => artifact.kind === 'source') ||
+        !artifacts.some((artifact) => artifact.kind === 'notices') ||
+        builds?.length !== 1 ||
+        builds[0]?.url !== provenance.sourceInfo ||
+        builds[0]?.sha256 !== provenance.infoSha256
+      )
+        invalid();
+    }
     if (provenance.firmware !== undefined) {
       if (!Array.isArray(provenance.firmware) || provenance.firmware.length > 64) invalid();
       for (const item of provenance.firmware) {

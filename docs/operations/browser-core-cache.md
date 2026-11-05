@@ -108,3 +108,13 @@ snapshot retains available upstream metadata; it does not assert an exact
 source-build mapping where upstream has not supplied one. Remote channels,
 source/notice distribution completion and explicit installed-version activation
 and rollback remain follow-up work for #29.
+
+## Published source and notice references
+
+Retained custom entries can include pinned source, notice and build-receipt
+references. Release-receipt linkage records publisher evidence. Incomplete
+legacy and upstream mappings remain explicit in the audit. Optional metadata
+participates in entry identity, so keep older snapshots for offline reuse of
+their existing cache keys. The server validates these references without
+downloading the referenced artifacts. The published evidence and remaining gaps
+are recorded in the [2026-11-04 provenance audit](./custom-core-provenance-2026-11-04.md).
