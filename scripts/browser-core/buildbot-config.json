@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "emsdk": {
+    "repository": "https://github.com/emscripten-core/emsdk",
+    "revision": "93360d3670018769b424e4e8f1d3d9b26d32c977",
+    "version": "3.1.46",
+    "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8"
+  },
+  "frontend": {
+    "repository": "https://github.com/libretro/RetroArch",
+    "revision": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66"
+  },
+  "cores": [
+    {
+      "id": "fceumm",
+      "repository": "https://github.com/libretro/libretro-fceumm",
+      "revision": "ac0d00a7fc01166f84c7bac01d1084ebfd2b865e",
+      "recipe": "build.mjs",
+      "rebuild": "rebuild-fceumm-source.mjs",
+      "sourceDirectory": "fceumm",
+      "rawOutput": true,
+      "licenses": [
+        "RetroArch GPL-3.0-or-later with the tracked SAVE_FILES patch",
+        "FCEUmm GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "prosystem",
+      "repository": "https://github.com/libretro/prosystem-libretro",
+      "revision": "8a88014287c7a01cd568067e5a557d0a2b2a051f",
+      "recipe": "build-prosystem.mjs",
+      "rebuild": "rebuild-prosystem-source.mjs",
+      "sourceDirectory": "prosystem",
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "ProSystem GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "pcsx-rearmed",
+      "repository": "https://github.com/libretro/pcsx_rearmed",
+      "revision": "c8816799b50388e61cfe237fe2cdbb7d8175f20a",
+      "recipe": "build-pcsx-rearmed.mjs",
+      "rebuild": "rebuild-pcsx-source.mjs",
+      "sourceDirectory": "pcsx-rearmed",
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "PCSX ReARMed GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "virtualjaguar",
+      "repository": "https://github.com/libretro/virtualjaguar-libretro",
+      "revision": "ffea7893a59dd9b9e6f9b85c51627810338b0778",
+      "recipe": "build-virtualjaguar.mjs",
+      "rebuild": "rebuild-jaguar-source.mjs",
+      "sourceDirectory": "virtualjaguar",
+      "sanitizedSourceArchive": true,
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Virtual Jaguar GPL-3.0; sanitized firmware-free source and all dependency notices required"
+      ]
+    },
+    {
+      "id": "stella2014",
+      "repository": "https://github.com/libretro/stella2014-libretro",
+      "revision": "7d1361e407e63f29e52892655069e5fb4096e691",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["stella2014"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "stella2014",
+      "software": {
+        "name": "Stella 2014 (Atari 2600)",
+        "systems": ["com.provenance.2600"],
+        "extensions": ["a26", "bin"],
+        "maxContentBytes": 1048576
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Stella 2014 (Atari 2600): GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "freeintv",
+      "repository": "https://github.com/libretro/FreeIntv",
+      "revision": "ef3e0fe322bec62a7f916c0bb0834c08c348d0b4",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["freeintv"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "freeintv",
+      "software": {
+        "name": "FreeIntv (Intellivision)",
+        "systems": ["com.provenance.intellivision"],
+        "extensions": ["int", "bin", "rom"],
+        "maxContentBytes": 1048576
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "FreeIntv (Intellivision): GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "atari800",
+      "repository": "https://github.com/libretro/libretro-atari800",
+      "revision": "4e7fbc73765c1a9670c7506616046ad1d4ccda51",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["atari800"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "atari800",
+      "software": {
+        "name": "Atari800 (Atari 5200)",
+        "systems": ["com.provenance.5200"],
+        "extensions": ["a52", "car", "bin", "rom"],
+        "maxContentBytes": 1048576,
+        "defaultCoreOptions": {
+          "atari800_system": "5200"
+        },
+        "version": "1.1.0"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Atari800 (Atari 5200): GPL-2.0-or-later; preserve all upstream dependency notices"
+      ],
+      "patches": ["atari800-explicit-machine.patch"]
+    },
+    {
+      "id": "pokemini",
+      "repository": "https://github.com/libretro/PokeMini",
+      "revision": "132111b76343559860532a1ccc094f93f1ed5650",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["pokemini"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "pokemini",
+      "software": {
+        "name": "PokeMini (Pokémon Mini)",
+        "systems": ["com.provenance.pokemonmini"],
+        "extensions": ["min"],
+        "maxContentBytes": 2097152,
+        "makeDirectory": ".",
+        "targetName": "pokemini",
+        "archiveVariable": "STATIC_LINKING_LINK"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "PokeMini (Pokémon Mini): GPL-3.0-or-later; includes original open-source FreeBIOS and its generating source"
+      ]
+    },
+    {
+      "id": "potator",
+      "repository": "https://github.com/libretro/potator",
+      "revision": "227c5f6f3ce74d32e9002ce24c1420288559a860",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["potator"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "potator",
+      "software": {
+        "name": "Potator (Supervision)",
+        "systems": ["com.provenance.supervision"],
+        "extensions": ["sv", "bin"],
+        "maxContentBytes": 1048576,
+        "makeDirectory": "platform/libretro",
+        "targetName": "potator"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Potator (Supervision): Unlicense; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "sameduck",
+      "repository": "https://github.com/libretro/sameduck",
+      "revision": "040e19c379f00dae10afe0eb0c1b2b019b985bbe",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["sameduck"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "sameduck",
+      "software": {
+        "name": "SameDuck (Mega Duck)",
+        "systems": ["com.provenance.megaduck"],
+        "extensions": ["bin"],
+        "maxContentBytes": 1048576,
+        "makeDirectory": "libretro",
+        "targetName": "sameduck",
+        "archiveVariable": "STATIC_LINKING"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "SameDuck (Mega Duck): MIT; preserve all upstream dependency notices"
+      ]
+    },
+    {
+      "id": "mednafen-pcfx",
+      "repository": "https://github.com/libretro/beetle-pcfx-libretro",
+      "revision": "c1650bad5fbdcc3c3ccd45e29e3983e1ccf16cff",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["mednafen-pcfx"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "mednafen-pcfx",
+      "software": {
+        "name": "Beetle PC-FX (CHD)",
+        "systems": ["com.provenance.pcfx"],
+        "extensions": ["chd"],
+        "maxContentBytes": 536870912,
+        "makeDirectory": ".",
+        "targetName": "mednafen_pcfx"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "Beetle PC-FX (CHD): GPL-2.0-or-later; libchdr BSD-3-Clause and all dependency notices retained"
+      ]
+    }
+  ]
+}

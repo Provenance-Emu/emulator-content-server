@@ -8,9 +8,9 @@ import { reserveContentRoots } from '../src/root-mutations.js';
 import { libraryFixture } from './library-fixture.js';
 
 async function eventually(check: () => boolean) {
-  const deadline = Date.now() + 10_000;
+  const deadline = performance.now() + 10_000;
   while (!check()) {
-    assert.ok(Date.now() < deadline, 'Watcher did not update the catalog');
+    assert.ok(performance.now() < deadline, 'Watcher did not update the catalog');
     await pause(40);
   }
 }
@@ -124,7 +124,7 @@ test('offline opted-in folder recovers through periodic reconciliation and shutd
   const f = await libraryFixture();
   const { FolderWatcher } = await import('../src/folder-watcher.js');
   const watcher = new FolderWatcher(f.catalog);
-  t.mock.timers.enable({ apis: ['setInterval'] });
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'] });
   try {
     const path = join(f.base, 'temporarily-offline');
     const root = f.catalog.createContentRoot({

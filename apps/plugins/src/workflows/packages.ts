@@ -8,6 +8,8 @@ import {
   WORKFLOW_PACKAGE_LIMITS,
 } from '@ecs/plugins/workflows';
 
+import { lockWorkflowPackages } from './package-lock.js';
+
 export interface InstalledWorkflowPackage extends LoadedWorkflowPlugin {
   digest: string;
 }
@@ -69,34 +71,39 @@ export async function installWorkflowPackage(
   stateDir: string,
   bytes: Uint8Array,
 ): Promise<InstalledWorkflowPackage> {
-  const bundle = parseWorkflowPackage(bytes);
-  const parent = join(stateDir, 'packages', bundle.manifest.id);
-  const directory = join(parent, bundle.digest);
-  await mkdir(parent, { recursive: true, mode: 0o700 });
-  const staging = join(parent, `.staging-${randomUUID()}`);
-  await mkdir(staging, { mode: 0o700 });
+  const unlock = await lockWorkflowPackages(stateDir);
   try {
-    for (const [name, content] of bundle.files) {
-      const target = join(staging, ...name.split('/'));
-      await mkdir(dirname(target), { recursive: true, mode: 0o700 });
-      await writeFile(target, content, { flag: 'wx', mode: 0o600 });
-    }
-    await writeFile(join(staging, 'plugin.json'), JSON.stringify(bundle.manifest), {
-      flag: 'wx',
-      mode: 0o600,
-    });
-    await loadWorkflowPlugin(staging);
+    const bundle = parseWorkflowPackage(bytes);
+    const parent = join(stateDir, 'packages', bundle.manifest.id);
+    const directory = join(parent, bundle.digest);
+    await mkdir(parent, { recursive: true, mode: 0o700 });
+    const staging = join(parent, `.staging-${randomUUID()}`);
+    await mkdir(staging, { mode: 0o700 });
     try {
-      await rename(staging, directory);
-    } catch (error) {
-      if (!['EEXIST', 'ENOTEMPTY'].includes((error as NodeJS.ErrnoException).code ?? ''))
-        throw error;
-      // An identical content-addressed installation is already present.
-      await loadWorkflowPlugin(directory);
+      for (const [name, content] of bundle.files) {
+        const target = join(staging, ...name.split('/'));
+        await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+        await writeFile(target, content, { flag: 'wx', mode: 0o600 });
+      }
+      await writeFile(join(staging, 'plugin.json'), JSON.stringify(bundle.manifest), {
+        flag: 'wx',
+        mode: 0o600,
+      });
+      await loadWorkflowPlugin(staging);
+      try {
+        await rename(staging, directory);
+      } catch (error) {
+        if (!['EEXIST', 'ENOTEMPTY'].includes((error as NodeJS.ErrnoException).code ?? ''))
+          throw error;
+        // An identical content-addressed installation is already present.
+        await loadWorkflowPlugin(directory);
+      }
+      return { ...(await loadWorkflowPlugin(directory)), digest: bundle.digest };
+    } finally {
+      await rm(staging, { recursive: true, force: true });
     }
-    return { ...(await loadWorkflowPlugin(directory)), digest: bundle.digest };
   } finally {
-    await rm(staging, { recursive: true, force: true });
+    unlock();
   }
 }
 
@@ -105,19 +112,29 @@ export async function activateWorkflowPackage(
   id: string,
   digest: string,
 ): Promise<void> {
-  const directory = join(state, 'packages', identifier(id), digestValue(digest));
-  const installed = await loadWorkflowPlugin(directory);
-  if (installed.manifest.id !== id) throw new Error('Workflow identity mismatch');
-  // Independent receipts cannot lose a pinned version when two owner activations race.
-  const grants = join(state, 'activation-grants', identifier(id));
-  await mkdir(grants, { recursive: true, mode: 0o700 });
-  await writeFile(join(grants, digest), digest, { mode: 0o600 });
-  await publishActivation(state, id, { activeDigest: digest, disabled: false });
+  const unlock = await lockWorkflowPackages(state);
+  try {
+    const directory = join(state, 'packages', identifier(id), digestValue(digest));
+    const installed = await loadWorkflowPlugin(directory);
+    if (installed.manifest.id !== id) throw new Error('Workflow identity mismatch');
+    // Independent receipts cannot lose a pinned version when two owner activations race.
+    const grants = join(state, 'activation-grants', identifier(id));
+    await mkdir(grants, { recursive: true, mode: 0o700 });
+    await writeFile(join(grants, digest), digest, { mode: 0o600 });
+    await publishActivation(state, id, { activeDigest: digest, disabled: false });
+  } finally {
+    unlock();
+  }
 }
 
 export async function disableWorkflowPackage(state: string, id: string): Promise<void> {
-  const current = await activation(state, identifier(id));
-  await publishActivation(state, id, { ...current, disabled: true });
+  const unlock = await lockWorkflowPackages(state);
+  try {
+    const current = await activation(state, identifier(id));
+    await publishActivation(state, id, { ...current, disabled: true });
+  } finally {
+    unlock();
+  }
 }
 
 export async function resolveWorkflowPackage(

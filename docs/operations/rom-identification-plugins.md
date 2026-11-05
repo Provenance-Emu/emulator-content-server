@@ -8,6 +8,16 @@ An offline `provider` manifest with `rom` capability may export `identify(reques
 
 `reader.read(offset, length)` and `reader.stream(offset, length)` supply bounded data from one opened source. `reader.runTool` supports the configured native adapters with bounded output, deadlines and joined termination. The broker permits one active native reader per worker, preventing a plugin from fanning out decoder processes. A WASM library can implement the same JavaScript `identify` export and consume bounded windows; there is no separate unrestricted path/network ABI for a WASM identifier. Additional container readers can use that contract without changing the HTTP API or embedding emulator code in the server.
 
+For CUE/GDI groups, the host supplies optional `request.media` with an `entry`
+path and an approved member list. Member names are relative to the common disc
+directory; absolute paths remain private to the trusted worker. The optional
+`reader.readMember(name, offset, length)` reads only approved members under the
+same byte/deadline budget, with at most 256 member reads. Files open lazily, and
+canonical paths, regular-file identity and size/timestamps are checked around
+the read. The server authorizes each member, includes every member's current
+metadata in the cache key, and rechecks identity members before saving a proposal.
+Unchanged single-file v3 cache keys remain valid when disc support is added.
+
 Facts contain explicit representations and provenance:
 
 - Verified MD5/SHA1/CRC32 facts include the byte count and representation, such as raw ROM bytes, a single archive member or a validated header-normalized payload.
@@ -22,6 +32,18 @@ The built-in readers are JavaScript plugins with optional native adapters. They 
 Raw hashing and archive expansion are capped at 64 MiB. Reads stream in bounded chunks; source identity is checked before and after work. 7z accepts one supported regular ROM member with conservative entry, compression, encryption and solid-block guards, without staging the ROM on disk. Nested archives and disc layouts are not blindly expanded. Supported format-specific header/padding normalization retains the original hash and labels the derived representation; arbitrary zero/FF trimming is never used as identity evidence.
 
 CHD v5 first reads its header and bounded metadata. Combined CHD SHA1 can be joined to disk-catalog SHA1 as declared evidence; it is not a Redump track hash or a full logical-content verification. A configured decoder then reads small logical windows to inspect supported CD/GD track starts or ISO9660 directory records. Dreamcast/Naomi GD product IDs and PlayStation `SYSTEM.CNF` boot IDs can establish content identity. Parent-dependent images, unsupported legacy/patched layouts and ambiguous identifiers remain explicit review cases. Existing CHD download/extraction policy is unchanged; identification does not materialize an entire disc.
+
+`org.ecs.identify.cue` and `org.ecs.identify.gdi` read uncompressed multi-file
+discs through that member port. They support Dreamcast IP.BIN product IDs and
+track-01 ISO9660 PlayStation/PlayStation 2 `SYSTEM.CNF` BOOT/BOOT2 serials,
+including supported raw-sector layouts, CUE INDEX offsets/shared BINs and GDI
+high-density track/file-offset mapping. Each identification reads at most 256 KiB
+of descriptor/sectors, with a 64 KiB descriptor, 128 approved members, 99 tracks
+and eight data-track limits. No audio scan, whole-disc hash or native converter
+is needed. Conflicting IDs retain their evidence and block automatic matching.
+Secondary CUE ISO origins remain explicit unsupported cases. Jaguar CD's generic
+approved boot header does not identify a title; those sets still need a catalog
+association or an explicit match. See the [CUE/GDI acceptance](cue-gdi-identification-2026-10-30.md).
 
 RVZ and WIA identification reads the canonical first 0x80 logical disc bytes from the integrity-checked second header, following [Dolphin's format documentation](https://github.com/dolphin-emu/dolphin/blob/master/docs/WiaAndRvz.md) and `WIABlob::Read`. It validates the version/compatibility window, both header SHA1 values, declared file size, chunk/compressor fields, partition-table SHA1 and referenced metadata ranges. A six-character identifier becomes verified GC/Wii serial evidence only with the corresponding disc magic and a consistent declared disc type. No RVZ packets are decompressed and no whole-disc hash is claimed. Reading these header bytes does not verify every stored packet or establish playable compatibility.
 
@@ -41,4 +63,7 @@ Local BPS/UPS/IPS providers retain patch type, format and base evidence. BPS/UPS
 
 Providers now reconcile compatible partial DAT/hash/serial records while retaining per-source provenance. Conflicting hashes, editions and IDs stay reviewable. A cloud catalog should build on that representation: versioned manifests, per-system metadata shards, separate cheats/patch/artwork indexes, immutable byte/hash pins and reproducible source receipts. Keeping large payloads separate lets a small metadata update avoid downloading cheats or patch binaries, and lets each source retain its license and update policy.
 
-A hosted consolidated snapshot and its updater are not published by this batch. Current providers use bounded source caches and the new reconciliation/indexing path. This keeps distribution independent of identification support and avoids replacing traceable source evidence with an opaque monolith.
+The [hosted catalog snapshot and updater](hosted-catalogs.md) now provide pinned
+metadata, cheat and patch catalogs using this representation. Format identification
+still depends on the available reader and authoritative records; publishing a
+catalog does not turn an unknown disc header or a filename into verified identity.

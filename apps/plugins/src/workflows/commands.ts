@@ -1,3 +1,4 @@
+import { exportWorkflowHostState, restoreWorkflowHostState } from './backup.js';
 import { installBundledCleanup } from './bundled.js';
 import {
   activateWorkflowPackage,
@@ -8,6 +9,7 @@ import {
   resolveWorkflowPackage,
   snapshotWorkflowDirectory,
 } from './packages.js';
+import { openWorkflowState } from './state.js';
 import { startWorkflowHost } from './transport.js';
 
 export interface WorkflowCommandIo {
@@ -33,6 +35,23 @@ export async function runWorkflowCommand(
   }
   const state = required('--state');
   switch (argv[3]) {
+    case 'backup':
+      await exportWorkflowHostState(state, required('--to'));
+      io.log('Workflow host backup complete');
+      return 0;
+    case 'restore':
+      await restoreWorkflowHostState(required('--from'), state);
+      io.log('Workflow host restored; unfinished runs require recovery');
+      return 0;
+    case 'recovery': {
+      const store = await openWorkflowState(state);
+      try {
+        for (const id of store.recoveryRuns()) io.log(`${id}\trecovery-required`);
+      } finally {
+        store.close();
+      }
+      return 0;
+    }
     case 'install-defaults': {
       const installed = await installBundledCleanup(state);
       io.log(

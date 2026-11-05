@@ -8,13 +8,7 @@ function supported(
   kind: string,
   size: number,
 ): BrowserCore | undefined {
-  if (
-    !cores ||
-    system === null ||
-    kind !== 'rom' ||
-    size <= 0 ||
-    /\.(cue|gdi|ccd|m3u)$/i.test(name)
-  )
+  if (!cores || system === null || kind !== 'rom' || size <= 0 || /\.(gdi|ccd|m3u)$/i.test(name))
     return;
   for (const core of Array.isArray(cores) ? cores : [cores as BrowserCore]) {
     try {
@@ -43,7 +37,9 @@ export function assetPlayHref(cores: PlayableCores, item: Item, file: ManifestFi
 }
 export function sourcePlayHref(cores: PlayableCores, source: SourceFile): string | null {
   const core =
-    source.availability === 'local' && (source.groupFileCount ?? 1) <= 1
+    source.availability === 'local' &&
+    !source.groupError &&
+    ((source.groupFileCount ?? 1) <= 1 || /\.cue$/i.test(source.name))
       ? supported(cores, source.systemId, source.name, source.kind, source.size)
       : undefined;
   return core ? `/play/?source=${encodeURIComponent(source.id)}${profileQuery(core)}` : null;

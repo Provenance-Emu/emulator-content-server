@@ -706,3 +706,195 @@ for (const suffix of ['junk', 'second stream'] as const) {
     }
   });
 }
+
+for (const field of ['disk number', 'directory disk', 'disk entry count', 'member disk'] as const) {
+  test(`split-volume ZIP metadata rejects ${field}`, async (t) => {
+    const archive = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
+    const end = archive.length - 22;
+    const directory = archive.readUInt32LE(end + 16);
+    if (field === 'disk number') archive.writeUInt16LE(1, end + 4);
+    if (field === 'directory disk') archive.writeUInt16LE(1, end + 6);
+    if (field === 'disk entry count') archive.writeUInt16LE(0, end + 8);
+    if (field === 'member disk') archive.writeUInt16LE(1, directory + 34);
+    const staged = await stageArchive(archive);
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+      code: 'archive-rejected',
+      status: 422,
+    });
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}
+
+for (const field of [
+  'valid',
+  'valid extension',
+  'short record',
+  'overlong record',
+  'directory overlap',
+  'locator disk',
+  'volume count',
+  'record disk',
+  'directory disk',
+  'disk entry count',
+] as const) {
+  test(`ZIP64 volume metadata: ${field}`, async (t) => {
+    const original = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
+    const endOffset = original.length - 22;
+    const end = Buffer.from(original.subarray(endOffset));
+    const record = Buffer.alloc(field === 'valid extension' ? 60 : 56);
+    record.writeUInt32LE(0x06064b50, 0);
+    record.writeBigUInt64LE(field === 'valid extension' ? 48n : 44n, 4);
+    if (field === 'short record') record.writeBigUInt64LE(43n, 4);
+    if (field === 'overlong record') record.writeBigUInt64LE(45n, 4);
+    record.writeUInt16LE(45, 12);
+    record.writeUInt16LE(45, 14);
+    record.writeBigUInt64LE(1n, 24);
+    record.writeBigUInt64LE(1n, 32);
+    record.writeBigUInt64LE(
+      BigInt(end.readUInt32LE(12)) + (field === 'directory overlap' ? 1n : 0n),
+      40,
+    );
+    record.writeBigUInt64LE(BigInt(end.readUInt32LE(16)), 48);
+    const locator = Buffer.alloc(20);
+    locator.writeUInt32LE(0x07064b50, 0);
+    locator.writeBigUInt64LE(BigInt(endOffset), 8);
+    locator.writeUInt32LE(1, 16);
+    end.writeUInt16LE(0xffff, 8);
+    end.writeUInt16LE(0xffff, 10);
+    if (field === 'locator disk') locator.writeUInt32LE(1, 4);
+    if (field === 'volume count') locator.writeUInt32LE(2, 16);
+    if (field === 'record disk') record.writeUInt32LE(1, 16);
+    if (field === 'directory disk') record.writeUInt32LE(1, 20);
+    if (field === 'disk entry count') record.writeBigUInt64LE(0n, 24);
+    const staged = await stageArchive(
+      Buffer.concat([original.subarray(0, endOffset), record, locator, end]),
+    );
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    if (field === 'valid' || field === 'valid extension') {
+      const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '0');
+      assert.ok(entry);
+      assert.deepEqual(
+        await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+        Buffer.from('DATA'),
+      );
+    } else {
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+    }
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}
+
+for (const overlap of [false, true]) {
+  test(`classic ZIP directory ${overlap ? 'cannot overlap its end record' : 'allows an archive comment'}`, async (t) => {
+    const original = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA') }]);
+    const end = original.length - 22;
+    const comment = Buffer.from('generated archive comment');
+    original.writeUInt16LE(comment.length, end + 20);
+    if (overlap) original.writeUInt32LE(original.readUInt32LE(end + 12) + 1, end + 12);
+    const staged = await stageArchive(Buffer.concat([original, comment]));
+    t.after(() => rm(staged.root, { recursive: true, force: true }));
+    if (overlap) {
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+    } else {
+      const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '0');
+      assert.ok(entry);
+      assert.deepEqual(
+        await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+        Buffer.from('DATA'),
+      );
+    }
+    assert.deepEqual(await cachedFiles(staged.root), []);
+  });
+}
+
+for (const compress of [false, true]) {
+  for (const alias of [false, true]) {
+    test(`ZIP repeated names with ${compress ? 'deflated' : 'stored'} bodies ${alias ? 'reject aliased local headers' : 'allow distinct local headers'}`, async (t) => {
+      const body = Buffer.from('generated payload');
+      const archive = buildZip([
+        { name: 'same.bin', body, compress },
+        { name: 'same.bin', body, compress },
+      ]);
+      const directory = archive.readUInt32LE(archive.length - 6);
+      if (alias) archive.writeUInt32LE(0, directory + 46 + Buffer.byteLength('same.bin') + 42);
+      const staged = await stageArchive(archive);
+      t.after(() => rm(staged.root, { recursive: true, force: true }));
+      if (alias) {
+        await assert.rejects(listVirtualEntries(staged.root, staged.sha256, staged.registry), {
+          code: 'archive-rejected',
+          status: 422,
+        });
+        await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '1'), {
+          code: 'archive-rejected',
+          status: 422,
+        });
+        assert.deepEqual(await cachedFiles(staged.root), []);
+      } else {
+        for (const id of ['0', '1']) {
+          const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, id);
+          assert.ok(entry);
+          assert.deepEqual(
+            await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+            body,
+          );
+        }
+      }
+    });
+  }
+}
+
+for (const compress of [false, true]) {
+  for (const name of ['\0generated.bin', 'generated\0.bin', 'generated.bin\0']) {
+    test(`ZIP rejects NUL in ${JSON.stringify(name)} (${compress ? 'deflated' : 'stored'})`, async (t) => {
+      const staged = await stageArchive([{ name, body: Buffer.from('DATA'), compress }]);
+      t.after(() => rm(staged.root, { recursive: true, force: true }));
+      await assert.rejects(listVirtualEntries(staged.root, staged.sha256, staged.registry), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      assert.deepEqual(await cachedFiles(staged.root), []);
+    });
+  }
+}
+
+test('ZIP preserves Unicode names and ordinary punctuation', async (t) => {
+  const name = 'generated/遊戲 (édition 1).bin';
+  const staged = await stageArchive([{ name, body: Buffer.from('DATA') }]);
+  t.after(() => rm(staged.root, { recursive: true, force: true }));
+  const entry = await openVirtualEntry(staged.root, staged.sha256, staged.registry, '0');
+  assert.ok(entry);
+  assert.equal(entry.logicalPath, name);
+  assert.deepEqual(
+    await readRange(entry.path, entry.offset, entry.offset + entry.size - 1),
+    Buffer.from('DATA'),
+  );
+});
+
+for (const compress of [false, true]) {
+  for (const localName of ['different.bin', '../escape.bin', 'generated\0bin']) {
+    test(`ZIP local name ${JSON.stringify(localName)} must match its directory (${compress ? 'deflated' : 'stored'})`, async (t) => {
+      const archive = buildZip([{ name: 'generated.bin', body: Buffer.from('DATA'), compress }]);
+      const name = Buffer.from(localName);
+      assert.equal(name.length, archive.readUInt16LE(26));
+      name.copy(archive, 30);
+      const staged = await stageArchive(archive);
+      t.after(() => rm(staged.root, { recursive: true, force: true }));
+      await assert.rejects(openVirtualEntry(staged.root, staged.sha256, staged.registry, '0'), {
+        code: 'archive-rejected',
+        status: 422,
+      });
+      assert.deepEqual(await cachedFiles(staged.root), []);
+    });
+  }
+}

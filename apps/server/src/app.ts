@@ -23,6 +23,8 @@ import { FolderWatcher } from './folder-watcher.js';
 import { sendProblem } from './http.js';
 import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
 import { loadPlayerAssets, registerPlayerAssets } from './player-assets.js';
+import { loadPlayerCatalogSnapshot } from './player-catalog-file.js';
+import { registerPlayerIsolation } from './player-isolation.js';
 import { loadPlayerProfiles } from './player-profiles.js';
 import { registerRoutes } from './routes.js';
 import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
@@ -46,6 +48,8 @@ export interface OpenServerOptions {
   playerDir?: string;
   /** Data-only browser player plugin registry. Nothing is executed by the server. */
   playerPluginsDir?: string;
+  /** Operator-approved data-only catalog file and its expected canonical SHA-256 ID. */
+  playerCatalogSnapshot?: { file: string; id: string };
   limits?: Partial<CatalogLimits>;
   logger?: boolean;
   loginLimit?: number;
@@ -58,6 +62,13 @@ export async function openServer(options: OpenServerOptions): Promise<{
   catalog: CatalogDatabase;
   close: () => Promise<void>;
 }> {
+  const selectedCatalog =
+    options.playerCatalogSnapshot === undefined
+      ? undefined
+      : await loadPlayerCatalogSnapshot(
+          options.playerCatalogSnapshot.file,
+          options.playerCatalogSnapshot.id,
+        );
   const player =
     options.playerDir === undefined ? undefined : await loadPlayerAssets(options.playerDir);
   const profiles = await loadPlayerProfiles(options.playerPluginsDir, player);
@@ -98,7 +109,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     uiDir: options.uiDir ?? null,
     localTrust: options.localTrust !== false,
   };
-  context.playerManager = new PlayerManager(context, profiles.items);
+  context.playerManager = new PlayerManager(context, profiles.items, selectedCatalog?.entries);
   try {
     await context.playerManager.initialize();
   } catch (error) {
@@ -249,10 +260,21 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
       );
   });
   const folderWatcher = new FolderWatcher(context.catalog);
+  const collectWorkflowArtifacts = () => {
+    try {
+      context.catalog.workflowProposals.collectWorkflowArtifacts();
+    } catch {
+      app.log.warn('Workflow artifact collection deferred');
+    }
+  };
+  const workflowCollection = setInterval(collectWorkflowArtifacts, 3_600_000);
+  workflowCollection.unref();
   app.addHook('onReady', async () => {
+    collectWorkflowArtifacts();
     folderWatcher.reconcile();
   });
   app.addHook('preClose', async () => {
+    clearInterval(workflowCollection);
     await stopLibraryJobs(context.catalog);
     await folderWatcher.close();
   });
@@ -260,6 +282,7 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
   registerWebDav(app, context);
   registerRoutes(app, context);
   registerPlayerManagement(app, context);
+  registerPlayerIsolation(app, context);
   registerPlayerAssets(app, context);
   registerWebDavCredentials(app, context);
   return app;

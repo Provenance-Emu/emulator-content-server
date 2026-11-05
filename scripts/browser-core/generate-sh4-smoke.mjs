@@ -7,13 +7,14 @@ export function sh4SmokeCode() {
     literals.push({ instruction: words.length * 2, value });
     emit(0xd000 | (register << 8));
   };
-  load(0, 0xa05f8044); // FB_R_CTRL: preserve pixel clock, enable RGB565.
-  emit(0x6102); // mov.l @r0,r1
-  load(2, 0x00800000);
-  emit(0x2129); // and r2,r1
-  emit(0xe205); // mov #5,r2
-  emit(0x212b); // or r2,r1
+  load(0, 0xa05f8044); // FB_R_CTRL: 480-line pixel clock, enabled RGB565.
+  load(1, 0x00800005);
   emit(0x2012); // mov.l r1,@r0
+  load(0, 0xa05f80e8); // VO_CONTROL resets with output blanked.
+  emit(0x6102); // mov.l @r0,r1
+  load(2, 0xfffffff7);
+  emit(0x2129); // Clear blank_video while preserving timing and pixel doubling.
+  emit(0x2012);
   load(0, 0xa05f805c);
   load(1, (1 << 20) | (479 << 10) | 319); // 640x480 RGB565.
   emit(0x2012);
@@ -53,17 +54,22 @@ export function sh4SmokeCode() {
 /** ELF32/SH4 little-endian executable, one loadable segment in Dreamcast RAM. */
 export function dreamcastSmokeElf() {
   const code = sh4SmokeCode(),
-    elf = Buffer.alloc(0x100 + code.length);
+    sections = (0x100 + code.length + 3) & ~3,
+    elf = Buffer.alloc(sections + 40);
   Buffer.from([0x7f, 0x45, 0x4c, 0x46, 1, 1, 1]).copy(elf);
   elf.writeUInt16LE(2, 16);
   elf.writeUInt16LE(42, 18); // EM_SH
   elf.writeUInt32LE(1, 20);
   elf.writeUInt32LE(0x8c010000, 24);
   elf.writeUInt32LE(52, 28);
+  elf.writeUInt32LE(sections, 32);
   elf.writeUInt32LE(9, 36); // GNU EF_SH4
   elf.writeUInt16LE(52, 40);
   elf.writeUInt16LE(32, 42);
   elf.writeUInt16LE(1, 44);
+  // Flycast's libelf validates a section table even for segment-only loading.
+  elf.writeUInt16LE(40, 46);
+  elf.writeUInt16LE(1, 48); // One null section; no section-name string table.
   [1, 0x100, 0x8c010000, 0x8c010000, code.length, code.length, 5, 4].forEach((value, index) => {
     elf.writeUInt32LE(value, 52 + index * 4);
   });

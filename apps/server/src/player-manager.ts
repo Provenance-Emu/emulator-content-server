@@ -8,8 +8,12 @@ import type { FastifyInstance } from 'fastify';
 import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
 import { readRegular } from './player-assets.js';
+import { PlayerPackageCache } from './player-cache.js';
 import { playerCatalog, type TrustedPlayer } from './player-catalog.js';
-import { downloadCatalogPlayer } from './player-download.js';
+import {
+  createPlayerCatalogSnapshot,
+  type PlayerCatalogSnapshot,
+} from './player-catalog-snapshot.js';
 import { MAX_PLAYER_PROFILES, MAX_PLAYER_SNAPSHOT_BYTES } from './player-limits.js';
 import { loadPlayerProfiles, type PlayerProfileAssets } from './player-profiles.js';
 
@@ -23,13 +27,20 @@ export class PlayerManager {
   private managed = new Set<string>();
   private settings: Settings = { disabled: [], defaultId: null };
   private tail: Promise<unknown> = Promise.resolve();
+  private catalogTail: Promise<unknown> = Promise.resolve();
   private root: string;
   private stateFile: string;
+  private catalog: readonly TrustedPlayer[];
+  private catalogSnapshot: PlayerCatalogSnapshot;
+  private packageCache: PlayerPackageCache;
   constructor(
     private context: ServerContext,
     private operators: ReadonlyMap<string, PlayerProfileAssets>,
-    private catalog: readonly TrustedPlayer[] = playerCatalog,
+    catalog: readonly TrustedPlayer[] = playerCatalog,
   ) {
+    this.catalogSnapshot = createPlayerCatalogSnapshot(catalog);
+    this.catalog = this.catalogSnapshot.entries;
+    this.packageCache = new PlayerPackageCache(join(context.dataDir, 'player-cache'));
     this.legacy = context.player;
     this.root = join(context.dataDir, 'players');
     this.stateFile = join(context.dataDir, 'player-settings.json');
@@ -133,7 +144,9 @@ export class PlayerManager {
         removable: this.managed.has(id),
       })),
       defaultProfileId: this.context.defaultPlayerProfileId,
-      available: this.catalog.map(({ url: _, sha256: __, upstream: ___, ...entry }) => entry),
+      available: this.catalog.map(
+        ({ url: _, sha256: __, upstream: ___, provenance: ____, ...entry }) => entry,
+      ),
     };
   }
   private serial<T>(operation: () => Promise<T>): Promise<T> {
@@ -272,20 +285,35 @@ export class PlayerManager {
   systemFile(id: string, name: string, bytes: Buffer) {
     return this.serial(async () => {
       if (!this.all.has(id)) throw new DomainError('not-found', 404, 'Emulator is not installed');
-      if (id !== 'org.libretro.parallel-dc' || !this.managed.has(id))
+      const current = this.all.get(id);
+      if (!this.managed.has(id) || current?.descriptor.runtime === 'dolphin-wasm-esm')
         throw new DomainError(
           'forbidden',
           403,
-          'System files can be added only to the managed Dreamcast/arcade emulator',
+          'System files require a managed emulator with firmware support',
         );
-      if (name !== 'awbios.zip' || !validAtomiswaveArchive(bytes))
+      if (
+        !validSystemFileName(name) ||
+        !Buffer.isBuffer(bytes) ||
+        bytes.length < 1 ||
+        bytes.length > 32 * 1024 * 1024
+      )
         throw new DomainError(
           'invalid-request',
           400,
-          'Select awbios.zip containing bios0.ic23 (131072bytes), up to32MiB',
+          'Select a portable system filename and a file from 1 byte to 32 MiB',
         );
-      const current = this.all.get(id);
+      if (id === 'org.libretro.parallel-dc' && name.toLowerCase() === 'awbios.zip') {
+        name = 'awbios.zip';
+        if (!validAtomiswaveArchive(bytes))
+          throw new DomainError(
+            'invalid-request',
+            400,
+            'Select awbios.zip containing bios0.ic23 (131072 bytes), up to 32 MiB',
+          );
+      }
       if (!current) throw new DomainError('not-found', 404, 'Emulator is not installed');
+      const replacing = (existing: string) => existing.toLowerCase() === name.toLowerCase();
       const source = join(this.root, id),
         stage = join(this.context.dataDir, `player-staging-${randomUUID()}`),
         next = join(stage, id),
@@ -300,23 +328,23 @@ export class PlayerManager {
         [web.wasm.file, current.wasm],
       ]);
       for (const spec of web.assets)
-        if (spec.name !== name) {
+        if (!replacing(spec.name)) {
           const value = current.assets.get(spec.name);
           if (!value) throw new Error('Missing player resource');
           files.set(spec.file, value);
         }
-      web.assets = web.assets.filter((a) => a.name !== name);
+      web.assets = web.assets.filter((a) => !replacing(a.name));
       if (
         web.assets.length >= 16 ||
         [...current.assets]
-          .filter(([n]) => n !== name)
+          .filter(([n]) => !replacing(n))
           .reduce((total, [, b]) => total + b.length, bytes.length) >
           32 * 1024 * 1024
       )
         throw new DomainError('conflict', 409, 'Emulator system-file limit reached');
       web.assets.push({
         name,
-        file: `system-${randomUUID()}.zip`,
+        file: `system-${randomUUID()}.bin`,
         sha256: createHash('sha256').update(bytes).digest('hex'),
       });
       const installedFile = web.assets.at(-1);
@@ -346,16 +374,34 @@ export class PlayerManager {
       return this.view();
     });
   }
-  installCatalog(id: string) {
-    return this.serial(async () => {
+  async installCatalog(id: string) {
+    await this.serial(async () => {
       const entry = this.catalog.find((p) => p.id === id && p.available);
       if (!entry)
         throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
       if (this.all.has(id)) throw new DomainError('conflict', 409, 'Emulator is already installed');
-      const bytes = await downloadCatalogPlayer(entry);
-      return this.installBytes(bytes);
     });
+    // Bound catalog preparation through activation, so downloaded packages cannot
+    // accumulate behind slow mutations. Network work never holds the mutation queue.
+    const result = this.catalogTail.then(async () => {
+      const bytes = await this.packageCache.download(this.catalogSnapshot, id);
+      // Recheck conflicts against current state before atomically activating.
+      return this.serial(() => this.installBytes(bytes));
+    });
+    this.catalogTail = result.catch(() => {});
+    return result;
   }
+}
+
+// Match manifest portability rules; runtime configuration and executable resources stay reserved.
+function validSystemFileName(name: string): boolean {
+  return (
+    typeof name === 'string' &&
+    /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(name) &&
+    !name.endsWith('.') &&
+    !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) &&
+    !/^(?:loader\.js|core\.wasm|plugin\.json|retroarch\.cfg)$/i.test(name)
+  );
 }
 
 function validAtomiswaveArchive(bytes: Buffer) {

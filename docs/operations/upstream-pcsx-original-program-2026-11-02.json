@@ -1,0 +1,15 @@
+{
+  "results": [
+    {
+      "core": "pcsx_rearmed",
+      "ok": true,
+      "origin": "null",
+      "productionSandbox": true,
+      "acceptance": "original-exe-video",
+      "pixel": [0, 251, 0, 255],
+      "pageErrors": [],
+      "unexpectedRequests": []
+    }
+  ],
+  "sandboxSha256": "3d24095174a75d7db28e8a2dfc67f1d2e63a40bfc674c7f470234a13bba945d4"
+}

@@ -42,11 +42,13 @@ explicitly; it needs no BIOS-bearing Git history. The standalone helper received
 syntax/lint validation. A separate byte-for-byte rebuild of profile 1.1.0 has not
 been performed; the acceptance below covers the fresh checkout recipe's output.
 
-The current player profile is version **1.1.0**, backed by core **3.10.0**. It
+The current player profile is version **1.2.0**, backed by core **3.10.0**. It
 supports Jaguar and Jaguar CD with `j64`, `jag`, `rom`, `abs`, `cof`, `bin`, `prg`,
-`cdi` and `chd`, up to 512 MiB per self-contained file. CHD requires the session
-metadata accepted by the upstream core. The core's CUE/BIN reader is present,
-while browser track-bundle staging is unavailable, so CUE is not advertised.
+`cdi`, `chd` and `cue`, up to 512 MiB per complete disc group. CHD requires the
+session metadata accepted by the upstream core. CUE/BIN works for scanned groups
+and uploaded item assets; session/index directives survive controlled track-name
+rewriting. Descriptors are capped at 64 KiB and groups at 128 files. Profile 1.2.0
+reuses the exact loader/WASM bytes accepted with 1.1.0; its manifest advertises CUE.
 Standard ten-block (`0xf6`) commercial cartridge layouts are explicitly exempt
 from the GPU-only boot heuristic in `src/core/file.c:JaguarCartNeedsBIOS`.
 Formats with a valid 68000 entry use direct HLE boot; CD data discs use the
@@ -57,13 +59,15 @@ acceptance receipts remain historical records of that narrower profile, not
 claims about the current core's CD capabilities.
 
 `generate-smoke-program.mjs` produces original ABS, one-MiB cartridge and
-two-session CDI programs. All three set the Jaguar background green and increment
+two-session CDI/CUE programs; `generate-jaguar-chd-smoke.mjs` produces the matching
+compressed CHD using session-preserving chdman. All set the Jaguar background green and increment
 guest RAM. The opt-in browser test checks actual compositor output, an advancing
 guest counter and opaque iframe isolation:
 
 ```
 cd apps/web
 ECS_ACCEPTANCE_JAGUAR_PLUGIN=/absolute/profile ECS_ACCEPTANCE_HEADLESS=1 \
+  ECS_ACCEPTANCE_CHDMAN=/absolute/jagcd-tools/chdman \
   ECS_ACCEPTANCE_SOFTWARE_WEBGL=1 pnpm exec playwright test \
   test/browser/player-additional-cores.spec.ts --grep 'BIOS-free Jaguar'
 ```

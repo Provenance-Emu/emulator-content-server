@@ -63,6 +63,7 @@ export async function invokeWorkflowOperation(
     signal: AbortSignal;
     beforeDispatch: () => Promise<void>;
     checkpoint: JsonValue;
+    flush?: () => Promise<void>;
     pause: (milliseconds: number, signal: AbortSignal) => Promise<void>;
   },
 ): Promise<OperationResult> {
@@ -91,8 +92,9 @@ export async function invokeWorkflowOperation(
             undefined,
             async () => {
               await guard();
-              context.state.markSubmitting(request.operationId);
+              context.state.markSubmitting(request.operationId, !!context.flush);
               submitted = true;
+              await context.flush?.();
             },
             context.signal,
           ),
@@ -163,6 +165,17 @@ export async function runWorkflowLease(
     if (initialLease.fence !== 1) throw new WorkflowRecoveryRequired();
     state.initializeRun(run.id);
   }
+  if (
+    state.recoveryRuns().includes(run.id) ||
+    (initialLease.publicationSequence !== undefined &&
+      !state.canReconcile(
+        run.id,
+        initialLease.publicationSequence,
+        initialLease.checkpointRef ?? null,
+      ))
+  )
+    throw new WorkflowRecoveryRequired();
+  state.saveLease(initialLease);
   const controller = new AbortController();
   const signal = AbortSignal.any([parentSignal, controller.signal]);
   let lease = initialLease,
@@ -232,11 +245,28 @@ export async function runWorkflowLease(
             for (const step of plan.operations) {
               cancelled(signal);
               await dependencies.assertWorkflowAvailable();
-              const binding = await dependencies.resolveBinding(step);
               const operationId = createHash('sha256')
                 .update(JSON.stringify([run.id, source.sourceId, step.id]))
                 .digest('hex');
               const existing = state.getOperation(operationId);
+              if (existing?.result) {
+                state.beginOperation({
+                  runId: run.id,
+                  sourceId: source.sourceId,
+                  stepId: step.id,
+                  bindingId: existing.bindingId,
+                  bindingName: step.binding,
+                  workflowDigest: run.workflowDigest,
+                  request: {
+                    ...existing.request,
+                    capability: step.capability,
+                    major: step.major,
+                    input: step.input,
+                  },
+                });
+                continue;
+              }
+              const binding = await dependencies.resolveBinding(step);
               const request: OperationRequest = {
                 operationId,
                 capability: step.capability,
@@ -250,6 +280,7 @@ export async function runWorkflowLease(
                 sourceId: source.sourceId,
                 stepId: step.id,
                 bindingId: binding.id,
+                bindingName: step.binding,
                 workflowDigest: run.workflowDigest,
                 request,
               });
@@ -257,6 +288,7 @@ export async function runWorkflowLease(
                 state,
                 signal,
                 checkpoint: plan.checkpoint,
+                flush,
                 pause: wait,
                 beforeDispatch: async () => {
                   await dependencies.assertWorkflowAvailable();

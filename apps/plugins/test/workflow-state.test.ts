@@ -177,3 +177,20 @@ test('host state rejects credential-bearing payloads and publicly readable state
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('restore recovery blocks unfinished runs and detects divergent server publication history', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-state-recovery-'));
+  const state = await openWorkflowState(directory);
+  try {
+    state.initializeRun('restored');
+    assert.equal(state.canReconcile('restored', 0, null), true);
+    assert.equal(state.canReconcile('restored', 1, 'unknown'), false);
+    state.requireRecoveryAfterRestore();
+    assert.equal(state.canReconcile('restored', 0, null), false);
+    state.initializeRun('fresh');
+    assert.equal(state.canReconcile('fresh', 0, null), true);
+  } finally {
+    state.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

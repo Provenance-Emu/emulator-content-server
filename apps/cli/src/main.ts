@@ -5,7 +5,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertListenPolicy } from '@ecs/auth';
 import { advertise } from '@ecs/discovery';
-import { openServer } from '@ecs/server';
+import { exportPlayerCatalogSnapshot, loadPlayerCatalogSnapshot, openServer } from '@ecs/server';
 import {
   addLocation,
   addRoot,
@@ -21,6 +21,7 @@ import {
   useLocation,
 } from './lifecycle.js';
 import { captureDaemonLogs } from './log.js';
+import { playerCatalogSelection } from './player-catalog-options.js';
 import {
   installService,
   readBootstrapped,
@@ -40,6 +41,14 @@ async function main(): Promise<void> {
     return;
   }
   const dataDir = value('--data') ?? './content-data';
+  if (command === 'player-catalog') {
+    const destination = value('--to');
+    if (process.argv[3] !== 'export' || !destination || destination.startsWith('--'))
+      throw new Error('player-catalog export requires --to FILE');
+    const id = await exportPlayerCatalogSnapshot(destination);
+    console.log(`player catalog snapshot ${id} written to ${destination}`);
+    return;
+  }
   if (command === 'init') {
     await printInit(dataDir, value('--name') ?? 'Emulation Server');
     return;
@@ -153,6 +162,8 @@ async function serve(dataDir: string): Promise<void> {
 }
 
 async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> {
+  const selectedCatalog = selectedPlayerCatalog();
+  if (selectedCatalog) await loadPlayerCatalogSnapshot(selectedCatalog.file, selectedCatalog.id);
   const displayName = value('--name') ?? 'Emulation Server';
   const prepared = await printInit(dataDir, displayName, !daemon);
   const logging = daemon ? await captureDaemonLogs(dataDir) : null;
@@ -172,6 +183,7 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       uiDir,
       playerDir: playerDirectory(),
       playerPluginsDir: selectedAbsolutePath('--player-plugins', 'ECS_PLAYER_PLUGINS', 'directory'),
+      playerCatalogSnapshot: selectedCatalog,
       webdavEnabled: listen.webdavEnabled,
       // A public bind sits behind a proxy on loopback, so the socket address
       // cannot decide who is local.
@@ -282,6 +294,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
     dataDir: absolute,
     playerDir: playerDirectory(),
     playerPluginsDir: selectedAbsolutePath('--player-plugins', 'ECS_PLAYER_PLUGINS', 'directory'),
+    playerCatalogSnapshot: selectedPlayerCatalog(),
     executable: process.execPath,
     script: process.argv[1] ?? fileURLToPath(import.meta.url),
     host: listen.host,
@@ -299,6 +312,14 @@ function serviceSpec(dataDir: string): ServiceSpec {
 
 function playerDirectory(): string | undefined {
   return selectedAbsolutePath('--player-dir', 'ECS_PLAYER_DIR', 'directory');
+}
+
+function selectedPlayerCatalog() {
+  const file = selectedAbsolutePath('--player-catalog', 'ECS_PLAYER_CATALOG', 'file');
+  const explicitId = value('--player-catalog-id');
+  if (has('--player-catalog-id') && (!explicitId || explicitId.startsWith('--')))
+    throw new Error('--player-catalog-id requires a SHA-256 snapshot ID');
+  return playerCatalogSelection(file, explicitId ?? process.env.ECS_PLAYER_CATALOG_ID);
 }
 
 function listenConfig(): {
@@ -331,7 +352,7 @@ function chdmanPath(): string | undefined {
 function selectedAbsolutePath(
   flag: string,
   environment: string,
-  kind: 'directory' | 'executable',
+  kind: 'directory' | 'executable' | 'file',
 ): string | undefined {
   const explicit = value(flag);
   const selected = explicit ?? process.env[environment];
@@ -356,7 +377,8 @@ function has(name: string): boolean {
 
 function printHelp(): void {
   console.log(`ecs init --data ./content-data
-ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>] [--player-plugins <absolute-path>] [--matching-plugins <dir>]
+ecs serve --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--advertise] [--webdav] [--chdman <absolute-path>] [--ui <dir>|none] [--player-dir <absolute-path>] [--player-plugins <absolute-path>] [--player-catalog <absolute-file> --player-catalog-id <sha256>] [--matching-plugins <dir>]
+ecs player-catalog export --to <new-file>
 ecs doctor --data ./content-data
 ecs backup --data ./content-data --to ./backup
 ecs roots list --data ./content-data
@@ -368,7 +390,7 @@ ecs locations use --data ./content-data --id <locationId>
 ecs locations use --data ./content-data --primary
 ecs locations remove --data ./content-data --id <locationId>
 ecs scan --data ./content-data [--id <rootId>]
-ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--chdman <absolute-path>] [--player-dir <absolute-path>] [--player-plugins <absolute-path>]
+ecs service install --data ./content-data [--host 127.0.0.1] [--port ${DEFAULT_PORT}] [--webdav] [--chdman <absolute-path>] [--player-dir <absolute-path>] [--player-plugins <absolute-path>] [--player-catalog <absolute-file> --player-catalog-id <sha256>]
 ecs service uninstall --data ./content-data
 ecs service status --data ./content-data`);
 }

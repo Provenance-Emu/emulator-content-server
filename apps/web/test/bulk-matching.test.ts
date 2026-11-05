@@ -254,7 +254,7 @@ test('containers use filename review, offline and managed uploads are skipped, f
       return Response.json({ sourceId: id, revision: 0, matches: [] });
     }
     if (id === 'fail') return problem(503);
-    assert.equal(JSON.parse(String(init?.body)).checksum, id === 'good');
+    assert.equal(JSON.parse(String(init?.body)).checksum, ['disc', 'good'].includes(id));
     return Response.json({
       sourceId: id,
       requestId: 'r',
@@ -702,5 +702,22 @@ test('shared matching may request ZIP verification without making the retired pe
   assert.equal(canAttemptChecksum(source), false);
   source.availability = 'local';
   source.groupFileCount = 2;
+  assert.equal(canAttemptChecksum(source), false);
+});
+
+test('CUE/GDI groups can request bounded identification without trusting container confidence in the retired planner', async () => {
+  const { canAttemptChecksum, canChecksum } = await import('../src/lib/bulk-matching.js');
+  const source = entry('source', 'disc').source;
+  assert.ok(source);
+  source.groupFileCount = 3;
+  for (const extension of ['cue', 'gdi']) {
+    source.name = `Game.${extension}`;
+    assert.equal(canAttemptChecksum(source), true);
+    assert.equal(canChecksum(source), false);
+    source.groupError = 'Missing track';
+    assert.equal(canAttemptChecksum(source), false);
+    source.groupError = null;
+  }
+  source.groupFileCount = 129;
   assert.equal(canAttemptChecksum(source), false);
 });

@@ -20,6 +20,7 @@ export interface WorkflowOperationInput {
   sourceId: string;
   stepId: string;
   bindingId: string;
+  bindingName?: string;
   workflowDigest: string;
   request: OperationRequest;
 }
@@ -98,6 +99,36 @@ export class WorkflowStateStore {
       this.db.exec('ROLLBACK');
       throw error;
     }
+  }
+  backupTo(destination: string): void {
+    this.db.exec(`VACUUM INTO '${destination.replaceAll("'", "''")}'`);
+  }
+  requireRecoveryAfterRestore(): void {
+    this.db.exec('UPDATE workflow_runs SET recovery_required=1 WHERE finished=0');
+  }
+  recoveryRuns(): string[] {
+    return (
+      this.db
+        .prepare('SELECT run_id FROM workflow_runs WHERE recovery_required=1 ORDER BY run_id')
+        .all() as { run_id: string }[]
+    ).map((row) => row.run_id);
+  }
+  canReconcile(runId: string, sequence: number, checkpointRef: string | null): boolean {
+    const row = this.db
+      .prepare(
+        'SELECT acknowledged_sequence,acknowledged_ref,recovery_required FROM workflow_runs WHERE run_id=?',
+      )
+      .get(runId) as
+      | {
+          acknowledged_sequence: number;
+          acknowledged_ref: string | null;
+          recovery_required: number;
+        }
+      | undefined;
+    if (!row || row.recovery_required || sequence < row.acknowledged_sequence) return false;
+    if (sequence === row.acknowledged_sequence) return checkpointRef === row.acknowledged_ref;
+    const pending = this.pendingPublications(runId).find((p) => p.sequence === sequence);
+    return !!pending && pending.checkpointRef === checkpointRef;
   }
   initializeRun(runId: string): void {
     id(runId);
@@ -293,6 +324,7 @@ export class WorkflowStateStore {
       request.capability,
       request.major,
       request.input,
+      ...(input.bindingName === undefined ? [] : [input.bindingName]),
     ]);
     return this.transaction(() => {
       const existing = this.operationRow(request.operationId);
@@ -318,11 +350,16 @@ export class WorkflowStateStore {
       return this.getOperation(request.operationId) as StoredWorkflowOperation;
     });
   }
-  markSubmitting(operationId: string): void {
-    const result = this.db
-      .prepare("UPDATE workflow_operations SET state='submitting' WHERE id=? AND state='prepared'")
-      .run(operationId);
-    if (!result.changes) throw new Error('Workflow operation cannot be submitted again');
+  markSubmitting(operationId: string, publishIntent = false): void {
+    this.transaction(() => {
+      const operation = this.operationRow(operationId);
+      if (operation?.state !== 'prepared')
+        throw new Error('Workflow operation cannot be submitted again');
+      this.db
+        .prepare("UPDATE workflow_operations SET state='submitting' WHERE id=?")
+        .run(operationId);
+      if (publishIntent) this.publication(operation.run_id, []);
+    });
   }
   saveAcceptedHandle(operationId: string, handle: JsonValue): void {
     const value = json(handle, WORKFLOW_LIMITS.checkpoint);
@@ -421,9 +458,18 @@ export class WorkflowStateStore {
     ).map((row) => JSON.parse(row.payload_json) as WorkflowPublication);
   }
   acknowledgePublication(runId: string, sequence: number): void {
-    this.db
-      .prepare('DELETE FROM workflow_publications WHERE run_id=? AND sequence=?')
-      .run(runId, sequence);
+    this.transaction(() => {
+      const publication = this.pendingPublications(runId).find((p) => p.sequence === sequence);
+      if (!publication) return;
+      this.db
+        .prepare(
+          'UPDATE workflow_runs SET acknowledged_sequence=?,acknowledged_ref=? WHERE run_id=? AND acknowledged_sequence<?',
+        )
+        .run(sequence, publication.checkpointRef, runId, sequence);
+      this.db
+        .prepare('DELETE FROM workflow_publications WHERE run_id=? AND sequence=?')
+        .run(runId, sequence);
+    });
   }
 }
 
@@ -454,7 +500,7 @@ export async function openWorkflowState(directory: string): Promise<WorkflowStat
   const db = new DatabaseSync(filename);
   try {
     const version = db.prepare('PRAGMA user_version').get() as { user_version: number };
-    if (![0, 1, 2, 3].includes(version.user_version))
+    if (![0, 1, 2, 3, 4].includes(version.user_version))
       throw new Error('Unsupported workflow state schema');
     if (version.user_version === 0) {
       const existing = db
@@ -480,6 +526,13 @@ export async function openWorkflowState(directory: string): Promise<WorkflowStat
       db.exec(
         'BEGIN IMMEDIATE; ALTER TABLE workflow_runs ADD COLUMN lease_json TEXT; PRAGMA user_version=3; COMMIT;',
       );
+    if (version.user_version < 4)
+      db.exec(`BEGIN IMMEDIATE;
+      ALTER TABLE workflow_runs ADD COLUMN acknowledged_sequence INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE workflow_runs ADD COLUMN acknowledged_ref TEXT;
+      ALTER TABLE workflow_runs ADD COLUMN recovery_required INTEGER NOT NULL DEFAULT 0;
+      UPDATE workflow_runs SET recovery_required=1 WHERE next_sequence>1 OR EXISTS(SELECT 1 FROM workflow_operations o WHERE o.run_id=workflow_runs.run_id);
+      PRAGMA user_version=4; COMMIT;`);
     db.exec(
       'PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;',
     );

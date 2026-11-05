@@ -109,12 +109,16 @@ test('explicit scan persists pending/completed/failed state and sanitizes failur
       headers: f.auth,
     });
     assert.equal(response.statusCode, 500);
+    assert.equal(response.json().type, 'urn:ecs:problem:scan-failed');
     assert.equal(response.body.includes(path), false);
     assert.equal(pending, true);
     const failed = f.catalog.listContentRootSummaries({ actor: f.actor })[0];
     assert.equal(failed?.scanState, 'failed');
     assert.equal(failed?.scanError, 'Scan failed. Retry scan.');
     assert.ok(failed?.lastScanCompletedAt);
+    const job = f.catalog.libraryJobs.list().find((entry) => entry.scope.rootId === root.id);
+    assert.equal(job?.state, 'completed');
+    assert.equal(job?.failed, 1);
     f.catalog.applyInspection = original;
     const retry = await f.app.inject({
       method: 'POST',

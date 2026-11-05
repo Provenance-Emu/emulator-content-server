@@ -43,18 +43,9 @@
       "version": "145.0.7632.6",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 650,
       "resize": {
         "ok": true,
@@ -73,18 +64,9 @@
       "version": "145.0.7632.6",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 650,
       "resize": {
         "ok": true,
@@ -104,18 +86,9 @@
       "version": "145.0.7632.6",
       "mode": "nostalgist",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 655,
       "resize": {
         "ok": true,
@@ -143,18 +116,9 @@
       "version": "145.0.7632.6",
       "mode": "nostalgist-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 657,
       "resize": {
         "ok": true,
@@ -182,18 +146,9 @@
       "version": "26.0",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 653,
       "resize": {
         "ok": true,
@@ -212,18 +167,9 @@
       "version": "26.0",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 653,
       "resize": {
         "ok": true,
@@ -243,18 +189,9 @@
       "version": "26.0",
       "mode": "nostalgist",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 661,
       "resize": {
         "ok": true,
@@ -282,18 +219,9 @@
       "version": "26.0",
       "mode": "nostalgist-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 649,
       "resize": {
         "ok": true,
@@ -321,18 +249,9 @@
       "version": "26.0",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 653,
       "resize": {
         "ok": true,
@@ -351,18 +270,9 @@
       "version": "26.0",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 657,
       "resize": {
         "ok": true,
@@ -382,18 +292,9 @@
       "version": "26.0",
       "mode": "nostalgist",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 660,
       "resize": {
         "ok": true,
@@ -421,18 +322,9 @@
       "version": "26.0",
       "mode": "nostalgist-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 649,
       "resize": {
         "ok": true,
@@ -460,18 +352,9 @@
       "version": "146.0.1",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 657,
       "resize": {
         "ok": true,
@@ -490,18 +373,9 @@
       "version": "146.0.1",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 653,
       "resize": {
         "ok": true,
@@ -521,18 +395,9 @@
       "version": "146.0.1",
       "mode": "nostalgist",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 659,
       "resize": {
         "ok": true,
@@ -560,18 +425,9 @@
       "version": "146.0.1",
       "mode": "nostalgist-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 662,
       "resize": {
         "ok": true,
@@ -601,18 +457,9 @@
       "version": "145.0.7632.6",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 653,
       "resize": {
         "ok": true,
@@ -628,16 +475,7 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "error": "deadline"
@@ -649,18 +487,9 @@
       "version": "145.0.7632.6",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 653,
       "resize": {
         "ok": true,
@@ -677,16 +506,7 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "error": "deadline"
@@ -698,18 +518,9 @@
       "version": "26.0",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 648,
       "resize": {
         "ok": true,
@@ -725,29 +536,11 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "bytes": 7607,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshotPassed": true
     },
@@ -756,18 +549,9 @@
       "version": "26.0",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 648,
       "resize": {
         "ok": true,
@@ -784,16 +568,7 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "error": "deadline"
@@ -805,18 +580,9 @@
       "version": "26.0",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 657,
       "resize": {
         "ok": true,
@@ -832,29 +598,11 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "bytes": 6199,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshotPassed": true
     },
@@ -863,18 +611,9 @@
       "version": "26.0",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 648,
       "resize": {
         "ok": true,
@@ -891,16 +630,7 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "error": "deadline"
@@ -912,18 +642,9 @@
       "version": "146.0.1",
       "mode": "direct",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 650,
       "resize": {
         "ok": true,
@@ -939,16 +660,7 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "error": "deadline"
@@ -960,18 +672,9 @@
       "version": "146.0.1",
       "mode": "direct-shader",
       "start": "running",
-      "battery": [
-        1,
-        167
-      ],
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "battery": [1, 167],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "stateBytes": 657,
       "resize": {
         "ok": true,
@@ -988,16 +691,7 @@
       "opaqueOriginVerified": true,
       "thumbnail": {
         "bytes": 754,
-        "signature": [
-          137,
-          80,
-          78,
-          71,
-          13,
-          10,
-          26,
-          10
-        ]
+        "signature": [137, 80, 78, 71, 13, 10, 26, 10]
       },
       "screenshot": {
         "error": "deadline"
@@ -1011,19 +705,10 @@
       "mode": "direct",
       "uiUnchanged": true,
       "sandbox": "allow-scripts",
-      "initialBattery": [
-        1,
-        167
-      ],
+      "initialBattery": [1, 167],
       "serverStateBytes": 665,
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "alerts": []
     },
     {
@@ -1031,19 +716,10 @@
       "mode": "nostalgist",
       "uiUnchanged": true,
       "sandbox": "allow-scripts",
-      "initialBattery": [
-        1,
-        167
-      ],
+      "initialBattery": [1, 167],
       "serverStateBytes": 657,
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "alerts": []
     },
     {
@@ -1051,19 +727,10 @@
       "mode": "direct",
       "uiUnchanged": true,
       "sandbox": "allow-scripts",
-      "initialBattery": [
-        1,
-        167
-      ],
+      "initialBattery": [1, 167],
       "serverStateBytes": 666,
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "alerts": []
     },
     {
@@ -1071,19 +738,10 @@
       "mode": "nostalgist",
       "uiUnchanged": true,
       "sandbox": "allow-scripts",
-      "initialBattery": [
-        1,
-        167
-      ],
+      "initialBattery": [1, 167],
       "serverStateBytes": 644,
-      "changedBattery": [
-        2,
-        167
-      ],
-      "restoredBattery": [
-        1,
-        167
-      ],
+      "changedBattery": [2, 167],
+      "restoredBattery": [1, 167],
       "alerts": []
     }
   ],

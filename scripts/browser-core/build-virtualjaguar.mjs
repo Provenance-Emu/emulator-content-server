@@ -111,7 +111,7 @@ try {
     id: 'org.libretro.virtualjaguar',
     name: 'Virtual Jaguar 3.10.0 (cartridge and CD HLE)',
     kind: 'player',
-    version: '1.1.0',
+    version: '1.2.0',
     engine: 'ecs.plugin/1',
     apps: ['org.provenance-emu.provenance'],
     player: {
@@ -123,7 +123,7 @@ try {
         filesystem: 'memfs',
         threaded: false,
         saveCompletion: 'none',
-        contentExtensions: ['j64', 'jag', 'rom', 'abs', 'cof', 'bin', 'prg', 'cdi', 'chd'],
+        contentExtensions: ['j64', 'jag', 'rom', 'abs', 'cof', 'bin', 'prg', 'cdi', 'chd', 'cue'],
         maxContentBytes: 536870912,
         buildVersion: 'RetroArch 4d4bfc0f / Virtual Jaguar 3.10.0 ffea7893 HLE / emcc 3.1.46',
         loader: artifact('virtualjaguar_libretro.js', 'loader.js'),
@@ -135,7 +135,7 @@ try {
   writeFileSync(join(output, 'plugin.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   writeFileSync(
     join(build, 'ECS-BUILD.json'),
-    `${JSON.stringify({ frontendPin, corePin: virtualJaguarPin, coreVersion: '3.10.0', sdk: '3.1.46', sdkCommit: '19607820c447a13fd8d0b7680c56148427d6e1b8', frontendFlags: flags, coreFlags: ['platform=emscripten'], limits: 'Cartridge/ABS and CD data-disc HLE; self-contained CDI/CHD up to512MiB. CHD requires upstream CHSE session metadata. No encrypted/GPU-only boot, real BIOS, audio-only disc boot, CUE track staging, synchronized saves, or archive extraction.', licenses: ['RetroArch GPL-3.0-or-later', 'Virtual Jaguar GPL-3.0; retain all dependency notices'], sanitizerSha256: digest(readFileSync(new URL('./virtualjaguar-bios-free.mjs', import.meta.url))) }, null, 2)}\n`,
+    `${JSON.stringify({ frontendPin, corePin: virtualJaguarPin, coreVersion: '3.10.0', sdk: '3.1.46', sdkCommit: '19607820c447a13fd8d0b7680c56148427d6e1b8', frontendFlags: flags, coreFlags: ['platform=emscripten'], limits: 'Cartridge/ABS and CD data-disc HLE; CDI/CHD and CUE/BIN disc groups up to512MiB total. CHD requires upstream CHSE session metadata. No encrypted/GPU-only boot, real BIOS, audio-only disc boot, synchronized saves, or archive extraction.', licenses: ['RetroArch GPL-3.0-or-later', 'Virtual Jaguar GPL-3.0; retain all dependency notices'], sanitizerSha256: digest(readFileSync(new URL('./virtualjaguar-bios-free.mjs', import.meta.url))) }, null, 2)}\n`,
   );
   mkdirSync(join(build, 'ecs-recipes'));
   for (const file of [

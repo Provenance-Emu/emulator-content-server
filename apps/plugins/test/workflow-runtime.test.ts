@@ -119,7 +119,7 @@ test('runtime polls a saved handle and replays an acknowledged publication witho
     let fail = true;
     f.deps.publish = async (current, p) => {
       await publish(current, p);
-      if (fail) {
+      if (fail && p.sequence === 2) {
         fail = false;
         throw new Error('Generated lost acknowledgement');
       }
@@ -135,7 +135,7 @@ test('runtime polls a saved handle and replays an acknowledged publication witho
     assert.equal(f.state.runFinished(run.id), true);
     assert.deepEqual(
       f.publications.map((p) => p.sequence),
-      [1, 2, 3],
+      [1, 2, 3, 4],
     );
   } finally {
     await f.close();
@@ -250,5 +250,87 @@ test('saved pending work resumes by polling and cancellation stops scheduling', 
     assert.equal(g.state.runFinished(run.id), false);
   } finally {
     await g.close();
+  }
+});
+
+test('confirmed results resume without resolving a revoked binding and history drift requires recovery', async () => {
+  const f = await fixture({
+    id: 'catalog-v1',
+    async invoke(_method, _request, _handle, beforeDispatch) {
+      await beforeDispatch();
+      return { state: 'completed', output: {} };
+    },
+  });
+  try {
+    const publishPlan = f.deps.publishPlan;
+    f.deps.publishPlan = async () => {
+      throw new Error('Generated lost plan acknowledgement');
+    };
+    await assert.rejects(
+      runWorkflowLease(lease, f.deps, new AbortController().signal),
+      /plan acknowledgement/,
+    );
+    const current = f.publications.at(-1);
+    assert.ok(current);
+    f.deps.publishPlan = publishPlan;
+    f.deps.resolveBinding = async () => {
+      throw new Error('Revoked connection must stay unused');
+    };
+    await assert.rejects(
+      runWorkflowLease(
+        { ...lease, publicationSequence: current.sequence + 1, checkpointRef: 'unknown' },
+        f.deps,
+        new AbortController().signal,
+      ),
+      /recovery/i,
+    );
+    await runWorkflowLease(
+      { ...lease, publicationSequence: current.sequence, checkpointRef: current.checkpointRef },
+      f.deps,
+      new AbortController().signal,
+    );
+    assert.equal(f.state.runFinished(run.id), true);
+  } finally {
+    await f.close();
+  }
+});
+
+test('reusing a confirmed step ID with changed input still violates the immutable operation contract', async () => {
+  let calls = 0;
+  const f = await fixture({
+    id: 'catalog-v1',
+    async invoke(_method, _request, _handle, guard) {
+      await guard();
+      calls++;
+      return { state: 'completed', output: {} };
+    },
+  });
+  try {
+    const advance = f.deps.advance;
+    f.deps.advance = async (snapshot, signal) => {
+      const plan = await advance(snapshot, signal);
+      if (snapshot.completed.inspect)
+        return {
+          state: 'waiting',
+          checkpoint: null,
+          operations: [
+            {
+              id: 'inspect',
+              binding: 'catalog',
+              capability: 'catalog.search',
+              major: 1,
+              input: { changed: true },
+            },
+          ],
+        };
+      return plan;
+    };
+    await assert.rejects(
+      runWorkflowLease(lease, f.deps, new AbortController().signal),
+      /reused for different input/i,
+    );
+    assert.equal(calls, 1);
+  } finally {
+    await f.close();
   }
 });

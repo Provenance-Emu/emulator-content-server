@@ -36,6 +36,7 @@ interface RunRow {
   fence: number;
   lease_expires: number | null;
   publication_sequence: number;
+  checkpoint_ref: string | null;
 }
 interface WorkRow {
   source_id: string;
@@ -308,17 +309,24 @@ export class WorkflowRunRepository {
         runId: row.id,
         hostId,
         fence: row.fence + 1,
+        publicationSequence: row.publication_sequence,
+        checkpointRef: row.checkpoint_ref,
         expiresAt: new Date(now + 60_000).toISOString(),
       };
     });
   }
   heartbeat(lease: WorkflowLease, now = Date.now()): WorkflowLease {
     return workflowTransaction(this.db, () => {
-      this.liveLease(lease, now);
+      const row = this.liveLease(lease, now);
       this.db
         .prepare('UPDATE workflow_runs SET lease_expires=? WHERE id=?')
         .run(now + 60_000, lease.runId);
-      return { ...lease, expiresAt: new Date(now + 60_000).toISOString() };
+      return {
+        ...lease,
+        publicationSequence: row.publication_sequence,
+        checkpointRef: row.checkpoint_ref,
+        expiresAt: new Date(now + 60_000).toISOString(),
+      };
     });
   }
   private liveLease(lease: WorkflowLease, now: number): RunRow {

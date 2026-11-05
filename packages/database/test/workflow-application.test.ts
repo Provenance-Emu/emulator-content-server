@@ -491,3 +491,60 @@ test('assigning an unassigned folder changes the frozen workflow scope and block
     await f.close();
   }
 });
+
+test('collection expires undo bytes after thirty days and retains selected artwork and receipts', async () => {
+  const f = await fixture();
+  const raw = new DatabaseSync(f.path);
+  const now = Date.now();
+  try {
+    const revision = f.catalog.workflowRuns.getRun(f.run.id)?.revision;
+    assert.ok(revision);
+    const approval = f.catalog.workflowApplications.approveWorkflowBatch(
+      f.run.id,
+      revision,
+      f.versions,
+      f.userId,
+      'retention-approval',
+    );
+    f.catalog.workflowApplications.beginApplication(approval.id, 'retention-application', f.userId);
+    const receipt = f.catalog.workflowApplications.applySourceProposalGroup({
+      approvalId: approval.id,
+      applicationId: 'retention-application',
+      sourceId: f.sourceId,
+      actorId: f.userId,
+      sourceValidator: f.sourceValidator,
+      now,
+    });
+    assert.equal(receipt.status, 'applied');
+    assert.ok(raw.prepare('SELECT 1 FROM workflow_undo_blobs').get());
+    assert.equal(
+      f.catalog.workflowProposals.collectWorkflowArtifacts(now + 29 * 86_400_000).undoExpired,
+      0,
+    );
+    assert.equal(
+      f.catalog.workflowProposals.collectWorkflowArtifacts(now + 31 * 86_400_000).undoExpired,
+      1,
+    );
+    assert.equal(raw.prepare('SELECT 1 FROM workflow_undo_blobs').get(), undefined);
+    assert.ok(
+      raw.prepare("SELECT 1 FROM workflow_artifact_refs WHERE reference_kind='selected'").get(),
+    );
+    assert.deepEqual(
+      f.catalog.workflowApplications.getApplication(receipt.id, f.sourceId),
+      receipt,
+    );
+    assert.throws(
+      () =>
+        f.catalog.workflowApplications.undoWorkflowApplication(
+          receipt.id,
+          f.sourceId,
+          f.userId,
+          now + 31 * 86_400_000,
+        ),
+      { code: 'workflow-undo-conflict' },
+    );
+  } finally {
+    raw.close();
+    await f.close();
+  }
+});

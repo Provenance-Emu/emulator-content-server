@@ -230,3 +230,22 @@ test('source snapshots use canonical LF when user Git config requests CRLF check
   }
   assert.equal(await readFile(join(destination, 'core.c'), 'utf8'), 'int canonical_source = 1;\n');
 });
+
+test('ProSystem builder rejects occupied output before reading source or replacing data', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-prosystem-output-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, 'operator-file'), 'preserved');
+  const result = spawnSync(
+    process.execPath,
+    [
+      fileURLToPath(new URL('./browser-core/build-prosystem.mjs', import.meta.url)),
+      tmpdir(),
+      tmpdir(),
+      dir,
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Output must be new/);
+  assert.equal(await readFile(join(dir, 'operator-file'), 'utf8'), 'preserved');
+});

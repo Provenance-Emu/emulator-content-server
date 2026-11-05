@@ -16,6 +16,18 @@ export async function groupDiscs(
 ): Promise<void> {
   signal?.throwIfAborted();
   const byPath = new Map(files.map((file) => [file.relativePath, file]));
+  let foldedPaths: Map<string, string | null> | undefined;
+  function indexedPath(target: string): string | null {
+    if (byPath.has(target)) return target;
+    if (!foldedPaths) {
+      foldedPaths = new Map();
+      for (const path of byPath.keys()) {
+        const key = path.toLowerCase();
+        foldedPaths.set(key, foldedPaths.has(key) ? null : path);
+      }
+    }
+    return foldedPaths.get(target.toLowerCase()) ?? null;
+  }
   const edges = new Map<string, string[]>();
   for (const file of files) {
     signal?.throwIfAborted();
@@ -49,9 +61,11 @@ export async function groupDiscs(
         if (!normalized || normalized.startsWith('/') || /[:\0]/.test(normalized))
           throw new Error('Disc reference must stay inside the registered folder.');
         const target = posix.normalize(posix.join(posix.dirname(file.relativePath), normalized));
-        if (target === '..' || target.startsWith('../') || !byPath.has(target))
+        if (target === '..' || target.startsWith('../'))
           throw new Error('Disc member is missing or outside the registered folder.');
-        return target;
+        const indexed = indexedPath(target);
+        if (!indexed) throw new Error('Disc member is missing or has ambiguous filename casing.');
+        return indexed;
       });
       edges.set(file.relativePath, [...new Set(paths)]);
     } catch (error) {

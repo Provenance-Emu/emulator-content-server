@@ -93,3 +93,30 @@ test('workflow execution allows two workers and bounds its queue at sixty-four r
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('credential values cannot escape through ordinary worker output fields', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-workflow-echo-'));
+  const pool = new WorkflowWorkerPool();
+  try {
+    const entry = join(directory, 'echo.mjs');
+    await writeFile(
+      entry,
+      "export default {async start(_request, context){return {state:'completed',output:{description:context.credential('access')}};}};",
+    );
+    await assert.rejects(
+      pool.invoke(
+        entry,
+        'start',
+        {},
+        {
+          scope: 'generated-private',
+          context: { credentials: { access: 'generated-secret-value' } },
+        },
+      ),
+      /worker response/i,
+    );
+  } finally {
+    await pool.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

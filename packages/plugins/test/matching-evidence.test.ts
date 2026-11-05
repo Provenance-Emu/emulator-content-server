@@ -21,6 +21,32 @@ const facts = (overrides: Partial<RomFacts> = {}): RomFacts => ({
   ...overrides,
 });
 const input = { name: 'renamed.chd', systemId, companions: [] };
+test('disc contradictions block filename fallback and saved-choice artwork anchors', () => {
+  for (const warning of ['disc-system-conflict', 'disc-identifiers-conflict']) {
+    const request: matching.MatchingInput = {
+      ...input,
+      name: 'Original Game (USA).cue',
+      allowExactNames: true,
+      facts: facts({ warnings: [warning] }),
+      selectedMetadata: {
+        id: 'saved',
+        revision: 1,
+        title: 'Original Game (USA)',
+        systemId,
+        metadata: { systemId },
+      },
+    };
+    const metadata: matching.MatchCandidate = {
+      id: 'new',
+      kind: 'metadata',
+      title: 'Original Game (USA)',
+      confidence: 'name',
+      metadata: { systemId },
+    };
+    assert.equal(matching.automaticEvidence(request, metadata), false);
+    assert.equal(matching.selectedArtworkAnchor(request), null);
+  }
+});
 const candidate = (metadata: Record<string, string> = {}): matching.MatchCandidate => ({
   id: 'one',
   kind: 'metadata',
@@ -1261,5 +1287,29 @@ test('one overlapping alternate title never merges two otherwise different compi
   assert.equal(
     matching.reconcileCandidates(input, [left, { ...right, title: 'Power Rally' }]).length,
     2,
+  );
+});
+
+test('an upstream front marked review-required never acquires automatic authority', () => {
+  const request = { ...input, name: 'Original Game (USA).cue', allowExactNames: true };
+  const cover: matching.MatchCandidate = {
+    ...candidate({ artworkRole: 'front', artworkReviewRequired: 'true', sha1, hashSize: '16' }),
+    kind: 'artwork',
+    url: 'https://example.com/front.png',
+  };
+  assert.equal(matching.automaticEvidence(request, cover), false);
+  assert.equal(
+    matching.automaticEvidence(
+      {
+        ...request,
+        facts: facts({
+          hashes: [
+            { algorithm: 'sha1', value: sha1, size: 16, representation: 'raw', verified: true },
+          ],
+        }),
+      },
+      cover,
+    ),
+    false,
   );
 });

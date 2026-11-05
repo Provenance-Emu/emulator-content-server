@@ -36,6 +36,73 @@ export class WorkflowProposalRepository {
     if (Object.values(stagingLimits).some((n) => !Number.isSafeInteger(n) || n < 1))
       throw new Error('Invalid workflow staging limits');
   }
+  /** Bounded transactions share the same write lock as staging and reference creation. */
+  collectWorkflowArtifacts(
+    now = Date.now(),
+    limit = 100,
+  ): {
+    artifactsDeleted: number;
+    referencesDeleted: number;
+    undoExpired: number;
+  } {
+    workflowPageLimit(limit);
+    if (!Number.isFinite(now)) workflowError('invalid-request', 400);
+    const timestamp = new Date(now).toISOString();
+    const cutoff = new Date(now - 30 * 86_400_000).toISOString();
+    return workflowTransaction(this.db, () => {
+      const expired = this.db
+        .prepare(
+          "SELECT id,source_id FROM workflow_applications WHERE undo_expires_at<=? AND before_json<>'{}' ORDER BY undo_expires_at,id,source_id LIMIT ?",
+        )
+        .all(timestamp, limit) as { id: string; source_id: string }[];
+      for (const row of expired) {
+        this.db
+          .prepare('DELETE FROM workflow_undo_blobs WHERE application_id=? AND source_id=?')
+          .run(row.id, row.source_id);
+        this.db
+          .prepare(
+            "DELETE FROM workflow_artifact_refs WHERE reference_kind='undo' AND reference_id=?",
+          )
+          .run(`${row.id}:${row.source_id}`);
+        this.db
+          .prepare("UPDATE workflow_applications SET before_json='{}' WHERE id=? AND source_id=?")
+          .run(row.id, row.source_id);
+      }
+      // A keep/dismiss decision explicitly ends review. Existing approvals retain their bytes.
+      const stale = this.db
+        .prepare(`
+        SELECT r.rowid AS id FROM workflow_artifact_refs r
+        JOIN workflow_artifacts a ON a.id=r.artifact_id
+        JOIN workflow_runs runs ON runs.id=r.run_id
+        WHERE r.reference_kind='proposal' AND a.created_at<=?
+          AND runs.state IN ('completed','cancelled','failed') AND runs.updated_at<=?
+          AND (r.reference_id LIKE 'staging:%' OR EXISTS(
+            SELECT 1 FROM workflow_proposals p JOIN workflow_findings f ON f.id=p.finding_id
+            JOIN workflow_decisions d ON d.fingerprint=f.fingerprint JOIN users u ON u.id=d.actor_id
+            WHERE r.reference_id=p.id||':'||p.version AND u.is_owner=1 AND d.created_at<=?
+              AND NOT EXISTS(SELECT 1 FROM workflow_approvals approvals, json_each(json_extract(approvals.approval_json,'$.proposalVersionsJson')) versions
+                WHERE json_extract(versions.value,'$.id')=p.id)))
+        ORDER BY r.rowid LIMIT ?
+      `)
+        .all(cutoff, cutoff, cutoff, limit) as { id: number }[];
+      for (const row of stale)
+        this.db.prepare('DELETE FROM workflow_artifact_refs WHERE rowid=?').run(row.id);
+      const unreachable = this.db
+        .prepare(`
+        SELECT id FROM workflow_artifacts a WHERE created_at<=?
+          AND NOT EXISTS(SELECT 1 FROM workflow_artifact_refs r WHERE r.artifact_id=a.id)
+        ORDER BY created_at,id LIMIT ?
+      `)
+        .all(cutoff, limit) as { id: string }[];
+      for (const row of unreachable)
+        this.db.prepare('DELETE FROM workflow_artifacts WHERE id=?').run(row.id);
+      return {
+        artifactsDeleted: unreachable.length,
+        referencesDeleted: stale.length,
+        undoExpired: expired.length,
+      };
+    });
+  }
   getFinding(id: string): WorkflowFinding | null {
     const row = this.db.prepare('SELECT finding_json FROM workflow_findings WHERE id=?').get(id) as
       | { finding_json: string }
@@ -176,6 +243,7 @@ export class WorkflowProposalRepository {
       artifact.width * artifact.height > 40_000_000
     )
       workflowError('invalid-request', 400);
+    this.collectWorkflowArtifacts();
     return workflowTransaction(this.db, () => {
       if (
         !this.db

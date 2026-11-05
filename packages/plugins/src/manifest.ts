@@ -87,9 +87,12 @@ export interface WebPlayerFile {
 }
 export interface WebPlayerConfig {
   profileVersion: 1;
-  runtime: 'emscripten-esm-v1' | 'retroarch-emscripten-esm';
+  runtime: 'emscripten-esm-v1' | 'retroarch-emscripten-esm' | 'dolphin-wasm-esm';
   filesystem: 'memfs';
-  threaded: false;
+  systemFilesDirectory?: string;
+  defaultCoreOptions?: Record<string, string>;
+  defaultInputLayout?: 'compact' | 'standard';
+  threaded: boolean;
   saveCompletion: 'none' | 'command-reply-v1';
   contentExtensions: string[];
   maxContentBytes: number;
@@ -294,17 +297,20 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
       'loader',
       'wasm',
       'assets',
+      'systemFilesDirectory',
+      'defaultCoreOptions',
+      'defaultInputLayout',
     ],
     'player.web',
   );
-  if (r.profileVersion !== 1 || r.filesystem !== 'memfs' || r.threaded !== false)
+  if (r.profileVersion !== 1 || r.filesystem !== 'memfs' || typeof r.threaded !== 'boolean')
     throw new PluginError(
       'invalid-manifest',
       'Unsupported web player version, filesystem, or threading',
     );
   const runtime = oneOf(
     stringField(r, 'runtime'),
-    ['emscripten-esm-v1', 'retroarch-emscripten-esm'] as const,
+    ['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'] as const,
     'runtime',
   );
   const saveCompletion = oneOf(
@@ -312,6 +318,54 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     ['none', 'command-reply-v1'] as const,
     'saveCompletion',
   );
+  if (
+    r.threaded !== (runtime === 'dolphin-wasm-esm') ||
+    (runtime === 'dolphin-wasm-esm' && saveCompletion !== 'none')
+  )
+    throw new PluginError(
+      'invalid-manifest',
+      'Runtime threading or save completion is unsupported',
+    );
+  const systemFilesDirectory = r.systemFilesDirectory;
+  const defaultInputLayout =
+    r.defaultInputLayout === undefined
+      ? undefined
+      : oneOf(
+          stringField(r, 'defaultInputLayout'),
+          ['compact', 'standard'] as const,
+          'defaultInputLayout',
+        );
+  const defaultCoreOptions = r.defaultCoreOptions;
+  if (defaultCoreOptions !== undefined) {
+    const options = object(defaultCoreOptions, 'defaultCoreOptions');
+    if (
+      runtime !== 'retroarch-emscripten-esm' ||
+      Object.keys(options).length > 64 ||
+      Object.entries(options).some(
+        ([key, value]) =>
+          !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(key) ||
+          ['__proto__', 'constructor', 'prototype'].includes(key) ||
+          typeof value !== 'string' ||
+          !value.length ||
+          value.length > 512 ||
+          value.trim() !== value ||
+          /["\\|]/.test(value) ||
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: Prevent configuration injection.
+          /[\x00-\x1f\x7f]/.test(value),
+      )
+    )
+      throw new PluginError('invalid-manifest', 'Invalid default core options');
+  }
+  if (
+    systemFilesDirectory !== undefined &&
+    (typeof systemFilesDirectory !== 'string' ||
+      !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(systemFilesDirectory) ||
+      !portableWebPlayerName(systemFilesDirectory))
+  )
+    throw new PluginError(
+      'invalid-manifest',
+      'System-file directory must be one portable folder name',
+    );
   const contentExtensions = stringArray(r.contentExtensions, 'contentExtensions');
   if (
     !contentExtensions.length ||
@@ -326,7 +380,7 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
   if (
     !Number.isSafeInteger(r.maxContentBytes) ||
     Number(r.maxContentBytes) <= 0 ||
-    Number(r.maxContentBytes) > 512 * 1024 * 1024
+    Number(r.maxContentBytes) > (runtime === 'dolphin-wasm-esm' ? 9 * 1024 ** 3 : 512 * 1024 ** 2)
   )
     throw new PluginError('invalid-manifest', 'Invalid web player content size limit');
   const buildVersion = shortText(stringField(r, 'buildVersion'), 'buildVersion', 128);
@@ -372,7 +426,12 @@ function parseWebPlayer(value: unknown, module: string): WebPlayerConfig {
     profileVersion: 1,
     runtime,
     filesystem: 'memfs',
-    threaded: false,
+    threaded: r.threaded as boolean,
+    ...(typeof systemFilesDirectory === 'string' ? { systemFilesDirectory } : {}),
+    ...(defaultInputLayout === undefined ? {} : { defaultInputLayout }),
+    ...(defaultCoreOptions !== undefined
+      ? { defaultCoreOptions: { ...(defaultCoreOptions as Record<string, string>) } }
+      : {}),
     saveCompletion,
     contentExtensions,
     maxContentBytes: Number(r.maxContentBytes),

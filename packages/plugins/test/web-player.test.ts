@@ -36,6 +36,31 @@ test('web player profiles are optional and validated without executing code', ()
   const { web: _, ...legacy } = m.player;
   assert.equal(parseManifest({ ...m, player: legacy }).player?.web, undefined);
 });
+
+test('plugin startup options preserve safe values and reject config injection or unbounded maps', () => {
+  const m = manifest();
+  const web = { ...m.player.web, runtime: 'retroarch-emscripten-esm' };
+  const parse = (defaultCoreOptions: unknown) =>
+    parseManifest({ ...m, player: { ...m.player, web: { ...web, defaultCoreOptions } } }).player
+      ?.web;
+  assert.deepEqual(parse({ atari800_system: '5200' })?.defaultCoreOptions, {
+    atari800_system: '5200',
+  });
+  for (const options of [
+    null,
+    [],
+    { a: 1 },
+    { a: '' },
+    { a: 'x"\ny="z' },
+    { a: 'x\\y' },
+    { a: 'x|y' },
+    { a: ' x ' },
+    { constructor: 'x' },
+    JSON.parse('{"__proto__":"x"}'),
+    Object.fromEntries(Array.from({ length: 65 }, (_, i) => [`a${i}`, 'x'])),
+  ])
+    assert.throws(() => parse(options));
+});
 for (const patch of [
   { threaded: true },
   { filesystem: 'idbfs' },
@@ -68,4 +93,63 @@ test('disc profiles may declare up to512MiB content without increasing binary re
   assert.equal(parseManifest(value).player?.web?.maxContentBytes, 512 * 1024 * 1024);
   value.player.web.maxContentBytes++;
   assert.throws(() => parseManifest(value), /content size/i);
+});
+
+test('Dolphin declares shared memory explicitly and cannot claim RetroArch save completion', () => {
+  const m = manifest();
+  const web = { ...m.player.web, runtime: 'dolphin-wasm-esm', threaded: true };
+  assert.equal(parseManifest({ ...m, player: { ...m.player, web } }).player?.web?.threaded, true);
+  for (const patch of [{ threaded: false }, { saveCompletion: 'command-reply-v1' }])
+    assert.throws(() =>
+      parseManifest({ ...m, player: { ...m.player, web: { ...web, ...patch } } }),
+    );
+});
+
+test('only disk-backed Dolphin can declare a multi-gigabyte disc', () => {
+  const m = manifest();
+  const web = {
+    ...m.player.web,
+    runtime: 'dolphin-wasm-esm',
+    threaded: true,
+    maxContentBytes: 9 * 1024 ** 3,
+  };
+  assert.equal(
+    parseManifest({ ...m, player: { ...m.player, web } }).player?.web?.maxContentBytes,
+    9 * 1024 ** 3,
+  );
+  assert.throws(() =>
+    parseManifest({
+      ...m,
+      player: { ...m.player, web: { ...web, maxContentBytes: 9 * 1024 ** 3 + 1 } },
+    }),
+  );
+});
+
+test('support-file folder layout is optional data and rejects paths or device names', () => {
+  const m = manifest();
+  assert.equal(
+    parseManifest({
+      ...m,
+      player: { ...m.player, web: { ...m.player.web, systemFilesDirectory: 'neocd' } },
+    }).player?.web?.systemFilesDirectory,
+    'neocd',
+  );
+  for (const name of ['../neocd', 'a/b', '.', '', 'CON', '/root', 'a.b'])
+    assert.throws(() =>
+      parseManifest({
+        ...m,
+        player: { ...m.player, web: { ...m.player.web, systemFilesDirectory: name } },
+      }),
+    );
+});
+
+test('plugins declare a bounded touch preset without executable layout data', () => {
+  const m = manifest();
+  const parse = (defaultInputLayout: unknown) =>
+    parseManifest({ ...m, player: { ...m.player, web: { ...m.player.web, defaultInputLayout } } })
+      .player?.web as unknown as Record<string, unknown>;
+  for (const layout of ['compact', 'standard'])
+    assert.equal(parse(layout).defaultInputLayout, layout);
+  for (const value of [null, true, '', 'custom', { controls: [] }])
+    assert.throws(() => parse(value));
 });

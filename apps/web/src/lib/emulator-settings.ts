@@ -1,6 +1,7 @@
 import {
   type ContentClient,
   ContentError,
+  isPlayerSystemFileName,
   type PlayerConfiguration,
   type PlayerManagement,
 } from '@ecs/client';
@@ -173,12 +174,15 @@ export function createEmulatorSettings(
     },
     installSystemFile(id: string, name: string, file: Blob) {
       const item = current.listing?.items.find((item) => item.profile.id === id);
-      if (!canChange() || item?.source !== 'managed' || !id.endsWith('parallel-dc'))
+      if (!canChange() || item?.source !== 'managed' || item.profile.runtime === 'dolphin-wasm-esm')
         return Promise.resolve(false);
-      const canonicalName = name.toLowerCase();
-      if (canonicalName !== 'awbios.zip' || file.size < 22 || file.size > 32 * 1024 * 1024) {
+      const canonicalName =
+        id === 'org.libretro.parallel-dc' && name.toLowerCase() === 'awbios.zip'
+          ? 'awbios.zip'
+          : name;
+      if (!isPlayerSystemFileName(canonicalName) || file.size < 1 || file.size > 32 * 1024 * 1024) {
         update({
-          failure: 'Choose your awbios.zip containing bios0.ic23 (up to 32 MB).',
+          failure: 'Choose a system file with a portable filename, from 1 byte to 32 MiB.',
           message: null,
         });
         return Promise.resolve(false);

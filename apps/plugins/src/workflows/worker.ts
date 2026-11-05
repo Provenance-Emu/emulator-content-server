@@ -136,6 +136,13 @@ export class WorkflowWorkerPool {
           Object.keys(message).some((key) => !['id', 'value', 'error'].includes(key))
         )
           throw new Error('Invalid workflow worker response');
+        const serialized = JSON.stringify(message);
+        if (
+          Object.values(task.context.credentials ?? {}).some(
+            (value) => value.length > 0 && serialized.includes(JSON.stringify(value).slice(1, -1)),
+          )
+        )
+          throw new Error('Invalid workflow worker response');
         if (message.error === true) {
           this.finish(task, new Error('Workflow worker failed'));
           return;

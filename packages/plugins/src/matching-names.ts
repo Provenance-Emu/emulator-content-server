@@ -1,7 +1,7 @@
 /** Filename hints only. This never provides checksum evidence or permission to auto-save. */
 export function contentStem(name: string): string {
   return name.replace(
-    /\.(?:zip|7z|chd|cdi|iso|cue|gdi|ccd|m3u|bin|rom|j64|jag|abs|cof|nes|sfc|smc|gb|gbc|gba|n64|z64|v64|md|gen|sms|gg|png)$/i,
+    /\.(?:zip|7z|chd|cdi|iso|cue|gdi|ccd|m3u|bin|rom|j64|jag|abs|cof|nes|sfc|smc|gb|gbc|gba|n64|z64|v64|md|gen|sms|gg|a26|a52|a78|pce|sgx|vb|vboy|fds|lnx|lynx|ngp|ngc|ngpc|ws|wsc|32x|nds|dsi|3ds|3dsx|pbp|dsk|col|int|vec|sg|sv|min|png)$/i,
     '',
   );
 }
@@ -15,6 +15,28 @@ function key(value: string): string {
     .replace(/(?:^the\s+|,\s*the$)/g, '')
     .replace(/[^\p{L}\p{N}]/gu, '');
 }
+const region: Record<string, string> = {
+  usa: 'us',
+  us: 'us',
+  u: 'us',
+  na: 'us',
+  japan: 'jp',
+  jp: 'jp',
+  jpn: 'jp',
+  j: 'jp',
+  europe: 'eu',
+  eu: 'eu',
+  e: 'eu',
+  world: 'world',
+  w: 'world',
+  korea: 'kr',
+  kor: 'kr',
+  australia: 'au',
+  brazil: 'br',
+};
+const languageCodes = new Set(
+  'en ja fr de es it nl pt ko zh ru sv no da fi el pl cs hu ar'.split(' '),
+);
 interface NameFacts {
   exact: string;
   bases: string[];
@@ -32,26 +54,7 @@ function facts(name: string): NameFacts {
   const regions = new Set<string>();
   for (const tag of tags)
     for (const part of tag.split(/[,/]/).map((p) => p.trim())) {
-      const region: Record<string, string> = {
-        usa: 'us',
-        us: 'us',
-        u: 'us',
-        na: 'us',
-        japan: 'jp',
-        jp: 'jp',
-        jpn: 'jp',
-        j: 'jp',
-        europe: 'eu',
-        eu: 'eu',
-        e: 'eu',
-        world: 'world',
-        w: 'world',
-        korea: 'kr',
-        kor: 'kr',
-        australia: 'au',
-        brazil: 'br',
-      };
-      const knownRegion = region[part];
+      const knownRegion = Object.hasOwn(region, part) ? region[part] : undefined;
       if (knownRegion) regions.add(knownRegion);
     }
   const edition = tags
@@ -62,6 +65,8 @@ function facts(name: string): NameFacts {
     .sort()
     .join(',');
   let revision = tags
+    .flatMap((tag) => tag.split(/[,/]/))
+    .map((tag) => tag.trim())
     .map(
       (tag) =>
         /^(?:rev(?:ision)?\.?|ver(?:sion)?\.?|v)\s*([a-z0-9]+(?:\.[a-z0-9]+)*)$/i.exec(tag)?.[1],
@@ -275,4 +280,42 @@ export function releaseFactsConflict(left: string, right: string): boolean {
     second.size > 0 &&
     (first.size !== second.size || [...first].some((language) => !second.has(language)))
   );
+}
+
+/** Artwork association for an existing identity; opaque edition tags are never discarded. */
+export function artworkTitleMatches(
+  left: string,
+  right: string,
+  declaredIds: readonly string[] = [],
+): boolean {
+  const ids = new Set(declaredIds.map(normalizeSerial));
+  const withoutIds = (value: string) =>
+    contentStem(value).replace(
+      /\(([^()]*)\)|\[([^[\]]*)\]/g,
+      (tag, first: string | undefined, second: string | undefined) =>
+        ids.has(normalizeSerial(first ?? second ?? '')) ? '' : tag,
+    );
+  const a = withoutIds(left),
+    b = withoutIds(right);
+  if (!compatibleGameTitles(a, b) || releaseFactsConflict(a, b)) return false;
+  const opaqueTags = (value: string) => [
+    ...new Set(
+      Array.from(value.matchAll(/\(([^()]*)\)|\[([^[\]]*)\]/g), (m) => m[1] ?? m[2] ?? '')
+        .flatMap((tag) =>
+          tag
+            .toLowerCase()
+            .split(/[,/]/)
+            .map((part) => part.trim()),
+        )
+        .filter(
+          (part) =>
+            part &&
+            !Object.hasOwn(region, part) &&
+            !languageCodes.has(part) &&
+            !/^(?:rev(?:ision)?\.?|ver(?:sion)?\.?|v)\s*[a-z0-9]+(?:\.[a-z0-9]+)*$/i.test(part),
+        )
+        .map(key),
+    ),
+  ];
+  return equalSets(opaqueTags(a), opaqueTags(b));
 }

@@ -1,4 +1,5 @@
 import { createReadStream } from 'node:fs';
+import { posix } from 'node:path';
 import type { Actor, SourceFileRecord } from '@ecs/domain';
 import { DomainError } from '@ecs/domain';
 import { groupDiscs, probeFile, probeRoot, resolveInside, streamZip } from '@ecs/storage';
@@ -49,14 +50,19 @@ export function registerSourceGroups(app: FastifyInstance, context: ServerContex
   };
   app.get('/api/v1/sources/:sourceId/group', async (request) => {
     const { actor, source } = actorSource(request);
+    const files = context.catalog.sourceGroup(source.id);
+    let base = posix.dirname(source.relativePath);
+    for (const file of files)
+      while (base !== '.' && !file.relativePath.startsWith(`${base}/`)) base = posix.dirname(base);
     return {
       sourceId: source.id,
       error: source.groupError ?? null,
-      files: context.catalog.sourceGroup(source.id).map((file) => {
+      files: files.map((file) => {
         visibleSource(context, actor, file.id);
         return {
           id: file.id,
           name: file.displayName,
+          relativePath: posix.relative(base, file.relativePath),
           size: file.size,
           availability: file.availability,
         };

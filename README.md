@@ -22,7 +22,7 @@ The `dist/server` directory includes production dependencies and the interface. 
 node /path/to/server/dist/src/main.js serve --data /path/to/content-data
 ```
 
-See [installation](docs/operations/install.md) for Docker, LAN access and upgrades. Early builds are available on the [releases page](https://github.com/Provenance-Emu/emulator-content-server/releases).
+See [installation](docs/operations/install.md) for Docker, LAN access and upgrades. For current test builds, use the [nightly installation guide](docs/operations/nightly-builds.md) and its stable nightly download links. Early tagged builds are available on the [releases page](https://github.com/Provenance-Emu/emulator-content-server/releases).
 
 For the desktop companion, see [desktop installers](docs/operations/desktop-install.md). Its installed name is **Emulation Server**; it connects to the server above or another server on your network.
 

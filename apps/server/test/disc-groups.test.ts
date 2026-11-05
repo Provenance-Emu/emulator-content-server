@@ -41,6 +41,13 @@ test('a grouped game exposes individual files and a complete authorized streamin
     const group = await f.app.inject({ url: groupUrl, headers: f.auth });
     assert.equal(group.statusCode, 200, group.body);
     assert.equal(group.json().files.length, 2);
+    assert.deepEqual(
+      group
+        .json()
+        .files.map((file: { relativePath: string }) => file.relativePath)
+        .sort(),
+      ['Game.cue', 'Track.bin'],
+    );
     assert.equal(group.body.includes(path), false);
     const member = group.json().files.find((file: { name: string }) => file.name === 'Track.bin');
     const single = await f.app.inject({
@@ -76,6 +83,41 @@ test('a grouped game exposes individual files and a complete authorized streamin
         .statusCode,
       409,
     );
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('disc staging paths share a contained common directory and omit unrelated source folders', async () => {
+  const f = await libraryFixture();
+  try {
+    const path = join(f.base, 'group');
+    await mkdir(join(path, 'private-parent', 'disc'), { recursive: true });
+    await mkdir(join(path, 'private-parent', 'tracks'));
+    await writeFile(
+      join(path, 'private-parent', 'disc', 'Game.cue'),
+      'FILE "../tracks/track.bin" BINARY\nTRACK 01 AUDIO\n',
+    );
+    await writeFile(join(path, 'private-parent', 'tracks', 'track.bin'), Buffer.from([1, 2, 3]));
+    const root = f.catalog.createContentRoot({
+      path,
+      label: 'Generated',
+      libraryId: f.library.id,
+      actorId: f.owner.id,
+    });
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${root.id}/scan`, headers: f.auth });
+    const cue = f.catalog.listSources(root.id).find((file) => file.relativePath.endsWith('.cue'));
+    assert.ok(cue);
+    const group = await f.app.inject({ url: `/api/v1/sources/${cue.id}/group`, headers: f.auth });
+    assert.equal(group.statusCode, 200, group.body);
+    assert.deepEqual(
+      group
+        .json()
+        .files.map((file: { relativePath: string }) => file.relativePath)
+        .sort(),
+      ['disc/Game.cue', 'tracks/track.bin'],
+    );
+    assert.ok(!group.body.includes('private-parent'));
   } finally {
     await f.dispose();
   }

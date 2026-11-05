@@ -11,6 +11,7 @@ import {
   validateHostedCatalogShard,
 } from '../packages/plugins/dist/src/hosted-catalog.js';
 import { parseLibretroDat, patchFingerprint } from '../packages/plugins/dist/src/matching.js';
+import { loadMetadataSnapshot } from './catalog-snapshot.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const configPath = join(here, 'catalog-sources.json');
@@ -109,7 +110,7 @@ function sourceRecord(definition, repository, revision) {
     id: definition.id,
     name: definition.name,
     url: definition.url ?? repository,
-    revision,
+    revision: definition.revision ?? revision,
     license: definition.license,
     ...(definition.notice ? { notice: definition.notice } : {}),
   };
@@ -123,6 +124,7 @@ function titleFromPath(path) {
 
 export async function buildCatalog({
   sourceRoot,
+  snapshotRoot,
   config,
   release = config.release,
   fetcher = fetch,
@@ -143,6 +145,7 @@ export async function buildCatalog({
   const usedSources = new Set();
   const groups = new Map();
   const excludedResources = [];
+  const snapshots = [];
   const addRecord = (kind, systemId, record, identity) => {
     const key = `${kind}\0${systemId}`;
     const rows = groups.get(key) ?? new Map();
@@ -181,6 +184,43 @@ export async function buildCatalog({
       );
       usedSources.add(input.sourceId);
     }
+  }
+
+  for (const snapshot of config.metadataSnapshots ?? []) {
+    if (sourceDefinitions.has(snapshot.sourceId))
+      throw new Error('Duplicate metadata snapshot source');
+    const loaded = await loadMetadataSnapshot(snapshot, { fetcher, snapshotRoot });
+    sourceDefinitions.set(snapshot.sourceId, {
+      id: snapshot.sourceId,
+      name: snapshot.sourceName,
+      url: snapshot.url,
+      revision: snapshot.revision,
+      license: snapshot.license,
+      notice: snapshot.notice,
+    });
+    for (const fact of loaded.records) {
+      const identity = JSON.stringify([
+        fact.title,
+        fact.name,
+        fact.size,
+        fact.crc32,
+        fact.md5,
+        fact.sha1,
+      ]);
+      addRecord(
+        'metadata',
+        snapshot.systemId,
+        {
+          ...fact,
+          systemId: snapshot.systemId,
+          source: snapshot.sourceName,
+          sourceIds: [snapshot.sourceId],
+        },
+        identity,
+      );
+    }
+    usedSources.add(snapshot.sourceId);
+    snapshots.push({ definition: snapshot, ...loaded });
   }
 
   const flycast = config.flycast;
@@ -314,6 +354,20 @@ export async function buildCatalog({
   }
 
   const assets = new Map();
+  for (const snapshot of snapshots) {
+    const filename = snapshot.definition.archive.filename;
+    if (!filename.endsWith('.zip') || assets.has(filename))
+      throw new Error('Invalid snapshot asset name');
+    assets.set(filename, snapshot.archiveBytes);
+  }
+  if (snapshots.length)
+    assets.set(
+      'SOURCE-RECEIPTS.json',
+      jsonBytes({
+        version: 1,
+        snapshots: snapshots.map((snapshot) => snapshot.receipt),
+      }),
+    );
   const descriptors = [];
   const sortedGroups = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   for (const [groupKey, rows] of sortedGroups) {
@@ -389,6 +443,16 @@ export async function buildCatalog({
     ),
     `- \`${flycast.path}\` → parsed Naomi/Naomi 2/Atomiswave records (${flycast.sourceId})`,
     '',
+    ...snapshots.flatMap(({ definition }) => [
+      `Snapshot: ${definition.url} → ${definition.systemId}; archive \`${definition.archive.filename}\` (SHA-256 ${definition.archive.sha256}), DAT \`${definition.dat.filename}\` (SHA-256 ${definition.dat.sha256}).`,
+      '',
+    ]),
+    ...(snapshots.length
+      ? [
+          'Public metadata source archives are included for reproducible offline builds; SOURCE-RECEIPTS.json records their exact sizes, SHA-256 pins and record counts. Only the first track is retained per complete release title; catalog hashes remain unverified until private byte evidence agrees.',
+          '',
+        ]
+      : []),
     'Cheat files are enumerated by the pinned source checkout under the configured `cht/` directories and remain individually linked to commit-addressed raw source files.',
     '',
     `Excluded ${excludedResources.length} cheat files that are empty, have unsupported CHT syntax, or exceed the hosted ${limits.cheats} byte resource limit; see \`EXCLUDED.json\` for paths and sizes.`,
@@ -454,7 +518,8 @@ async function main() {
     throw new Error(
       `Source checkout pin mismatch: expected ${config.libretro.revision}, got ${actualRevision}`,
     );
-  const built = await buildCatalog({ sourceRoot, config, release });
+  const snapshotRoot = options.get('--snapshot-root');
+  const built = await buildCatalog({ sourceRoot, snapshotRoot, config, release });
   await mkdir(output, { recursive: true });
   for (const [filename, bytes] of built.assets)
     await writeFile(join(output, filename), bytes, { flag: 'wx' });

@@ -1,0 +1,130 @@
+{
+  "schema": "ecs.dolphin-large-wii/v1",
+  "cases": [
+    {
+      "mode": "Wii DOL",
+      "browser": "145.0.7632.6",
+      "disc": null,
+      "isolation": {
+        "isolated": true,
+        "shared": true,
+        "parentBlocked": true,
+        "credentialsAbsent": true
+      },
+      "before": {
+        "jit": 22048646,
+        "video": "xfb:6 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:6 updates:46 input:0 gen:45 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:43.8 avg:44.0 max:45.9 decode:0.2 avg:0.2 max:0.5 vo_sync:0.0/max0.0 vo_pub:0.2/max0.8 vo_total:0.3/max1.6 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "pressed": {
+        "video": "xfb:11 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:11 updates:72 input:1 gen:71 buttons:100 stick:128,128 fastsw:0 coreprof xfb_dt:43.1 avg:43.6 max:45.9 decode:0.2 avg:0.2 max:0.5 vo_sync:0.0/max0.0 vo_pub:0.2/max0.8 vo_total:0.3/max1.6 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "after": {
+        "jit": 59439124,
+        "video": "xfb:15 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:15 updates:93 input:0 gen:92 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:43.8 avg:43.5 max:45.9 decode:0.2 avg:0.2 max:0.5 vo_sync:0.0/max0.0 vo_pub:0.3/max0.8 vo_total:0.3/max1.6 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "pixels": {
+        "width": 320,
+        "height": 240,
+        "top": [0, 255, 1, 255],
+        "bottom": [0, 0, 255, 255]
+      },
+      "errors": []
+    },
+    {
+      "mode": "GameCube DOL",
+      "browser": "145.0.7632.6",
+      "disc": null,
+      "isolation": {
+        "isolated": true,
+        "shared": true,
+        "parentBlocked": true,
+        "credentialsAbsent": true
+      },
+      "before": {
+        "jit": 42318911,
+        "video": "xfb:16 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:16 updates:45 input:0 gen:44 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:28.2 avg:28.6 max:33.3 decode:0.2 avg:0.2 max:0.5 vo_sync:0.0/max0.0 vo_pub:0.3/max0.9 vo_total:0.3/max1.7 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "pressed": {
+        "video": "xfb:21 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:21 updates:61 input:1 gen:60 buttons:100 stick:128,128 fastsw:0 coreprof xfb_dt:28.3 avg:28.5 max:33.3 decode:0.2 avg:0.2 max:0.5 vo_sync:0.0/max0.0 vo_pub:0.3/max0.9 vo_total:0.3/max1.7 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "after": {
+        "jit": 70900678,
+        "video": "xfb:27 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:27 updates:82 input:0 gen:81 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:27.9 avg:28.4 max:33.3 decode:0.2 avg:0.2 max:0.5 vo_sync:0.0/max0.0 vo_pub:0.2/max0.9 vo_total:0.3/max1.7 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "pixels": {
+        "width": 320,
+        "height": 240,
+        "top": [0, 255, 1, 255],
+        "bottom": [0, 0, 255, 255]
+      },
+      "errors": []
+    },
+    {
+      "mode": "large GameCube ISO",
+      "browser": "145.0.7632.6",
+      "disc": {
+        "logicalSize": 1459978240,
+        "original": true,
+        "segments": [
+          {
+            "offset": 0,
+            "size": 1120,
+            "sha256": "373f4c7d00e1e5a9e74229c63fbc31d7fcb21a692ac769394433c7a882ce4ece"
+          },
+          {
+            "offset": 9280,
+            "size": 292,
+            "sha256": "a25067c01e75ee939a5f0e5282707d9f98c772d00c6a26f78a4322c6b9fa9da3"
+          },
+          {
+            "offset": 65536,
+            "size": 452,
+            "sha256": "7d6123b0dad9d74883586dd366b10774a7b411ff5d177d3464ea7bdac6084ce7"
+          },
+          {
+            "offset": 131072,
+            "size": 12,
+            "sha256": "8b5a784871a058384c8035bb97896f021d484a73fc1190e18ebebc6752ea557f"
+          }
+        ]
+      },
+      "isolation": {
+        "isolated": true,
+        "shared": true,
+        "parentBlocked": true,
+        "credentialsAbsent": true
+      },
+      "before": {
+        "jit": 30581786,
+        "video": "xfb:23 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:23 updates:51 input:0 gen:50 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:13.9 avg:14.1 max:15.5 decode:0.2 avg:0.2 max:0.4 vo_sync:0.0/max0.0 vo_pub:0.2/max0.7 vo_total:0.3/max1.4 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "pressed": {
+        "video": "xfb:39 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:39 updates:78 input:1 gen:77 buttons:100 stick:128,128 fastsw:0 coreprof xfb_dt:13.9 avg:14.1 max:15.5 decode:0.2 avg:0.2 max:0.4 vo_sync:0.0/max0.0 vo_pub:0.2/max0.7 vo_total:0.3/max1.4 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "after": {
+        "jit": 69126315,
+        "video": "xfb:52 320x240 stride:640 present:320x240 hash:5442de5f nz:2134 bp:0 cp:0 xf:0 prim:0 draw:0 rast:0 verts:0 pad polls:52 updates:100 input:0 gen:99 buttons:0 stick:128,128 fastsw:0 coreprof xfb_dt:13.8 avg:14.0 max:15.5 decode:0.2 avg:0.2 max:0.4 vo_sync:0.0/max0.0 vo_pub:0.2/max0.7 vo_total:0.3/max1.4 swxfb:0.0 conv:0.0 copy:0.0 sz:0x0->0 xfbfast:0 rowreuse:0 identitydecode:0 ogl_swap:0 worker:0 commit:0 bb:0x0 bits:0 rb:0x0 glerr:0x0"
+      },
+      "pixels": {
+        "width": 320,
+        "height": 240,
+        "top": [0, 255, 1, 255],
+        "bottom": [0, 0, 255, 255]
+      },
+      "errors": []
+    }
+  ],
+  "scope": "Original generated programs/disc; no commercial title, Wii Remote or audible-output qualification",
+  "maxContentBytes": 9663676416,
+  "diskStagingThresholdBytes": 33554432,
+  "wasmUnchanged": true,
+  "capture": {
+    "png": {
+      "signature": [137, 80, 78, 71, 13, 10, 26, 10],
+      "width": 320,
+      "height": 240
+    },
+    "jitAdvancedAfterCapture": true,
+    "testSeconds": 9.3
+  }
+}

@@ -6,6 +6,11 @@ import { join, resolve } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { ContentClient } from '@ecs/client';
 import { expect, test } from '@playwright/test';
+import {
+  atari7800SmokeCartridge,
+  atari7800SmokeCode,
+} from '../../../../scripts/browser-core/generate-7800-smoke.mjs';
+import { jaguarSmokeChd } from '../../../../scripts/browser-core/generate-jaguar-chd-smoke.mjs';
 import { psxSmokeCode, psxSmokeExe } from '../../../../scripts/browser-core/generate-psx-smoke.mjs';
 import {
   dreamcastSmokeElf,
@@ -16,6 +21,7 @@ import {
   jaguarSmokeAbs,
   jaguarSmokeCartridge,
   jaguarSmokeCdi,
+  jaguarSmokeCue,
 } from '../../../../scripts/browser-core/generate-smoke-program.mjs';
 import { openServer } from '../../../server/dist/src/index.js';
 
@@ -73,14 +79,46 @@ function centerPixel(png: Buffer): number[] {
 const jaguarPlugin = process.env.ECS_ACCEPTANCE_JAGUAR_PLUGIN;
 const parallelPlugin = process.env.ECS_ACCEPTANCE_PARALLEL_DC_PLUGIN;
 const psxPlugin = process.env.ECS_ACCEPTANCE_PSX_PLUGIN;
-if (jaguarPlugin || parallelPlugin || psxPlugin)
+const prosystemPlugin = process.env.ECS_ACCEPTANCE_PROSYSTEM_PLUGIN;
+const flycastPlugin = process.env.ECS_ACCEPTANCE_FLYCAST_WASM_PLUGIN;
+if (jaguarPlugin || parallelPlugin || psxPlugin || prosystemPlugin || flycastPlugin)
   test.use({
-    headless: process.env.ECS_ACCEPTANCE_HEADLESS === '1',
-    ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
-      ? { launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader'] } }
-      : {}),
+    headless: true,
+    launchOptions: {
+      args: [
+        '--mute-audio',
+        ...(process.env.ECS_ACCEPTANCE_SOFTWARE_WEBGL === '1'
+          ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
+          : []),
+      ],
+    },
   });
 const cases = [
+  {
+    title: 'Flycast WASM JIT Dreamcast',
+    plugin: flycastPlugin,
+    profile: 'org.flycast.wasm-jit',
+    system: 'com.provenance.dreamcast',
+    program: dreamcastSmokeElf(),
+    filename: 'original.elf',
+    needle: sh4SmokeCode(),
+    guestAddress: 0x10000,
+    counterAddress: 0xf800,
+    littleEndian: true,
+  },
+  {
+    title: 'Atari 7800 original cartridge',
+    plugin: prosystemPlugin,
+    profile: 'org.libretro.prosystem',
+    system: 'com.provenance.7800',
+    program: atari7800SmokeCartridge(),
+    filename: 'original.bin',
+    needle: atari7800SmokeCode(),
+    guestAddress: 0x8000,
+    counterAddress: 0x40,
+    littleEndian: true,
+    greenMinimum: 100,
+  },
   {
     title: 'PlayStation HLE',
     plugin: psxPlugin,
@@ -117,6 +155,32 @@ const cases = [
     counterAddress: 0x6000,
     littleEndian: false,
   },
+  {
+    title: 'BIOS-free Jaguar CD CHD',
+    plugin: jaguarPlugin,
+    profile: 'org.libretro.virtualjaguar',
+    system: 'com.provenance.jaguarcd',
+    program: () => jaguarSmokeChd(),
+    filename: 'original.chd',
+    needle: jaguarSmokeAbs().subarray(0x24),
+    guestAddress: 0x4000,
+    counterAddress: 0x6000,
+    littleEndian: false,
+  },
+  ...(['asset', 'source'] as const).map((kind) => ({
+    title: `BIOS-free Jaguar CD CUE ${kind}`,
+    plugin: jaguarPlugin,
+    profile: 'org.libretro.virtualjaguar',
+    system: 'com.provenance.jaguarcd',
+    program: Buffer.from(jaguarSmokeCue().cue.toString().replaceAll('"track', '"../tracks/track')),
+    filename: 'disc/original.cue',
+    mediaKind: kind,
+    tracks: jaguarSmokeCue().tracks,
+    needle: jaguarSmokeAbs().subarray(0x24),
+    guestAddress: 0x4000,
+    counterAddress: 0x6000,
+    littleEndian: false,
+  })),
   ...(['dreamcast', 'naomi', 'naomi2'] as const).map((system) => ({
     title: `BIOS-free ${system}`,
     plugin: parallelPlugin,
@@ -137,7 +201,7 @@ for (const entry of cases) {
   }, testInfo) => {
     test.skip(
       !entry.plugin,
-      'Set ECS_ACCEPTANCE_JAGUAR_PLUGIN or ECS_ACCEPTANCE_PARALLEL_DC_PLUGIN to an external player directory.',
+      'Set the matching ECS_ACCEPTANCE_*_PLUGIN variable to an external player directory.',
     );
     test.setTimeout(120_000);
     const directory = await mkdtemp(join(tmpdir(), 'ecs-real-jaguar-'));
@@ -174,7 +238,7 @@ for (const entry of cases) {
       await cp(resolve(entry.plugin ?? ''), join(registry, 'jaguar'), { recursive: true });
       server = await openServer({
         dataDir: join(directory, 'data'),
-        uiDir: resolve('dist'),
+        uiDir: resolve(process.env.ECS_ACCEPTANCE_UI ?? 'dist'),
         playerPluginsDir: registry,
         localTrust: false,
         logger: false,
@@ -196,16 +260,52 @@ for (const entry of cases) {
         md5: null,
         crc: null,
       });
-      const { program, filename } = entry;
-      const rom = await client.upload({
-        libraryId: library.id,
-        itemId: item.id,
-        kind: 'rom',
-        displayName: filename,
-        relativePath: filename,
-        baseRevision: item.revision,
-        body: program,
-      });
+      const filename = entry.filename;
+      const program = typeof entry.program === 'function' ? entry.program() : entry.program;
+      let playUrl: string;
+      if ('mediaKind' in entry && entry.mediaKind === 'source') {
+        const content = join(directory, 'jaguarcd');
+        await mkdir(join(content, 'disc'), { recursive: true });
+        await mkdir(join(content, 'tracks'));
+        await writeFile(join(content, filename), program);
+        for (const track of entry.tracks)
+          await writeFile(join(content, 'tracks', track.name), track.bytes);
+        const root = await client.addRoot({
+          path: content,
+          label: 'Original disc',
+          libraryId: library.id,
+        });
+        await client.scanRoot(root.id);
+        const source = (await client.sources(root.id)).items.find(
+          (source) => source.name === 'original.cue',
+        );
+        if (!source) throw new Error('Generated CUE source missing');
+        playUrl = `${origin}/play/?source=${source.id}&profile=${entry.profile}`;
+      } else {
+        const rom = await client.upload({
+          libraryId: library.id,
+          itemId: item.id,
+          kind: 'rom',
+          displayName: filename,
+          relativePath: filename,
+          baseRevision: item.revision,
+          body: program,
+        });
+        if ('tracks' in entry) {
+          for (const track of entry.tracks) {
+            await client.upload({
+              libraryId: library.id,
+              itemId: item.id,
+              kind: 'rom',
+              displayName: track.name,
+              relativePath: `tracks/${track.name}`,
+              baseRevision: (await client.manifest(item.id)).revision,
+              body: track.bytes,
+            });
+          }
+        }
+        playUrl = `${origin}/play/?item=${item.id}&asset=${rom.id}&profile=${entry.profile}`;
+      }
       await page.addInitScript(
         ({ origin, session }) => {
           if (window === top && location.origin === origin)
@@ -229,7 +329,7 @@ for (const entry of cases) {
         },
         { origin, session },
       );
-      await page.goto(`${origin}/play/?item=${item.id}&asset=${rom.id}&profile=${entry.profile}`);
+      await page.goto(playUrl);
       await expect(page.getByRole('combobox', { name: 'Emulator', exact: true })).toHaveValue(
         entry.profile,
       );
@@ -289,14 +389,17 @@ for (const entry of cases) {
       await expect
         .poll(
           async () => {
-            image = await page.frameLocator('iframe').locator('canvas').screenshot();
+            const canvas = page.frameLocator('iframe').locator('canvas');
+            const bounds = await canvas.boundingBox();
+            if (!bounds) throw new Error('Core canvas is missing');
+            image = await page.screenshot({ clip: bounds });
             pixel = centerPixel(image);
             return pixel[1];
           },
           { timeout: 10_000 },
         )
-        .toBeGreaterThan(150);
-      expect(pixel[1]).toBeGreaterThan(150);
+        .toBeGreaterThan('greenMinimum' in entry ? entry.greenMinimum : 150);
+      expect(pixel[1]).toBeGreaterThan('greenMinimum' in entry ? entry.greenMinimum : 150);
       expect(pixel[0]).toBeLessThan(30);
       expect(pixel[2]).toBeLessThan(30);
       await mkdir(testInfo.outputDir, { recursive: true });

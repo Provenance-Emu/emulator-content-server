@@ -66,6 +66,8 @@ export interface WorkflowLease {
   hostId: string;
   fence: number;
   expiresAt: string;
+  publicationSequence?: number;
+  checkpointRef?: string | null;
 }
 export interface WorkflowSourceSnapshot {
   sourceId: string;

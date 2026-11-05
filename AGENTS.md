@@ -47,7 +47,16 @@ Add a new numbered SQL migration. Do not edit a migration that has shipped. The 
 
 ## Validation
 
+Browser acceptance must be quiet and headless. Disable game audio before launching
+a test; do not open, focus, or drive the user's native browser unless they explicitly
+request that interaction for the current test. Close test pages and terminate test
+servers after acceptance so no emulator/audio loop is left running.
+
 Choose checks for the changed behavior and package. For routine web changes, run the affected tests and the relevant Svelte/typecheck or build; add a browser check only when browser behavior needs it. Use meaningful regression tests for behavior changes. Broaden checks for cross-package impact or specific risks, without repeating successful checks on unchanged code.
+
+### Browser tests must stay quiet
+
+All future automated browser tests must run headless and silent, without stealing focus. Do not open or navigate visible browser tabs, foreground applications, or fall back to headed execution when graphics setup fails. Keep Chromium audio muted; other engines must use silent fixtures or audio outputs that cannot reach the user's speakers. Preserve these constraints for opt-in real-core acceptance too. If a check cannot satisfy them, report the limitation instead of launching a visible or audible browser.
 
 Full validation remains available for release hardening, cross-cutting changes, or an explicit request:
 

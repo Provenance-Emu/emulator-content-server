@@ -57,6 +57,7 @@ import type {
   PlayerConfiguration,
   PlayerCoreDescriptor,
   PlayerCoreResource,
+  PlayerIsolationSession,
   PlayerManagement,
   Problem,
   SessionResponse,
@@ -218,7 +219,25 @@ export class ContentClient {
   constructor(
     private readonly baseUrl: string,
     private token?: string,
-  ) {}
+    private readonly requestOptions: { signal?: AbortSignal; timeoutMs?: number } = {},
+  ) {
+    if (
+      requestOptions.timeoutMs !== undefined &&
+      (!Number.isSafeInteger(requestOptions.timeoutMs) ||
+        requestOptions.timeoutMs < 1 ||
+        requestOptions.timeoutMs > 120_000)
+    )
+      throw new RangeError('Invalid request timeout');
+  }
+
+  private requestSignal(signal?: AbortSignal): AbortSignal | undefined {
+    const signals = [signal, this.requestOptions.signal].filter(
+      (value): value is AbortSignal => value !== undefined,
+    );
+    if (this.requestOptions.timeoutMs !== undefined)
+      signals.push(AbortSignal.timeout(this.requestOptions.timeoutMs));
+    return signals.length ? AbortSignal.any(signals) : undefined;
+  }
 
   advertiseWorkflowHost(packages: WorkflowPackageSummary[]): Promise<{ host: WorkflowHost }> {
     return this.post('/api/v1/workflow-workers/advertise', { packages });
@@ -480,6 +499,49 @@ export class ContentClient {
     return { loader, wasm };
   }
 
+  async createPlayerIsolation(profileId: string): Promise<PlayerIsolationSession> {
+    validatePlayerId(profileId);
+    const response = await fetch(this.url('/api/v1/player/isolated-sessions'), {
+      method: 'POST',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify({ profileId }),
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+    const session = (await response.json()) as PlayerIsolationSession;
+    try {
+      const url = new URL(session.url);
+      if (
+        !/^[a-f0-9]{48}$/.test(session.id) ||
+        url.protocol !== 'http:' ||
+        url.hostname !== '127.0.0.1' ||
+        !url.port ||
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        url.pathname !== `/${session.id}/dolphin-sandbox.html` ||
+        url.href !== session.url ||
+        typeof session.expiresAt !== 'string' ||
+        !Number.isFinite(Date.parse(session.expiresAt))
+      )
+        throw new Error();
+    } catch {
+      throw new Error('Invalid isolated player session');
+    }
+    return session;
+  }
+  async closePlayerIsolation(id: string): Promise<void> {
+    if (!/^[a-f0-9]{48}$/.test(id)) throw new Error('Invalid isolated player session');
+    const response = await fetch(this.url(`/api/v1/player/isolated-sessions/${id}`), {
+      method: 'DELETE',
+      keepalive: true,
+      headers: this.headers(),
+      redirect: 'error',
+    });
+    if (!response.ok) throw await failure(response);
+  }
+
   playerManagement(): Promise<PlayerManagement> {
     return this.getJson('/api/v1/player/management', 'error');
   }
@@ -526,14 +588,17 @@ export class ContentClient {
   }
   async installPlayerSystemFile(id: string, name: string, file: Blob): Promise<PlayerManagement> {
     validatePlayerId(id);
-    if (name !== 'awbios.zip' || file.size < 22 || file.size > 32 * 1024 * 1024)
-      throw new Error('Select awbios.zip (up to32MiB)');
-    const response = await fetch(this.url(`/api/v1/player/management/${id}/system/${name}`), {
-      method: 'PUT',
-      headers: { ...this.headers(), 'content-type': 'application/vnd.ecs.player-system-file' },
-      body: file,
-      redirect: 'error',
-    });
+    if (!isPlayerSystemFileName(name) || file.size < 1 || file.size > 32 * 1024 * 1024)
+      throw new Error('Select a portable system filename and a file from 1 byte to 32 MiB');
+    const response = await fetch(
+      this.url(`/api/v1/player/management/${id}/system/${encodeURIComponent(name)}`),
+      {
+        method: 'PUT',
+        headers: { ...this.headers(), 'content-type': 'application/vnd.ecs.player-system-file' },
+        body: file,
+        redirect: 'error',
+      },
+    );
     if (!response.ok) throw await failure(response);
     return response.json() as Promise<PlayerManagement>;
   }
@@ -1086,6 +1151,8 @@ export class ContentClient {
           !file ||
           typeof file.id !== 'string' ||
           typeof file.name !== 'string' ||
+          (file.relativePath !== undefined &&
+            (typeof file.relativePath !== 'string' || file.relativePath.length > 4096)) ||
           typeof file.availability !== 'string' ||
           !Number.isSafeInteger(file.size) ||
           file.size < 0,
@@ -1566,6 +1633,7 @@ export class ContentClient {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+      signal: this.requestSignal(),
     });
     if (!response.ok) throw await failure(response);
     return (await response.json()) as T;
@@ -1581,7 +1649,11 @@ export class ContentClient {
     redirect?: RequestInit['redirect'],
     signal?: AbortSignal,
   ): Promise<T> {
-    const response = await fetch(this.url(path), { headers: this.headers(), redirect, signal });
+    const response = await fetch(this.url(path), {
+      headers: this.headers(),
+      redirect,
+      signal: this.requestSignal(signal),
+    });
     if (!response.ok) throw await failure(response);
     return (await response.json()) as T;
   }
@@ -1818,6 +1890,43 @@ function validateBrowsePage(value: unknown): asserts value is LibraryBrowsePage 
   }
 }
 
+/** A flat portable asset basename, excluding runtime configuration and executable resources. */
+export function isPlayerSystemFileName(name: string): boolean {
+  return (
+    typeof name === 'string' &&
+    /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(name) &&
+    !name.endsWith('.') &&
+    !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) &&
+    !/^(?:loader\.js|core\.wasm|plugin\.json|retroarch\.cfg)$/i.test(name)
+  );
+}
+
+/** Bounded RetroArch option defaults safe to serialize as quoted configuration. */
+export function isPlayerCoreOptions(value: unknown): value is Record<string, string> {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    ![Object.prototype, null].includes(Object.getPrototypeOf(value))
+  )
+    return false;
+  const entries = Object.entries(value);
+  return (
+    entries.length <= 64 &&
+    entries.every(
+      ([key, option]) =>
+        /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(key) &&
+        !['__proto__', 'constructor', 'prototype'].includes(key) &&
+        typeof option === 'string' &&
+        option.length > 0 &&
+        option.length <= 512 &&
+        option.trim() === option &&
+        !/["\\|]/.test(option) &&
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: Prevent configuration injection.
+        !/[\x00-\x1f\x7f]/.test(option),
+    )
+  );
+}
 function validatePlayerId(id: string): void {
   if (
     typeof id !== 'string' ||
@@ -1832,9 +1941,19 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     !p ||
     p.id !== id ||
     p.profileVersion !== 1 ||
-    !['emscripten-esm-v1', 'retroarch-emscripten-esm'].includes(p.runtime) ||
+    !['emscripten-esm-v1', 'retroarch-emscripten-esm', 'dolphin-wasm-esm'].includes(p.runtime) ||
     p.filesystem !== 'memfs' ||
-    p.threaded !== false ||
+    (p.defaultInputLayout !== undefined &&
+      !['compact', 'standard'].includes(p.defaultInputLayout)) ||
+    (p.defaultCoreOptions !== undefined &&
+      (p.runtime !== 'retroarch-emscripten-esm' || !isPlayerCoreOptions(p.defaultCoreOptions))) ||
+    (p.systemFilesDirectory !== undefined &&
+      (typeof p.systemFilesDirectory !== 'string' ||
+        !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(p.systemFilesDirectory) ||
+        /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(p.systemFilesDirectory))) ||
+    (p.runtime === 'dolphin-wasm-esm'
+      ? p.threaded !== true || p.saveCompletion !== 'none'
+      : p.threaded !== false) ||
     !['none', 'command-reply-v1'].includes(p.saveCompletion) ||
     typeof p.name !== 'string' ||
     !p.name.length ||
@@ -1844,7 +1963,7 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     p.buildVersion.length > 128 ||
     !Number.isSafeInteger(p.maxContentBytes) ||
     p.maxContentBytes <= 0 ||
-    p.maxContentBytes > 536870912
+    p.maxContentBytes > (p.runtime === 'dolphin-wasm-esm' ? 9 * 1024 ** 3 : 536870912)
   )
     throw new Error('Unsupported player profile');
   if (

@@ -1,0 +1,1002 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-11-02",
+  "scope": "Targeted official web artifact overlap for existing ECS custom builds; startup only, no game content.",
+  "summary": {
+    "selectorCores": 88,
+    "selected": 17,
+    "downloadedPairs": 8,
+    "passed": 3,
+    "failed": [
+      {
+        "core": "prosystem",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      },
+      {
+        "core": "freeintv",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      },
+      {
+        "core": "stella2014",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      },
+      {
+        "core": "mednafen_pcfx",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      },
+      {
+        "core": "parallel_n64",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": [
+          "abort(\"abort(\\\"on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)\\\"). Build with -s ASSERTIONS=1 for more info.\"). Build with -s ASSERTIONS=1 for more info."
+        ],
+        "unexpectedRequests": []
+      }
+    ],
+    "infoRevision": "d63d696656b70a5e4924448fe86e06091deb2bec",
+    "sandboxSha256": "3d24095174a75d7db28e8a2dfc67f1d2e63a40bfc674c7f470234a13bba945d4"
+  },
+  "records": [
+    {
+      "core": "fceumm",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/fceumm_libretro.js",
+          "status": "downloaded",
+          "bytes": 270617,
+          "sha256": "5755b365f5570085f99e882f3be0b0572230559a455e5970f0095d1d253ff54c",
+          "lastModified": "Mon, 02 Nov 2026 02:00:39 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/fceumm_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 4482298,
+          "sha256": "6984a280e755ceb992b0390226a0c2e24ca974228df7627a161e3aed14d0e313",
+          "lastModified": "Mon, 02 Nov 2026 02:00:39 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/fceumm_libretro.info",
+        "sha256": "eda6fbfdc1fda5ea80c2caed205345b0cbbfa9427acf3626e0cffd6ee5a96721",
+        "fields": {
+          "display_name": "Nintendo - NES / Famicom (FCEUmm)",
+          "authors": "FCEU Team|CaH4e3",
+          "supported_extensions": "fds|nes|unif|unf",
+          "corename": "FCEUmm",
+          "license": "GPLv2",
+          "permissions": "",
+          "display_version": "SVN",
+          "categories": "Emulator",
+          "manufacturer": "Nintendo",
+          "systemname": "Nintendo Entertainment System",
+          "systemid": "nes",
+          "supports_no_game": "false",
+          "savestate": "true",
+          "savestate_features": "deterministic",
+          "cheats": "true",
+          "input_descriptors": "true",
+          "memory_descriptors": "true",
+          "libretro_saves": "true",
+          "core_options": "true",
+          "core_options_version": "1.0",
+          "load_subsystem": "false",
+          "hw_render": "false",
+          "needs_fullpath": "false",
+          "disk_control": "false",
+          "database": "Nintendo - Nintendo Entertainment System|Nintendo - Family Computer Disk System",
+          "firmware0_desc": "disksys.rom (Family Computer Disk System BIOS)",
+          "firmware0_path": "disksys.rom",
+          "firmware0_opt": "true",
+          "firmware1_desc": "nes.pal (custom NES Palette)",
+          "firmware1_path": "nes.pal",
+          "firmware1_opt": "true",
+          "firmware2_desc": "gamegenie.nes (Game Genie add-on cartridge)",
+          "firmware2_path": "gamegenie.nes",
+          "firmware2_opt": "true",
+          "notes": "(!) disksys.rom (md5): ca30b50f880eb660a320674ed365ef7a|(!) gamegenie.nes (md5): 7f98d77d7a094ad7d069b74bd553ec98|(!) nes.pal must be located in system directory.",
+          "description": "FCEUmm libretro is based on the FCEUmm (mappers modified) fork of the FCEU emulator. It is very fast and supports many mappers, including those for weird, obscure bootleg carts. It is tightly integrated with libretro features, which makes it a good choice for users seeking advanced frontend functionality, such as runahead and rollback netplay. While most NES emulators are lightweight, FCEUmm's particularly low resource requirements make it a good option for mobile, low-power/embedded and console targets."
+        }
+      },
+      "startup": {
+        "core": "fceumm",
+        "ok": true,
+        "origin": "null",
+        "productionSandbox": true,
+        "acceptance": "factory-memfs-only",
+        "pixel": null,
+        "pageErrors": [],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "pcsx_rearmed",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/pcsx_rearmed_libretro.js",
+          "status": "downloaded",
+          "bytes": 271454,
+          "sha256": "be0417faed38ea20fe6cef144ff6ef77e1a04b776b23d5c1b6e1f0c1fc9c0d55",
+          "lastModified": "Mon, 02 Nov 2026 02:00:39 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/pcsx_rearmed_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 4491116,
+          "sha256": "96e6230439a15d520ab1ecc2240534809696dc9f1abbceee8695d1e152774764",
+          "lastModified": "Mon, 02 Nov 2026 02:00:39 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/pcsx_rearmed_libretro.info",
+        "sha256": "83e98e7b7068b99330db52741a369f217ebadcdbd1eb182a5a435c76ab6ae704",
+        "fields": {
+          "display_name": "Sony - PlayStation (PCSX ReARMed)",
+          "authors": "PCSX Team|notaz|Exophase",
+          "supported_extensions": "bin|cue|img|mdf|pbp|toc|cbn|m3u|ccd|chd|iso|exe",
+          "corename": "PCSX-ReARMed",
+          "license": "GPLv2",
+          "permissions": "dynarec",
+          "display_version": "r24",
+          "categories": "Emulator",
+          "manufacturer": "Sony",
+          "systemname": "PlayStation",
+          "systemid": "playstation",
+          "database": "Sony - PlayStation",
+          "supports_no_game": "false",
+          "savestate": "true",
+          "savestate_features": "deterministic",
+          "cheats": "true",
+          "input_descriptors": "true",
+          "memory_descriptors": "true",
+          "libretro_saves": "true",
+          "core_options": "true",
+          "load_subsystem": "false",
+          "hw_render": "false",
+          "needs_fullpath": "true",
+          "disk_control": "true",
+          "is_experimental": "false",
+          "firmware0_desc": "scph5500.bin (PS1 JP BIOS)",
+          "firmware0_path": "scph5500.bin",
+          "firmware0_opt": "true",
+          "firmware1_desc": "scph5501.bin (PS1 US BIOS)",
+          "firmware1_path": "scph5501.bin",
+          "firmware1_opt": "true",
+          "firmware2_desc": "scph5502.bin (PS1 EU BIOS)",
+          "firmware2_path": "scph5502.bin",
+          "firmware2_opt": "true",
+          "firmware3_desc": "psxonpsp660.bin (PSP PSX Emu BIOS)",
+          "firmware3_path": "psxonpsp660.bin",
+          "firmware3_opt": "true",
+          "notes": "(!) scph5500.bin (md5): 8dd7d5296a650fac7319bce665a6a53c|(!) scph5501.bin (md5): 490f666e1afb15b7362b406ed1cea246|(!) scph5502.bin (md5): 32736f17079d0b2b7024407c39bd3050|(!) psxonpsp660.bin (md5): c53ca5908936d412331790f4426c6c33",
+          "description": "A port of the PCSX-ReARMed fork to libretro. This emulator is a technical marvel and runs incredibly well on 32-bit ARM CPUs, though it is also a good choice for other low-powered hardware that cannot run Beetle-PSX/-HW or Swanstation at full speed. However, this core has no support for increased internal resolution, texture filtering, etc., so users who want those features would be better served by the other cores."
+        }
+      },
+      "startup": {
+        "core": "pcsx_rearmed",
+        "ok": true,
+        "origin": "null",
+        "productionSandbox": true,
+        "acceptance": "factory-memfs-only",
+        "pixel": null,
+        "pageErrors": [],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "virtualjaguar",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/virtualjaguar_libretro.js",
+          "status": "downloaded",
+          "bytes": 273137,
+          "sha256": "8f5b3dc55e8b63c4fc1d631cc56c183b77fa30840d5480e2506f9fa8aefd3ef6",
+          "lastModified": "Mon, 02 Nov 2026 02:00:39 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/virtualjaguar_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 5412224,
+          "sha256": "a9f7929a933d5916e594d70a394cd0e9bfac87498cfc214371762ae8efee49cb",
+          "lastModified": "Mon, 02 Nov 2026 02:00:39 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/virtualjaguar_libretro.info",
+        "sha256": "82ac877e347c22f3f84088de7a20d6c8934b97cb5f6e61be8a6c4a0058191b38",
+        "fields": {
+          "display_name": "Atari - Jaguar (Virtual Jaguar)",
+          "authors": "Joseph Mattiello|David Raingeard|Shamus",
+          "supported_extensions": "j64|jag|rom|abs|cof|bin|prg|cue|cdi|chd",
+          "corename": "Virtual Jaguar",
+          "license": "GPLv3",
+          "permissions": "",
+          "display_version": "v3.10.0",
+          "categories": "Emulator",
+          "manufacturer": "Atari",
+          "systemname": "Jaguar",
+          "systemid": "atari_jaguar",
+          "supports_no_game": "true",
+          "database": "Atari - Jaguar|Atari - Jaguar CD",
+          "savestate": "true",
+          "savestate_features": "deterministic",
+          "cheats": "true",
+          "input_descriptors": "true",
+          "memory_descriptors": "true",
+          "libretro_saves": "true",
+          "core_options": "true",
+          "load_subsystem": "false",
+          "hw_render": "false",
+          "needs_fullpath": "false",
+          "disk_control": "true",
+          "is_experimental": "false",
+          "notes": "(!) No BIOS files are required: the Jaguar boot ROM and CD BIOS images are embedded in the core.|(!) CD BIOS override (optional, real-BIOS CD boot): any ONE of [BIOS] Atari Jaguar CD (World).j64/.rom/.bin, [BIOS] Atari Jaguar Developer CD (World).j64/.rom/.bin, Jaguar CD BIOS.rom/.bin, jaguarcd_bios.bin, jagcd_bios.bin, jaguarcd.bin or jagcd.bin.|(!) Those are searched in the system directory and in its ",
+          "firmware0_desc": "[BIOS] Atari Jaguar CD (World).j64 (Jaguar CD BIOS, retail - optional override)",
+          "firmware0_path": "[BIOS] Atari Jaguar CD (World).j64",
+          "firmware0_opt": "true",
+          "firmware1_desc": "[BIOS] Atari Jaguar Developer CD (World).j64 (Jaguar CD BIOS, developer - optional override)",
+          "firmware1_path": "[BIOS] Atari Jaguar Developer CD (World).j64",
+          "firmware1_opt": "true",
+          "firmware2_desc": "jagboot_m.rom (Jaguar cart boot ROM, Model M - optional override)",
+          "firmware2_path": "jagboot_m.rom",
+          "firmware2_opt": "true",
+          "firmware3_desc": "jagboot.rom (Jaguar cart boot ROM, any revision - optional, used when Cart BIOS Type is Custom)",
+          "firmware3_path": "jagboot.rom",
+          "firmware3_opt": "true",
+          "description": "The actively maintained Atari Jaguar and Jaguar CD emulator for libretro, continuing the Virtual Jaguar project (originally by David Raingeard of Potato Emulation). No BIOS files are required: the Jaguar boot ROM and CD BIOS images are embedded in the core. Supports Jaguar CD (CUE/BIN, CDI, CHD) with Memory Track saves, JagLink/CatBox network play over TCP or RetroArch netplay, a high-level BIOS that lets most commercial titles boot without a real BIOS image, save states, SRAM, cheat codes, RetroAchievements, and M68K/RISC clock-scale (overclock) core options for framerate-limited games. CHD images must be created with a chdman that writes CHSE session metadata (MAME 2026-08-15 / PR 15886 or later); see the core's jagcd tools. The accurate blitter is SIMD-accelerated (SSE2 on x86, NEON on ARM); the Blitter core option can be set to 'Fast' to trade some accuracy for additional speed on lower-end hardware."
+        }
+      },
+      "startup": {
+        "core": "virtualjaguar",
+        "ok": true,
+        "origin": "null",
+        "productionSandbox": true,
+        "acceptance": "factory-memfs-only",
+        "pixel": null,
+        "pageErrors": [],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "prosystem",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/prosystem_libretro.js",
+          "status": "downloaded",
+          "bytes": 221209,
+          "sha256": "56f505c0c25611a47d2522df279f191ea103db925b4636b3a375f4586c67e141",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/prosystem_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 1820287,
+          "sha256": "a94925dc3c9b8f2269657939160bbb4103fc6b44d3c1acf4ff81e6617a731b2a",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/prosystem_libretro.info",
+        "sha256": "22e9bc148612082f41147b4de167bb7ade705ec5f4642b8b70c0eb9ad1971681",
+        "fields": {
+          "display_name": "Atari - 7800 (ProSystem)",
+          "authors": "Greg Stanton|Brian Berlin|Leonis|Greg DeMent",
+          "supported_extensions": "a78|bin|cdf",
+          "corename": "ProSystem",
+          "license": "GPLv2",
+          "permissions": "",
+          "display_version": "1.3e",
+          "categories": "Emulator",
+          "manufacturer": "Atari",
+          "systemname": "Atari 7800",
+          "systemid": "atari_7800",
+          "supports_no_game": "false",
+          "database": "Atari - 7800",
+          "savestate": "true",
+          "savestate_features": "serialized",
+          "cheats": "false",
+          "input_descriptors": "true",
+          "memory_descriptors": "true",
+          "libretro_saves": "true",
+          "core_options": "false",
+          "load_subsystem": "false",
+          "hw_render": "false",
+          "needs_fullpath": "false",
+          "disk_control": "false",
+          "is_experimental": "false",
+          "firmware0_desc": "7800 BIOS (U).rom (7800 BIOS)",
+          "firmware0_path": "7800 BIOS (U).rom",
+          "firmware0_opt": "true",
+          "notes": "(!) 7800 BIOS (U).rom (md5): 0763f1ffb006ddbe32e52d497ee848ae",
+          "description": "A port of the ProSystem Atari 7800 emulator to libretro."
+        }
+      },
+      "startup": {
+        "core": "prosystem",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "stella2014",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/stella2014_libretro.js",
+          "status": "downloaded",
+          "bytes": 222631,
+          "sha256": "548db4e8f28c929a1a0ea9441723041ed4ba55f07f8214f40c43f46d74ed108b",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/stella2014_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 2740314,
+          "sha256": "5e16770773e6dbb1fd41c2a31d2d9780c513ce2afc30c48fa35a24a7db9ec313",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/stella2014_libretro.info",
+        "sha256": "d3e08071f6c19ec9ae72d83fe377b35d5da824c4a5f7819a8ee31e1379bdc17d",
+        "fields": {
+          "display_name": "Atari - 2600 (Stella 2014)",
+          "authors": "Stephen Anthony|Bradford Mott|Eckhard Stolberg|Brian Watson",
+          "supported_extensions": "a26|bin",
+          "corename": "Stella 2014",
+          "license": "GPLv2",
+          "permissions": "",
+          "display_version": "3.9.3",
+          "categories": "Emulator",
+          "manufacturer": "Atari",
+          "systemname": "Atari 2600",
+          "systemid": "atari_2600",
+          "supports_no_game": "false",
+          "database": "Atari - 2600",
+          "savestate": "true",
+          "savestate_features": "deterministic",
+          "cheats": "false",
+          "input_descriptors": "true",
+          "memory_descriptors": "true",
+          "libretro_saves": "false",
+          "core_options": "false",
+          "load_subsystem": "false",
+          "hw_render": "false",
+          "needs_fullpath": "false",
+          "disk_control": "false",
+          "description": "A port of Stella, the multi-platform Atari 2600 VCS emulator, to libretro. This core was forked off from the main Stella codebase circa 2014 and, as such, is a snapshot of the features, compatibility and performance from that time. As a result, it is missing many of the accuracy improvements of the up-to-date core and should only be used in cases where the host device cannot run the up-to-date core at full speed."
+        }
+      },
+      "startup": {
+        "core": "stella2014",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "freeintv",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/freeintv_libretro.js",
+          "status": "downloaded",
+          "bytes": 221208,
+          "sha256": "40f8e29cc8e0e61d4a15f06ddaeae33930847ab17aa7057bd17135de32a077b9",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/freeintv_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 1818462,
+          "sha256": "fcd46f95b7dc86925ba0478324086b9a097883fb630559220f453e77dc71dca5",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/freeintv_libretro.info",
+        "sha256": "8a688f4c8aa5048d9086451dd8d33873cef34b4458d5766593d911ffa60eda52",
+        "fields": {
+          "display_name": "Mattel - Intellivision (FreeIntv)",
+          "authors": "David Richardson",
+          "supported_extensions": "int|bin|rom",
+          "corename": "FreeIntv",
+          "categories": "Emulator",
+          "license": "GPLv2+",
+          "permissions": "",
+          "display_version": "2018.1.5",
+          "manufacturer": "Mattel",
+          "systemname": "Intellivision",
+          "systemid": "intellivision",
+          "database": "Mattel - Intellivision",
+          "supports_no_game": "false",
+          "firmware0_desc": "exec.bin",
+          "firmware0_path": "exec.bin",
+          "firmware0_opt": "false",
+          "firmware1_desc": "grom.bin",
+          "firmware1_path": "grom.bin",
+          "firmware1_opt": "false",
+          "notes": "(!) exec.bin (md5): 62e761035cb657903761800f4437b8af|(!) grom.bin (md5): 0cd5946c6473e42e8e4c2137785e427f",
+          "description": "A libretro emulation core for the Mattel Intellivision computer (but not the Entertainment Computer System or Intellivoice). Many Intellivision games relied on controller overlays to provide context for the controls, and many of these can be found online for reference, including at https://arcadepunks.com/intellivision-controller-overlays."
+        }
+      },
+      "startup": {
+        "core": "freeintv",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "atari800",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/atari800_libretro.info",
+        "sha256": "4b56fa399760a8c48e6ac8b08ecc2ae2f7163bbfb34f3f08351bc7e092602e5e",
+        "fields": {
+          "display_name": "Atari - 400/800/600XL/800XL/130XE/5200 (Atari800)",
+          "authors": "Petr Stehlik",
+          "supported_extensions": "xfd|atr|dcm|cas|bin|a52|zip|atx|car|rom|com|xex|m3u",
+          "corename": "Atari800",
+          "categories": "Emulator",
+          "license": "GPLv2",
+          "permissions": "",
+          "manufacturer": "Atari",
+          "systemname": "Atari 8-bit Family",
+          "systemid": "atari_5200",
+          "display_version": "7.0.0",
+          "database": "Atari - 5200|Atari - 8-bit Family",
+          "supports_no_game": "true",
+          "savestate": "true",
+          "savestate_features": "null",
+          "cheats": "false",
+          "input_descriptors": "true",
+          "memory_descriptors": "false",
+          "libretro_saves": "false",
+          "core_options": "true",
+          "core_options_version": "2.0",
+          "load_subsystem": "false",
+          "hw_render": "false",
+          "needs_fullpath": "true",
+          "disk_control": "true",
+          "is_experimental": "false",
+          "needs_kbd_mouse_focus": "true",
+          "firmware0_desc": "5200.rom (Atari 5200 BIOS)",
+          "firmware0_path": "5200.rom",
+          "firmware0_opt": "true",
+          "firmware1_desc": "ATARIBAS.ROM (Atari BASIC)",
+          "firmware1_path": "ATARIBAS.ROM",
+          "firmware1_opt": "true",
+          "firmware2_desc": "ATARIOSA.ROM (Atari 400/800 OS A)",
+          "firmware2_path": "ATARIOSA.ROM",
+          "firmware2_opt": "true",
+          "firmware3_desc": "ATARIOSB.ROM (Atari 400/800 OS B)",
+          "firmware3_path": "ATARIOSB.ROM",
+          "firmware3_opt": "true",
+          "firmware4_desc": "ATARIXL.ROM (Atari XL/XE OS)",
+          "firmware4_path": "ATARIXL.ROM",
+          "firmware4_opt": "true",
+          "firmware5_desc": "BB01R4_OS.ROM (Atari XL/XE/XEGS OS v4)",
+          "firmware5_path": "BB01R4_OS.ROM",
+          "firmware5_opt": "true",
+          "firmware6_desc": "XEGAME.ROM (Atari XEGS Missile Command)",
+          "firmware6_path": "XEGAME.ROM",
+          "firmware6_opt": "true",
+          "notes": "(!) 5200.rom (md5): 281f20ea4320404ec820fb7ec0693b38|(!) ATARIBAS.ROM (md5): 0bac0c6a50104045d902df4503a4c30b|(!) ATARIOSA.ROM (md5): eb1f32f5d9f382db1bbfb8d7f9cb343a|(!) ATARIOSB.ROM (md5): 4177f386a3bac989a981d3fe3388cb6c|(!) ATARIXL.ROM (md5): 06daac977823773a3eea3422fd26a703|(!) BB01R4_OS.ROM (md5): b7a2a04677d34f069eeb643d5238bf86|(!) XEGAME.ROM (md5): d7eb37aec6960cba36bc500e0e5d00bc",
+          "description": "A port of the free and portable Atari800 emulator to libretro. This core supports games and programs written for the Atari 8-bit computers (400, 800, 600 XL, 800XL, 130XE) and 5200 console. When loaded, the core should boot to the Atari Computer - Memo Pad screen and will generate a .atari800.cfg config file in the frontend's home directory and will add the required BIOS files it detects in the frontend's system directory to the config file. Once that is done, users may manually select which Atari system to emulate through the Atari System core option. These and other options can also be modified through the core's own menu, accessible through the retrokeyboard's F1 key."
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "pokemini",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/pokemini_libretro.info",
+        "sha256": "514da066db31dd673aabf9c0e54b1b24e485775615217a02ac7de635d621b8b2",
+        "fields": {
+          "display_name": "Nintendo - Pokemon Mini (PokeMini)",
+          "authors": "JustBurn",
+          "supported_extensions": "min",
+          "corename": "PokeMini",
+          "license": "GPLv3",
+          "permissions": "",
+          "display_version": "v0.60",
+          "categories": "Emulator",
+          "manufacturer": "Nintendo",
+          "systemname": "Pokemon Mini",
+          "systemid": "pokemon_mini",
+          "supports_no_game": "false",
+          "database": "Nintendo - Pokemon Mini",
+          "savestate": "true",
+          "savestate_features": "deterministic",
+          "cheats": "false",
+          "input_descriptors": "true",
+          "memory_descriptors": "true",
+          "libretro_saves": "true",
+          "core_options": "true",
+          "load_subsystem": "false",
+          "hw_render": "false",
+          "needs_fullpath": "false",
+          "disk_control": "false",
+          "is_experimental": "false",
+          "firmware0_desc": "bios.min (Pokemon Mini BIOS)",
+          "firmware0_path": "bios.min",
+          "firmware0_opt": "true",
+          "notes": "Suggested md5sum:|1e4fb124a3a886865acb574f388c803d = bios.min",
+          "description": "A port of the homebrew PokeMini emulator, which emulates the Pokemon-Mini handheld console, to libretro."
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "potator",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/potator_libretro.info",
+        "sha256": "1e7155841e4dcdb7feef31018432d2e259cbfd2b349add6d4731165cee8ede1a",
+        "fields": {
+          "display_name": "Watara - Supervision (Potator)",
+          "authors": "Normmatt|Cal2|infval|Alekmaul",
+          "supported_extensions": "bin|sv",
+          "corename": "Potator",
+          "license": "Public Domain",
+          "permissions": "",
+          "display_version": "1.0.5",
+          "categories": "Emulator",
+          "manufacturer": "Watara",
+          "systemname": "Supervision",
+          "systemid": "supervision",
+          "supports_no_game": "false",
+          "database": "Watara - Supervision",
+          "savestate": "true",
+          "savestate_features": "deterministic"
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "sameduck",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/sameduck_libretro.info",
+        "sha256": "1b0844ec4fbbcc595ada875c7f1e80de467d8e0b2713119f6e41ec8bd5b4fd29",
+        "fields": {
+          "display_name": "Mega Duck / Cougar Boy (SameDuck)",
+          "authors": "LIJI32",
+          "supported_extensions": "bin|duck",
+          "corename": "SameDuck",
+          "display_version": "git",
+          "categories": "Emulator",
+          "license": "MIT",
+          "permissions": "",
+          "manufacturer": "Welback Holdings",
+          "systemname": "Mega Duck",
+          "systemid": "mega_duck",
+          "supports_no_game": "false",
+          "savestate": "true",
+          "savestate_features": "basic",
+          "cheats": "false",
+          "core_options": "true",
+          "disk_control": "false",
+          "description": "An adaptation of SameBoy to play Mega Duck games."
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "mednafen_pcfx",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/mednafen_pcfx_libretro.js",
+          "status": "downloaded",
+          "bytes": 222844,
+          "sha256": "34329fc89ef869fbb4fe15462ffd2b3d0f8ef29d581d1e884e346125a5b3b13f",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/mednafen_pcfx_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 2190891,
+          "sha256": "809252b3696dc9a490cd25f2fda466aadfeedda07e7ce3ac32919433142c429e",
+          "lastModified": "Wed, 18 Nov 2020 15:13:49 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/mednafen_pcfx_libretro.info",
+        "sha256": "d352e83266f1d965e1b0fcb190dc3300158f419985b8d77374a2994d00f38f19",
+        "fields": {
+          "display_name": "NEC - PC-FX (Beetle PC-FX)",
+          "authors": "Mednafen Team",
+          "supported_extensions": "cue|ccd|toc|chd",
+          "corename": "Beetle PC-FX",
+          "license": "GPLv2",
+          "permissions": "",
+          "display_version": "v0.9.33.3",
+          "categories": "Emulator",
+          "manufacturer": "NEC",
+          "systemname": "PC-FX",
+          "systemid": "pc_fx",
+          "database": "NEC - PC-FX",
+          "supports_no_game": "false",
+          "firmware0_desc": "pcfx.rom (PC-FX BIOS v1.00 - 2 Sep 1994)",
+          "firmware0_path": "pcfx.rom",
+          "firmware0_opt": "false",
+          "notes": "(!) pcfx.rom (md5): 08e36edbea28a017f79f8d4f7ff9b6d7",
+          "description": "A fork of Mednafen's PC-FX emulation core, ported to libretro."
+        }
+      },
+      "startup": {
+        "core": "mednafen_pcfx",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": ["Failed to fetch"],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "flycast",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/flycast_libretro.info",
+        "sha256": "4abbd7d3f629e8a09906a23fc9c8068c2c2c44483cee4fa49b1262d0770915f1",
+        "fields": {
+          "display_name": "Sega - Dreamcast/Naomi (Flycast)",
+          "authors": "flyinghead",
+          "supported_extensions": "chd|cdi|elf|bin|cue|gdi|lst|zip|rar|dat|7z|m3u",
+          "corename": "Flycast",
+          "license": "GPLv2",
+          "permissions": "",
+          "categories": "Emulator",
+          "display_version": "Git",
+          "manufacturer": "Sega",
+          "systemname": "Sega Dreamcast",
+          "systemid": "dreamcast",
+          "database": "Sega - Dreamcast|Sega - Naomi|Sega - Naomi 2|Atomiswave",
+          "supports_no_game": "false",
+          "savestate": "true",
+          "savestate_features": "serialized",
+          "firmware0_desc": "dc/dc_boot.bin (Dreamcast BIOS)",
+          "firmware0_path": "dc/dc_boot.bin",
+          "firmware0_opt": "true",
+          "firmware1_desc": "dc/naomi.zip (Naomi Bios from MAME)",
+          "firmware1_path": "dc/naomi.zip",
+          "firmware1_opt": "true",
+          "firmware2_desc": "dc/naomi2.zip (Naomi2 Bios from MAME)",
+          "firmware2_path": "dc/naomi2.zip",
+          "firmware2_opt": "true",
+          "firmware3_desc": "dc/hod2bios.zip (Naomi The House of the Dead 2 Bios from MAME)",
+          "firmware3_path": "dc/hod2bios.zip",
+          "firmware3_opt": "true",
+          "firmware4_desc": "dc/f355dlx.zip (Naomi Ferrari F355 Challenge deluxe Bios from MAME)",
+          "firmware4_path": "dc/f355dlx.zip",
+          "firmware4_opt": "true",
+          "firmware5_desc": "dc/f355bios.zip (Naomi Ferrari F355 Challenge twin/deluxe Bios from MAME)",
+          "firmware5_path": "dc/f355bios.zip",
+          "firmware5_opt": "true",
+          "firmware6_desc": "dc/airlbios.zip (Naomi Airline Pilots deluxe Bios from MAME)",
+          "firmware6_path": "dc/airlbios.zip",
+          "firmware6_opt": "true",
+          "firmware7_desc": "dc/awbios.zip (Atomiswave BIOS from MAME)",
+          "firmware7_path": "dc/awbios.zip",
+          "firmware7_opt": "true",
+          "notes": "(!) dc_boot.bin (md5): e10c53c2f8b90bab96ead2d368858623",
+          "hw_render": "true",
+          "required_hw_api": "OpenGL >= 3.0 | OpenGL Core >= 3.1 | OpenGL ES >= 2.0 | Vulkan >= 1.1 | Direct3D >= 11.0",
+          "description": "A port of the Flycast Dreamcast emulator to libretro. In addition to Dreamcast, the core also supports the NAOMI, NAOMI 2, and Atomiswave arcade platforms (with appropriate BIOS images) and will load these games from the latest MAME ROMset. This version of the core uses advanced graphics API features, so anyone using an older, limited GPU may need to use the GLES2 version if this one is incompatible with their hardware."
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "parallel_n64",
+      "artifacts": {
+        "js": {
+          "url": "https://web.libretro.com/parallel_n64_libretro.js",
+          "status": "downloaded",
+          "bytes": 307585,
+          "sha256": "fab15b23ab3946694d7ab7b72c6522c7565996534840a435866c1f7c156446cc",
+          "lastModified": "Tue, 06 Aug 2019 21:46:46 GMT"
+        },
+        "wasm": {
+          "url": "https://web.libretro.com/parallel_n64_libretro.wasm",
+          "status": "downloaded",
+          "bytes": 2974008,
+          "sha256": "c88916cb9bcae5c45da12d0180133e66b5335f7a4c56fa777fe8c7d82ffa1c32",
+          "lastModified": "Tue, 06 Aug 2019 21:46:47 GMT"
+        }
+      },
+      "errors": [],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/parallel_n64_libretro.info",
+        "sha256": "f32a557f5e4aa3327e182dc6ffcceebd35ea07f60b04874d29a96c638dbdddad",
+        "fields": {
+          "display_name": "Nintendo - Nintendo 64 (ParaLLEl N64)",
+          "authors": "Hacktarux|Mupen64Plus Team|TinyTiger|Libretro",
+          "supported_extensions": "n64|v64|z64|bin|u1|ndd",
+          "corename": "ParaLLEl N64",
+          "license": "GPLv2",
+          "permissions": "dynarec_optional",
+          "display_version": "2.0-rc2",
+          "categories": "Emulator",
+          "manufacturer": "Nintendo",
+          "systemname": "Nintendo 64",
+          "systemid": "nintendo_64",
+          "supports_no_game": "false",
+          "hw_render": "true",
+          "required_hw_api": "OpenGL >= 3.0 | OpenGL ES >= 2.0 | Vulkan >= 1.0",
+          "database": "Nintendo - Nintendo 64|Nintendo - Nintendo 64DD",
+          "is_experimental": "false",
+          "savestate": "true",
+          "savestate_features": "serialized",
+          "firmware0_desc": "64DD_IPL.bin (64DD IPL ROM)",
+          "firmware0_path": "64DD_IPL.bin",
+          "firmware0_opt": "true",
+          "notes": "(!) 64DD_IPL.bin (md5): 8d3d9f294b6e174bc7b1d2fd1c727530",
+          "description": "An N64 emulator based originally on Mupen64Plus, but with extensive changes that have caused the codebases to diverge significantly. This core was the first N64 emulator core available for libretro and has served as an experimental testbed for many features that were later included in the Mupen64plus-Next core, including the advanced Vulkan-based ParaLLEl-RDP and ParaLLEl-RSP plugins (hence the name). However, Mupen64plus-Next is a better choice for most users/usecases, and ParaLLEl-N64 mostly exists for further experimentation and for users that cannot run Mupen64plus-Next's GLideN64 plugin at full speed, as this core includes legacy Glide64, glN64 and Rice plugins, which have lower hardware/driver requirements."
+        }
+      },
+      "startup": {
+        "core": "parallel_n64",
+        "ok": false,
+        "error": "page.evaluate: Error: Emulator operation failed or returned unsupported data\n    at port.onmessage (eval at evaluate (:290:30), <anonymous>:40:41)",
+        "pageErrors": [
+          "abort(\"abort(\\\"on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)\\\"). Build with -s ASSERTIONS=1 for more info.\"). Build with -s ASSERTIONS=1 for more info."
+        ],
+        "unexpectedRequests": []
+      }
+    },
+    {
+      "core": "mupen64plus_next",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/mupen64plus_next_libretro.info",
+        "sha256": "8d1fcd13a17310e233be4ff247bf1032f8f786fe685e24cef5ed4ea474ccdfb6",
+        "fields": {
+          "display_name": "Nintendo - Nintendo 64 (Mupen64Plus-Next)",
+          "authors": "m4xw|Hacktarux|gonetz|GLideN64 Contributors|Mupen64Plus Team",
+          "supported_extensions": "n64|v64|z64|ndd|bin|u1",
+          "corename": "Mupen64Plus-Next",
+          "license": "GPLv2",
+          "permissions": "dynarec_optional",
+          "display_version": "1.0",
+          "categories": "Emulator",
+          "manufacturer": "Nintendo",
+          "systemname": "Nintendo 64",
+          "systemid": "nintendo_64",
+          "supports_no_game": "false",
+          "database": "Nintendo - Nintendo 64",
+          "hw_render": "true",
+          "required_hw_api": "OpenGL Core >= 3.3 | OpenGL ES >= 2.0",
+          "savestate": "true",
+          "savestate_features": "serialized",
+          "cheats": "true",
+          "input_descriptors": "true",
+          "memory_descriptors": "true",
+          "libretro_saves": "true",
+          "core_options": "true",
+          "load_subsystem": "true",
+          "needs_fullpath": "false",
+          "disk_control": "false",
+          "is_experimental": "false",
+          "firmware0_desc": "Mupen64plus/IPL.n64 (64DD BIOS)",
+          "firmware0_path": "Mupen64plus/IPL.n64",
+          "firmware0_opt": "true",
+          "notes": "(!) IPL.n64 (md5): 8d3d9f294b6e174bc7b1d2fd1c727530",
+          "description": "An up-to-date port of the Mupen64Plus N64 emulator, ported to libretro. It uses up-to-date GLideN64 plugin as its default graphics plug, though the high-accuracy Angrylion and ParaLLEl-RDP plugins are also available. This core is a good first choice for most users and should generally work better than the ParaLLEl-N64 core, which is mainly useful for its support for legacy graphics plugins that can run on older/low-power devices that are too weak for the modern plugins."
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "dolphin",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/dolphin_libretro.info",
+        "sha256": "8e4e763481ba4a44fa2421c33f79a4f011d3897542528dc876dda71e4c191346",
+        "fields": {
+          "display_name": "Nintendo - GameCube / Wii (Dolphin)",
+          "authors": "Team Dolphin",
+          "supported_extensions": "gcm|iso|wbfs|ciso|gcz|elf|dol|dff|tgc|wad|rvz|m3u|wia",
+          "corename": "Dolphin",
+          "categories": "Emulator",
+          "license": "GPLv2+",
+          "permissions": "",
+          "display_version": "Git",
+          "manufacturer": "Nintendo",
+          "systemname": "GameCube / Wii",
+          "systemid": "gamecube",
+          "database": "Nintendo - GameCube|Nintendo - Wii|Nintendo - Wii (Digital)",
+          "supports_no_game": "false",
+          "savestate": "true",
+          "savestate_features": "basic",
+          "libretro_saves": "true",
+          "cheats": "false",
+          "input_descriptors": "true",
+          "memory_descriptors": "false",
+          "core_options": "true",
+          "core_options_version": "1.0",
+          "load_subsystem": "false",
+          "hw_render": "true",
+          "required_hw_api": "Vulkan >= 1.0 | Direct3D >= 10.0 | OpenGL Core >= 3.3 | OpenGL ES >= 3.0",
+          "needs_fullpath": "true",
+          "disk_control": "false",
+          "is_experimental": "false",
+          "firmware0_desc": "Dolphin 'Sys' folder with dolphin-emu/Sys/codehandler.bin",
+          "firmware0_path": "dolphin-emu/Sys/codehandler.bin",
+          "firmware0_opt": "false",
+          "firmware1_desc": "dolphin-emu/Sys/GC/JAP/IPL.bin (GameCube JP BIOS)",
+          "firmware1_path": "dolphin-emu/Sys/GC/JAP/IPL.bin",
+          "firmware1_opt": "true",
+          "firmware2_desc": "dolphin-emu/Sys/GC/USA/IPL.bin (GameCube US BIOS)",
+          "firmware2_path": "dolphin-emu/Sys/GC/USA/IPL.bin",
+          "firmware2_opt": "true",
+          "firmware3_desc": "dolphin-emu/Sys/GC/EUR/IPL.bin (GameCube EU BIOS)",
+          "firmware3_path": "dolphin-emu/Sys/GC/EUR/IPL.bin",
+          "firmware3_opt": "true",
+          "notes": "(!) You need the Dolphin 'Sys' folder in 'system/dolphin-emu'.|(!) Check https://docs.libretro.com/library/dolphin/#setup for more details.|(!) The GameCube BIOS files can be stored in '<save_dir>/User/GC/<region>/'|[^] as an alternative to '<system_dir>/dolphin-emu/Sys/GC/<region>/',|[^] this information page only checks the system directory however|[^] and will not be able to tell if the files are present from these alternative paths.",
+          "description": "A port of the popular Dolphin Gamecube/Wii emulator to libretro. This core exposes only a subset of the many features included in the standalone Dolphin emulator, but it can provide a simplified and libretro-native experience for playing these games. The core needs the 'Sys' directory copied from the standalone emulator's files into the frontend's system directory, as this is where the emulator looks to apply per-game settings/hacks for better compatibility and performance. For Dolphin power-users, the reduced functionality of the core may be stifling, in which case the dolphin-launcher core may be a better fit."
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "play",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/play_libretro.info",
+        "sha256": "caa9f1a687d055a820426cb987ecb02e88ac31eac9970069822bd943ada53b20",
+        "fields": {
+          "display_name": "Sony - PlayStation 2 (Play!)",
+          "authors": "Jean-Philip Desjardins",
+          "supported_extensions": "chd|cso|cue|elf|iso|isz",
+          "corename": "Play!",
+          "license": "MIT",
+          "permissions": "dynarec",
+          "categories": "Emulator",
+          "manufacturer": "Sony",
+          "systemname": "Sony PlayStation 2",
+          "systemid": "playstation2",
+          "display_version": "Git",
+          "supports_no_game": "false",
+          "database": "Sony - PlayStation 2",
+          "savestate": "true",
+          "savestate_features": "basic",
+          "is_experimental": "true",
+          "description": "A port of Play!, a portable PlayStation 2 emulator, to libretro. This core has significantly lower compatibility with the PS2 library than PCSX2, but its portable codebase makes it compatible with more devices and operating systems. Nevertheless, it has substantial hardware requirements that limit its usefulness outside of powerful desktop PCs. Most users should try PCSX2 core first/instead if it is available for their device."
+        }
+      },
+      "startup": null
+    },
+    {
+      "core": "azahar",
+      "artifacts": {},
+      "errors": ["js: HTTP 404", "wasm: HTTP 404"],
+      "info": {
+        "url": "https://raw.githubusercontent.com/libretro/libretro-super/d63d696656b70a5e4924448fe86e06091deb2bec/dist/info/azahar_libretro.info",
+        "sha256": "b9b734cf8166d248fe8d86e818a93a4f209b5bbc34206759b5d5d738004f05f8",
+        "fields": {
+          "display_name": "Nintendo - 3DS (Azahar)",
+          "authors": "Azahar Emulator",
+          "supported_extensions": "3ds|3dsx|app|axf|bcci|bcxi|cci|cxi|elf|z3dsx|zcci|zcxi",
+          "corename": "Azahar",
+          "categories": "Emulator",
+          "license": "GPLv3+",
+          "permissions": "",
+          "display_version": "Git",
+          "manufacturer": "Nintendo",
+          "systemname": "3DS",
+          "systemid": "3ds",
+          "database": "Nintendo - Nintendo 3DS",
+          "supports_no_game": "false",
+          "savestate": "true",
+          "savestate_features": "basic",
+          "cheats": "false",
+          "input_descriptors": "true",
+          "memory_descriptors": "false",
+          "libretro_saves": "true",
+          "core_options": "true",
+          "core_options_version": "1.0",
+          "load_subsystem": "false",
+          "hw_render": "true",
+          "required_hw_api": "OpenGL Core >= 3.3",
+          "needs_fullpath": "true",
+          "disk_control": "false",
+          "is_experimental": "false",
+          "description": "A port of the Azahar 3DS emulator to libretro. Azahar is based on Citra, started by merging several prominent Citra forks after Citra was taken down. The core requires decrypted ROMs to function, and some games require Mii data to be dumped from your own 3DS console."
+        }
+      },
+      "startup": null
+    }
+  ],
+  "existingCatalog": {
+    "total": 64,
+    "upstream": 49,
+    "packaged": [
+      {
+        "id": "org.libretro.fceumm",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm.ecsplayer",
+        "sha256": "7baae6ca0e8addebd01d2cb91d29a69c29534c7b1ac65804b3e044af32052700"
+      },
+      {
+        "id": "org.libretro.virtualjaguar",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-media.1/virtualjaguar.ecsplayer",
+        "sha256": "b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de"
+      },
+      {
+        "id": "org.libretro.pcsx-rearmed",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-cores.1/pcsx-rearmed.ecsplayer",
+        "sha256": "1a1f37934f601d49ed00d6f69c998860c5283c3ddfde8774ef6dfd4badb9b3ad"
+      },
+      {
+        "id": "org.libretro.prosystem",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/prosystem.ecsplayer",
+        "sha256": "d27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55"
+      },
+      {
+        "id": "org.libretro.stella2014",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/stella2014.ecsplayer",
+        "sha256": "ef724d23b070d5035dcaeab774ca1c5a15a8c37bebd54d39e2bddfad7b530f13"
+      },
+      {
+        "id": "org.libretro.freeintv",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/freeintv.ecsplayer",
+        "sha256": "e2a92eca25dfaa58e417219fa26cfbd08d26077430b5962ff7aeb64f3b40fedb"
+      },
+      {
+        "id": "org.libretro.atari800",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/atari800.ecsplayer",
+        "sha256": "740025c312e6d5f602f2efc74b9b681f14cd445b4057ce4b0bda0aa15b417676"
+      },
+      {
+        "id": "org.libretro.pokemini",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/pokemini.ecsplayer",
+        "sha256": "74a012e237becb5078eea5edd91887b220463e1227b0b36bb35a30381fc57765"
+      },
+      {
+        "id": "org.libretro.potator",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/potator.ecsplayer",
+        "sha256": "03d3ca2fbc4d6ddf49bb021856e48fd0e093191df0f4aa30659ff09a2673a80b"
+      },
+      {
+        "id": "org.libretro.sameduck",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/sameduck.ecsplayer",
+        "sha256": "454a5a918a3652d8b4e106f0c62ffbf84d9a838ff1617570fc6056ae1ee12f48"
+      },
+      {
+        "id": "org.libretro.mednafen-pcfx",
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/mednafen-pcfx.ecsplayer",
+        "sha256": "8900e3f1b32bfa0f1f7532a3b1dbe480447325eb57fb378d6a08e7d088846496"
+      }
+    ]
+  }
+}

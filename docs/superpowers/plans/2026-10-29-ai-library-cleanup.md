@@ -3,6 +3,15 @@
 
 **Scope update — 2026-10-30:** The user deprioritized outbound model/API-key clients at this early project stage. Tasks 1–9 form the tested native cleanup checkpoint. Tasks 10–11, the outbound external-MCP connector in Task 13, and provider connection settings in Task 14 are deferred. The next feature is inbound ECS MCP for agent control and debugging (revise Task 12 around scoped library inspection, job progress, redacted diagnostics, start/cancel cleanup, and suggestions). The API-key draft is shelved in the ignored execution workspace; it is not active source. Retention/recovery and one proportionate review still need completing before calling this whole feature finished. See the implementation handoff in `docs/workstreams/ai-library-cleanup-handoff.md`.
 
+**Native completion — 2026-11-05:** Tasks 1–9 and the native retention/recovery
+portion of Task 15 are complete. The #28 follow-up adds bounded reference-aware
+collection, private backup/restore, conservative recovery and publication-history
+checks, host HTTP deadlines/shutdown and one focused independent review. The
+operations guide and updated handoff record verification. Ruling: Task 15's
+provider/MCP/settings acceptance remains with their deferred scopes and issue #27,
+matching the user's 2026-10-30 scope decision. Native consolidation proceeds after
+focused validation and the already-authorized signed merge/push.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans for native execution, or superpowers:subagent-driven-development if the user chooses delegation. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver independently installable workflow/translator/tool plugins and durable library-cleanup batches, then attach API-key backends and MCP to the same evidence, operation and proposal contracts.

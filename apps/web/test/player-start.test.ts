@@ -5,6 +5,24 @@ import { fixture } from './player-fixture.js';
 
 const canvas = {} as HTMLCanvasElement;
 const selection = { kind: 'asset', itemId: 'item', assetId: 'rom' } as const;
+test('remembered core options are staged before startup in their own bounded config', async () => {
+  const f = fixture();
+  const options = {
+    canvas,
+    importer: f.importer,
+    preferences: { options: { fceumm_palette: 'rgb' }, shader: 'off' as const },
+  };
+  await startPlayer(f.client, selection, options);
+  assert.equal(
+    new TextDecoder().decode(f.fs.get('/ecs/core-options.cfg')),
+    'fceumm_palette = "rgb"\n',
+  );
+  assert.match(
+    new TextDecoder().decode(f.fs.get('/ecs/retroarch.cfg')),
+    /core_options_path = "\/ecs\/core-options.cfg"/,
+  );
+  assert.ok(f.events.indexOf('write:/ecs/core-options.cfg') < f.events.indexOf('main'));
+});
 test('complete content and compatible saves are collected before import and staged before main; state actually restores', async () => {
   const f = fixture();
   await startPlayer(f.client, selection, {

@@ -1,11 +1,22 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { type BigIntStats, constants } from 'node:fs';
-import { access, lstat, mkdtemp, open, readFile, rm, stat } from 'node:fs/promises';
+import {
+  access,
+  type FileHandle,
+  lstat,
+  mkdtemp,
+  open,
+  readFile,
+  realpath,
+  rm,
+  stat,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { isAbsolute, join, posix } from 'node:path';
 import { crc32 } from 'node:zlib';
 import { cdiIdentificationPlugin } from './cdi-identification.js';
+import { discIdentificationPlugins } from './disc-identification.js';
 import { dolphinIdentificationPlugins } from './dolphin-identification.js';
 import { type RomFacts, type RomHash, validateRomFacts } from './rom-facts.js';
 
@@ -14,6 +25,11 @@ export interface IdentificationRequest {
   name: string;
   systemId: string | null;
   size: number;
+  /** Host-authorized, canonical files; never populated from provider/HTTP input. */
+  media?: {
+    entry: string;
+    members: { name: string; path: string; size: number }[];
+  };
   tools?: { sevenZip?: string; chdman?: string };
 }
 export interface ToolLimits {
@@ -32,6 +48,8 @@ export interface ToolResult {
 export interface ReaderContext {
   read(offset: number, length: number): Promise<Uint8Array>;
   stream(offset: number, length: number): AsyncIterable<Uint8Array>;
+  /** Only explicitly authorized media members can be read. */
+  readMember?(name: string, offset: number, length: number): Promise<Uint8Array>;
   runTool(
     tool: 'sevenZip' | 'chdman',
     args: readonly string[],
@@ -101,6 +119,50 @@ function same(a: BigIntStats, b: BigIntStats): boolean {
     a.mtimeNs === b.mtimeNs &&
     a.ctimeNs === b.ctimeNs
   );
+}
+function mediaMembers(request: IdentificationRequest) {
+  const members = new Map<string, { name: string; path: string; size: number }>();
+  if (request.media === undefined) return members;
+  const media = request.media;
+  if (
+    !media ||
+    typeof media.entry !== 'string' ||
+    !Array.isArray(media.members) ||
+    !media.members.length ||
+    media.members.length > 128
+  )
+    throw failure('identification-media-invalid');
+  const paths = new Set<string>();
+  for (const member of media.members) {
+    if (
+      !member ||
+      typeof member.name !== 'string' ||
+      member.name.length < 1 ||
+      member.name.length > 4096 ||
+      member.name.startsWith('/') ||
+      member.name.includes('\\') ||
+      member.name.split('/').some((part) => part === '.' || part === '..' || !part) ||
+      posix.normalize(member.name) !== member.name ||
+      Array.from(member.name).some(
+        (char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127,
+      ) ||
+      typeof member.path !== 'string' ||
+      !isAbsolute(member.path) ||
+      member.path.length > 4096 ||
+      member.path.includes('\0') ||
+      !Number.isSafeInteger(member.size) ||
+      member.size < 0 ||
+      members.has(member.name) ||
+      paths.has(member.path)
+    )
+      throw failure('identification-media-invalid');
+    members.set(member.name, member);
+    paths.add(member.path);
+  }
+  const entry = members.get(media.entry);
+  if (!entry || entry.path !== request.path || entry.size !== request.size)
+    throw failure('identification-media-entry-invalid');
+  return members;
 }
 
 async function nativeTool(
@@ -955,6 +1017,7 @@ const BUILTINS: readonly IdentificationPlugin[] = [
   { id: SEVEN_ID, supports: (request) => /\.7z$/i.test(request.name), identify: sevenZip },
   { id: CHD_ID, supports: (request) => /\.chd$/i.test(request.name), identify: chd },
   cdiIdentificationPlugin,
+  ...discIdentificationPlugins,
   ...dolphinIdentificationPlugins,
 ];
 function merge(target: RomFacts, addition: RomFacts, id: string): void {
@@ -1002,8 +1065,12 @@ export async function identifyRom(
     additionalPlugins.length > 13
   )
     throw failure('identification-request-invalid');
+  const members = mediaMembers(request);
   const limited = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(10000)]),
-    handle = await open(request.path, 'r');
+    handle = await open(request.path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  const memberStats = new Map<string, BigIntStats>();
+  const memberHandles = new Map<string, Promise<FileHandle>>();
+  let memberReads = 0;
   const activeTools = new Set<Promise<ToolResult>>();
   let consumed = 0,
     calls = 0;
@@ -1014,6 +1081,18 @@ export async function identifyRom(
   try {
     const before = await handle.stat({ bigint: true });
     if (!before.isFile() || before.size !== BigInt(request.size)) throw failure('source-changed');
+    for (const member of members.values()) {
+      limited.throwIfAborted();
+      const info = await lstat(member.path, { bigint: true });
+      if (
+        !info.isFile() ||
+        info.size !== BigInt(member.size) ||
+        (await realpath(member.path)) !== member.path
+      )
+        throw failure('source-changed');
+      memberStats.set(member.name, info);
+      if (member.path === request.path && !same(before, info)) throw failure('source-changed');
+    }
     async function readExact(offset: number, length: number): Promise<Uint8Array> {
       limited.throwIfAborted();
       checkRange(offset, length, request.size, MiB);
@@ -1026,6 +1105,38 @@ export async function identifyRom(
     }
     const reader: ReaderContext = {
       read: readExact,
+      async readMember(name, offset, length) {
+        limited.throwIfAborted();
+        const member = members.get(name);
+        if (!member) throw failure('reader-member-not-allowed');
+        checkRange(offset, length, member.size, MiB);
+        if (++memberReads > 256) throw failure('reader-member-call-limit');
+        if (name === request.media?.entry) return readExact(offset, length);
+        let pending = memberHandles.get(name);
+        if (!pending) {
+          pending = (async () => {
+            const file = await open(member.path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+            try {
+              const info = await file.stat({ bigint: true });
+              const expected = memberStats.get(name);
+              if (!expected || !same(expected, info)) throw failure('source-changed');
+              return file;
+            } catch (error) {
+              await file.close();
+              throw error;
+            }
+          })();
+          memberHandles.set(name, pending);
+        }
+        const file = await pending;
+        limited.throwIfAborted();
+        charge(length);
+        const bytes = Buffer.alloc(length);
+        const result = await file.read(bytes, 0, length, offset);
+        limited.throwIfAborted();
+        if (result.bytesRead !== length) throw failure('source-changed');
+        return bytes;
+      },
       async *stream(offset, length) {
         checkRange(offset, length, request.size, MAX_ROM);
         let position = offset;
@@ -1079,10 +1190,22 @@ export async function identifyRom(
       stat(request.path, { bigint: true }),
     ]);
     if (!same(before, after) || !same(before, current)) throw failure('source-changed');
+    for (const member of members.values()) {
+      limited.throwIfAborted();
+      const expected = memberStats.get(member.name);
+      if (
+        !expected ||
+        !same(expected, await lstat(member.path, { bigint: true })) ||
+        (await realpath(member.path)) !== member.path
+      )
+        throw failure('source-changed');
+    }
     if (!result.pluginIds.length) result.warnings.push('no-identification-plugin');
     return validateRomFacts(result);
   } finally {
     await Promise.allSettled([...activeTools]);
+    for (const file of await Promise.allSettled([...memberHandles.values()]))
+      if (file.status === 'fulfilled') await file.value.close();
     await handle.close();
   }
 }

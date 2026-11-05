@@ -1,7 +1,10 @@
+export { isBuiltinArtworkUrl } from './jaguar-cd-artwork.js';
+
 import { crc32 } from 'node:zlib';
 import { classifyArtwork } from './artwork-classification.js';
 import type { ProviderCapability } from './manifest.js';
 import {
+  artworkTitleMatches,
   compatibleGameTitles,
   contentStem,
   nameMatchKeys,
@@ -610,6 +613,8 @@ function assessEvidence(input: MatchingInput, metadata: Record<string, string>) 
 /** Opt-in filename policy: full release text is retained; no title/region/edition guessing. */
 function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
   if (!input.allowExactNames || !['metadata', 'artwork'].includes(candidate.kind)) return false;
+  if (candidate.kind === 'artwork' && candidate.metadata.artworkReviewRequired === 'true')
+    return false;
   // Catalog identity is explicit; a plain local sidecar association is not this policy.
   if (!input.systemId || candidate.metadata.systemId !== input.systemId) return false;
   if (
@@ -675,10 +680,18 @@ function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boo
     return false;
   return true;
 }
+function discIdentityConflict(input: MatchingInput): boolean {
+  return (
+    input.facts?.warnings.some((warning) =>
+      ['disc-system-conflict', 'disc-identifiers-conflict'].includes(warning),
+    ) ?? false
+  );
+}
 /** A saved choice is authority for its artwork association, never new ROM metadata. */
 export function selectedArtworkAnchor(
   input: MatchingInput,
 ): { identity: MatchCandidate; titles: string[] } | null {
+  if (discIdentityConflict(input)) return null;
   const saved = input.selectedMetadata;
   if (
     !saved ||
@@ -782,11 +795,19 @@ function savedSelectionEvidence(input: MatchingInput, candidate: MatchCandidate)
       .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
   return (
     canonical(candidate.metadata.matchedGame ?? '') === canonical(saved.title) &&
-    anchor.titles.some((title) => canonical(title) === canonical(candidate.title))
+    anchor.titles.some((title) =>
+      artworkTitleMatches(title, candidate.title, [
+        ...identifiers(anchor.identity.metadata.serials),
+        ...identifiers(anchor.identity.metadata.setIds),
+      ]),
+    )
   );
 }
 /** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */
 export function automaticEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+  if (discIdentityConflict(input)) return false;
+  if (candidate.kind === 'artwork' && candidate.metadata.artworkReviewRequired === 'true')
+    return false;
   if (
     input.systemId &&
     candidate.metadata.systemId &&

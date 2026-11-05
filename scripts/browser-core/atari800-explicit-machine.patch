@@ -1,0 +1,18 @@
+diff --git a/libretro/libretro-core.c b/libretro/libretro-core.c
+index 98dc5e6..948f124 100644
+--- a/libretro/libretro-core.c
++++ b/libretro/libretro-core.c
+@@ -660,7 +660,12 @@ static void update_variables(void)
+     else if  (HandleExtension((char*)RPATH, "bin") || HandleExtension((char*)RPATH, "BIN")
+            || HandleExtension((char*)RPATH, "rom") || HandleExtension((char*)RPATH, "ROM")
+            || HandleExtension((char*)RPATH, "a52") || HandleExtension((char*)RPATH, "A52")) {
+-        int is_a52 = HandleExtension((char*)RPATH, "a52") || HandleExtension((char*)RPATH, "A52");
++        /* An explicit 5200 selection also disambiguates unknown raw BIN/ROM
++         * cartridges before cart type detection and command-line construction. */
++        struct retro_variable requested_system = { "atari800_system", NULL };
++        int force_5200 = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &requested_system)
++                     && requested_system.value && !strcmp(requested_system.value, "5200");
++        int is_a52 = force_5200 || HandleExtension((char*)RPATH, "a52") || HandleExtension((char*)RPATH, "A52");
+         autorunCartridge = is_a52 ? A5200_CART : A800_CART;
+         ULONG crc = 0;
+         long fsize = 0;

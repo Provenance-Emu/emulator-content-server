@@ -45,7 +45,7 @@ export async function readWorkflowCredential(path: string): Promise<string> {
   }
 }
 
-async function hostLock(directory: string): Promise<() => Promise<void>> {
+export async function lockWorkflowHost(directory: string): Promise<() => Promise<void>> {
   const path = join(directory, 'host-lock.sqlite');
   try {
     const file = await open(path, 'wx', 0o600);
@@ -108,7 +108,10 @@ export async function startWorkflowHost(
     throw new Error('Workflow server URL requires HTTPS outside loopback');
   const client =
     options.client ??
-    new ContentClient(url.origin, await readWorkflowCredential(options.credentialFile ?? ''));
+    new ContentClient(url.origin, await readWorkflowCredential(options.credentialFile ?? ''), {
+      signal,
+      timeoutMs: 15_000,
+    });
   const state = await openWorkflowState(options.stateDirectory);
   let unlock: (() => Promise<void>) | undefined;
   const pool = new WorkflowWorkerPool();
@@ -119,10 +122,11 @@ export async function startWorkflowHost(
       await delay(ms, undefined, { signal: s });
     });
   try {
-    unlock = await hostLock(options.stateDirectory);
+    unlock = await lockWorkflowHost(options.stateDirectory);
     // Reconcile final receipts even when the server already completed the run and will not claim it again.
     for (const lease of state.savedLeases()) {
       if (signal.aborted) break;
+      if (state.recoveryRuns().includes(lease.runId)) continue;
       for (const publication of state.pendingPublications(lease.runId)) {
         try {
           await client.publishWorkflowRun(lease, publication);

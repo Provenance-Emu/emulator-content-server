@@ -22,12 +22,27 @@ export function workflowInteger(value: unknown, min = 0, max = Number.MAX_SAFE_I
   return Number(value);
 }
 export function workflowLease(value: unknown): WorkflowLease {
-  const lease = workflowBody(value, ['runId', 'hostId', 'fence', 'expiresAt']);
+  const lease = workflowBody(value, [
+    'runId',
+    'hostId',
+    'fence',
+    'expiresAt',
+    'publicationSequence',
+    'checkpointRef',
+  ]);
   const result = {
     runId: workflowString(lease.runId),
     hostId: workflowString(lease.hostId),
     fence: workflowInteger(lease.fence, 1),
     expiresAt: workflowString(lease.expiresAt, 40),
+    ...(lease.publicationSequence === undefined
+      ? {}
+      : { publicationSequence: workflowInteger(lease.publicationSequence, 0) }),
+    ...(lease.checkpointRef === undefined
+      ? {}
+      : {
+          checkpointRef: lease.checkpointRef === null ? null : workflowString(lease.checkpointRef),
+        }),
   };
   if (!Number.isFinite(Date.parse(result.expiresAt)))
     throw new DomainError('invalid-request', 400, 'Invalid lease expiry');

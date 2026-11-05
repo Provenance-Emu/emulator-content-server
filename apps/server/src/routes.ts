@@ -169,7 +169,7 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
       // clear of /api/v1, and the plugin refuses a path that leaves the
       // asset directory.
       wildcard: true,
-      setHeaders: (response) => {
+      setHeaders: (response, path) => {
         /**
          * The page keeps its bearer token in local storage, so the thing that
          * has to be impossible is injected script reading it and sending it
@@ -177,6 +177,14 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
          * and the only place a request can go is back here.
          */
         response.header('content-security-policy', UI_CONTENT_POLICY);
+        if (
+          /(?:^|[/\\])(?:import\.worker|pdf\.worker\.min)(?:-[A-Za-z0-9_-]+)?\.(?:js|mjs)$/.test(
+            path,
+          )
+        ) {
+          response.header('cross-origin-embedder-policy', 'require-corp');
+          response.header('cross-origin-resource-policy', 'same-origin');
+        }
         response.header('x-content-type-options', 'nosniff');
         response.header('referrer-policy', 'no-referrer');
       },
@@ -224,14 +232,14 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
         [
           "default-src 'none'",
           "script-src 'self'",
-          "frame-src 'self'",
+          "frame-src 'self' http://127.0.0.1:*",
           "style-src 'self'",
-          "img-src 'self' data:",
-          "connect-src 'self'",
+          "img-src 'self' data: blob: https://raw.githubusercontent.com",
+          "connect-src 'self' https://emuskins.com https://raw.githubusercontent.com https://deltastyles.com",
           "base-uri 'none'",
           "form-action 'none'",
           "frame-ancestors 'none'",
-          "worker-src 'none'",
+          "worker-src 'self'",
         ].join('; '),
       );
       reply.header('cross-origin-opener-policy', 'same-origin');
@@ -1039,6 +1047,16 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireUser(request, 'read');
     const { rootId } = request.params as { rootId: string };
     const root = requireVisibleRoot(catalog, actor, rootId);
+    // This synchronous adapter must reject an existing reservation rather than
+    // wait for a job whose caller may itself be holding that reservation.
+    const releaseRoots = reserveContentRoots(
+      catalog,
+      catalog
+        .listContentRoots()
+        .filter((candidate) => candidate.libraryId === root.libraryId)
+        .map((candidate) => candidate.id),
+    );
+    releaseRoots();
     return enqueueRootScan(catalog, root, actor.userId);
   });
 
