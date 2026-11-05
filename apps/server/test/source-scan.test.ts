@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import type { Dirent } from 'node:fs';
 import fs, { link, mkdir, rename, symlink, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
@@ -213,6 +214,21 @@ test('a rename during traversal cannot create duplicate identities or discard sa
     const source = f.catalog.listSources(root.id)[0];
     assert.ok(source);
     const saved = f.catalog.saveSourceMatch(source.id, 0, 'metadata', metadata, null, f.owner.id);
+    const opendir = fs.opendir;
+    t.mock.method(fs, 'opendir', async (...args: Parameters<typeof opendir>) => {
+      const handle = await opendir(...args);
+      if (args[0] !== path) return handle;
+      const entries: Dirent[] = [];
+      for await (const entry of handle) entries.push(entry);
+      // This regression needs the old name observed before the destination
+      // directory. Native directory iteration order is not guaranteed.
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+      return Object.assign(handle, {
+        async *[Symbol.asyncIterator]() {
+          yield* entries;
+        },
+      });
+    });
     const stat = fs.stat;
     let moved = false;
     t.mock.method(fs, 'stat', async (...args: Parameters<typeof stat>) => {
