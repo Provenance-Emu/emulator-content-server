@@ -5,6 +5,7 @@
   "windows": ["library"],
   "permissions": [
     "allow-managed-endpoint",
+    "allow-install-local-server",
     "allow-choose-managed-directory",
     "allow-validate-managed-selection"
   ]

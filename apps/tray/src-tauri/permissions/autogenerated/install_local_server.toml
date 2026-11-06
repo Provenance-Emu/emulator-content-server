@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-install-local-server"
+description = "Enables the install_local_server command without any pre-configured scope."
+commands.allow = ["install_local_server"]
+
+[[permission]]
+identifier = "deny-install-local-server"
+description = "Denies the install_local_server command without any pre-configured scope."
+commands.deny = ["install_local_server"]

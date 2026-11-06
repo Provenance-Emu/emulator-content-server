@@ -5,7 +5,8 @@
   let {
     context,
     folderSelection,
-  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter } = $props();
+    setupCode,
+  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string } = $props();
 </script>
 
-{#key context.key}<LibraryShell {context} {folderSelection} />{/key}
+{#key context.key}<LibraryShell {context} {folderSelection} {setupCode} />{/key}

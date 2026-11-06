@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { invoke } from '@tauri-apps/api/core';
   import App from '@ecs/web/App.svelte';
   import { onDestroy, untrack } from 'svelte';
   import { folderAdapterFor, managedProfile, nativeFolders, type ManagedEndpoint } from './lib/folders';
@@ -10,16 +11,31 @@
   let failure = $state<string | null>(null);
   let endpoint = $state<ManagedEndpoint | null>(null);
   let verifying = $state(false);
+  let installing = $state(false);
+  let setupCode = $state<{ key: string; value: string } | null>(null);
+  let pendingSetupCode: string | undefined;
+  const canSetUpMac = '__TAURI_INTERNALS__' in window && /Mac/.test(navigator.platform);
   let connectionOpen = $state(false);
   let disposed = false;
   let verifiedContext = $state.raw<DesktopContext | null>(null);
   let checkingContext: DesktopContext | null = null;
   let verificationGeneration = 0;
+  let checkedOnOpen = false;
   const awaitingManagedVerification = $derived(
     $selection?.profile.profileKey === 'managed-service' && $selection !== verifiedContext,
   );
   const folderSelection = $derived.by(() => { const context = $selection; return context ? folderAdapterFor(selection, endpoint) : undefined; });
-  async function selectManaged(context = $selection) {
+  function acceptManaged(result: Extract<ManagedEndpoint, { available: true }>) {
+    selection.select(managedProfile(result));
+    verifiedContext = $selection;
+    endpoint = result;
+    connectionOpen = false;
+    if (pendingSetupCode && result.origin === DEFAULT_ORIGIN && $selection) {
+      setupCode = { key: $selection.key, value: pendingSetupCode };
+      pendingSetupCode = undefined;
+    }
+  }
+  async function selectManaged(context = $selection, automatic = false) {
     if (verifying && checkingContext === context) return;
     const run = ++verificationGeneration;
     checkingContext = context;
@@ -29,19 +45,16 @@
       if (disposed || run !== verificationGeneration || $selection !== context) return;
       if (result.available) {
         // Retire every controller and staged path from the old context before granting an adapter.
-        selection.select(managedProfile(result));
-        verifiedContext = $selection;
-        endpoint = result;
-        connectionOpen = false;
+        acceptManaged(result);
       } else {
-        endpoint = result;
+        if (!automatic) endpoint = result;
         verifiedContext = null;
         if (context?.profile.profileKey === 'managed-service') {
           selection.select({ origin: context.origin, label: context.origin, profileKey: 'manual' });
         }
       }
     } catch (error) {
-      if (!disposed && run === verificationGeneration && $selection === context)
+      if (!automatic && !disposed && run === verificationGeneration && $selection === context)
         failure = error instanceof Error ? error.message : String(error);
     } finally {
       if (!disposed && run === verificationGeneration) {
@@ -50,11 +63,38 @@
       }
     }
   }
+  async function setUpMac() {
+    const context = $selection;
+    installing = true;
+    failure = null;
+    try {
+      pendingSetupCode = await invoke<string>('install_local_server');
+      for (let attempt = 0; attempt < 60 && !disposed && $selection === context; attempt++) {
+        const result = await nativeFolders.managedEndpoint();
+        if (disposed || $selection !== context) return;
+        if (result.available && result.origin === DEFAULT_ORIGIN) {
+          acceptManaged(result);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      if (!disposed && $selection === context)
+        failure = 'The local server is still starting. Use local managed service to check again.';
+    } catch (error) {
+      if (!disposed && $selection === context)
+        failure = error instanceof Error ? error.message : String(error);
+    } finally {
+      if (!disposed) installing = false;
+    }
+  }
   $effect(() => {
     const context = $selection;
     untrack(() => {
       if (context?.profile.profileKey === 'managed-service') {
         if (context !== verifiedContext) void selectManaged(context);
+      } else if (!context && !checkedOnOpen && '__TAURI_INTERNALS__' in window) {
+        checkedOnOpen = true;
+        void selectManaged(context, true);
       } else if (verifying && checkingContext !== context) {
         verificationGeneration++;
         checkingContext = null;
@@ -87,7 +127,9 @@
 </header>
 {#if $selection}
   {#if awaitingManagedVerification}<p class="startup-verification dim" role="status">Checking local service…</p>
-  {:else}<App context={$selection} {folderSelection} />{/if}
+  {:else}<App context={$selection} {folderSelection}
+    setupCode={setupCode && setupCode.key === $selection.key ? setupCode.value : undefined}
+  />{/if}
 {/if}
 {#snippet connectionForm()}
   <form class:connection-first-run={!$selection} onsubmit={(event) => {
@@ -101,10 +143,14 @@
       endpoint = null; failure = null; connectionOpen = false;
     } catch (error) { failure = error instanceof Error ? error.message : String(error); }
   }}>
-    <button class:primary={!$selection} type="button" disabled={verifying} onclick={() => void selectManaged()}>{verifying ? 'Checking local service…' : 'Use local managed service'}</button>
-    <label>Server address <input type="url" bind:value={typed} placeholder={DEFAULT_ORIGIN} required /></label>
-    <button class:primary={!!$selection} type="submit">Connect</button>
+    <button class:primary={!$selection} type="button" disabled={verifying || installing} onclick={() => void selectManaged()}>{verifying ? 'Checking local service…' : 'Use local managed service'}</button>
+    <label>Server address <input type="url" bind:value={typed} placeholder={DEFAULT_ORIGIN} required disabled={installing} /></label>
+    <button class:primary={!!$selection} type="submit" disabled={installing}>Connect</button>
   </form>
+  {#if canSetUpMac && $selection?.profile.profileKey !== 'managed-service'}
+    <button type="button" disabled={installing || verifying} onclick={() => void setUpMac()}>{installing ? 'Setting up the local server…' : 'Set up this Mac'}</button>
+    <p class="dim">Downloads the nightly server and configures it to start at login.</p>
+  {/if}
   {#if $selection}<p class="dim">Browser playback may ask you to sign in separately.</p>{/if}
 {/snippet}
 <style>

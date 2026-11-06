@@ -7,6 +7,7 @@ struct Fixture {
     commands: Vec<(String, Vec<String>)>,
     process_reads: usize,
     next_process: Option<ProcessIdentity>,
+    worker: Option<ProcessIdentity>,
 }
 impl Runner for Fixture {
     fn run(&mut self, program: &str, args: &[&str]) -> Result<String, String> {
@@ -17,6 +18,12 @@ impl Runner for Fixture {
             .ok_or_else(|| "Tool unavailable".into())
     }
     fn process(&mut self, pid: u32) -> Result<ProcessIdentity, String> {
+        if pid == 124 {
+            return self
+                .worker
+                .clone()
+                .ok_or_else(|| "Worker unavailable".into());
+        }
         assert_eq!(pid, 123);
         self.process_reads += 1;
         Ok(if self.process_reads > 1 {
@@ -40,11 +47,38 @@ fn fixture(replies: Vec<String>) -> Fixture {
         process: ProcessIdentity {
             uid: 501,
             start: "123456.123456".into(),
+            parent: 1,
         },
         commands: vec![],
         process_reads: 0,
         next_process: None,
+        worker: None,
     }
+}
+#[test]
+fn verifies_a_unique_direct_server_worker_of_the_registered_supervisor() {
+    let worker_socket = SOCKET.replace("p123", "p124");
+    let supervised = |children: &str, parent| {
+        let mut f = fixture(vec![
+            MAC.into(),
+            "".into(),
+            children.into(),
+            worker_socket.clone(),
+            worker_socket.clone(),
+            MAC.into(),
+        ]);
+        f.worker = Some(ProcessIdentity {
+            uid: 501,
+            start: "123457.123456".into(),
+            parent,
+        });
+        f
+    };
+    let snapshot = inspect(Platform::Mac, 501, &mut supervised("124\n", 123)).unwrap();
+    assert_eq!(snapshot.origin(), "http://127.0.0.1:7878");
+    assert_eq!(snapshot.pid, 124);
+    assert!(inspect(Platform::Mac, 501, &mut supervised("124\n125\n", 123)).is_err());
+    assert!(inspect(Platform::Mac, 501, &mut supervised("124\n", 999)).is_err());
 }
 fn mac(service: &str, sockets: &str) -> Fixture {
     fixture(vec![
@@ -134,6 +168,7 @@ fn changing_service_during_inspection_fails() {
     f.next_process = Some(ProcessIdentity {
         uid: 501,
         start: "new".into(),
+        parent: 1,
     });
     assert!(inspect(Platform::Mac, 501, &mut f).is_err());
 }

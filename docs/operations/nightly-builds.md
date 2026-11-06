@@ -4,7 +4,7 @@ Download from the stable [nightly release](https://github.com/Provenance-Emu/emu
 
 ## Choose a download
 
-| System | Server archive (includes Node and web UI) | Optional desktop companion |
+| System | Standalone server (includes Node and web UI) | Desktop app |
 | --- | --- | --- |
 | Linux x64 | `Emulation-Server-nightly-linux-x64.tar.gz` | `Emulation-Server-nightly-linux-x64.deb` or `.AppImage` |
 | Windows x64 | `Emulation-Server-nightly-windows-x64.zip` | `Emulation-Server-nightly-windows-x64.msi` |
@@ -15,6 +15,8 @@ No source checkout, pnpm, Rust or separate Node installation is needed for the s
 Download `SHA256SUMS.txt` from the same release and verify the file before extraction. Linux: `sha256sum --ignore-missing --check SHA256SUMS.txt`. macOS: `shasum -a 256 --check --ignore-missing SHA256SUMS.txt`. On Windows, use `Get-FileHash .\Emulation-Server-nightly-windows-x64.zip -Algorithm SHA256` and compare the full digest to its line in `SHA256SUMS.txt`. Files are replaced in place, so if verification fails during a refresh, download both again. Checksums verify download integrity; they are not code signatures.
 
 ## Start the server
+
+On Apple Silicon Macs, the **Desktop app** offers **Set up this Mac** to download and configure the server. The steps below are for the standalone server archive and headless installations.
 
 On macOS/Linux, extract your platform archive in Terminal (replace the filename for your system):
 
@@ -34,11 +36,11 @@ cd .\Emulation-Server-nightly-windows-x64
 
 Open <http://127.0.0.1:8473/ui/>. The first run prints a one-time setup token; enter it privately in setup to create the owner account. Add a collection and scan a folder you own, or upload a small file. Keep the data directory outside the extracted application so upgrades preserve your collection. Stop with Ctrl+C. For LAN access, services, backup and remote TLS configuration, follow the [installation guide](install.md) and [service guide](service.md). The portable launcher runs all CLI commands; use `./ecs --help` or `.\ecs.cmd --help`.
 
-## Optional desktop companion
+## Desktop app
 
-The desktop app connects to a separately running content server; it does not include or silently start that server. Windows: run the MSI. Linux: install the DEB with your package manager, or `chmod +x` the AppImage and run it on a tray-capable desktop. macOS: open the DMG and drag Emulation Server to Applications. Connect it to `http://127.0.0.1:8473` or your configured server address.
+On macOS, open the DMG and drag Emulation Server to Applications. Open the app to set up this Mac or connect to an existing server. On Windows, run the MSI. On Linux, install the DEB with your package manager or make the AppImage executable and run it on a tray-capable desktop. On Windows and Linux, start the standalone server separately or connect to an existing server.
 
-Linux and Windows nightly desktop installers are unsigned. When macOS signing is enabled, the macOS tray installer is Developer ID signed and Apple notarized from the same commit as the server archives. Its release asset label identifies its source commit. Repositories with signing disabled retain their last notarized DMG and can download the unsigned tray build as a workflow test artifact.
+Linux and Windows nightly desktop installers are unsigned. When macOS signing is enabled, the macOS desktop installer is Developer ID signed and Apple notarized from the same commit as the server archives. Repositories with signing disabled retain their last notarized DMG and can download the unsigned desktop build as a workflow test artifact.
 
 ## What CI proves and what to test
 

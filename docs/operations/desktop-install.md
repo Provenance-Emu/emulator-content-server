@@ -1,6 +1,6 @@
 # Emulation Server desktop
 
-Download the installer for your platform from the GitHub release. The desktop app connects to the content server over its API; install/run the portable server separately, or connect to an existing server. The app does not move or open your server's catalog.
+Download the **Desktop app** installer for your platform from the GitHub release. The app remembers your servers and opens their libraries over the API. Choose **Standalone server** if you prefer a command-line installation.
 
 ## macOS
 
@@ -10,7 +10,9 @@ The macOS installer targets Apple Silicon and is Developer ID signed and Apple n
 
 The 0.1.2 update includes the new Home, guided Add games, mobile filters and prominent Play controls. It also includes Settings → Devices for revocable app tokens and shows current library access in Settings → Access. Its higher application version supports upgrading the previous installers.
 
-Choose your server address in the library window, such as `http://127.0.0.1:8473`, and select **Connect**. **Use local managed service** requires a service previously installed with `ecs service install`; it does not install or start a new server implicitly. The menu's service controls act only on that fixed local registration.
+On first open, the app checks for a verified local service. Choose **Set up this Mac** on a fresh machine to download and verify the nightly server, install its per-user login service, and open the owner setup form. The local data directory is `~/Library/Application Support/Emulation Server/data`. If setup is interrupted after installation, the owner setup code is in `bootstrap.token` in that folder.
+
+To use a server on another computer, enter its URL and select **Connect**. Use **Status and settings → Servers** to switch between saved servers. The local service controls apply to this Mac.
 
 ## Windows
 

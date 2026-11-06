@@ -5,11 +5,14 @@ mod downloads;
 mod local_endpoint;
 mod navigation;
 mod service;
+mod setup;
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 
 type LocalState = Mutex<local_endpoint::Verifications>;
+#[derive(Default)]
+struct SetupState(Mutex<()>);
 fn require_library_window(window: &tauri::WebviewWindow) -> Result<(), String> {
     if window
         .url()
@@ -33,6 +36,25 @@ async fn managed_endpoint(window: tauri::WebviewWindow) -> Result<serde_json::Va
     })
     .await
     .map_err(|_| "Local service verification is unavailable.".to_string())?
+}
+#[tauri::command]
+async fn install_local_server(window: tauri::WebviewWindow) -> Result<String, String> {
+    require_library_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        require_library_window(&window)?;
+        let state = window.state::<SetupState>();
+        let _installing = state
+            .0
+            .try_lock()
+            .map_err(|_| "Local setup is already running.")?;
+        let home = window
+            .path()
+            .home_dir()
+            .map_err(|_| "Your home folder is unavailable.")?;
+        setup::install(&home)
+    })
+    .await
+    .map_err(|_| "Local setup could not finish.".to_string())?
 }
 #[tauri::command]
 async fn validate_managed_selection(
@@ -195,6 +217,7 @@ fn startup_menu_action(app: &tauri::AppHandle, id: &str) {
 fn main() {
     tauri::Builder::default()
         .manage(LocalState::default())
+        .manage(SetupState::default())
         .on_menu_event(|app, event| startup_menu_action(app, event.id().as_ref()))
         .setup(|app| {
             install_startup_menu(app)?;
@@ -249,6 +272,7 @@ fn main() {
             service_start,
             service_stop,
             managed_endpoint,
+            install_local_server,
             choose_managed_directory,
             validate_managed_selection
         ])

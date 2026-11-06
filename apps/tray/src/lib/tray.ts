@@ -60,9 +60,11 @@ export async function installTray(
     action: () => void operate('stop'),
   });
   const serviceDetails = await MenuItem.new({
-    text:
-      get(service).state === 'absent' ? 'Install service: instructions…' : 'Local service details…',
-    action: () => void window.show().then(() => window.setFocus()),
+    text: get(service).state === 'absent' ? 'Set up a server…' : 'Local service details…',
+    action: () => {
+      if (get(service).state === 'absent') void showLibrary();
+      else void window.show().then(() => window.setFocus());
+    },
   });
   const quit = await MenuItem.new({ text: 'Quit', action: () => void exit(0) });
   const menu = await Menu.new({
@@ -89,7 +91,7 @@ export async function installTray(
     const local = get(service);
     await localStatus.setText(serviceSummary(local));
     await serviceDetails.setText(
-      local.state === 'absent' ? 'Install service: instructions…' : 'Local service details…',
+      local.state === 'absent' ? 'Set up a server…' : 'Local service details…',
     );
     await startService.setEnabled(canStart(local));
     await stopService.setEnabled(canStop(local));

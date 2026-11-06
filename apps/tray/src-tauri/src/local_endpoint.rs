@@ -24,6 +24,7 @@ const LINUX_SHOW: &[&str] = &[
 pub struct ProcessIdentity {
     pub uid: u32,
     pub start: String,
+    pub parent: u32,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Snapshot {
@@ -31,6 +32,8 @@ pub struct Snapshot {
     uid: u32,
     pid: u32,
     start: String,
+    supervisor_pid: u32,
+    supervisor_start: String,
     generation: String,
     listener: String,
 }
@@ -47,7 +50,9 @@ struct NativeRunner;
 impl Runner for NativeRunner {
     fn run(&mut self, program: &str, args: &[&str]) -> Result<String, String> {
         let reply = service::command(program, args).map_err(|_| UNAVAILABLE)?;
-        if reply.code != 0 || reply.stdout.len() > MAX_OUTPUT {
+        // lsof exits 1 with no output when a process owns no listening socket.
+        let no_listener = program == "/usr/sbin/lsof" && reply.code == 1 && reply.stdout.is_empty();
+        if (reply.code != 0 && !no_listener) || reply.stdout.len() > MAX_OUTPUT {
             return Err(UNAVAILABLE.into());
         }
         Ok(reply.stdout)
@@ -80,6 +85,7 @@ fn process_identity(pid: u32) -> Result<ProcessIdentity, String> {
     Ok(ProcessIdentity {
         uid: info.pbi_uid,
         start: format!("{}.{}", info.pbi_start_tvsec, info.pbi_start_tvusec),
+        parent: info.pbi_ppid,
     })
 }
 #[cfg(target_os = "linux")]
@@ -99,10 +105,17 @@ fn process_identity(pid: u32) -> Result<ProcessIdentity, String> {
     }
     let fields = text.rsplit_once(')').ok_or(UNAVAILABLE)?.1;
     let start = fields.split_whitespace().nth(19).ok_or(UNAVAILABLE)?;
+    let parent = fields
+        .split_whitespace()
+        .nth(1)
+        .ok_or(UNAVAILABLE)?
+        .parse::<u32>()
+        .map_err(|_| UNAVAILABLE)?;
     positive(start)?;
     Ok(ProcessIdentity {
         uid,
         start: start.into(),
+        parent,
     })
 }
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
@@ -297,16 +310,13 @@ fn ss_listener(text: &str, pid: u32, uid: u32) -> Result<String, String> {
     }
     Ok(listener)
 }
-pub fn inspect(platform: Platform, uid: u32, runner: &mut impl Runner) -> Result<Snapshot, String> {
-    if uid == 0 || !matches!(platform, Platform::Mac | Platform::Linux) {
-        return Err(UNAVAILABLE.into());
-    }
-    let (service, pid, generation) = registration(platform, uid, runner)?;
-    let process = runner.process(pid).map_err(|_| UNAVAILABLE)?;
-    if process.uid != uid || process.start.is_empty() {
-        return Err(UNAVAILABLE.into());
-    }
-    let listener = match platform {
+fn listener_for(
+    platform: Platform,
+    uid: u32,
+    pid: u32,
+    runner: &mut impl Runner,
+) -> Result<Option<String>, String> {
+    match platform {
         Platform::Mac => {
             let pid_text = pid.to_string();
             let text = output(
@@ -322,6 +332,9 @@ pub fn inspect(platform: Platform, uid: u32, runner: &mut impl Runner) -> Result
                     "-FpufnT",
                 ],
             )?;
+            if text.is_empty() {
+                return Ok(None);
+            }
             let listener = lsof_listener(&text, pid, uid)?;
             let filter = format!("-iTCP@{}", listener);
             let text = output(
@@ -332,15 +345,50 @@ pub fn inspect(platform: Platform, uid: u32, runner: &mut impl Runner) -> Result
             if lsof_listener(&text, pid, uid)? != listener {
                 return Err(UNAVAILABLE.into());
             }
-            listener
+            Ok(Some(listener))
         }
         Platform::Linux => {
-            ss_listener(&output(runner, "/usr/bin/ss", &["-H", "-ltnpe"])?, pid, uid)?
+            let sockets = output(runner, "/usr/bin/ss", &["-H", "-ltnpe"])?;
+            if !sockets.contains(&format!("pid={pid},")) {
+                return Ok(None);
+            }
+            ss_listener(&sockets, pid, uid).map(Some)
         }
-        _ => return Err(UNAVAILABLE.into()),
+        _ => Err(UNAVAILABLE.into()),
+    }
+}
+pub fn inspect(platform: Platform, uid: u32, runner: &mut impl Runner) -> Result<Snapshot, String> {
+    if uid == 0 || !matches!(platform, Platform::Mac | Platform::Linux) {
+        return Err(UNAVAILABLE.into());
+    }
+    let (service, supervisor_pid, generation) = registration(platform, uid, runner)?;
+    let supervisor = runner.process(supervisor_pid).map_err(|_| UNAVAILABLE)?;
+    if supervisor.uid != uid || supervisor.start.is_empty() {
+        return Err(UNAVAILABLE.into());
+    }
+    let (pid, process, listener) = match listener_for(platform, uid, supervisor_pid, runner)? {
+        Some(listener) => (supervisor_pid, supervisor.clone(), listener),
+        None => {
+            // Portable services keep the registered launcher alive while its one worker
+            // owns the listener. A PID hint alone is never sufficient.
+            let children = output(
+                runner,
+                "/usr/bin/pgrep",
+                &["-P", &supervisor_pid.to_string()],
+            )?;
+            let pid =
+                u32::try_from(positive(single(children.lines())?)?).map_err(|_| UNAVAILABLE)?;
+            let worker = runner.process(pid).map_err(|_| UNAVAILABLE)?;
+            if worker.uid != uid || worker.parent != supervisor_pid || worker.start.is_empty() {
+                return Err(UNAVAILABLE.into());
+            }
+            let listener = listener_for(platform, uid, pid, runner)?.ok_or(UNAVAILABLE)?;
+            (pid, worker, listener)
+        }
     };
-    if registration(platform, uid, runner)? != (service.clone(), pid, generation.clone())
-        || runner.process(pid).map_err(|_| UNAVAILABLE)? != process
+    if registration(platform, uid, runner)? != (service.clone(), supervisor_pid, generation.clone())
+        || runner.process(supervisor_pid).map_err(|_| UNAVAILABLE)? != supervisor
+        || (pid != supervisor_pid && runner.process(pid).map_err(|_| UNAVAILABLE)? != process)
     {
         return Err(UNAVAILABLE.into());
     }
@@ -349,6 +397,8 @@ pub fn inspect(platform: Platform, uid: u32, runner: &mut impl Runner) -> Result
         uid,
         pid,
         start: process.start,
+        supervisor_pid,
+        supervisor_start: supervisor.start,
         generation,
         listener,
     })

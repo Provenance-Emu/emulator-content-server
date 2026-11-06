@@ -5,6 +5,7 @@ fn main() {
             "service_start",
             "service_stop",
             "managed_endpoint",
+            "install_local_server",
             "choose_managed_directory",
             "validate_managed_selection",
         ]),

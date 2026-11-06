@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +26,7 @@ import { ServerUpdater } from './server-updater.js';
 import {
   installService,
   readBootstrapped,
+  registrationFile,
   removeServicePid,
   type ServiceSpec,
   serviceStatus,
@@ -325,6 +326,29 @@ async function printInit(dataDir: string, displayName: string, showToken = true)
 async function service(dataDir: string): Promise<void> {
   const action = process.argv[3];
   const spec = serviceSpec(dataDir);
+  if (action === 'setup-local') {
+    if (spec.platform !== 'darwin' || spec.host !== '127.0.0.1' || spec.bootstrapped)
+      throw new Error('Local setup requires an unconfigured macOS server bound to loopback');
+    const registration = registrationFile(spec);
+    if (!registration) throw new Error('The local registration is unavailable');
+    if (
+      await stat(registration).then(
+        () => true,
+        (error: unknown) => {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+          throw error;
+        },
+      )
+    )
+      throw new Error('A local service is already installed');
+    await initData(dataDir, 'Emulation Server');
+    const setupCode = (await readFile(join(dataDir, 'bootstrap.token'), 'utf8')).trim();
+    if (!/^[A-Za-z0-9_-]{43}$/.test(setupCode)) throw new Error('The setup code is unavailable');
+    await installService(spec, undefined, true);
+    // Private stdout is consumed by the desktop setup flow. Daemon logs never receive it.
+    console.log(JSON.stringify({ setupCode }));
+    return;
+  }
   if (action === 'install') {
     await installService(spec);
     console.log(`service installed for ${spec.dataDir}`);

@@ -249,9 +249,9 @@ jobs:
         run: |
           # Runs on main serialize through the workflow concurrency group. Publish
           # this tested commit even if main advanced while installers were building.
-          mac_note='The macOS tray installer retains the last notarized build. Its asset label identifies its source commit.'
+          mac_note='The macOS desktop app retains the last notarized build.'
           if [[ "$ECS_MACOS_SIGNED" == true ]]; then
-            mac_note='The macOS tray installer was Developer ID signed and Apple notarized from the same commit.'
+            mac_note='The macOS desktop app was Developer ID signed and Apple notarized from the same commit. On Apple Silicon, choose **Set up this Mac** to download and configure the local server.'
           fi
           cat > "$RUNNER_TEMP/nightly-notes.md" <<NOTES
           Automated test builds from commit $GITHUB_SHA.
@@ -259,7 +259,9 @@ jobs:
           [Installation and testing guide](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md)
           [Build and smoke-test evidence](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
 
-          Server archives include Node.js and the web interface. Desktop installers are API companions; run the server separately. Linux and Windows installers are unsigned. $mac_note
+          **Desktop app** opens the library and connects to an existing server. **Standalone server** is the command-line package for the computer hosting the library. After extracting it, follow the [start commands](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md#start-the-server).
+
+          Linux and Windows desktop installers are unsigned. $mac_note
 
           Platforms: Linux x64 (Ubuntu 24.04), Windows x64, macOS arm64 (Apple Silicon). Other architectures and GUI interaction are unverified. Emulator cores, ROMs, BIOS files and user data are not included. Back up data before testing; database downgrades require restoring a backup.
 
@@ -268,16 +270,23 @@ jobs:
           if [[ "$ECS_MACOS_SIGNED" != true ]] && gh release view nightly >/dev/null 2>&1; then
             mac_digest=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" --jq '
               .assets[] | select(.name == "Emulation-Server-nightly-macos-arm64.dmg" and
-                ((.label // "") | startswith("macOS tray installer (notarized, "))) | .digest')
+                ((.label // "") | . == "macOS Apple Silicon · Notarized desktop app (.dmg)" or
+                  startswith("macOS tray installer (notarized, "))) | .digest')
             if [[ "$mac_digest" =~ ^sha256:([0-9a-f]{64})$ ]]; then
               printf '%s  Emulation-Server-nightly-macos-arm64.dmg\n' "${BASH_REMATCH[1]}" >> dist-release/all/SHA256SUMS.txt
             fi
           fi
           assets=()
           for asset in dist-release/all/*; do
-            if [[ "$asset" == */Emulation-Server-nightly-macos-arm64.dmg ]]; then
-              asset="$asset#macOS tray installer (notarized, ${GITHUB_SHA:0:7})"
-            fi
+            case "${asset##*/}" in
+              Emulation-Server-nightly-macos-arm64.dmg) asset="$asset#macOS Apple Silicon · Notarized desktop app (.dmg)" ;;
+              Emulation-Server-nightly-macos-arm64.tar.gz) asset="$asset#macOS Apple Silicon · Standalone server (.tar.gz)" ;;
+              Emulation-Server-nightly-windows-x64.msi) asset="$asset#Windows x64 · Desktop app (.msi)" ;;
+              Emulation-Server-nightly-windows-x64.zip) asset="$asset#Windows x64 · Standalone server (.zip)" ;;
+              Emulation-Server-nightly-linux-x64.AppImage) asset="$asset#Linux x64 · Desktop app (.AppImage)" ;;
+              Emulation-Server-nightly-linux-x64.deb) asset="$asset#Linux x64 · Desktop app (.deb)" ;;
+              Emulation-Server-nightly-linux-x64.tar.gz) asset="$asset#Linux x64 · Standalone server (.tar.gz)" ;;
+            esac
             assets+=("$asset")
           done
           if gh release view nightly >/dev/null 2>&1; then

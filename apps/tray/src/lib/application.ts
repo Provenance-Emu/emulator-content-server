@@ -18,6 +18,7 @@ export interface DesktopEnvironment {
   openExternal(url: string): void | Promise<void>;
 }
 const PROFILE_KEY = 'ecs.tray.profile';
+const PROFILES_KEY = 'ecs.tray.servers';
 const SESSION_NAMESPACE = 'ecs.desktop.session';
 const CHANGE = 'ecs:desktop-storage';
 let sequence = 0;
@@ -118,6 +119,7 @@ export function createDesktopContext(
 }
 
 export interface DesktopSelection extends Readable<DesktopContext | null> {
+  readonly profiles: Readable<DesktopProfile[]>;
   select(profile: DesktopProfile): void;
   dispose(): void;
 }
@@ -127,6 +129,7 @@ export function createDesktopSelection(options: DesktopEnvironment): DesktopSele
   let current: DesktopContext | null = null;
   let disposed = false;
   const state = writable<DesktopContext | null>(null);
+  const profiles = writable<DesktopProfile[]>([]);
   const retire = () => {
     if (current) {
       current.client.setToken(undefined);
@@ -158,20 +161,66 @@ export function createDesktopSelection(options: DesktopEnvironment): DesktopSele
     }
     return null;
   };
+  function readProfiles(): DesktopProfile[] {
+    const saved: DesktopProfile[] = [];
+    try {
+      const items: unknown = JSON.parse(storage.getItem(PROFILES_KEY) ?? '[]');
+      if (!Array.isArray(items)) return saved;
+      for (const item of items) {
+        if (
+          typeof item?.origin !== 'string' ||
+          typeof item.label !== 'string' ||
+          typeof item.profileKey !== 'string'
+        )
+          continue;
+        try {
+          saved.push({
+            origin: canonicalServerOrigin(item.origin),
+            label: item.label,
+            profileKey: item.profileKey,
+          });
+        } catch {
+          /* Ignore an invalid saved address. */
+        }
+      }
+    } catch {
+      /* The current selection still works if the saved list is damaged. */
+    }
+    return saved;
+  }
+  function withProfile(saved: DesktopProfile[], profile: DesktopProfile) {
+    return [
+      profile,
+      ...saved.filter((item) =>
+        profile.profileKey === 'managed-service'
+          ? item.profileKey !== 'managed-service'
+          : item.profileKey === 'managed-service' || item.origin !== profile.origin,
+      ),
+    ];
+  }
   const load = () => {
     if (disposed) return;
     retire();
     const profile = read();
     current = profile ? createDesktopContext(profile, options) : null;
+    const saved = readProfiles();
+    profiles.set(profile ? withProfile(saved, profile) : saved);
     state.set(current);
   };
   load();
   const unsubscribe = listen(storage, events, PROFILE_KEY, load);
   return {
     subscribe: state.subscribe,
+    profiles: { subscribe: profiles.subscribe },
     select(profile) {
       if (disposed) return;
       const canonical = { ...profile, origin: canonicalServerOrigin(profile.origin) };
+      const previous = read();
+      const saved = readProfiles();
+      storage.setItem(
+        PROFILES_KEY,
+        JSON.stringify(withProfile(previous ? withProfile(saved, previous) : saved, canonical)),
+      );
       storage.setItem(PROFILE_KEY, JSON.stringify(canonical));
       storage.removeItem('ecs.tray.origin');
       notify(events, PROFILE_KEY);

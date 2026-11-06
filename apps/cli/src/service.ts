@@ -121,6 +121,7 @@ export function readBootstrapped(dataDir: string): boolean {
 export async function installService(
   spec: ServiceSpec,
   runner: CommandRunner = defaultRunner,
+  onlyIfAbsent = false,
 ): Promise<void> {
   assertListenPolicy({
     host: spec.host,
@@ -131,6 +132,19 @@ export async function installService(
   });
   const text = renderRegistration(spec);
   const file = registrationFile(spec);
+  if (onlyIfAbsent) {
+    if (spec.platform !== 'darwin' || !file) throw new Error('Local setup requires macOS');
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, text, { flag: 'wx', mode: 0o600 });
+    try {
+      runRequired(runner, ['launchctl', 'bootstrap', `gui/${spec.uid}`, file]);
+    } catch (error) {
+      if ((await readFile(file, 'utf8').catch(() => null)) === text)
+        await rm(file, { force: true });
+      throw error;
+    }
+    return;
+  }
   if (file) {
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, text);
