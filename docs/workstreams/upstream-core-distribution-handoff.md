@@ -1,111 +1,92 @@
-# Upstream core distribution (#29) — bounded handoff, 2026-11-04
+# Upstream core distribution (#29)
 
-## Published implementation and evidence
+Updated 2026-11-05. The current distribution uses official compatible runtime
+pairs, immutable catalog snapshots and a bounded verified local package cache.
 
-- Immutable version-1 catalog identities and a bounded verified local package
-  cache: `ae323de`; [cache and operator workflow](../operations/browser-core-cache.md).
-- Management mutations remain responsive during downloads, with preparation
-  bounded through activation: `978ddca`, `820bb22`.
-- Operator-approved catalog files require an independent expected snapshot ID;
-  export is atomic/non-overwriting, service registration retains both settings,
-  and catalog changes preserve installed versions: `98017ab`.
-- New PCSX ReARMed installs use one pinned official loader/WASM pair while
-  historical installs remain unchanged: `b7c86ad`.
-  [Original EXE/ISO/Mode 2 CHD acceptance and byte receipts](../operations/upstream-pcsx-acceptance-2026-11-04.md).
-- [Custom-build exception audit](../operations/upstream-core-exceptions-2026-11-02.md)
-  distinguishes compatible official final artifacts from link inputs and
-  documents FCEUmm save-contract, Jaguar firmware-removal/HLE and other gaps.
-  Dated catalog counts are not fresh gameplay/availability guarantees.
-- Generated fixtures cover changed bytes, absent downloads, checksum failures,
-  coherent revisions, offline older-catalog reuse, symlinks, quota behavior and
-  installation races. No game/firmware fixtures or core binaries are committed.
+## Published implementation
 
-## CI finding and bounded follow-up
+- `ae323de` adds immutable version-1 catalog identities and verified local
+  retention, bounded to 512 MiB and 2,048 files.
+- `978ddca` and `820bb22` keep owner mutations responsive during downloads and
+  bound package preparation through activation.
+- `98017ab` adds atomic catalog export and operator-selected local catalogs with
+  an independently supplied expected snapshot ID. Installed versions remain pinned.
+- `b7c86ad` switches new PCSX ReARMed installs to a pinned official pair, following
+  generated EXE/ISO/Mode 2 CHD acceptance. Existing installs retain their versions.
+- `3b98207` retains source, notice and published build-receipt pins for eight custom
+  packages. `202076b` verifies offline reuse across provenance-only catalog changes.
+- `e640012` retains the full source/package inspection and exact legacy runtime
+  reconstruction evidence, and fixes the two legacy rebuild helpers.
 
-The [Linux CI run for b7c86ad](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41934741342)
-failed in one unrelated scanner rename-race regression: 1,053 tests passed,
-one failed and nine skipped. Lint/build had succeeded; the subsequent audit step
-did not run because `pnpm verify` stopped at that test.
+The scanner fixture follow-up `373fa2a` passed Linux CI. The later `202076b`
+[Linux verification](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/42130016876)
+also passed. The [cache operations guide](../operations/browser-core-cache.md)
+records catalog trust, retention, explicit reinstall and cache recovery behavior.
 
-The fixture expected `a-before.nes` to be visited before `z-nested`, despite
-native directory iteration having no guaranteed order. Forcing directory-first
-iteration locally reproduced the exact CI assertion. The test now explicitly
-controls only that fixture root's enumeration order so it actually exercises
-the old-name/new-name duplicate-identity race. Production scanning is unchanged.
-The adverse-order reproduction and all 13 source-scan tests pass on Node 22.22.2;
-the affected TypeScript build, Biome and whitespace checks pass. The signed
-fix was published as `373fa2a`. Its [Linux CI verification](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41948499469)
-passed, including the configured dependency audit.
+## Provenance evidence completed in this batch
 
-## Remaining #29 acceptance work
+The [source audit](../operations/core-source-audit-2026-11-05.md) and its
+[machine-readable inventory](../operations/core-source-audit-2026-11-05.json)
+record all ten retained custom packages.
 
-Eight retained custom packages now have release-linked source, notice and build
-receipt pins. Corresponding-source/build and license-notice completeness remain
-open across legacy custom artifacts and upstream pairs.
-Current upstream profiles retain exact artifact pins and pinned core-info
-metadata/license/firmware facts. The official web host does not supply an exact
-source-to-binary build mapping in the inspected receipts. Preserve that unknown;
-do not invent a source revision or claim that a repository link proves an exact
-binary build. The inspected existing release source/notice assets are linked
-in the dated provenance audit below.
+FCEUmm and Virtual Jaguar loader/WASM bytes were independently reproduced exactly
+from published source. The earlier Jaguar audit missed its media release's link
+to the preceding CD source archive. Both packages reuse that runtime pair. Its
+four boot-ROM source files contain zero initializers, with individual pins kept
+in the inventory. The reconstruction scope covers runtime resources; published
+wrapper manifests retain their separate package hashes.
 
-An automatic channel and in-place installed-version switching are still
-unimplemented. #29 permits a channel; it does not require building one. Current
-catalog rollback uses an older reviewed file/pin and an explicit reinstall from
-its verified cache. A future in-place replacement feature must preserve owner
-firmware/settings and the working version on failure, and needs its own bounded
-implementation scope. None is a reason to rebuild every core or create per-core
-application tags. Direct upstream download plus verified local retention remains
-the documented approach; a dedicated artifact repository is not justified yet.
+All eight newer source archives matched their release size/hash. Embedded build
+manifests matched the downloaded package and published receipt. Core/frontend
+revisions, compiler pins, patches and named notice-file inventories are retained.
+Independent rebuild status for those eight remains publisher-reported.
 
-## Ownership and completion eligibility
+The catalog links legacy entries to the immutable audit commit and exact audit
+file hash using its existing receipt schema. All ten custom entries also retain
+six SDK/component notice pins at the exact compiler source revision. These
+metadata changes create new descriptor/cache identities. Keep older catalog files
+and their independent expected IDs for offline reuse of older cache entries.
 
-The configured 1Password SSH signing retry succeeded. The CI-fixture fix and
-initial handoff were signed and pushed to main in `373fa2a`. The corresponding
-[Linux CI run](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41948499469)
-passed.
+## Remaining #29 gaps
 
-The next bounded batch retains published source, notice and build-receipt pins
-for eight custom packages and explicitly unverified metadata for FCEUmm/Jaguar.
-The [dated provenance audit](../operations/custom-core-provenance-2026-11-04.md)
-records verification scope and outstanding gaps. Source rebuilds and complete
-license-notice audits remain outstanding, as do exact upstream build mappings.
+1. Exact source/build mappings remain unverified for 50 official upstream pairs.
+   Their existing core-info hashes and license facts remain retained. The audit
+   enumerates every affected profile. Closing this requires a receipt tying the
+   pinned resource hashes to complete core/frontend/SDK revisions, flags, patches,
+   source and applicable notice records. Full nightly-archive inspection remains
+   outstanding. A current repository head cannot supply historical build proof.
+2. Named notice inventories preserve available files. Inline copyright headers,
+   exact linked-dependency applicability and notice-completeness review remain
+   open. The archived source and pinned SDK notice files are the evidence base.
+3. Gameplay qualification remains separate from factory startup and source
+   reconstruction. PCSX's generated content acceptance covers EXE, ISO and Mode 2
+   CHD. Other formats, commercial compatibility, audio/input and save behavior
+   retain their individual qualification scopes.
 
-This checkout remains on `main`. No second ECS worktree or agent lane was
-started. `codex/ai-library-cleanup` and its remote at `99cf326` retain two unique
-unmerged commits for #27/#28. Their recovery/retention work and review remain
-unfinished; preserve that branch rather than archiving it to reduce sessions.
+Direct upstream distribution plus verified local retention continues to supply
+compatible pairs. Existing custom exceptions have individual documented runtime
+or patch requirements. A dedicated artifact repository, automatic channel and
+in-place installed-version switching remain separate decisions. Catalog rollback
+uses an older reviewed file/pin and explicit reinstall. Preserving firmware and
+a working version during future in-place replacement needs its own scoped work.
 
-The bounded CI-fixture follow-up has been published. #29 itself remains open
-for the provenance/notice acceptance audit above. A session may be paused or archived only with this handoff retained;
-that would not mean the epic or the separate cleanup branch has been completed.
+## Workspace and related work
 
-The provenance batch passed the focused server/CLI catalog, cache, download and
-manager tests on Node 22.22.2. Server/CLI TypeScript builds, affected Biome checks,
+The native cleanup checkpoint and #28 retention/recovery work were merged as
+`7ab22ac`. Both cleanup branch names were retired and the redundant worktree was
+archived. Inbound MCP remains tracked independently in #27.
+
+This #29 batch used an isolated worktree because the primary checkout has
+concurrent server-update edits. Preserve those edits while publishing the batch,
+fast-forwarding primary main and archiving the redundant provenance worktree.
+Source archives, downloaded core packages and compiled runtime output stay
+outside Git. Generated-fixture tests cover rebuild hash rejection and catalog
+snapshot/cache behavior.
+
+## Batch verification
+
+All 97 focused source-helper, catalog, export, cache, download, manager and CLI
+tests passed on Node 22.22.2. Server/CLI TypeScript builds, affected Biome checks,
 client drift, secret/fixture scan, package boundaries and whitespace checks passed.
-All eight static receipt/notice pins were compared with downloaded release bytes,
-and source pins were compared with their published receipts.
-
-## CI and native cleanup checkpoint — 2026-11-05
-
-The `3b98207` [Linux CI run](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/41949309098)
-and [nightly distribution](https://github.com/Provenance-Emu/emulator-content-server/actions/runs/42048221930)
-passed. The native cleanup branch's #28 retention/recovery work was finished before
-starting another core-distribution implementation batch. Its
-[updated handoff](./ai-library-cleanup-handoff.md) records scope and validation.
-The earlier instruction to preserve `99cf326` applies until the unique native
-cleanup history has been merged and published. #27 remains a separate MCP scope.
-
-## Provenance-only snapshot regression — 2026-11-05
-
-A generated-package cache regression now exercises adding source/notice/build
-receipt pins while retaining identical package bytes. An older pinned catalog
-reinstalls offline after restart. The enriched descriptor requires its own
-verified cache entry; after that package is retained, both snapshots reinstall
-offline and both receipt files parse under their independent expected IDs.
-Only the package URL is fetched; provenance references remain metadata.
-All 47 focused catalog/cache/selection/provenance tests passed on Node 22.22.2.
-
-The native cleanup checkpoint and #28 retention/recovery follow-up were signed
-and published to main as `7ab22ac`. The original cleanup branch's unique commits
-are included, and its merged local and remote branch names were retired.
+The independent source/provenance review found no actionable issues. Legacy
+reconstruction hashes were compared against actual downloaded published resources.

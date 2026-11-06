@@ -118,3 +118,8 @@ participates in entry identity, so keep older snapshots for offline reuse of
 their existing cache keys. The server validates these references without
 downloading the referenced artifacts. The published evidence and remaining gaps
 are recorded in the [2026-11-04 provenance audit](./custom-core-provenance-2026-11-04.md).
+
+The [2026-11-05 source audit](./core-source-audit-2026-11-05.md) supplies exact
+legacy runtime reconstruction records and named source/SDK notice inventories.
+Its catalog linkage uses the existing version-1 receipt shape. Source and build
+references retain their pinned bytes independently of the package URL.

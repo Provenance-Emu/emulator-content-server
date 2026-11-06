@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { playerCatalog } from '../src/player-catalog.js';
 import { parsePlayerCatalogSnapshot } from '../src/player-catalog-file.js';
@@ -23,7 +25,10 @@ test('published source-built packages retain matching pinned source, notice and 
     assert.ok(entry?.provenance);
     assert.equal(entry.provenance.sourceMapping, 'release-receipt');
     assert.ok(entry.provenance.license);
-    const artifacts = entry.provenance.artifacts ?? [];
+    const release = entry.url?.slice(0, entry.url.lastIndexOf('/'));
+    const artifacts = (entry.provenance.artifacts ?? []).filter((artifact) =>
+      artifact.url.startsWith(`${release}/`),
+    );
     assert.deepEqual(artifacts.map((artifact) => artifact.kind).sort(), [
       'build',
       'notices',
@@ -44,18 +49,21 @@ test('published source-built packages retain matching pinned source, notice and 
   }
 });
 
-test('legacy packages and official pairs do not invent a verified source mapping', () => {
+test('legacy packages retain reproduced source receipts while upstream mappings remain open', () => {
   const fceumm = playerCatalog.find((entry) => entry.id === 'org.libretro.fceumm');
   const jaguar = playerCatalog.find((entry) => entry.id === 'org.libretro.virtualjaguar');
-  assert.equal(fceumm?.provenance?.sourceMapping, 'unverified');
+  assert.equal(fceumm?.provenance?.sourceMapping, 'release-receipt');
   assert.ok(fceumm?.provenance);
   assert.equal(
     fceumm.provenance.artifacts?.find((artifact) => artifact.kind === 'source')?.sha256,
     '690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff',
   );
-  assert.equal(jaguar?.provenance?.sourceMapping, 'unverified');
+  assert.equal(jaguar?.provenance?.sourceMapping, 'release-receipt');
   assert.ok(jaguar?.provenance);
-  assert.deepEqual(jaguar.provenance.artifacts, []);
+  assert.equal(
+    jaguar.provenance.artifacts?.find((artifact) => artifact.kind === 'source')?.sha256,
+    '592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d',
+  );
   for (const entry of playerCatalog.filter((entry) => entry.upstream))
     assert.notEqual(entry.provenance?.sourceMapping, 'release-receipt');
 });
@@ -130,3 +138,45 @@ for (const mode of [
     assert.equal(calls, 0);
   });
 }
+
+test('retained legacy source mappings bind the exact audit bytes and package pins', () => {
+  const bytes = readFileSync(
+    new URL('../../../../docs/operations/core-source-audit-2026-11-05.json', import.meta.url),
+  );
+  const audit = JSON.parse(bytes.toString('utf8'));
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  for (const id of ['org.libretro.fceumm', 'org.libretro.virtualjaguar']) {
+    const entry = playerCatalog.find((e) => e.id === id);
+    const record = audit.packages.find((p: { id: string }) => p.id === id);
+    assert.ok(entry?.provenance && record);
+    assert.equal(record.rebuild.state, 'matched');
+    assert.equal(record.rebuild.scope, 'loader-and-wasm');
+    assert.equal(record.package.sha256, entry.sha256);
+    assert.equal(entry.provenance.infoSha256, sha256);
+    const source = entry.provenance.artifacts?.find((a) => a.kind === 'source');
+    assert.deepEqual(source, { kind: 'source', ...record.source });
+    const build = entry.provenance.artifacts?.find((a) => a.kind === 'build');
+    assert.equal(build?.sha256, sha256);
+    assert.equal(build?.sizeBytes, bytes.length);
+    assert.match(build?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\//);
+  }
+  const custom = playerCatalog.filter((entry) => entry.url && !entry.upstream);
+  assert.equal(custom.length, audit.packages.length);
+  for (const entry of custom) {
+    const sdk =
+      entry.provenance?.artifacts?.filter((a) => a.url.includes('/emscripten-core/emscripten/')) ??
+      [];
+    assert.deepEqual(
+      sdk,
+      audit.sdkNotices.map(({ path: _path, ...notice }: { path: string }) => ({
+        kind: 'notices',
+        ...notice,
+      })),
+    );
+  }
+  const upstream = playerCatalog.filter((entry) => entry.upstream);
+  assert.deepEqual(
+    audit.upstream.profiles.map((p: { id: string }) => p.id).sort(),
+    upstream.map((p) => p.id).sort(),
+  );
+});

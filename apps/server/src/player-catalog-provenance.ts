@@ -1,15 +1,14 @@
 import type { TrustedPlayer } from './player-catalog.js';
 
-/** Existing release assets inspected 2026-11-04; receipt linkage is publisher evidence, not a local rebuild. */
-export const customPlayerProvenance: Readonly<
-  Record<string, NonNullable<TrustedPlayer['provenance']>>
-> = {
+/** Release receipts and independently reproduced legacy runtime records. See the dated source audit. */
+const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provenance']>>> = {
   'org.libretro.fceumm': {
     sourceInfo:
-      'https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.4-cores.1',
+      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
+    infoSha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
     license:
-      'RetroArch GPL-3.0-or-later with the tracked SAVE_FILES patch | FCEUmm GPL-2.0-or-later; preserve all upstream dependency notices',
-    sourceMapping: 'unverified',
+      'RetroArch GPL-3.0-or-later with the tracked SAVE_FILES patch | FCEUmm GPL-2.0-or-later; retained source and SDK notices',
+    sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
@@ -17,15 +16,35 @@ export const customPlayerProvenance: Readonly<
         sha256: '690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff',
         sizeBytes: 86189038,
       },
+      {
+        kind: 'build',
+        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
+        sha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
+        sizeBytes: 94911,
+      },
     ],
   },
   'org.libretro.virtualjaguar': {
     sourceInfo:
-      'https://github.com/Provenance-Emu/emulator-content-server/releases/tag/v0.1.6-jaguar-media.1',
+      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
+    infoSha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
     license:
-      'RetroArch GPL-3.0-or-later | Virtual Jaguar GPL-3.0; sanitized firmware-free source and all dependency notices required',
-    sourceMapping: 'unverified',
-    artifacts: [],
+      'RetroArch GPL-3.0-or-later | Virtual Jaguar GPL-3.0; sanitized source and retained dependency notices',
+    sourceMapping: 'release-receipt',
+    artifacts: [
+      {
+        kind: 'source',
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz',
+        sha256: '592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d',
+        sizeBytes: 90859298,
+      },
+      {
+        kind: 'build',
+        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
+        sha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
+        sizeBytes: 94911,
+      },
+    ],
   },
   'org.libretro.prosystem': {
     sourceInfo:
@@ -252,3 +271,54 @@ export const customPlayerProvenance: Readonly<
     ],
   },
 };
+
+const sdkNotices = [
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/LICENSE',
+    sha256: '620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86',
+    sizeBytes: 5093,
+  },
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libc/musl/COPYRIGHT',
+    sha256: 'f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af',
+    sizeBytes: 6204,
+  },
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/compiler-rt/LICENSE.TXT',
+    sha256: '1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d',
+    sizeBytes: 16708,
+  },
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libcxx/LICENSE.TXT',
+    sha256: '539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b',
+    sizeBytes: 16703,
+  },
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libcxxabi/LICENSE.TXT',
+    sha256: 'e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c',
+    sizeBytes: 16706,
+  },
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libunwind/LICENSE.TXT',
+    sha256: 'b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d',
+    sizeBytes: 16706,
+  },
+] as const;
+
+export const customPlayerProvenance: Readonly<
+  Record<string, NonNullable<TrustedPlayer['provenance']>>
+> = Object.fromEntries(
+  Object.entries(coreProvenance).map(([id, provenance]) => [
+    id,
+    {
+      ...provenance,
+      artifacts: [...(provenance.artifacts ?? []), ...sdkNotices],
+    },
+  ]),
+);
