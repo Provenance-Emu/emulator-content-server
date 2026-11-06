@@ -38,16 +38,14 @@ ditto "$mount/Emulation Server.app" "$app"
 hdiutil detach "$mount" >/dev/null
 mounted=false
 
-signing=(--sign "$APPLE_SIGNING_IDENTITY")
-if [[ -n "${APPLE_SIGNING_KEYCHAIN:-}" ]]; then
-  signing+=(--keychain "$APPLE_SIGNING_KEYCHAIN")
-fi
 bundle_id=$(plutil -extract CFBundleIdentifier raw -o - "$app/Contents/Info.plist")
-codesign --force --options runtime --timestamp "${signing[@]}" "$app"
+echo 'Signing macOS app bundle'
+codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$app"
 node scripts/package-macos.mjs "$bundle"
 images=("$bundle"/dmg/*.dmg)
 dmg=${images[0]}
-codesign --force --timestamp --identifier "$bundle_id.dmg" "${signing[@]}" "$dmg"
+echo 'Signing macOS disk image'
+codesign --force --timestamp --identifier "$bundle_id.dmg" --sign "$APPLE_SIGNING_IDENTITY" "$dmg"
 codesign --verify --strict "$dmg"
 
 result="$scratch/notary.json"

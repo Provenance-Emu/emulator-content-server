@@ -157,6 +157,16 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$credentials/notary.p8"
           keychain_password=$(openssl rand -hex 32)
           security create-keychain -p "$keychain_password" "$keychain"
+          # codesign also consults the user search list when locating the private key.
+          keychains=("$keychain")
+          while IFS= read -r entry; do
+            entry=$(printf '%s' "$entry" | sed -E 's/^[[:space:]]*"//; s/"$//')
+            if [[ -n "$entry" && "$entry" != "$keychain" ]]; then
+              keychains+=("$entry")
+            fi
+          done < <(security list-keychains -d user)
+          security list-keychains -d user -s "${keychains[@]}"
+          security default-keychain -d user -s "$keychain"
           security set-keychain-settings -lut 1800 "$keychain"
           security unlock-keychain -p "$keychain_password" "$keychain"
           security import "$credentials/identity.p12" -P "$P12_PASSWORD" -f pkcs12 -k "$keychain" -T /usr/bin/codesign
@@ -168,7 +178,7 @@ jobs:
           (cd "$RUNNER_TEMP/ecs-unsigned" && shasum -a 256 --check SHA256SUMS-desktop-darwin-arm64.txt)
           name=Emulation-Server-nightly-macos-arm64.dmg
           mkdir "$RUNNER_TEMP/ecs-signed"
-          APPLE_SIGNING_IDENTITY="$identity" APPLE_SIGNING_KEYCHAIN="$keychain" \
+          APPLE_SIGNING_IDENTITY="$identity" \
             ASC_KEY_PATH="$credentials/notary.p8" bash scripts/sign-nightly-macos.sh \
             "$RUNNER_TEMP/ecs-unsigned/$name" "$RUNNER_TEMP/ecs-signed/$name"
       - name: Stage notarized installer and checksum
