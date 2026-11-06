@@ -31,6 +31,29 @@ test('idempotent starts discover libraries and owner authority with one timer an
   }
 });
 
+test('sign-in is ready while the initial change feed is still catching up', async () => {
+  const f = serverFixture();
+  const requested = deferred<void>();
+  const response = deferred<Response>();
+  f.changes = () => {
+    requested.resolve();
+    return response.promise;
+  };
+  const app = createApplication(f.context, f.scheduler);
+  const start = app.start();
+  try {
+    await requested.promise;
+    assert.equal(get(app).reachable, true);
+    assert.equal(get(app).signedIn, true);
+    assert.equal(get(app).settled, true);
+  } finally {
+    response.resolve(Response.json({ changes: [], nextCursor: '0' }));
+    await start;
+    app.dispose();
+    f.restore();
+  }
+});
+
 test('owner-only roots 403 still permits signed-in browsing and retains creation flags', async () => {
   const f = serverFixture();
   f.ownerStatus = 403;

@@ -208,6 +208,8 @@ export function createApplication(
           if (!live(run)) return;
         }
         if (result === 'ok') needsAuthentication = false;
+        // Sign-in can render once discovery finishes, while the change feed catches up.
+        if (!current.settled) update({ settled: true });
         await watch(run);
         if (!live(run)) return;
         if (result === 'ok' || feedChanged) {
@@ -215,7 +217,7 @@ export function createApplication(
           update({ invalidation: current.invalidation + 1 });
         }
       }
-      if (live(run)) update({ settled: true });
+      if (live(run) && !current.settled) update({ settled: true });
     } finally {
       schedule(run);
     }
