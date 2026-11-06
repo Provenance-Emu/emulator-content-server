@@ -18,7 +18,9 @@ On Windows x64, paste this in PowerShell.
 
 Choose **Nightly** or **Release**. Release selects the most recent tagged server package for your platform when one is available. The installer verifies the download and starts a per-user service. It offers the desktop app if the selected build includes one and your session supports it. On Linux, run as your own user with systemd and Python 3 available. A headless Linux install enables systemd lingering when the account has permission so the server can stay up after logout.
 
-Open <http://127.0.0.1:8473/ui/> on the host and use the one-time setup code from the file named by the installer. For an existing service, use its **Settings → Updates** or the [upgrade instructions](#upgrades-and-maintainer-operation).
+Open <http://127.0.0.1:8473/ui/> on the host and use the one-time setup code from the file named by the installer. Running the installer again uses the existing service and app, and can install the app on its own. For upgrades, use **Settings → Updates** or the [upgrade instructions](#upgrades-and-maintainer-operation).
+
+For a read-only diagnostic report, append `-s -- doctor` to `bash` on macOS or Linux, or append `-Doctor` to the PowerShell command. The report shows the login service, whether the server answers, the installed app, and paths to any pending setup code and server log.
 
 To install a fresh headless nightly without prompts, append `-s -- nightly server` to `bash` on macOS or Linux, or `-Channel nightly -Components server` to the PowerShell command.
 

@@ -32,9 +32,121 @@ case "$(uname -s):$(uname -m)" in
   *) die 'This installer supports Apple Silicon macOS and Linux x64.' ;;
 esac
 
+default_data="$base/data"
+inspect_service() {
+  data=$default_data
+  origin=http://127.0.0.1:8473
+  service_found=false
+  service_state='not installed'
+  manager_ready=false
+  local port='' args='' configured_data='' state='' agent unit
+  if [[ $platform == macos-arm64 ]]; then
+    agent="$HOME/Library/LaunchAgents/app.emulator-content-server.plist"
+    if launchctl print "gui/$uid" >/dev/null 2>&1; then manager_ready=true; fi
+    if state=$(launchctl print "gui/$uid/app.emulator-content-server" 2>/dev/null); then
+      service_found=true
+      service_state=$(awk -F ' = ' '/^\tstate = / {print $2; exit}' <<<"$state")
+      args=$(awk '/^\targuments = \{/ {active=1; next} active && /^\t}/ {exit} active {sub(/^\t\t/, ""); print}' <<<"$state")
+    elif [[ -e $agent || -L $agent ]]; then
+      service_found=true
+      service_state='installed, stopped'
+      args=$(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments' "$agent" 2>/dev/null |
+        awk '/^    / {print substr($0, 5)}') || args=''
+    fi
+    configured_data=$(awk '$0=="--data" {getline; print; exit}' <<<"$args")
+    port=$(awk '$0=="--port" {getline; print; exit}' <<<"$args")
+  else
+    unit="$HOME/.config/systemd/user/ecs.service"
+    if systemctl --user show-environment >/dev/null 2>&1; then
+      manager_ready=true
+      state=$(systemctl --user show --property=LoadState --value ecs.service 2>/dev/null) || true
+      if [[ -n $state && $state != not-found ]]; then
+        service_found=true
+        service_state=$(systemctl --user show --property=ActiveState --value ecs.service 2>/dev/null) ||
+          service_state='installed'
+        configured_data=$(systemctl --user show --property=WorkingDirectory --value ecs.service 2>/dev/null) ||
+          configured_data=''
+        args=$(systemctl --user show --property=ExecStart --value ecs.service 2>/dev/null) || args=''
+        port=$(sed -nE 's/.*[[:space:]]--port[[:space:]]+([0-9]+)([[:space:];].*)?$/\1/p' <<<"$args")
+      elif [[ -z $state ]]; then
+        manager_ready=false
+      fi
+    fi
+    if [[ -e $unit || -L $unit ]] && ! "$service_found"; then
+      service_found=true
+      service_state='installed'
+    fi
+  fi
+  if [[ $configured_data == /* ]]; then data=$configured_data; fi
+  if [[ $port =~ ^[1-9][0-9]{0,4}$ && $port -le 65535 ]]; then origin="http://127.0.0.1:$port"; fi
+  service_state=${service_state:-installed}
+}
+
+find_desktop() {
+  installed_app=''
+  local candidate
+  if [[ $platform == macos-arm64 ]]; then
+    for candidate in "$HOME/Applications/Emulation Server.app" '/Applications/Emulation Server.app'; do
+      if [[ -e $candidate || -L $candidate ]]; then installed_app=$candidate; return; fi
+    done
+  elif [[ -e "$base/Emulation Server.AppImage" || -L "$base/Emulation Server.AppImage" ]]; then
+    installed_app="$base/Emulation Server.AppImage"
+  fi
+}
+
+server_healthy() {
+  local health
+  health=$(curl -qfsS --max-time 2 "$origin/health" 2>/dev/null) &&
+    [[ $health =~ \"ok\"[[:space:]]*:[[:space:]]*true ]]
+}
+
+report_installation() {
+  if "$manager_ready"; then printf 'Login service: %s\n' "$service_state"
+  else printf 'Login service: %s (user service manager unavailable)\n' "$service_state"; fi
+  if server_healthy; then
+    printf 'Server: responding at %s/ui/\n' "$origin"
+  else
+    printf 'Server: no response at %s/health\n' "$origin"
+    if "$service_found"; then
+      if [[ $platform == macos-arm64 ]]; then
+        printf 'Start it from the menu bar app or check the service with launchctl print gui/%s/app.emulator-content-server.\n' "$uid"
+      else
+        printf 'Check the service with systemctl --user status ecs.service.\n'
+      fi
+    fi
+  fi
+  printf 'Desktop app: %s\n' "${installed_app:-not found}"
+  if [[ -f $data/bootstrap.token ]]; then
+    printf 'Owner setup code: %s/bootstrap.token\n' "$data"
+  fi
+  if [[ -f $data/logs/ecs.log ]]; then printf 'Server log: %s/logs/ecs.log\n' "$data"; fi
+}
+
 channel=${1:-}
 choice=${2:-}
-[[ $# -le 2 ]] || die 'Usage: install-server.sh [nightly|release] [server|both]'
+[[ $# -le 2 ]] || die 'Usage: install-server.sh [nightly|release] [server|both], or install-server.sh doctor'
+inspect_service
+find_desktop
+if [[ $channel == doctor && $# -eq 1 ]]; then report_installation; exit 0; fi
+[[ -z $channel || $channel == nightly || $channel == release ]] || die 'Choose nightly, release, or doctor.'
+[[ -z $choice || $choice == server || $choice == both ]] || die 'Choose server or both.'
+install_server=true
+if "$service_found" || server_healthy; then
+  install_server=false
+  report_installation
+  printf 'Using the existing server installation.\n'
+fi
+if [[ -n $installed_app ]]; then
+  if "$install_server"; then printf 'Using the desktop app at %s.\n' "$installed_app"; fi
+  choice=server
+fi
+if ! "$install_server"; then
+  if [[ -z $choice && ( $platform == macos-arm64 || -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ) ]]; then
+    ask 'Install the desktop app for the existing server? [y/N] '
+    if [[ $answer == y || $answer == Y ]]; then choice=both; else choice=server; fi
+  fi
+  [[ $choice == both ]] || exit 0
+fi
 if [[ -z $channel ]]; then
   ask 'Install from [1] Nightly or [2] Release? [1] '
   case "$answer" in
@@ -44,23 +156,11 @@ if [[ -z $channel ]]; then
   esac
 fi
 [[ $channel == nightly || $channel == release ]] || die 'Choose nightly or release.'
-[[ -z $choice || $choice == server || $choice == both ]] || die 'Choose server or both.'
 
-check_service() {
-  if [[ $platform == macos-arm64 ]]; then
-    local agent="$HOME/Library/LaunchAgents/app.emulator-content-server.plist"
-    if [[ -e $agent || -L $agent ]] || launchctl print "gui/$uid/app.emulator-content-server" >/dev/null 2>&1; then
-      die 'A login service already exists. Use it or its update settings.'
-    fi
-    launchctl print "gui/$uid" >/dev/null 2>&1 || die 'Run setup from a logged-in macOS account.'
-  else
-    local state unit="$HOME/.config/systemd/user/ecs.service"
-    systemctl --user show-environment >/dev/null || die 'A systemd user session is required.'
-    state=$(systemctl --user show --property=LoadState --value ecs.service) ||
-      die 'Could not check the existing systemd service.'
-    [[ $state == not-found && ! -e $unit && ! -L $unit ]] ||
-      die 'A login service already exists. Use it or its update settings.'
-  fi
+check_fresh_service() {
+  inspect_service
+  "$manager_ready" || die 'Run setup from your logged-in user session with the service manager available.'
+  if "$service_found"; then die 'A login service appeared during setup. Run the installer again to use it.'; fi
 }
 
 # Emit the same columns with the system JSON parser on each platform.
@@ -89,7 +189,7 @@ PY
   fi
 }
 
-check_service
+if "$install_server"; then check_fresh_service; fi
 umask 077
 mkdir -p "$base/launchers"
 lock="$base/.installer-lock"
@@ -113,10 +213,12 @@ find_package() {
   fi
   download "$endpoint" "$scratch/releases.json" 16000000 || die 'Could not read releases from GitHub.'
   asset_rows "$scratch/releases.json" >"$scratch/assets.tsv" || die 'Could not read the release assets.'
-  awk -F '\t' -v channel="$channel" -v platform="$platform" '
+  local extension=tar.gz
+  if ! "$install_server"; then extension=$desktop_ext; fi
+  awk -F '\t' -v channel="$channel" -v platform="$platform" -v extension="$extension" '
     channel == "nightly" && $1 != "nightly" { next }
     channel == "release" && $1 !~ /^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$/ { next }
-    $2 == "Emulation-Server-" substr($1, 1 + (channel == "release")) "-" platform ".tar.gz" {
+    $2 == "Emulation-Server-" substr($1, 1 + (channel == "release")) "-" platform "." extension {
       print $1; exit
     }
   ' "$scratch/assets.tsv"
@@ -124,16 +226,16 @@ find_package() {
 
 tag=$(find_package)
 if [[ -z $tag && $channel == release && $# -eq 0 ]]; then
-  ask 'No tagged server package is available for this system. Install Nightly? [y/N] '
+  ask 'No compatible tagged download is available. Install Nightly? [y/N] '
   [[ $answer == y || $answer == Y ]] || exit 0
   channel=nightly
   tag=$(find_package)
 fi
-[[ -n $tag ]] || die "No $channel server package is available for this system."
+[[ -n $tag ]] || die "No compatible $channel download is available for this system."
 name="Emulation-Server-${tag#v}-$platform"
 desktop_name="$name.$desktop_ext"
 desktop=false
-if [[ $platform == macos-arm64 || -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]] &&
+if [[ -z $installed_app && ( $platform == macos-arm64 || -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ) ]] &&
   awk -F '\t' -v tag="$tag" -v name="$desktop_name" '$1 == tag && $2 == name { found=1 } END { exit !found }' "$scratch/assets.tsv"; then
   if [[ -z $choice ]]; then
     ask 'Install the server and the desktop app? [y/N] '
@@ -163,52 +265,53 @@ fetch_verified() {
   [[ ${actual%% *} == "${digest#sha256:}" ]] || die "Checksum mismatch for $asset. Try again shortly."
 }
 
-printf 'Downloading %s server…\n' "$tag"
-fetch_verified "$name.tar.gz"
-tar -xzf "$scratch/$name.tar.gz" -C "$scratch"
-[[ -x $scratch/$name/ecs ]] || die 'The downloaded package is missing its launcher.'
-data="$base/data"
-check_service
-if ! "$scratch/$name/runtime/node" -e '
-  const server = require("node:net").createServer();
-  server.on("error", () => process.exit(1));
-  server.listen(8473, "127.0.0.1", () => server.close());
-'; then
-  die "Port 8473 is already in use. Open $origin/ui/ to check the existing server."
-fi
-launcher="$base/launchers/$name-${scratch##*.}"
-mv "$scratch/$name" "$launcher"
-install_service() {
-  "$launcher/ecs" init --data "$data" >/dev/null
-  check_service
-  "$launcher/ecs" service install --data "$data" --host 127.0.0.1
-}
-if [[ $platform == macos-arm64 ]]; then
-  if ! "$launcher/ecs" service setup-local --data "$data" --host 127.0.0.1 >/dev/null 2>"$scratch/setup-error"; then
-    if grep -Fxq 'service takes install, uninstall, or status' "$scratch/setup-error"; then
-      # Earlier portable packages already support ordinary service registration.
-      install_service
-    else
-      cat "$scratch/setup-error" >&2
-      exit 1
-    fi
+if "$install_server"; then
+  printf 'Downloading %s server…\n' "$tag"
+  fetch_verified "$name.tar.gz"
+  tar -xzf "$scratch/$name.tar.gz" -C "$scratch"
+  [[ -x $scratch/$name/ecs ]] || die 'The downloaded package is missing its launcher.'
+  check_fresh_service
+  if ! "$scratch/$name/runtime/node" -e '
+    const server = require("node:net").createServer();
+    server.on("error", () => process.exit(1));
+    server.listen(8473, "127.0.0.1", () => server.close());
+  '; then
+    die "Port 8473 is already in use. Open $origin/ui/ to check the existing server."
   fi
-else
-  install_service
-fi
+  launcher="$base/launchers/$name-${scratch##*.}"
+  mv "$scratch/$name" "$launcher"
+  install_service() {
+    "$launcher/ecs" init --data "$data" >/dev/null
+    check_fresh_service
+    "$launcher/ecs" service install --data "$data" --host 127.0.0.1
+  }
+  if [[ $platform == macos-arm64 ]]; then
+    if ! "$launcher/ecs" service setup-local --data "$data" --host 127.0.0.1 >/dev/null 2>"$scratch/setup-error"; then
+      if grep -Fxq 'service takes install, uninstall, or status' "$scratch/setup-error"; then
+        # Earlier portable packages already support ordinary service registration.
+        install_service
+      else
+        cat "$scratch/setup-error" >&2
+        exit 1
+      fi
+    fi
+  else
+    install_service
+  fi
 
-for ((attempt=0; attempt<30; attempt++)); do
-  if curl -qfsS --max-time 1 "$origin/health" >/dev/null 2>&1; then break; fi
-  sleep 1
-done
-[[ $attempt -lt 30 ]] || die "The login service was registered, but the server has not answered. Check $data/logs/ecs.log."
-printf '\nServer is running. Open %s/ui/\n' "$origin"
-if [[ -f $data/bootstrap.token ]]; then
-  printf 'Use the one-time setup code from %s/bootstrap.token to create the owner account.\n' "$data"
-fi
-if [[ $platform == linux-x64 && -z ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]] &&
-  ! loginctl --no-ask-password enable-linger "$(id -un)" >/dev/null 2>&1; then
-  printf 'Run loginctl enable-linger to keep the server running after logout.\n'
+  for ((attempt=0; attempt<30; attempt++)); do
+    if server_healthy; then break; fi
+    sleep 1
+  done
+  [[ $attempt -lt 30 ]] || die "The login service was registered, but the server has not answered. Check $data/logs/ecs.log."
+  printf '\nServer is running. Open %s/ui/\n' "$origin"
+  if [[ -f $data/bootstrap.token ]]; then
+    printf 'Use the one-time setup code from %s/bootstrap.token to create the owner account.\n' "$data"
+  fi
+  if [[ $platform == linux-x64 && -z ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]] &&
+    ! loginctl --no-ask-password enable-linger "$(id -un)" >/dev/null 2>&1; then
+    printf 'Run loginctl enable-linger to keep the server running after logout.\n'
+  fi
 fi
 
 if "$desktop"; then
