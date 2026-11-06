@@ -1,6 +1,6 @@
 # Nightly installation and testing
 
-Download from the stable [nightly release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly). CI refreshes the server packages and Linux and Windows desktop installers after the nightly matrix passes. The release notes link the exact source commit and build run. A failed matrix leaves the previous nightly in place. Back up your data before upgrading. Restoring that backup is required to downgrade a database.
+Download from the stable [nightly release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly). CI refreshes the server packages and desktop installers after the nightly matrix passes. The release notes link the exact source commit and build run. A failed matrix leaves the previous nightly in place. Back up your data before upgrading. Restoring that backup is required to downgrade a database.
 
 ## Choose a download
 
@@ -38,7 +38,7 @@ Open <http://127.0.0.1:8473/ui/>. The first run prints a one-time setup token; e
 
 The desktop app connects to a separately running content server; it does not include or silently start that server. Windows: run the MSI. Linux: install the DEB with your package manager, or `chmod +x` the AppImage and run it on a tray-capable desktop. macOS: open the DMG and drag Emulation Server to Applications. Connect it to `http://127.0.0.1:8473` or your configured server address.
 
-Linux and Windows nightly desktop installers are unsigned. The public macOS DMG is refreshed separately after Developer ID signing and Apple notarization. Its release asset label identifies the source commit, which may differ from the current server nightly. The automated macOS tray build is available as a test artifact in the workflow run.
+Linux and Windows nightly desktop installers are unsigned. When macOS signing is enabled, the macOS tray installer is Developer ID signed and Apple notarized from the same commit as the server archives. Its release asset label identifies its source commit. Repositories with signing disabled retain their last notarized DMG and can download the unsigned tray build as a workflow test artifact.
 
 ## What CI proves and what to test
 
@@ -78,9 +78,21 @@ service using the existing data path and flags. For a foreground installation,
 stop the old server first and start the new package with `ecs serve`. Keep the
 old build and matching data backup until testing passes.
 
-The [Nightly distributions workflow](https://github.com/Provenance-Emu/emulator-content-server/actions/workflows/nightly.yml) builds only committed source and production dependencies. Pull requests retain the regular Linux verification; the full distribution matrix runs only on the nightly schedule or manual dispatch. Publication requires every job to succeed on main and links the exact tested commit, even if main advances while installers build. Assets have stable names plus per-platform and combined SHA-256 manifests. No new signing secrets or paid runners are required. A manual run on a branch provides Actions artifacts only. These packages do not replace the separate routine verification workflow or establish full release readiness.
+The [Nightly distributions workflow](https://github.com/Provenance-Emu/emulator-content-server/actions/workflows/nightly.yml) builds only committed source and production dependencies. Pull requests retain the regular Linux verification. The full distribution matrix runs only on the nightly schedule or manual dispatch. Publication requires the main-branch builds and any enabled signing job to succeed. Release assets retain stable names and include per-platform and combined SHA-256 manifests. A manual run on a branch provides Actions artifacts only.
 
-To refresh the public macOS tray installer, follow the [macOS notarization steps](desktop-install.md#macos-notarization) and label the uploaded asset `macOS tray installer (notarized, <commit>)`. Refresh both the macOS desktop checksum and its entry in the combined checksum file after stapling. The nightly workflow keeps this asset and carries its published digest forward.
+### Enable macOS signing in GitHub Actions
+
+Create the `nightly-macos-signing` environment and restrict its deployment branches to `main`. Store a dedicated CI Developer ID Application identity and a notarization-capable App Store Connect team key as environment secrets.
+
+| Environment secret | Value |
+| --- | --- |
+| `ECS_MACOS_SIGNING_P12` | Base64-encoded, password-protected PKCS#12 with a single Developer ID Application identity |
+| `ECS_MACOS_SIGNING_PASSWORD` | PKCS#12 export password |
+| `ECS_MACOS_NOTARY_KEY` | App Store Connect private key in PEM format |
+| `ECS_MACOS_NOTARY_KEY_ID` | App Store Connect key ID |
+| `ECS_MACOS_NOTARY_ISSUER_ID` | App Store Connect team issuer ID |
+
+Set the repository Actions variable `ECS_NIGHTLY_MACOS_SIGNING` to `true` after adding all five secrets. The signing job uses the macOS installer built by the same workflow run. It imports the identity into a temporary keychain, signs the app and disk image, submits the DMG to Apple, staples the ticket, and checks both the mounted app and disk image with Gatekeeper before generating checksums. A signing or notarization failure leaves the previous nightly available.
 
 To attach update-enabled archives to a tagged server release, run the same
 workflow on the tag after creating the GitHub release. Use a tag that includes
