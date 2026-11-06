@@ -21,7 +21,7 @@ for (const fails of [false, true]) {
     const updates = await prepareUpdateDirectory(data);
     await fixture(startup, data, false, false);
     await fixture(join(updates, 'builds', candidate), data, true, fails);
-    const module = new URL('../src/supervise.js', import.meta.url).href;
+    const module = new URL('../src/update-supervisor.js', import.meta.url).href;
     const child = spawn(
       process.execPath,
       [
