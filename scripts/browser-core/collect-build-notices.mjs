@@ -19,7 +19,7 @@ const MAX_INPUTS = 20_000;
 const sourceExtension = /\.(?:c|cc|cpp|cxx|m|mm|s)$/i;
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 function readRegular(path, limit = MAX_FILE_BYTES) {
-  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
     const info = fstatSync(fd);
     if (!info.isFile() || info.size > limit)

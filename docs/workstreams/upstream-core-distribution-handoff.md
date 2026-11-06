@@ -1,6 +1,6 @@
 # Upstream core distribution (#29)
 
-Updated 2026-11-05. The current distribution uses official compatible runtime
+Updated 2026-11-06. The current distribution uses official compatible runtime
 pairs, immutable catalog snapshots and a bounded verified local package cache.
 
 ## Published implementation
@@ -39,11 +39,14 @@ wrapper manifests retain their separate package hashes.
 All eight newer source archives matched their release size/hash. Embedded build
 manifests matched the downloaded package and published receipt. Core/frontend
 revisions, compiler pins, patches and named notice-file inventories are retained.
-Independent rebuild status for those eight remains publisher-reported.
+The [November 6 verification](../operations/custom-build-verification-2026-11-06.md)
+reproduced all eight loader/WASM pairs and complete package hashes from fresh
+source extractions. Compiler dependency traces and debug relinks retain exact
+source/header and SDK archive evidence.
 
 The catalog links legacy entries to the immutable audit commit and exact audit
 file hash using its existing receipt schema. All ten custom entries also retain
-six SDK/component notice pins at the exact compiler source revision. These
+nine SDK/component notice pins at the measured compiler/dependency revisions. These
 metadata changes create new descriptor/cache identities. Keep older catalog files
 and their independent expected IDs for offline reuse of older cache entries.
 
@@ -58,9 +61,12 @@ and their independent expected IDs for offline reuse of older cache entries.
    files were absent from its search results. Embedded/zipped metadata and payload
    identity remain inspection gaps. A current repository head cannot supply
    historical build proof.
-2. Named notice inventories preserve available files. Inline copyright headers,
-   exact linked-dependency applicability and notice-completeness review remain
-   open. The archived source and pinned SDK notice files are the evidence base.
+2. The eight newer builds now have deduplicated compiler-input hashes, inline
+   notice spans, ancestor notice candidates and actual link archive pins. SDK
+   additions cover zlib, dlmalloc and Clang headers. Component-specific notice
+   applicability and completeness remain open, including legacy inline inputs
+   and SDK archive member selection. The inventory includes compiler inputs
+   eliminated by linking and scans the first 64 KiB of each input for comments.
 3. Gameplay qualification remains separate from factory startup and source
    reconstruction. PCSX's generated content acceptance covers EXE, ISO and Mode 2
    CHD. Other formats, commercial compatibility, audio/input and save behavior
@@ -79,14 +85,23 @@ The native cleanup checkpoint and #28 retention/recovery work were merged as
 `7ab22ac`. Both cleanup branch names were retired and the redundant worktree was
 archived. Inbound MCP remains tracked independently in #27.
 
-This #29 batch used an isolated worktree because the primary checkout has
-concurrent server-update edits. Preserve those edits while publishing the batch,
-fast-forwarding primary main and archiving the redundant provenance worktree.
+The November 6 batch uses an isolated verification worktree. Publish the completed
+batch, return the primary checkout to main and archive the redundant worktree.
 Source archives, downloaded core packages and compiled runtime output stay
 outside Git. Generated-fixture tests cover rebuild hash rejection and catalog
 snapshot/cache behavior.
 
-## Batch verification
+## November 6 batch verification
+
+All 102 focused source-helper, notice collector, catalog, export, cache, download,
+manager and CLI tests passed on Node 22.22.2. Server/CLI TypeScript builds, affected
+Biome checks, client drift, secret/fixture scan, package boundaries and whitespace
+checks passed. All eight complete package hashes and sixteen runtime resource
+hashes matched their original pinned bytes. The focused review found a FIFO
+blocking risk in the collector. A timeout-backed regression reproduced it, and
+nonblocking opens now reject that input through the existing regular-file check.
+
+## November 5 batch verification
 
 All 97 focused source-helper, catalog, export, cache, download, manager and CLI
 tests passed on Node 22.22.2. Server/CLI TypeScript builds, affected Biome checks,

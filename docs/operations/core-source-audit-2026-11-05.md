@@ -60,8 +60,9 @@ All eight source-archive downloads matched their retained release SHA-256 and si
 Each embedded `ECS-BUILD.json` manifest matched both the downloaded package and the
 published `catalog.json`. Frontend/core commits, SDK/compiler pins and recorded
 patches also matched. The inventory retains the corresponding source/build record
-hashes and notice-file locations. Their independent rebuild status remains
-publisher-reported.
+hashes and notice-file locations. At the time of this inventory, their rebuild status was publisher-reported. The
+[November 6 verification](./custom-build-verification-2026-11-06.md) subsequently
+reproduced all eight complete packages and inventoried actual compiler inputs.
 
 The archive inspection inventoried regular files whose names begin with copying,
 license, notice or copyright, bounded to 1 MiB per file and excluding AppleDouble

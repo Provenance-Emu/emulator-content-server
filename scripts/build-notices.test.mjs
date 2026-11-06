@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   collectBuildNotices,
   parseMakeDependencies,
@@ -112,6 +114,38 @@ test('dependency collection ignores phony header targets and rejects file roots'
         collectBuildNotices(join(root, 'capture'), join(root, 'source-file'), join(root, 'sdk')),
       /directories/,
     );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('nonregular compiler inputs fail without blocking on named pipes', {
+  skip: process.platform === 'win32',
+}, () => {
+  const root = mkdtempSync(join(tmpdir(), 'ecs-notice-pipe-'));
+  try {
+    for (const directory of ['source', 'sdk', 'capture']) mkdirSync(join(root, directory));
+    const fifo = join(root, 'source', 'generated.c');
+    assert.equal(spawnSync('mkfifo', [fifo]).status, 0);
+    writeFileSync(join(root, 'capture/deps.d'), 'out.o: generated.c\n');
+    writeFileSync(
+      join(root, 'capture/commands.jsonl'),
+      `${JSON.stringify({ cwd: join(root, 'source'), args: ['clang', '-c', 'generated.c'], exitCode: 0, dependencyFile: join(root, 'capture/deps.d') })}\n`,
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL('./browser-core/collect-build-notices.mjs', import.meta.url)),
+        join(root, 'capture'),
+        join(root, 'source'),
+        join(root, 'sdk'),
+        join(root, 'output.json'),
+      ],
+      { timeout: 3000, encoding: 'utf8' },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /regular-file bounds/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

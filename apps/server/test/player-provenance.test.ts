@@ -29,11 +29,7 @@ test('published source-built packages retain matching pinned source, notice and 
     const artifacts = (entry.provenance.artifacts ?? []).filter((artifact) =>
       artifact.url.startsWith(`${release}/`),
     );
-    assert.deepEqual(artifacts.map((artifact) => artifact.kind).sort(), [
-      'build',
-      'notices',
-      'source',
-    ]);
+    assert.deepEqual(artifacts.map((artifact) => artifact.kind).sort(), ['notices', 'source']);
     for (const artifact of artifacts) {
       assert.match(artifact.sha256, /^[a-f0-9]{64}$/);
       assert.ok(artifact.sizeBytes > 0);
@@ -43,7 +39,7 @@ test('published source-built packages retain matching pinned source, notice and 
         entry.url?.slice(0, entry.url.lastIndexOf('/')),
       );
     }
-    const build = artifacts.find((artifact) => artifact.kind === 'build');
+    const build = entry.provenance.artifacts?.find((artifact) => artifact.kind === 'build');
     assert.equal(build?.url, entry.provenance.sourceInfo);
     assert.equal(build?.sha256, entry.provenance.infoSha256);
   }
@@ -166,17 +162,96 @@ test('retained legacy source mappings bind the exact audit bytes and package pin
     const sdk =
       entry.provenance?.artifacts?.filter((a) => a.url.includes('/emscripten-core/emscripten/')) ??
       [];
-    assert.deepEqual(
-      sdk,
-      audit.sdkNotices.map(({ path: _path, ...notice }: { path: string }) => ({
-        kind: 'notices',
-        ...notice,
-      })),
-    );
+    for (const { path: _path, ...notice } of audit.sdkNotices)
+      assert.ok(
+        sdk.some((artifact) => artifact.sha256 === notice.sha256 && artifact.url === notice.url),
+      );
   }
   const upstream = playerCatalog.filter((entry) => entry.upstream);
   assert.deepEqual(
     audit.upstream.profiles.map((p: { id: string }) => p.id).sort(),
     upstream.map((p) => p.id).sort(),
   );
+});
+
+test('eight independently reconstructed packages bind immutable build and compiler notice inventories', () => {
+  const bytes = readFileSync(
+    new URL(
+      '../../../../docs/operations/custom-build-verification-2026-11-06.json',
+      import.meta.url,
+    ),
+  );
+  const proof = JSON.parse(bytes.toString('utf8'));
+  const digest = createHash('sha256').update(bytes).digest('hex');
+  const inventoryBytes = readFileSync(
+    new URL('../../../../docs/operations/custom-build-notices-2026-11-06.json', import.meta.url),
+  );
+  const inventory = JSON.parse(inventoryBytes.toString('utf8'));
+  assert.equal(
+    proof.noticeInventory.sha256,
+    createHash('sha256').update(inventoryBytes).digest('hex'),
+  );
+  assert.equal(proof.noticeInventory.sizeBytes, inventoryBytes.length);
+  assert.equal(proof.builds.length, 8);
+  for (const record of proof.builds) {
+    const entry = playerCatalog.find((e) => e.id === record.id);
+    assert.ok(entry?.provenance);
+    assert.equal(record.reconstructedPackage.matchesPublished, true);
+    assert.equal(record.reconstructedPackage.sha256, entry.sha256);
+    assert.equal(record.reconstructedPackage.sizeBytes, entry.downloadBytes);
+    assert.equal(record.freshSourceExtraction, true);
+    assert.equal(record.debugRelinkBytesMatch, true);
+    assert.equal(record.unresolvedDependencyCount, 0);
+    assert.equal(record.generatedProjectInputs.length, 0);
+    assert.equal(record.linkArchiveInputs.length, 13);
+    assert.ok(
+      record.resources.every(
+        (resource: { matchesPublished: boolean }) => resource.matchesPublished,
+      ),
+    );
+    assert.deepEqual(
+      entry.provenance.artifacts?.find((a) => a.kind === 'source'),
+      { kind: 'source', ...record.source },
+    );
+    const build = entry.provenance.artifacts?.find((a) => a.kind === 'build');
+    assert.equal(build?.sha256, digest);
+    assert.equal(build?.sizeBytes, bytes.length);
+    assert.equal(entry.provenance.sourceInfo, build?.url);
+    assert.equal(entry.provenance.infoSha256, digest);
+    assert.match(build?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\/custom-build-verification/);
+    const notices = entry.provenance.artifacts?.find(
+      (a) => a.sha256 === proof.noticeInventory.sha256,
+    );
+    assert.equal(notices?.kind, 'notices');
+    assert.equal(notices?.sizeBytes, inventoryBytes.length);
+    assert.match(notices?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\/custom-build-notices/);
+    const inputs = inventory.inputs.filter((input: { builds: string[] }) =>
+      input.builds.includes(record.id),
+    );
+    assert.equal(inputs.length, record.reportedInputCount);
+    for (const input of inputs) {
+      if (input.path.startsWith('source/')) assert.equal(input.archiveMemberBytesVerified, true);
+      else
+        assert.ok(
+          input.exactContentOrigins.length > 0 ||
+            input.generationEvidence?.byteReconstructionMatches,
+        );
+      for (const span of input.inlineNotices) {
+        assert.equal(span.endByte - span.startByte, span.sizeBytes);
+        assert.ok(span.endLine >= span.startLine);
+      }
+    }
+  }
+  for (const entry of playerCatalog.filter((e) => e.url && !e.upstream)) {
+    for (const notice of proof.sdkNotices)
+      assert.ok(
+        entry.provenance?.artifacts?.some(
+          (artifact) =>
+            artifact.url === notice.url &&
+            artifact.sha256 === notice.sha256 &&
+            artifact.sizeBytes === notice.sizeBytes,
+        ),
+      );
+  }
+  assert.equal(proof.sdkNotices.length, 9);
 });
