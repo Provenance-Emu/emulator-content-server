@@ -7,6 +7,7 @@ import {
   mkdirSync,
   readFileSync,
   realpathSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -59,6 +60,7 @@ function run(command, args, cwd, capture = false) {
       ...process.env,
       BINARYEN_CORES: '2',
       EMCC_CORES: '2',
+      SOURCE_DATE_EPOCH: '1793145600',
       DEVELOPER_DIR: '/Library/Developer/CommandLineTools',
     },
   });
@@ -80,10 +82,10 @@ copyFileSync(
   join(core, 'virtualjaguar_libretro_emscripten.bc'),
   join(frontend, 'libretro_emscripten.bc'),
 );
-// The original measured Git abbreviation is an input to version_git.o.
+// The published sanitized build omits Git metadata; preserve its empty version and build date.
 const flags = [
   'LIBRETRO=virtualjaguar',
-  'GIT_VERSION=4d4bfc0',
+  'GIT_VERSION=',
   'HAVE_THREADS=0',
   'PROXY_TO_PTHREAD=0',
   'HAVE_WASMFS=0',
@@ -93,18 +95,29 @@ const flags = [
   'FS_DEBUG=0',
   'HAVE_7ZIP=0',
 ];
+// These objects embed the date/version; make does not track changed environment inputs.
+for (const file of ['retroarch.o', 'version_git.o', 'menu/menu_displaylist.o'])
+  rmSync(join(frontend, 'obj-emscripten', file), { force: true });
 run('emmake', ['make', '-j2', '-f', 'Makefile.emscripten', ...flags], frontend);
-mkdirSync(output);
 const artifacts = {};
+const files = [];
+const expected = {
+  'loader.js': '18e98d8ad251363d509782023e34b2b7bffa3a4048856ebe922a2957c9c2531b',
+  'core.wasm': 'fff4746e146f15ea968edeb8ece6c1b8558ab5fe8819ec50814359ac52e7cc27',
+};
 for (const [source, file] of [
   ['virtualjaguar_libretro.js', 'loader.js'],
   ['virtualjaguar_libretro.wasm', 'core.wasm'],
 ]) {
   const bytes = readFileSync(join(frontend, source));
-  writeFileSync(join(output, file), bytes, { flag: 'wx' });
+  if (createHash('sha256').update(bytes).digest('hex') !== expected[file])
+    throw new Error(`Rebuilt artifact differs: ${file}`);
+  files.push({ file, bytes });
   artifacts[file] = {
     sizeBytes: bytes.length,
     sha256: createHash('sha256').update(bytes).digest('hex'),
   };
 }
-console.log(JSON.stringify({ output, artifacts }, null, 2));
+mkdirSync(output);
+for (const { file, bytes } of files) writeFileSync(join(output, file), bytes, { flag: 'wx' });
+console.log(JSON.stringify({ output, sourceDateEpoch: 1793145600, artifacts }, null, 2));

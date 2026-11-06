@@ -54,3 +54,12 @@ notices or build receipts. Package downloads retain the existing trust checks.
 
 Installed profiles retain their selected versions. The public player response
 continues to omit internal provenance metadata.
+
+## Follow-up evidence, 2026-11-05
+
+The [subsequent source audit](./core-source-audit-2026-11-05.md) supersedes the
+legacy evidence gaps above. Both FCEUmm and the current Jaguar runtime pair were
+reproduced byte-for-byte from published source. Jaguar's source link crosses to
+the preceding CD HLE release. All eight newer source archives and package
+manifests were inspected, with named notice inventories and pinned SDK notices.
+The 50 official upstream mappings and dependency-notice completeness remain open.

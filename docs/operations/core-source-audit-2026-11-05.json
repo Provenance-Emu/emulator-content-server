@@ -1,0 +1,2282 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-05",
+  "method": {
+    "sourceArchiveBytesVerified": true,
+    "packageBytesAndResourcePinsVerified": true,
+    "noticeInventoryRule": "Regular filenames beginning copying, license, notice or copyright, <=1MiB, excluding AppleDouble metadata. Inventory only; inline headers and linked-dependency license completeness need separate review.",
+    "archivesExtractedOnlyForLegacyRebuild": true
+  },
+  "packages": [
+    {
+      "id": "org.libretro.atari800",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/atari800.ecsplayer",
+        "sha256": "740025c312e6d5f602f2efc74b9b681f14cd445b4057ce4b0bda0aa15b417676",
+        "sizeBytes": 4082548
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "9a2ac64b59c58cd55a7b98bf66a95b9d3f1bdf28f98b863d572eb39835fd06e4",
+          "sizeBytes": 271406
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "d4d51191330314f14f3b4f87b2022c959420df8d338d704c09bbc0e64dd33a9b",
+          "sizeBytes": 3810280
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/atari800.source.tar.gz",
+        "sha256": "eddd87be440f3a3ed1c971a86fd1ef5f6ee21e582b67d7678972ded60e0bc436",
+        "sizeBytes": 86503686
+      },
+      "archiveEntries": 14684,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "630b5fa36b09298fae0d552c0933ff33d82f869d19c09ad4b3316dcf5960c796",
+          "sizeBytes": 1810
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "atari800/atari800/COPYING",
+          "sha256": "e6d6a009505e345fe949e1310334fcb0747f28dae2856759de102ab66b722cb4",
+          "sizeBytes": 18011
+        },
+        {
+          "path": "atari800/atari800/debian/copyright",
+          "sha256": "344e7fbc185eccc5c243f2de844e146e89a7886217b1e7f77e1f95f9a860d985",
+          "sizeBytes": 305
+        },
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "4e7fbc73765c1a9670c7506616046ad1d4ccda51"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.fceumm",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm.ecsplayer",
+        "sha256": "7baae6ca0e8addebd01d2cb91d29a69c29534c7b1ac65804b3e044af32052700",
+        "sizeBytes": 4480582
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8",
+          "sizeBytes": 270617
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205",
+          "sizeBytes": 4209159
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "archiveEntries": 14800,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "README.md",
+          "sha256": "f06931e1d2a4c1d267e6936bebd402984fa52f269706d7a60222d7e8d858357f",
+          "sizeBytes": 1249
+        },
+        {
+          "path": "build.mjs",
+          "sha256": "81248fb27eb0a21b6e9fa926e53c0abce93534e1f603200756dd40946a5d7636",
+          "sizeBytes": 5218
+        },
+        {
+          "path": "retroarch-save-files.patch",
+          "sha256": "ffc78048f23214a2aaccd84e7c8e443edfce06a194aa501818dcb11923738f21",
+          "sizeBytes": 911
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "emscripten-notices/LICENSE",
+          "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+          "sizeBytes": 5093
+        },
+        {
+          "path": "fceumm/Copying",
+          "sha256": "a6996dcf0c334281f734560926e079b2dbbd5b78e81c0ca00a413ec01e1cd2fb",
+          "sizeBytes": 18010
+        },
+        {
+          "path": "fceumm/src/ntsc/license.txt",
+          "sha256": "319daefe38ebeead3df178e5937898a52d67c0c795f54f1c0bb10ac3b9cffb63",
+          "sizeBytes": 26940
+        },
+        {
+          "path": "retroarch/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "retroarch/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "retroarch/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "retroarch/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "retroarch/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "retroarch/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "retroarch/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "retroarch/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "retroarch/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "retroarch/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "retroarch/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "retroarch/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "retroarch/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "retroarch/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "retroarch/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "retroarch/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "retroarch/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "retroarch/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "retroarch/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "retroarch/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "retroarch/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "retroarch/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "retroarch/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "retroarch/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "retroarch/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        }
+      ],
+      "rebuild": {
+        "state": "matched",
+        "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+        "sdk": "3.1.46",
+        "sourceDateEpoch": 1793145600,
+        "frontendGitVersion": "4d4bfc0",
+        "recipe": "scripts/browser-core/rebuild-fceumm-source.mjs",
+        "scope": "loader-and-wasm",
+        "sameSourceTreeIncrementalCorrections": true
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "ac0d00a7fc01166f84c7bac01d1084ebfd2b865e"
+      }
+    },
+    {
+      "id": "org.libretro.freeintv",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/freeintv.ecsplayer",
+        "sha256": "e2a92eca25dfaa58e417219fa26cfbd08d26077430b5962ff7aeb64f3b40fedb",
+        "sizeBytes": 4126365
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "1ede79e99291da54cbabd39387cc138d0de3cbbb299dfd8194c84e975243bacb",
+          "sizeBytes": 270625
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "e5d51cf52152df6bfc7ae8f379ed7f56b205f90dff73394a3fd9a89d3c6039ad",
+          "sizeBytes": 3854920
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/freeintv.source.tar.gz",
+        "sha256": "f17e78502f78c10912c000ed39408e052d0359377c1f4685ed49fea6cfa3a30d",
+        "sizeBytes": 110359373
+      },
+      "archiveEntries": 14235,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "52dfcfea18a59d29e25cf4b4cfae71dbf3213551c9aa143fa21b21189cef4936",
+          "sizeBytes": 1668
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "freeintv/LICENSE",
+          "sha256": "ca5828f5b4f89df9d828a0b9478ba50fd2e06e60e7a0124fe201c0681988b7e1",
+          "sizeBytes": 18883
+        },
+        {
+          "path": "freeintv/open-content/4-Tris/COPYING.txt",
+          "sha256": "c1f14535bac5323390c2cad62d139b3a44203cf2198e68cdeecc5a0dcbacef7c",
+          "sizeBytes": 18634
+        },
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "ef3e0fe322bec62a7f916c0bb0834c08c348d0b4"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.mednafen-pcfx",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/mednafen-pcfx.ecsplayer",
+        "sha256": "8900e3f1b32bfa0f1f7532a3b1dbe480447325eb57fb378d6a08e7d088846496",
+        "sizeBytes": 4142979
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "a6a89fe471d2f0f54dc0b500f01bbd6b8265623f9b30548d2ccc2b819780c4f6",
+          "sizeBytes": 272049
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "1d2b7aef7b3bf7a3fe3d8c752fdfe933fe73e143f8e8716e237190823e133d57",
+          "sizeBytes": 3870125
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/mednafen-pcfx.source.tar.gz",
+        "sha256": "6851fb1c8ad64076917c48f7a972ed9c87c6087925ddb69396cfccf7dc0da20f",
+        "sizeBytes": 85511927
+      },
+      "archiveEntries": 14463,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "658fea552ef8b332b478006863b57ff51ba19a7e07d2ef12648652d8ab9a03c1",
+          "sizeBytes": 1641
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        },
+        {
+          "path": "mednafen-pcfx/COPYING",
+          "sha256": "a6996dcf0c334281f734560926e079b2dbbd5b78e81c0ca00a413ec01e1cd2fb",
+          "sizeBytes": 18010
+        },
+        {
+          "path": "mednafen-pcfx/deps/libchdr/LICENSE.txt",
+          "sha256": "e3989a7aee74a91b8cdbdfe204a6b8d03288863ec7533a21c51f1a987ba73539",
+          "sizeBytes": 1493
+        },
+        {
+          "path": "mednafen-pcfx/deps/lzma-19.00/LICENSE",
+          "sha256": "06721414a6decad6d6677feb470f01f47126e154d895d85bc1e17628697715e5",
+          "sizeBytes": 261
+        },
+        {
+          "path": "mednafen-pcfx/deps/zstd/COPYING",
+          "sha256": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
+          "sizeBytes": 18091
+        },
+        {
+          "path": "mednafen-pcfx/deps/zstd/LICENSE",
+          "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8",
+          "sizeBytes": 1549
+        },
+        {
+          "path": "mednafen-pcfx/mednafen/tremor/COPYING",
+          "sha256": "d2ab5758336489da61c12cc5bb757da5339c4ae9001f9bb0562b4370249af814",
+          "sizeBytes": 1466
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "c1650bad5fbdcc3c3ccd45e29e3983e1ccf16cff"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.pokemini",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/pokemini.ecsplayer",
+        "sha256": "74a012e237becb5078eea5edd91887b220463e1227b0b36bb35a30381fc57765",
+        "sizeBytes": 3753243
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "cf903a0a6c7482e7db633334c6e55e8b371522dfa48016c8514faa37280dcdfd",
+          "sizeBytes": 270616
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "f318fb9c4294db8c945af4fdeaf980371151d6ce0a48e1ddb717d82f042e443a",
+          "sizeBytes": 3481821
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/pokemini.source.tar.gz",
+        "sha256": "7bdb562ac7c5cee8e4ece42e6653401e91bba5eed1741c6706e4c92ce8b2efee",
+        "sizeBytes": 84766667
+      },
+      "archiveEntries": 14231,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "948ecd4747e1655be7cca82c1710f863e4bec9b9fa7561a118c5b8c63be3a734",
+          "sizeBytes": 1661
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        },
+        {
+          "path": "pokemini/LICENSE",
+          "sha256": "ded5742c5726ec53c985db1f333be39c18096dcc89bd71f0617efee2369b4dca",
+          "sizeBytes": 675
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "132111b76343559860532a1ccc094f93f1ed5650"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.potator",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/potator.ecsplayer",
+        "sha256": "03d3ca2fbc4d6ddf49bb021856e48fd0e093191df0f4aa30659ff09a2673a80b",
+        "sizeBytes": 3586352
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "2a21cac8b0541903395441e3cc78dbf61b3152ee8590d131f1008dcacacc23f3",
+          "sizeBytes": 270612
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "03f563505459af18dbbdbf55b590e0029f03c279130c57b201ca2afcb5359fd2",
+          "sizeBytes": 3314934
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/potator.source.tar.gz",
+        "sha256": "efbcdfdbec0a7035115ceef33a37a4c03c90f16b7e867dd63cd832b83c79d88b",
+        "sizeBytes": 84570095
+      },
+      "archiveEntries": 14114,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "9f72a3a6d8121c546cd5507b9dd7fc910babe0f3771d7dadedb8bfeeb26a743e",
+          "sizeBytes": 1641
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        },
+        {
+          "path": "potator/LICENSE",
+          "sha256": "88d9b4eb60579c191ec391ca04c16130572d7eedc4a86daa58bf28c6e14c9bcd",
+          "sizeBytes": 1210
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "227c5f6f3ce74d32e9002ce24c1420288559a860"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.prosystem",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/prosystem.ecsplayer",
+        "sha256": "d27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55",
+        "sizeBytes": 3618571
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "546c5a10e4d1e6928f4ccbb3f2933a4c8cdb68020895e1f47366cbc4aef6f00d",
+          "sizeBytes": 270620
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "73b0475590af26117a1cb975db3542458e137c187bee4b859e4471ebcb26a461",
+          "sizeBytes": 3347139
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/prosystem.source.tar.gz",
+        "sha256": "a615cf27233adf34285fd81fb778c348308e665f4c69338bc19e44b3574f0145",
+        "sizeBytes": 84687336
+      },
+      "archiveEntries": 14185,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "3de790cf64a3787e0e23059590a90c06012999b1dececace9c041da9e1f5805b",
+          "sizeBytes": 2166
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        },
+        {
+          "path": "prosystem/License.txt",
+          "sha256": "9fae8c2ae211ea4b3515621484bb0a558a0ca62d05c9534265c7e223bdf981b0",
+          "sizeBytes": 18347
+        },
+        {
+          "path": "prosystem/bupboop/License.txt",
+          "sha256": "38bc0e4b9ce70a398cfb4dde8fed87fcb469eeafd4de5c0699c81c7630ea7aed",
+          "sizeBytes": 879
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "8a88014287c7a01cd568067e5a557d0a2b2a051f"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.sameduck",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/sameduck.ecsplayer",
+        "sha256": "454a5a918a3652d8b4e106f0c62ffbf84d9a838ff1617570fc6056ae1ee12f48",
+        "sizeBytes": 3614005
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "9f99c8603f17664a1a635ddccb0acc89407f8ef30f9ed239c36e1f9710fb4f63",
+          "sizeBytes": 270616
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "c2ca666de2dcb066fa42dad6c3d717466acee4ed785b13877a4b9a33da8f033e",
+          "sizeBytes": 3342590
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/sameduck.source.tar.gz",
+        "sha256": "778db81165c216fc023696d194b23dc6b569772bc71a6d7a44d358802619b014",
+        "sizeBytes": 85613300
+      },
+      "archiveEntries": 14367,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "9116d98c3396cbfa60df46daf4c249caa5edad37f74136a008a31d6b0adfb1af",
+          "sizeBytes": 1649
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        },
+        {
+          "path": "sameduck/.github/actions/LICENSE",
+          "sha256": "36c2e3fcb292f375ebae50eb992b800d5aa3960d3b6df4142e01b1061821650c",
+          "sizeBytes": 1160
+        },
+        {
+          "path": "sameduck/Cocoa/License.html",
+          "sha256": "6290b53b58875eac0662c811c2624bb243cb754666b91dcdbd5a4406a31da2a5",
+          "sizeBytes": 3106
+        },
+        {
+          "path": "sameduck/HexFiend/License.txt",
+          "sha256": "62fe33d7821eb6bd356680a76cd37addfd560ca9f623122e19f7efd59d1d9be9",
+          "sizeBytes": 1339
+        },
+        {
+          "path": "sameduck/LICENSE",
+          "sha256": "429744ec081f13c856b1ed9726a591d7d6c2151a371601c004e110b28d0bf237",
+          "sizeBytes": 1073
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "040e19c379f00dae10afe0eb0c1b2b019b985bbe"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.stella2014",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/stella2014.ecsplayer",
+        "sha256": "ef724d23b070d5035dcaeab774ca1c5a15a8c37bebd54d39e2bddfad7b530f13",
+        "sizeBytes": 4547701
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "1cc2bc284a0f8ccec76dd60961b6b5d00d49fcb7fae7e57cb5e5cda80cc35837",
+          "sizeBytes": 272126
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "4d046dfbcff33dd146cb568d1efe874ce6423f52dd981580832f5a6a924b4c89",
+          "sizeBytes": 4274766
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/stella2014.source.tar.gz",
+        "sha256": "264d6fd075130db989a16a0d18cda8a6c737711cb6ec3d26be1edd374d5e9963",
+        "sizeBytes": 85325890
+      },
+      "archiveEntries": 14387,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "8ea03b1381c8929276a30fe6a3881493eea0dfac9e32058086e10d87af9a0c3c",
+          "sizeBytes": 1650
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        },
+        {
+          "path": "stella2014/stella/license.txt",
+          "sha256": "310782e1abd43c4de6217c513e328bddf999d39302d67c6e05b10a59959827af",
+          "sizeBytes": 15174
+        }
+      ],
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "7d1361e407e63f29e52892655069e5fb4096e691"
+      },
+      "manifestMatchesPublishedPackage": true,
+      "rebuild": {
+        "state": "publisher-reported",
+        "independentlyRebuilt": false
+      }
+    },
+    {
+      "id": "org.libretro.virtualjaguar",
+      "package": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-media.1/virtualjaguar.ecsplayer",
+        "sha256": "b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de",
+        "sizeBytes": 4604920
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sha256": "18e98d8ad251363d509782023e34b2b7bffa3a4048856ebe922a2957c9c2531b",
+          "sizeBytes": 273128
+        },
+        {
+          "file": "core.wasm",
+          "sha256": "fff4746e146f15ea968edeb8ece6c1b8558ab5fe8819ec50814359ac52e7cc27",
+          "sizeBytes": 4330867
+        }
+      ],
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "archiveEntries": 29396,
+      "unsafePaths": [],
+      "buildRecords": [
+        {
+          "path": "ECS-BUILD.json",
+          "sha256": "211e5c2bbcd65131c96d12d75ee32f29726bdfc621ec3f40a2f51a9dace2513d",
+          "sizeBytes": 962
+        },
+        {
+          "path": "ecs-recipes/virtualjaguar-bios-free.mjs",
+          "sha256": "869e7f6d6178190b9d253bd607650131355abca0bfa35d75b9836e87d1c24e07",
+          "sizeBytes": 5457
+        }
+      ],
+      "noticeInventory": [
+        {
+          "path": "frontend/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-imageviewer/LICENSE",
+          "sha256": "3461e105359fe4e24ca575ac799476f31a042edf5759cbdc9be71e0afc9aa7d1",
+          "sizeBytes": 1063
+        },
+        {
+          "path": "frontend/cores/libretro-mpv/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "frontend/cores/libretro-video-processor/LICENSE",
+          "sha256": "fba7111eaa50dd02eb70f910c5ef5adb7acdaaabf4ce4cbdfd7b9fe25d875af2",
+          "sizeBytes": 1319
+        },
+        {
+          "path": "frontend/deps/SPIRV-Cross/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/libShake/LICENSE.txt",
+          "sha256": "c6712b4aae835682324c2f0effcdb0843178db8b234817a0f7f82ed8de10be04",
+          "sizeBytes": 1119
+        },
+        {
+          "path": "frontend/deps/libgo2/LICENSE",
+          "sha256": "a619c43b767de59121d8d9094a94925fe07d245f213994ffafd0cf28db6c3ec3",
+          "sizeBytes": 793
+        },
+        {
+          "path": "frontend/deps/openxr/COPYING.adoc",
+          "sha256": "2fd738273dace4314bea8935c4332026138a1d7f9ecb5e66a284ffaeef73818a",
+          "sizeBytes": 5475
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "sizeBytes": 11358
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-Khronos-Free-Use-License-for-Software-and-Documentation.txt",
+          "sha256": "631caf35cb7a21e2fa4e36617551d72566cc272619003857fe79b82399e8e8fa",
+          "sizeBytes": 1036
+        },
+        {
+          "path": "frontend/deps/openxr/LICENSES/LicenseRef-KhronosSpecCopyright-WithNormativeWording-v10.txt",
+          "sha256": "a4717453788ebb44f2db2ebaab54fe721ceaac5d387243f4777adbdbfb43d6e1",
+          "sizeBytes": 2826
+        },
+        {
+          "path": "frontend/deps/rcheevos/LICENSE",
+          "sha256": "bf820c034966a3b6be050bb85f94ec841a0b972bd5d477e362337d0574b5c219",
+          "sizeBytes": 1078
+        },
+        {
+          "path": "frontend/deps/wayland-protocols/COPYING",
+          "sha256": "f1a2b233e8a9a71c40f4aa885be08a0842ac85bb8588703c1dd7e6e6502e3124",
+          "sizeBytes": 1502
+        },
+        {
+          "path": "frontend/deps/xxHash/LICENSE",
+          "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a",
+          "sizeBytes": 1389
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/bench/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/deps/xxHash/tests/collisions/LICENSE",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "sizeBytes": 18092
+        },
+        {
+          "path": "frontend/gfx/drivers/vita_shaders/LICENSE",
+          "sha256": "bfcd754f76d4c3746c58b62e838becc8f36555b409cd0c1b9b6d665b9d184b68",
+          "sizeBytes": 1110
+        },
+        {
+          "path": "frontend/gfx/drivers_context/vita_pib/LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "sizeBytes": 35149
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.MIT",
+          "sha256": "fdad617605674f7fe59d7018d40e1e7bac8529cd3a0cd0cfaa82d5afe5634c3c",
+          "sizeBytes": 1062
+        },
+        {
+          "path": "frontend/libretro-common/formats/h264/COPYING.OpenH264",
+          "sha256": "dd5c1c9668512530fa5a96e4c29ac4033d70a7eeb0eed7a42fddb6dd794ebdbb",
+          "sizeBytes": 1295
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.CC_BY_NC_3.txt",
+          "sha256": "bc7319c86c160a972d4036d87bfc4e170c6b632f39cde2140cd3da68f077dfd9",
+          "sizeBytes": 17719
+        },
+        {
+          "path": "frontend/media/icons/LICENSE/LICENSE.txt",
+          "sha256": "840de2528a612bc0ae6241fa4817ade2b5c389071f3b22c93ca0cde5dc9ecd24",
+          "sizeBytes": 1027
+        },
+        {
+          "path": "frontend/pkg/debian/copyright",
+          "sha256": "fba268602239aa95e096fa6766a0b5687b0da7c9449ad19d378ba328a3aaedee",
+          "sizeBytes": 2866
+        },
+        {
+          "path": "frontend/pkg/msvc-uwp/packages/Microsoft.Windows.CppWinRT.3.0.260520.1/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "sizeBytes": 1141
+        },
+        {
+          "path": "frontend/tools/ps3/ps3py/LICENSE",
+          "sha256": "61fc255a4be73a0603ec1c664d277a038333df45db408379aa2a885ac1e4d560",
+          "sizeBytes": 1084
+        },
+        {
+          "path": "virtualjaguar/LICENSE",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "sizeBytes": 35147
+        },
+        {
+          "path": "virtualjaguar/deps/libchdr/LICENSE.txt",
+          "sha256": "e3989a7aee74a91b8cdbdfe204a6b8d03288863ec7533a21c51f1a987ba73539",
+          "sizeBytes": 1493
+        },
+        {
+          "path": "virtualjaguar/deps/libchdr/deps/lzma-25.01/LICENSE",
+          "sha256": "06721414a6decad6d6677feb470f01f47126e154d895d85bc1e17628697715e5",
+          "sizeBytes": 261
+        }
+      ],
+      "rebuild": {
+        "state": "matched",
+        "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+        "sdk": "3.1.46",
+        "sourceDateEpoch": 1793145600,
+        "frontendGitVersion": "",
+        "recipe": "scripts/browser-core/rebuild-jaguar-source.mjs",
+        "scope": "loader-and-wasm",
+        "sameSourceTreeIncrementalCorrections": true
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "ffea7893a59dd9b9e6f9b85c51627810338b0778"
+      },
+      "reusesPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar.ecsplayer",
+        "sha256": "8b274aef3918bc8bc35719e417308d43134177057e2cbf5481ab36bfa001791e"
+      },
+      "sanitizedBootRomSources": [
+        {
+          "path": "virtualjaguar/src/bios/jagbios.c",
+          "sha256": "9d505f9bce65ba39101f82b3326d98f79b0572ecafa8ebac5dec8593323cc0f7",
+          "sizeBytes": 112
+        },
+        {
+          "path": "virtualjaguar/src/bios/jagbios_m.c",
+          "sha256": "edb9bcc25ae11ad69f824687ddb447d0e85958a522bdb74cefd71f1dc3b16cbd",
+          "sizeBytes": 116
+        },
+        {
+          "path": "virtualjaguar/src/bios/jagcdbios.c",
+          "sha256": "2c1f3e7565ae726259dbde915aae05cdb1b69c6e16f0c9f7d26014e9707c857a",
+          "sizeBytes": 116
+        },
+        {
+          "path": "virtualjaguar/src/bios/jagdevcdbios.c",
+          "sha256": "89c278357a3a92e1c6ce2f727775860f1ecea8e125bf29e055dcea48832ac9df",
+          "sizeBytes": 122
+        }
+      ]
+    }
+  ],
+  "upstream": {
+    "sourceMapping": "unverified",
+    "reason": "Pinned core-info metadata describes profiles; inspected official documentation, web index and archive index do not bind these loader/WASM hashes to complete source/build inputs.",
+    "profiles": [
+      {
+        "id": "org.libretro.pcsx-rearmed",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/43c6483ae90d5c5a9a6073465ec0902515a6ef8a/dist/info/pcsx_rearmed_libretro.info",
+        "infoSha256": "83e98e7b7068b99330db52741a369f217ebadcdbd1eb182a5a435c76ab6ae704",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.gearboy",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/gearboy_libretro.info",
+        "infoSha256": "5de387794a14b72a4d5e5ffa817b6d45daa913fba45ef5ddb6e508661e54984b",
+        "license": "GPLv3"
+      },
+      {
+        "id": "org.libretro.gambatte",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/gambatte_libretro.info",
+        "infoSha256": "084975942c06a658972890c12a8251fe8d0f6c7ffd2b268850458628bbbe68f4",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.tgbdual",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/tgbdual_libretro.info",
+        "infoSha256": "1a58735e8a305d82684bd402e92fbf0195b78f12b80883bd602f93eed28f28ef",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.mgba",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mgba_libretro.info",
+        "infoSha256": "64444beb8268d3a57d53a45564c55049f39ff621315401fef86e82f3849042d6",
+        "license": "MPLv2.0"
+      },
+      {
+        "id": "org.libretro.nestopia",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/nestopia_libretro.info",
+        "infoSha256": "bce8d791385b01639ef282d370e218f814519c964d6f4c747bd9d2e6e0b1e35b",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.quicknes",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/quicknes_libretro.info",
+        "infoSha256": "0bfb8cb8ad1eea544fdd1c55c8ef8310eb90e33aaf723ad12524a499288f4484",
+        "license": "LGPLv2.1+"
+      },
+      {
+        "id": "org.libretro.gearsystem",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/gearsystem_libretro.info",
+        "infoSha256": "fcefd381377eee3487a722cc1ed71359a10481ce6bff9a12569efb96680e0a54",
+        "license": "GPLv3"
+      },
+      {
+        "id": "org.libretro.clownmdemu",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/clownmdemu_libretro.info",
+        "infoSha256": "758261302c816b320ca5ad9dfdcad19cedd9a4e5b60bc01aea670c8bd312a488",
+        "license": "AGPLv3"
+      },
+      {
+        "id": "org.libretro.genesis-plus-gx",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/genesis_plus_gx_libretro.info",
+        "infoSha256": "9793bff8d9e298a7ee0c94c0511dab242200ca60fbe87e3720eb9231a3e0166a",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.picodrive",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/picodrive_libretro.info",
+        "infoSha256": "35cef57b4b61d95a86e1ceee3a7c325d9d16bbdc136b4b3a556e808864de06c5",
+        "license": "MAME"
+      },
+      {
+        "id": "org.libretro.snes9x",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/snes9x_libretro.info",
+        "infoSha256": "fa62b78d58bc4c30f4e0a4a581f0cb3252447b7f198b55bd6ebe2e4b9bde5cc2",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.snes9x2002",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/snes9x2002_libretro.info",
+        "infoSha256": "6d19241fc7e30e3a6234d76330cf4a8c5eed84aa01a8d9886510a8e5579fee0d",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.snes9x2005",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/snes9x2005_libretro.info",
+        "infoSha256": "b77d8b7338e11ac85d7e60106ff56579862ec3fc64c2c58c01912537e2e2620c",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.snes9x2010",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/snes9x2010_libretro.info",
+        "infoSha256": "233ceaaec8a7302a4477055c2a8c15f2060e71b509918d83cbe5d8632b3052e1",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.geargrafx",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/geargrafx_libretro.info",
+        "infoSha256": "a59aa76b78cd0c13966a78200dd291cdb202ce8be12ea2937cc84fa0f802bb44",
+        "license": "GPLv3"
+      },
+      {
+        "id": "org.libretro.beetle-pce-fast",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mednafen_pce_fast_libretro.info",
+        "infoSha256": "b75e4f64518d4161bef48068f6d4be24c4ea0f478431b749b490251430d8ec35",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.beetle-lynx",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mednafen_lynx_libretro.info",
+        "infoSha256": "b81537311f91546383465273faf6c31c835a87b60a7466c8e1953e8c1d51e89e",
+        "license": "Zlib|GPLv2"
+      },
+      {
+        "id": "org.libretro.beetle-ngp",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mednafen_ngp_libretro.info",
+        "infoSha256": "1e7485277cffaf01ae4c4c5406a7dfc6f85f4d2a6949273feae5634781ec396b",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.beetle-wswan",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mednafen_wswan_libretro.info",
+        "infoSha256": "07f595bdc27cf7ee145091ae226b2dc37eeefa499ef9720b64d5384e54ac5ac1",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.beetle-vb",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mednafen_vb_libretro.info",
+        "infoSha256": "425e0ef983f72b7e938af8cc170d2ddc1cb6b0a19a98aa4fce49bb2957567236",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.tia",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/tia_libretro.info",
+        "infoSha256": "cc6480682e4ac6ab5be6bd21f313256462ca48927c3ee942da935a5d6cc17ac8",
+        "license": "GPLv2+"
+      },
+      {
+        "id": "org.libretro.mame2000",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mame2000_libretro.info",
+        "infoSha256": "e40c5c414a9e90d1ce80751e281ee6564820775aa76c491a4701666fa6372384",
+        "license": "MAME"
+      },
+      {
+        "id": "org.libretro.mame2003",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mame2003_libretro.info",
+        "infoSha256": "44989bb761ed92e77cd62ae36ef566aa81120b1d858f1739933263873ac3768a",
+        "license": "MAME"
+      },
+      {
+        "id": "org.libretro.mame2003-plus",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mame2003_plus_libretro.info",
+        "infoSha256": "ed78760537384f5d9d6fd334b8c618c8904ae437566dab3e64010ab249d12d45",
+        "license": "MAME Noncommercial"
+      },
+      {
+        "id": "org.libretro.fbneo",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/fbneo_libretro.info",
+        "infoSha256": "c95c3e177d61adf6662af7adf7361d7fefd9cd87ab0773d105a97818767e5815",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.fbalpha2012-cps1",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/fbalpha2012_cps1_libretro.info",
+        "infoSha256": "ad6d31fe0724d5a28c46cca51aac98164322a2230e94599814fc33468afd456d",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.fbalpha2012-cps2",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/fbalpha2012_cps2_libretro.info",
+        "infoSha256": "5f5d63d149026fd07d7a718a713cc7588ad1d524451687ab4e95355a23b88e36",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.fbalpha2012-neogeo",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/fbalpha2012_neogeo_libretro.info",
+        "infoSha256": "11d9b05816da54e9f9b42093a873c311710972c21a516a96c40a077ac3f2398e",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.prboom",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/prboom_libretro.info",
+        "infoSha256": "10ffe6fb3aa641c90a6d2ab4d7d88d436087762e08d5ad29e04edd35aaec11d4",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.ecwolf",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/ecwolf_libretro.info",
+        "infoSha256": "a0274d7ce618ef354d305f5901a5854d0ffc6fa363c749bd6df27070121bf0b1",
+        "license": "BSD|LGPL"
+      },
+      {
+        "id": "org.libretro.tyrquake",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/tyrquake_libretro.info",
+        "infoSha256": "c6033f98e60522792143e7ce1eab5430c4ebe64e18e4168c15aba2f2156dd8d0",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.vitaquake2",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/vitaquake2_libretro.info",
+        "infoSha256": "6815cdcae99dde81d809efc0a9201b8810942c77ee646cb34428128ad21b3eb2",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.tic80",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/tic80_libretro.info",
+        "infoSha256": "f8a1cf3a7e35e834abbc8b51cefcaa9e0753289300363665ea56d3768e2cfdf8",
+        "license": "MIT"
+      },
+      {
+        "id": "org.libretro.vba-next",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/vba_next_libretro.info",
+        "infoSha256": "d432d2bea1bf3e4dea50104d6078f766eaee2b7fb6b40ba1e3715b6b78b53071",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.vice-x64sc",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/vice_x64sc_libretro.info",
+        "infoSha256": "944370dcfe24e575a3ecf2d21b9324284b885e32311bce9d1c28492e036cf4fb",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.doublecherrygb",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/DoubleCherryGB_libretro.info",
+        "infoSha256": "bc5738b4b0031a59186ef40caa59031c179c06a5bb519858919a2b40ed20545b",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.genesis-plus-gx-wide",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/genesis_plus_gx_wide_libretro.info",
+        "infoSha256": "8aa2205e8a3ea2cf2ed04d5ae83eed52c4e9ca6b8d2722afa2bb853a9939357c",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.gearcoleco",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/gearcoleco_libretro.info",
+        "infoSha256": "7500084e2587db702ab2c2b28b5a01b402277c2d0bc722270659b0d28fa632c9",
+        "license": "GPLv3"
+      },
+      {
+        "id": "org.libretro.handy",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/handy_libretro.info",
+        "infoSha256": "a059661e377deb24ede5a77c725fbbdd4829666d0996f30bb9c2c9a10ee0461d",
+        "license": "Zlib"
+      },
+      {
+        "id": "org.libretro.fbalpha2012",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/fbalpha2012_libretro.info",
+        "infoSha256": "d0c1347fe924f6d9aca988d16fe798de9db04c34c69f13804710735bc74b0647",
+        "license": "Non-commercial"
+      },
+      {
+        "id": "org.libretro.gme",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/gme_libretro.info",
+        "infoSha256": "14d941c4b8b10fff988761e1c3deb15e946f93234f2811101291eb3e4619e9da",
+        "license": "GPLv3"
+      },
+      {
+        "id": "org.libretro.minivmac",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/minivmac_libretro.info",
+        "infoSha256": "347a45c17caa9fb913ecd841d7506e7f6bb6f7ddc75a4789c2bb0051211ddc42",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.mu",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/mu_libretro.info",
+        "infoSha256": "894ca6749fe1131595e0301a3e1bfc36e74b63364c532dcc7601a7a5cc7affda",
+        "license": "CC BY-NC 3.0 US (Non-commercial)"
+      },
+      {
+        "id": "org.libretro.neocd",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/neocd_libretro.info",
+        "infoSha256": "6ea290bc3814131091c08eec089386492264fc3aaa3f678b7b130874cac0cc37",
+        "license": "LGPLv3"
+      },
+      {
+        "id": "org.libretro.o2em",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/o2em_libretro.info",
+        "infoSha256": "d8cbfb38f736448d16817a4b2f17d61843e43c1b8bf64fae228a9d9e95e48378",
+        "license": "Artistic License"
+      },
+      {
+        "id": "org.libretro.opera",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/opera_libretro.info",
+        "infoSha256": "3edce84cd4bd8afba0727a07a70fef7ccc44e7db7e1e0f00897ed6805087d94f",
+        "license": "LGPL/Non-commercial"
+      },
+      {
+        "id": "org.libretro.vecx",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/vecx_libretro.info",
+        "infoSha256": "9eec259b2b84256aca32cdcd37b084732b17d2fce829dac01bab9a84ea01b4e3",
+        "license": "GPLv3"
+      },
+      {
+        "id": "org.libretro.vice-x64",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/vice_x64_libretro.info",
+        "infoSha256": "5b3f59e050c260e53d29e4a13a3983e9b77e77b7b3b4512dded8e313d756b168",
+        "license": "GPLv2"
+      },
+      {
+        "id": "org.libretro.vice-xscpu64",
+        "sourceMapping": "unverified",
+        "sourceInfo": "https://raw.githubusercontent.com/libretro/libretro-super/542c909bc7b56705a6dc42e5323aef1762c618d9/dist/info/vice_xscpu64_libretro.info",
+        "infoSha256": "1d0633278712cfecc045b4bea269d2f49782e9f61dd3d27c388c970c821474e5",
+        "license": "GPLv2"
+      }
+    ]
+  },
+  "sdkNotices": [
+    {
+      "path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/LICENSE",
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+      "sizeBytes": 5093
+    },
+    {
+      "path": "system/lib/libc/musl/COPYRIGHT",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libc/musl/COPYRIGHT",
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+      "sizeBytes": 6204
+    },
+    {
+      "path": "system/lib/compiler-rt/LICENSE.TXT",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/compiler-rt/LICENSE.TXT",
+      "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+      "sizeBytes": 16708
+    },
+    {
+      "path": "system/lib/libcxx/LICENSE.TXT",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libcxx/LICENSE.TXT",
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+      "sizeBytes": 16703
+    },
+    {
+      "path": "system/lib/libcxxabi/LICENSE.TXT",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libcxxabi/LICENSE.TXT",
+      "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+      "sizeBytes": 16706
+    },
+    {
+      "path": "system/lib/libunwind/LICENSE.TXT",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libunwind/LICENSE.TXT",
+      "sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d",
+      "sizeBytes": 16706
+    }
+  ]
+}
