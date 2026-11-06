@@ -104,7 +104,9 @@ jobs:
         run: node scripts/publish-desktop.mjs nightly apps/tray/src-tauri/target/release/bundle --stage-only
       - uses: actions/upload-artifact@v4
         with:
-          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          # Hosted macOS builds have no Developer ID credentials. Keep them as
+          # test artifacts and preserve the notarized release download.
+          name: ${{ runner.os == 'macOS' && 'test-desktop-macos-arm64' || format('desktop-{0}-{1}', matrix.platform, matrix.arch) }}
           path: dist-release/desktop/*
           if-no-files-found: error
           retention-days: 7
@@ -123,6 +125,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
+          pattern: server-*
+          path: dist-release/all
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        if: '!inputs.release_tag'
+        with:
+          pattern: desktop-*
           path: dist-release/all
           merge-multiple: true
       - name: Verify complete release checksums
@@ -135,7 +144,7 @@ jobs:
           if test -n "$ECS_RELEASE_TAG"; then
             test "$(wc -l < SHA256SUMS.txt)" -eq 3
           else
-            test "$(wc -l < SHA256SUMS.txt)" -eq 7
+            test "$(wc -l < SHA256SUMS.txt)" -eq 6
           fi
           test "$(find . -name 'ecs-update-*.json' | wc -l)" -eq 3
       - name: Attach server packages to the tagged release
@@ -160,13 +169,19 @@ jobs:
           [Installation and testing guide](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md)
           [Build and smoke-test evidence](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
 
-          Server archives include Node.js and the web interface. Desktop installers are API companions; run the server separately. All nightly installers are unsigned and macOS nightlies are not notarized.
+          Server archives include Node.js and the web interface. Desktop installers are API companions; run the server separately. Linux and Windows installers are unsigned. The macOS tray installer is refreshed separately after Apple notarization, and its asset label identifies its source commit.
 
           Platforms: Linux x64 (Ubuntu 24.04), Windows x64, macOS arm64 (Apple Silicon). Other architectures and GUI interaction are unverified. Emulator cores, ROMs, BIOS files and user data are not included. Back up data before testing; database downgrades require restoring a backup.
 
-          The nightly tag and its files are replaced after a complete successful matrix. Verify your download against SHA256SUMS.txt from the same build.
+          The nightly tag and automated packages refresh after a complete successful matrix. Verify your download against SHA256SUMS.txt on this release.
           NOTES
           if gh release view nightly >/dev/null 2>&1; then
+            mac_digest=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" --jq '
+              .assets[] | select(.name == "Emulation-Server-nightly-macos-arm64.dmg" and
+                ((.label // "") | startswith("macOS tray installer (notarized, "))) | .digest')
+            if [[ "$mac_digest" =~ ^sha256:([0-9a-f]{64})$ ]]; then
+              printf '%s  Emulation-Server-nightly-macos-arm64.dmg\n' "${BASH_REMATCH[1]}" >> dist-release/all/SHA256SUMS.txt
+            fi
             gh release upload nightly dist-release/all/* --clobber
             gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$GITHUB_SHA" -F force=true
             gh release edit nightly --title 'Emulation Server nightly' --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --latest=false

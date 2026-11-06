@@ -1,6 +1,6 @@
 # Nightly installation and testing
 
-Download from the stable [nightly release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly). CI replaces these files after all server and desktop jobs pass on the daily main schedule or by manual dispatch on main. The release notes link the exact source commit and build run. A failed matrix leaves the previous nightly in place. Nightlies are for testing: back up your data before upgrading; restoring that backup is required to downgrade a database.
+Download from the stable [nightly release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly). CI refreshes the server packages and Linux and Windows desktop installers after the nightly matrix passes. The release notes link the exact source commit and build run. A failed matrix leaves the previous nightly in place. Back up your data before upgrading. Restoring that backup is required to downgrade a database.
 
 ## Choose a download
 
@@ -38,7 +38,7 @@ Open <http://127.0.0.1:8473/ui/>. The first run prints a one-time setup token; e
 
 The desktop app connects to a separately running content server; it does not include or silently start that server. Windows: run the MSI. Linux: install the DEB with your package manager, or `chmod +x` the AppImage and run it on a tray-capable desktop. macOS: open the DMG and drag Emulation Server to Applications. Connect it to `http://127.0.0.1:8473` or your configured server address.
 
-Nightly desktop installers are unsigned; macOS nightlies are not notarized. Existing signed tagged releases remain available separately. Gatekeeper/SmartScreen may block nightly installation; do not disable system-wide security settings. If the system offers no trusted per-app opening option, test the portable server/web UI or use an existing signed release instead.
+Linux and Windows nightly desktop installers are unsigned. The public macOS DMG is refreshed separately after Developer ID signing and Apple notarization. Its release asset label identifies the source commit, which may differ from the current server nightly. The automated macOS tray build is available as a test artifact in the workflow run.
 
 ## What CI proves and what to test
 
@@ -79,6 +79,8 @@ stop the old server first and start the new package with `ecs serve`. Keep the
 old build and matching data backup until testing passes.
 
 The [Nightly distributions workflow](https://github.com/Provenance-Emu/emulator-content-server/actions/workflows/nightly.yml) builds only committed source and production dependencies. Pull requests retain the regular Linux verification; the full distribution matrix runs only on the nightly schedule or manual dispatch. Publication requires every job to succeed on main and links the exact tested commit, even if main advances while installers build. Assets have stable names plus per-platform and combined SHA-256 manifests. No new signing secrets or paid runners are required. A manual run on a branch provides Actions artifacts only. These packages do not replace the separate routine verification workflow or establish full release readiness.
+
+To refresh the public macOS tray installer, follow the [macOS notarization steps](desktop-install.md#macos-notarization) and label the uploaded asset `macOS tray installer (notarized, <commit>)`. Refresh both the macOS desktop checksum and its entry in the combined checksum file after stapling. The nightly workflow keeps this asset and carries its published digest forward.
 
 To attach update-enabled archives to a tagged server release, run the same
 workflow on the tag after creating the GitHub release. Use a tag that includes
