@@ -10,6 +10,7 @@
     onsignin,
     setup = false,
     setupCode,
+    revealSetupCode,
   }: {
     client: ContentClient;
     origin: string;
@@ -17,6 +18,7 @@
     /** True when the server has no owner yet and is asking for its bootstrap token. */
     setup?: boolean;
     setupCode?: string;
+    revealSetupCode?: () => Promise<void>;
   } = $props();
 
   let token = $state('');
@@ -37,7 +39,7 @@
       const pasted = token.trim();
       const authentication = new ContentClient(origin);
       const session = !setup && useToken ? await tokenSession(pasted) : setup
-        ? await authentication.bootstrap(token, username, password)
+        ? await authentication.bootstrap(pasted, username, password)
         : await authentication.login(username, password);
       if (disposed) return;
       password = '';
@@ -62,6 +64,13 @@
   {#if setup}
     {#if setupCode}
       <p class="dim">The setup code is filled in. Create an owner account to add games and manage this library.</p>
+    {:else if revealSetupCode}
+      <p class="dim">Find the setup code in Finder, open the selected file, and paste its contents here to create the owner account.</p>
+      <button type="button" class="text-button" onclick={async () => {
+        failure = null;
+        try { await revealSetupCode?.(); }
+        catch (error) { if (!disposed) failure = error instanceof Error ? error.message : String(error); }
+      }}>Find setup code in Finder</button>
     {:else}
       <p class="dim">
         Create an account to add games and manage this library. Use the setup code shown when

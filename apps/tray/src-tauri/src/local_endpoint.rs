@@ -41,6 +41,38 @@ impl Snapshot {
     pub fn origin(&self) -> String {
         format!("http://{}", self.listener)
     }
+
+    pub fn mac_setup_code_path(&self) -> Result<std::path::PathBuf, String> {
+        if !cfg!(target_os = "macos") {
+            return Err(UNAVAILABLE.into());
+        }
+        let text = output(
+            &mut NativeRunner,
+            "/bin/launchctl",
+            &["print", &self.service],
+        )?;
+        let data = mac_registered_data(&text).ok_or(UNAVAILABLE)?;
+        if &current()? != self {
+            return Err(UNAVAILABLE.into());
+        }
+        Ok(data.join("bootstrap.token"))
+    }
+}
+
+fn mac_registered_data(text: &str) -> Option<&std::path::Path> {
+    let (_, arguments) = text.split_once("\n\targuments = {\n")?;
+    let (arguments, _) = arguments.split_once("\n\t}\n")?;
+    let mut args = arguments.lines().map(|line| line.strip_prefix("\t\t"));
+    let mut data = None;
+    while let Some(argument) = args.next() {
+        if argument? == "--data" {
+            let path = std::path::Path::new(args.next()??);
+            if !path.is_absolute() || data.replace(path).is_some() {
+                return None;
+            }
+        }
+    }
+    data
 }
 pub trait Runner {
     fn run(&mut self, program: &str, args: &[&str]) -> Result<String, String>;

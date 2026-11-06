@@ -19,7 +19,12 @@ pub fn trusted_document(url: &Url) -> bool {
         && url.username().is_empty()
         && url.password().is_none()
         && url.query().is_none()
-        && matches!(url.path(), "/" | "/index.html" | "/library.html")
+        && (matches!(url.path(), "/" | "/index.html" | "/library.html")
+            || (url.scheme() == "tauri" && url.path().is_empty()))
+}
+
+pub fn trusted_status(label: &str, url: &Url) -> bool {
+    label == "status" && trusted_document(url) && matches!(url.path(), "" | "/" | "/index.html")
 }
 
 /// Dialog IPC belongs only to this fixed document in this fixed window.
@@ -50,6 +55,7 @@ mod tests {
     #[test]
     fn privileged_documents_are_fixed_and_bundled() {
         for url in [
+            "tauri://localhost",
             "tauri://localhost/",
             "http://tauri.localhost/index.html",
             "https://tauri.localhost/library.html",
@@ -73,5 +79,17 @@ mod tests {
             trusted_document(&Url::parse("http://localhost:5174/library.html").unwrap()),
             cfg!(debug_assertions)
         );
+    }
+
+    #[test]
+    fn native_status_starts_at_the_bare_macos_origin() {
+        let entry = Url::parse("tauri://localhost").unwrap();
+        assert_eq!(entry.path(), "");
+        assert!(trusted_status("status", &entry));
+        assert!(!trusted_status("library", &entry));
+        assert!(!trusted_status(
+            "status",
+            &Url::parse("tauri://localhost/library.html").unwrap()
+        ));
     }
 }

@@ -1,4 +1,20 @@
 use super::*;
+
+#[test]
+fn setup_code_path_comes_from_the_registered_data_argument() {
+    let job = "gui/501/app.emulator-content-server = {\n\targuments = {\n\t\t/opt/ecs/node\n\t\t--data\n\t\t/Users/test/Library/Application Support/Emulation Server/data\n\t\t--port\n\t\t8473\n\t}\n}";
+    let directory =
+        std::path::Path::new("/Users/test/Library/Application Support/Emulation Server/data");
+    assert_eq!(mac_registered_data(job), Some(directory));
+    assert_eq!(
+        mac_registered_data(&job.replace("/Users/test/", "relative/")),
+        None
+    );
+    assert_eq!(
+        mac_registered_data(&job.replace("--port\n\t\t8473", "--data\n\t\t/tmp/second")),
+        None
+    );
+}
 use std::collections::VecDeque;
 
 struct Fixture {

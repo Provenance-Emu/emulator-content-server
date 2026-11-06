@@ -26,7 +26,7 @@ write_nightly_notes() {
   case "$mac_status" in
     fresh)
       mac_download="[**Download for Mac (.dmg)**]($download/Emulation-Server-nightly-macos-arm64.dmg)"
-      mac_setup='Drag the app into Applications. To host a library here, choose **Open Library → Set up this Mac**.'
+      mac_setup='Drag the app into Applications. To host a library here, choose **Open Library → Set up this Mac**. The owner form fills in your setup code.'
       mac_build='Apple notarized this Mac download.'
       ;;
     retained)

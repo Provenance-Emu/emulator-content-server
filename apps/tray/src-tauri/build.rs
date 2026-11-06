@@ -6,6 +6,7 @@ fn main() {
             "service_stop",
             "managed_endpoint",
             "install_local_server",
+            "reveal_local_setup_code",
             "choose_managed_directory",
             "validate_managed_selection",
         ]),

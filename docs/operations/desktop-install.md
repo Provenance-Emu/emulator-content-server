@@ -10,7 +10,7 @@ The macOS installer targets Apple Silicon and is Developer ID signed and Apple n
 
 The 0.1.2 update includes the new Home, guided Add games, mobile filters and prominent Play controls. It also includes Settings → Devices for revocable app tokens and shows current library access in Settings → Access. Its higher application version supports upgrading the previous installers.
 
-On first open, the app checks for a verified local service. Choose **Set up this Mac** on a fresh machine to download and verify the nightly server, install its per-user login service, and open the owner setup form. The local data directory is `~/Library/Application Support/Emulation Server/data`. If setup is interrupted after installation, the owner setup code is in `bootstrap.token` in that folder.
+On first open, the app checks for a verified local service. Choose **Set up this Mac** to download the nightly server, install its login service, and open the owner form with the setup code filled in. If you reopened the app before creating the owner account, choose **Find setup code in Finder** on the owner form. Open the selected `bootstrap.token` file and paste its contents into the form. For a default installation, the file is under `~/Library/Application Support/Emulation Server/data`.
 
 To use a server on another computer, enter its URL and select **Connect**. Use **Status and settings → Servers** to switch between saved servers. The local service controls apply to this Mac.
 

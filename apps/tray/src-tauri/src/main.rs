@@ -57,6 +57,32 @@ async fn install_local_server(window: tauri::WebviewWindow) -> Result<String, St
     .map_err(|_| "Local setup could not finish.".to_string())?
 }
 #[tauri::command]
+async fn reveal_local_setup_code(
+    window: tauri::WebviewWindow,
+    verification_id: String,
+) -> Result<(), String> {
+    require_library_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let current = local_endpoint::current()?;
+        {
+            let state = window.state::<LocalState>();
+            let mut state = state
+                .lock()
+                .map_err(|_| "Local service verification is unavailable.")?;
+            if !state.validate(&verification_id, Some(&current)) {
+                return Err("Verify the local service again before finding its setup code.".into());
+            }
+        }
+        let path = current.mac_setup_code_path()?;
+        require_library_window(&window)?;
+        tauri_plugin_opener::reveal_item_in_dir(path).map_err(|_| {
+            "The setup code file is unavailable. It is removed after owner setup.".into()
+        })
+    })
+    .await
+    .map_err(|_| "The setup code file could not be located.".to_string())?
+}
+#[tauri::command]
 async fn validate_managed_selection(
     window: tauri::WebviewWindow,
     verification_id: String,
@@ -152,10 +178,9 @@ async fn service_stop(window: tauri::WebviewWindow) -> Result<String, String> {
 }
 
 fn require_status_window(window: &tauri::WebviewWindow) -> Result<(), String> {
-    if window.label() == "status"
-        && window
-            .url()
-            .is_ok_and(|url| navigation::trusted_document(&url))
+    if window
+        .url()
+        .is_ok_and(|url| navigation::trusted_status(window.label(), &url))
     {
         Ok(())
     } else {
@@ -256,8 +281,8 @@ fn main() {
         .plugin(
             tauri::plugin::Builder::<tauri::Wry>::new("trusted-navigation")
                 .on_navigation(|webview, url| {
-                    matches!(webview.label(), "status" | "library")
-                        && navigation::trusted_document(url)
+                    navigation::trusted_status(webview.label(), url)
+                        || navigation::trusted_library(webview.label(), url)
                 })
                 .build(),
         )
@@ -273,6 +298,7 @@ fn main() {
             service_stop,
             managed_endpoint,
             install_local_server,
+            reveal_local_setup_code,
             choose_managed_directory,
             validate_managed_selection
         ])

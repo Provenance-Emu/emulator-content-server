@@ -79,13 +79,22 @@
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
       if (!disposed && $selection === context)
-        failure = 'The local server is still starting. Use local managed service to check again.';
+        failure = 'The local server is still starting. Choose “Use the server on this computer” to check again.';
     } catch (error) {
       if (!disposed && $selection === context)
         failure = error instanceof Error ? error.message : String(error);
     } finally {
       if (!disposed) installing = false;
     }
+  }
+  async function revealSetupCode() {
+    const context = $selection;
+    const result = await nativeFolders.managedEndpoint();
+    if (disposed || !context || $selection !== context ||
+      !result.available || new URL(result.origin).origin !== context.origin) {
+      throw new Error('The app could not verify the local server. Connect to the local service again.');
+    }
+    await invoke('reveal_local_setup_code', { verificationId: result.verificationId });
   }
   $effect(() => {
     const context = $selection;
@@ -129,6 +138,7 @@
   {#if awaitingManagedVerification}<p class="startup-verification dim" role="status">Checking local service…</p>
   {:else}<App context={$selection} {folderSelection}
     setupCode={setupCode && setupCode.key === $selection.key ? setupCode.value : undefined}
+    revealSetupCode={canSetUpMac && ['127.0.0.1', '[::1]'].includes(new URL($selection.origin).hostname) ? revealSetupCode : undefined}
   />{/if}
 {/if}
 {#snippet connectionForm()}
@@ -143,7 +153,7 @@
       endpoint = null; failure = null; connectionOpen = false;
     } catch (error) { failure = error instanceof Error ? error.message : String(error); }
   }}>
-    <button class:primary={!$selection} type="button" disabled={verifying || installing} onclick={() => void selectManaged()}>{verifying ? 'Checking local service…' : 'Use local managed service'}</button>
+    <button class:primary={!$selection} type="button" disabled={verifying || installing} onclick={() => void selectManaged()}>{verifying ? 'Checking local service…' : 'Use the server on this computer'}</button>
     <label>Server address <input type="url" bind:value={typed} placeholder={DEFAULT_ORIGIN} required disabled={installing} /></label>
     <button class:primary={!!$selection} type="submit" disabled={installing}>Connect</button>
   </form>
