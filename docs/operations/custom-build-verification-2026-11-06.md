@@ -85,3 +85,8 @@ Exact binary-to-source mappings for 50 official upstream pairs remain open in #2
 Content/gameplay qualification retains its separate scope. Downloaded packages,
 source archives, compiler traces and build output stay outside Git at
 `/var/tmp/ecs-custom-verification-2026-11-06`.
+
+The [component notice follow-up](./component-notice-audit-2026-11-06.md) extends
+this evidence with full-file scans, legacy compiler closure, selected SDK members
+and component-specific terms. The [upstream inventory](./upstream-binary-mapping-2026-11-06.md)
+resolves embedded revision references across all 50 pinned upstream pairs.

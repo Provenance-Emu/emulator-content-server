@@ -22,6 +22,18 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
         sha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
         sizeBytes: 94911,
       },
+      {
+        kind: 'notices',
+        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/2bcdf7d84f7083991fe9c9c390d0a2e3ace361fc/docs/operations/legacy-build-verification-2026-11-06.json',
+        sha256: '8947a56d2eb9bb4713cc508be2534d2ce2c0f90e6608ef80413c5451b350ea43',
+        sizeBytes: 4305,
+      },
+      {
+        kind: 'notices',
+        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/2bcdf7d84f7083991fe9c9c390d0a2e3ace361fc/docs/operations/legacy-build-notices-2026-11-06.json',
+        sha256: 'f4df30bc8ee1c1d89730a3b7db31b30d61d44df3984a3c6c7ee81cb5bd6afec7',
+        sizeBytes: 1389719,
+      },
     ],
   },
   'org.libretro.virtualjaguar': {
@@ -43,6 +55,18 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
         url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
         sha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
         sizeBytes: 94911,
+      },
+      {
+        kind: 'notices',
+        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/2bcdf7d84f7083991fe9c9c390d0a2e3ace361fc/docs/operations/legacy-build-verification-2026-11-06.json',
+        sha256: '8947a56d2eb9bb4713cc508be2534d2ce2c0f90e6608ef80413c5451b350ea43',
+        sizeBytes: 4305,
+      },
+      {
+        kind: 'notices',
+        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/2bcdf7d84f7083991fe9c9c390d0a2e3ace361fc/docs/operations/legacy-build-notices-2026-11-06.json',
+        sha256: 'f4df30bc8ee1c1d89730a3b7db31b30d61d44df3984a3c6c7ee81cb5bd6afec7',
+        sizeBytes: 1389719,
       },
     ],
   },
@@ -153,7 +177,7 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
       'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
     infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
     license:
-      'RetroArch GPL-3.0-or-later | Atari800 (Atari 5200): GPL-2.0-or-later; preserve all upstream dependency notices',
+      'RetroArch GPL-3.0-or-later | Atari800 (Atari 5200): GPL-2.0-or-later. Incorporated Caprice32 noncommercial terms. See component notice audit',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
@@ -221,7 +245,7 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
       'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
     infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
     license:
-      'RetroArch GPL-3.0-or-later | Potator (Supervision): Unlicense; preserve all upstream dependency notices',
+      'RetroArch GPL-3.0-or-later | Potator (Supervision): Unlicense. Incorporated M65C02 noncommercial distribution terms. See component notice audit',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
@@ -377,6 +401,21 @@ const sdkNotices = [
   },
 ] as const;
 
+const componentNoticeArtifacts = [
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/2bcdf7d84f7083991fe9c9c390d0a2e3ace361fc/docs/operations/component-notice-audit-2026-11-06.json',
+    sha256: '96527b71f80f0f273cc54159e24cf841915930fad4748f89c9b66ea6598e3079',
+    sizeBytes: 707705,
+  },
+  {
+    kind: 'notices',
+    url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/2bcdf7d84f7083991fe9c9c390d0a2e3ace361fc/docs/operations/sdk-link-notices-2026-11-06.json',
+    sha256: 'a745a2de37170442ed10bf214d6649529275b15a7e5340f6b1a117253b06d66b',
+    sizeBytes: 510743,
+  },
+] as const;
+
 export const customPlayerProvenance: Readonly<
   Record<string, NonNullable<TrustedPlayer['provenance']>>
 > = Object.fromEntries(
@@ -384,7 +423,7 @@ export const customPlayerProvenance: Readonly<
     id,
     {
       ...provenance,
-      artifacts: [...(provenance.artifacts ?? []), ...sdkNotices],
+      artifacts: [...(provenance.artifacts ?? []), ...sdkNotices, ...componentNoticeArtifacts],
     },
   ]),
 );

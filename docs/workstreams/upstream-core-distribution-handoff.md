@@ -52,21 +52,24 @@ and their independent expected IDs for offline reuse of older cache entries.
 
 ## Remaining #29 gaps
 
-1. Exact source/build mappings remain unverified for 50 official upstream pairs.
-   Their existing core-info hashes and license facts remain retained. The audit
-   enumerates every affected profile. Closing this requires a receipt tying the
-   pinned resource hashes to complete core/frontend/SDK revisions, flags, patches,
-   source and applicable notice records. A range-based nightly header inspection
-   records 100 runtime pairs and 59 asset indexes. Named source/build receipt
-   files were absent from its search results. Embedded/zipped metadata and payload
-   identity remain inspection gaps. A current repository head cannot supply
-   historical build proof.
-2. The eight newer builds now have deduplicated compiler-input hashes, inline
-   notice spans, ancestor notice candidates and actual link archive pins. SDK
-   additions cover zlib, dlmalloc and Clang headers. Component-specific notice
-   applicability and completeness remain open, including legacy inline inputs
-   and SDK archive member selection. The inventory includes compiler inputs
-   eliminated by linking and scans the first 64 KiB of each input for comments.
+1. The [upstream binary inventory](../operations/upstream-binary-mapping-2026-11-06.md)
+   now covers all 50 exact pinned pairs. Forty-nine match the dated October 31
+   archive and PCSX matches its retained later pair. All 50 self-report resolved
+   frontend commits and 39 self-report resolved core commits. Eleven core commits
+   remain unresolved. Historical CI/Docker records document Emscripten 3.1.46 and
+   all WASMs embed the same frontend Clang identity. Complete source/build mappings
+   remain unverified for all 50 because exact SDK/container inputs, working-tree
+   changes, flags, dependencies and applicable source/notices remain unbound.
+   Public historical job trace requests returned HTTP 401.
+2. The [component notice audit](../operations/component-notice-audit-2026-11-06.md)
+   records 43 modern and 15 legacy component scopes, full bounded input scans and
+   335 selected SDK archive members across all ten custom builds. New instrumented
+   FCEUmm/Jaguar rebuilds matched published runtime bytes. Restrictive Caprice32 and
+   M65C02 notices are exposed in catalog summaries. Full LGPL text and historical
+   bcdec grant pointers supplement the source-specific notices. The IJG historical
+   README and incorporated Paul E. Jones SHA1 grant provenance remain individual
+   questions. SDK archive reconstruction and final-code notice applicability
+   remain open. Compiler input and archive selection precede code elimination.
 3. Gameplay qualification remains separate from factory startup and source
    reconstruction. PCSX's generated content acceptance covers EXE, ISO and Mode 2
    CHD. Other formats, commercial compatibility, audio/input and save behavior
@@ -85,7 +88,7 @@ The native cleanup checkpoint and #28 retention/recovery work were merged as
 `7ab22ac`. Both cleanup branch names were retired and the redundant worktree was
 archived. Inbound MCP remains tracked independently in #27.
 
-The November 6 batch uses an isolated verification worktree. Publish the completed
+The component/source mapping batch uses an isolated worktree. Publish the completed
 batch, return the primary checkout to main and archive the redundant worktree.
 Source archives, downloaded core packages and compiled runtime output stay
 outside Git. Generated-fixture tests cover rebuild hash rejection and catalog
@@ -108,3 +111,13 @@ tests passed on Node 22.22.2. Server/CLI TypeScript builds, affected Biome check
 client drift, secret/fixture scan, package boundaries and whitespace checks passed.
 The independent source/provenance review found no actionable issues. Legacy
 reconstruction hashes were compared against actual downloaded published resources.
+
+## Component and upstream mapping follow-up verification
+
+All 108 focused collector, source-helper, catalog, cache, export, download, manager
+and CLI tests passed. Server/CLI TypeScript builds, changed Biome checks, client
+drift, secret scan and package boundaries passed. Review checked component indexes,
+legacy selectors, shared source identities, document hashes and SDK member references.
+A generated 25,000-notice fixture reproduced quadratic line counting. Incremental
+line tracking passes that timeout-backed regression. Supplementary grant references
+resolve the earlier bcdec and PIC16C5x notice-text inspection questions.

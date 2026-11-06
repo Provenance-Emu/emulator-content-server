@@ -1,6 +1,14 @@
 import type { PluginManifest } from '@ecs/plugins';
 import type { TrustedPlayer } from './player-catalog.js';
 
+// Embedded input revisions retain partial evidence while complete build mappings remain unverified.
+const upstreamBuildEvidence = {
+  kind: 'build',
+  url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/2bcdf7d84f7083991fe9c9c390d0a2e3ace361fc/docs/operations/upstream-binary-mapping-2026-11-06.json',
+  sha256: '02c454c6b2ffa803248002a2a815c588fd1f3b15b42120f8e03b3cbce5f6756d',
+  sizeBytes: 212794,
+} as const;
+
 const APP_ID = 'com.provenance.emulator-content-server';
 const BASE_URL = 'https://web.libretro.com';
 const CONTENT_LIMIT = 512 * 1024 * 1024;
@@ -72,6 +80,8 @@ export const upstreamPlayerCatalog: readonly TrustedPlayer[] = CORE_PINS.map((pi
       infoSha256: pin.infoSha256,
       license: pin.license,
       firmware: pin.firmware,
+      sourceMapping: 'unverified',
+      artifacts: [upstreamBuildEvidence],
     },
     upstream: {
       manifest: plugin,
