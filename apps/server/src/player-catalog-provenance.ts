@@ -404,9 +404,9 @@ const sdkNotices = [
 const componentNoticeArtifacts = [
   {
     kind: 'notices',
-    url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/d98397772118a76f01de1d4e24acb3d30fae34bd/docs/operations/sha1-ijg-resolution-2026-11-06.json',
-    sha256: '9322e06e6783fe4aeda440287a9684f05c6acbe6346d5550a4cd3ba3dbcfb99b',
-    sizeBytes: 20607,
+    url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/62e01676665236ced30ee78a2fabc21a04e65e62/docs/operations/sha1-ijg-resolution-2026-11-06.json',
+    sha256: '95675eaf2c80f4083c3d34bb9d08a309c77029b6c80dd000277185da38323ed2',
+    sizeBytes: 20439,
   },
   {
     kind: 'notices',
