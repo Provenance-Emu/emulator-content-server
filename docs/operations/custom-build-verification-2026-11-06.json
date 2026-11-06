@@ -1,0 +1,1068 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06",
+  "method": {
+    "maxConcurrentBuilds": 2,
+    "makeJobsPerBuild": 2,
+    "freshArchives": true,
+    "sourceArchivePinsVerified": true,
+    "fullPackageAndResourceByteComparison": true,
+    "compilerTraceOptions": ["-v", "-MD", "-MF <external dependency file>"],
+    "sdkLinkArchivesCapturedByDebugRelink": true,
+    "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+    "compiledSourceArchiveBytesVerified": true,
+    "sdkInputOriginCounts": {
+      "exactGitContentMatches": 757,
+      "reconstructedGeneratedHeader": 1
+    }
+  },
+  "noticeInventory": {
+    "path": "docs/operations/custom-build-notices-2026-11-06.json",
+    "sha256": "9146ba310cc618ed5f9240a4c66bd27e0c348b7d15203b7ae630493a620e7c75",
+    "sizeBytes": 1911455,
+    "uniqueInputs": 2502,
+    "uniqueAncestorNotices": 18
+  },
+  "sdkNotices": [
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/LICENSE",
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+      "sizeBytes": 5093
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libc/musl/COPYRIGHT",
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+      "sizeBytes": 6204
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/compiler-rt/LICENSE.TXT",
+      "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+      "sizeBytes": 16708
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libcxx/LICENSE.TXT",
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+      "sizeBytes": 16703
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libcxxabi/LICENSE.TXT",
+      "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+      "sizeBytes": 16706
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/libunwind/LICENSE.TXT",
+      "sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d",
+      "sizeBytes": 16706
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/madler/zlib/04f42ceca40f73e2978b50e93806c2a18c1281fc/zlib.h",
+      "sizeBytes": 97323,
+      "sha256": "a980a0d104198a53cc220c51ab5856e5be901bec8a2d02e0ee79a8754219dfed"
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/dlmalloc.c",
+      "sha256": "de077adcccfc9fe18d91a4dc4d7bcc501156a9d28e982635c95931c763be7c96",
+      "sizeBytes": 236444
+    },
+    {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/75501f53624de92aafce2f1da698b249a7293dc7/llvm/LICENSE.TXT",
+      "sha256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee",
+      "sizeBytes": 15141
+    }
+  ],
+  "newNoticeEvidence": {
+    "zlib": {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/madler/zlib/04f42ceca40f73e2978b50e93806c2a18c1281fc/zlib.h",
+      "sizeBytes": 97323,
+      "sha256": "a980a0d104198a53cc220c51ab5856e5be901bec8a2d02e0ee79a8754219dfed",
+      "sourceRevision": "04f42ceca40f73e2978b50e93806c2a18c1281fc",
+      "sdkPortVersion": "1.2.13",
+      "portArchiveSha512": "44b834fbfb50cca229209b8dbe1f96b258f19a49f5df23b80970b716371d856a4adf525edb4c6e0e645b180ea949cb90f5365a1d896160f297f56794dd888659",
+      "noticeLines": [1, 30]
+    },
+    "allocatorSource": {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/19607820c447a13fd8d0b7680c56148427d6e1b8/system/lib/dlmalloc.c",
+      "sha256": "de077adcccfc9fe18d91a4dc4d7bcc501156a9d28e982635c95931c763be7c96",
+      "sizeBytes": 236444
+    },
+    "clangHeaderLicense": {
+      "kind": "notices",
+      "url": "https://raw.githubusercontent.com/llvm/llvm-project/75501f53624de92aafce2f1da698b249a7293dc7/llvm/LICENSE.TXT",
+      "sha256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee",
+      "sizeBytes": 15141
+    }
+  },
+  "builds": [
+    {
+      "id": "org.libretro.atari800",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/atari800.source.tar.gz",
+        "sha256": "eddd87be440f3a3ed1c971a86fd1ef5f6ee21e582b67d7678972ded60e0bc436",
+        "sizeBytes": 86503686
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "4e7fbc73765c1a9670c7506616046ad1d4ccda51"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/atari800.ecsplayer",
+        "sha256": "740025c312e6d5f602f2efc74b9b681f14cd445b4057ce4b0bda0aa15b417676",
+        "sizeBytes": 4082548
+      },
+      "reconstructedPackage": {
+        "sha256": "740025c312e6d5f602f2efc74b9b681f14cd445b4057ce4b0bda0aa15b417676",
+        "sizeBytes": 4082548,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 271406,
+          "sha256": "9a2ac64b59c58cd55a7b98bf66a95b9d3f1bdf28f98b863d572eb39835fd06e4",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 3810280,
+          "sha256": "d4d51191330314f14f3b4f87b2022c959420df8d338d704c09bbc0e64dd33a9b",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "bfda896442feff148c9ae848f0c945502ca1c150726806b9660f5c2a4b3cfc75",
+          "sizeBytes": 3421966
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 386,
+      "reportedInputCount": 1168,
+      "inlineNoticeInputCount": 721,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/catalog.json",
+        "sha256": "0a66ac820e0c2cf08e173fc9f4ac4346bdd00a70e66b93964c9afaccc0dcc871",
+        "sizeBytes": 3814
+      },
+      "compiledSourceArchiveInputsVerified": 1071,
+      "generatedProjectInputs": []
+    },
+    {
+      "id": "org.libretro.freeintv",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/freeintv.source.tar.gz",
+        "sha256": "f17e78502f78c10912c000ed39408e052d0359377c1f4685ed49fea6cfa3a30d",
+        "sizeBytes": 110359373
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "ef3e0fe322bec62a7f916c0bb0834c08c348d0b4"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/freeintv.ecsplayer",
+        "sha256": "e2a92eca25dfaa58e417219fa26cfbd08d26077430b5962ff7aeb64f3b40fedb",
+        "sizeBytes": 4126365
+      },
+      "reconstructedPackage": {
+        "sha256": "e2a92eca25dfaa58e417219fa26cfbd08d26077430b5962ff7aeb64f3b40fedb",
+        "sizeBytes": 4126365,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 270625,
+          "sha256": "1ede79e99291da54cbabd39387cc138d0de3cbbb299dfd8194c84e975243bacb",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 3854920,
+          "sha256": "e5d51cf52152df6bfc7ae8f379ed7f56b205f90dff73394a3fd9a89d3c6039ad",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "8d45b4befac7b00b4e43653c2dbe2469e83abfa83972a378f23b1e5bc8f0e812",
+          "sizeBytes": 1810304
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 318,
+      "reportedInputCount": 1026,
+      "inlineNoticeInputCount": 647,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/catalog.json",
+        "sha256": "ad170c7cfdcb401c45cffdb07a6192394f462679618d51047bd065e034ac9469",
+        "sizeBytes": 3558
+      },
+      "compiledSourceArchiveInputsVerified": 929,
+      "generatedProjectInputs": []
+    },
+    {
+      "id": "org.libretro.mednafen-pcfx",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/mednafen-pcfx.source.tar.gz",
+        "sha256": "6851fb1c8ad64076917c48f7a972ed9c87c6087925ddb69396cfccf7dc0da20f",
+        "sizeBytes": 85511927
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "c1650bad5fbdcc3c3ccd45e29e3983e1ccf16cff"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/mednafen-pcfx.ecsplayer",
+        "sha256": "8900e3f1b32bfa0f1f7532a3b1dbe480447325eb57fb378d6a08e7d088846496",
+        "sizeBytes": 4142979
+      },
+      "reconstructedPackage": {
+        "sha256": "8900e3f1b32bfa0f1f7532a3b1dbe480447325eb57fb378d6a08e7d088846496",
+        "sizeBytes": 4142979,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 272049,
+          "sha256": "a6a89fe471d2f0f54dc0b500f01bbd6b8265623f9b30548d2ccc2b819780c4f6",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 3870125,
+          "sha256": "1d2b7aef7b3bf7a3fe3d8c752fdfe933fe73e143f8e8716e237190823e133d57",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "f39e483ff774abe505924de44cebe246f51c4f5c546207ac795686e5b2ae7cc3",
+          "sizeBytes": 2500958
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 390,
+      "reportedInputCount": 1837,
+      "inlineNoticeInputCount": 1406,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/catalog.json",
+        "sha256": "b71221f41ecdb75bc78a3475c7119868433f060db9dfa7e7ce24c18283fe7685",
+        "sizeBytes": 3589
+      },
+      "compiledSourceArchiveInputsVerified": 1116,
+      "generatedProjectInputs": []
+    },
+    {
+      "id": "org.libretro.pokemini",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/pokemini.source.tar.gz",
+        "sha256": "7bdb562ac7c5cee8e4ece42e6653401e91bba5eed1741c6706e4c92ce8b2efee",
+        "sizeBytes": 84766667
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "132111b76343559860532a1ccc094f93f1ed5650"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/pokemini.ecsplayer",
+        "sha256": "74a012e237becb5078eea5edd91887b220463e1227b0b36bb35a30381fc57765",
+        "sizeBytes": 3753243
+      },
+      "reconstructedPackage": {
+        "sha256": "74a012e237becb5078eea5edd91887b220463e1227b0b36bb35a30381fc57765",
+        "sizeBytes": 3753243,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 270616,
+          "sha256": "cf903a0a6c7482e7db633334c6e55e8b371522dfa48016c8514faa37280dcdfd",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 3481821,
+          "sha256": "f318fb9c4294db8c945af4fdeaf980371151d6ce0a48e1ddb717d82f042e443a",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "01809aa48c0b246ed3df490fef5e41d6e7a5b3732a669ced0e5c1af662fa7739",
+          "sizeBytes": 395014
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 336,
+      "reportedInputCount": 1060,
+      "inlineNoticeInputCount": 684,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/catalog.json",
+        "sha256": "30a40181ca78b9586c295e8058bc4fa58756762380215b9a44d06c91b8f7de2a",
+        "sizeBytes": 3621
+      },
+      "compiledSourceArchiveInputsVerified": 963,
+      "generatedProjectInputs": []
+    },
+    {
+      "id": "org.libretro.potator",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/potator.source.tar.gz",
+        "sha256": "efbcdfdbec0a7035115ceef33a37a4c03c90f16b7e867dd63cd832b83c79d88b",
+        "sizeBytes": 84570095
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "227c5f6f3ce74d32e9002ce24c1420288559a860"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/potator.ecsplayer",
+        "sha256": "03d3ca2fbc4d6ddf49bb021856e48fd0e093191df0f4aa30659ff09a2673a80b",
+        "sizeBytes": 3586352
+      },
+      "reconstructedPackage": {
+        "sha256": "03d3ca2fbc4d6ddf49bb021856e48fd0e093191df0f4aa30659ff09a2673a80b",
+        "sizeBytes": 3586352,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 270612,
+          "sha256": "2a21cac8b0541903395441e3cc78dbf61b3152ee8590d131f1008dcacacc23f3",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 3314934,
+          "sha256": "03f563505459af18dbbdbf55b590e0029f03c279130c57b201ca2afcb5359fd2",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "8942071a33f37b1d9f91dabdcac7fd798f5983a058699c8563e0350871f78ff8",
+          "sizeBytes": 66998
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 315,
+      "reportedInputCount": 1011,
+      "inlineNoticeInputCount": 623,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/catalog.json",
+        "sha256": "8b531e35d4422568867e6f1ff33fdbaff216670db4522bcee930b9a57ee464cf",
+        "sizeBytes": 3570
+      },
+      "compiledSourceArchiveInputsVerified": 914,
+      "generatedProjectInputs": []
+    },
+    {
+      "id": "org.libretro.prosystem",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/prosystem.source.tar.gz",
+        "sha256": "a615cf27233adf34285fd81fb778c348308e665f4c69338bc19e44b3574f0145",
+        "sizeBytes": 84687336
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "8a88014287c7a01cd568067e5a557d0a2b2a051f"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/prosystem.ecsplayer",
+        "sha256": "d27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55",
+        "sizeBytes": 3618571
+      },
+      "reconstructedPackage": {
+        "sha256": "d27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55",
+        "sizeBytes": 3618571,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 270620,
+          "sha256": "546c5a10e4d1e6928f4ccbb3f2933a4c8cdb68020895e1f47366cbc4aef6f00d",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 3347139,
+          "sha256": "73b0475590af26117a1cb975db3542458e137c187bee4b859e4471ebcb26a461",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "0896a7f8c34f508f222cb11b654e9edfb3a45341836215008c872119b2e07d98",
+          "sizeBytes": 645752
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 339,
+      "reportedInputCount": 1063,
+      "inlineNoticeInputCount": 688,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/catalog.json",
+        "sha256": "273fa3024f478ee330e7efd7f1d0a400281794c25fd124f3e02b176e70e0e9b6",
+        "sizeBytes": 3237
+      },
+      "compiledSourceArchiveInputsVerified": 966,
+      "generatedProjectInputs": []
+    },
+    {
+      "id": "org.libretro.sameduck",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/sameduck.source.tar.gz",
+        "sha256": "778db81165c216fc023696d194b23dc6b569772bc71a6d7a44d358802619b014",
+        "sizeBytes": 85613300
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "040e19c379f00dae10afe0eb0c1b2b019b985bbe"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/sameduck.ecsplayer",
+        "sha256": "454a5a918a3652d8b4e106f0c62ffbf84d9a838ff1617570fc6056ae1ee12f48",
+        "sizeBytes": 3614005
+      },
+      "reconstructedPackage": {
+        "sha256": "454a5a918a3652d8b4e106f0c62ffbf84d9a838ff1617570fc6056ae1ee12f48",
+        "sizeBytes": 3614005,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 270616,
+          "sha256": "9f99c8603f17664a1a635ddccb0acc89407f8ef30f9ed239c36e1f9710fb4f63",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 3342590,
+          "sha256": "c2ca666de2dcb066fa42dad6c3d717466acee4ed785b13877a4b9a33da8f033e",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "7c82234140a6f9e3753fb9841677a3d32090d0673b9a83655a1386008cc3adb2",
+          "sizeBytes": 234858
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 320,
+      "reportedInputCount": 1022,
+      "inlineNoticeInputCount": 619,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/catalog.json",
+        "sha256": "558c7f926c8504e127cae3bbbdad805248e5d429a75422c54a43e99f90989664",
+        "sizeBytes": 3568
+      },
+      "compiledSourceArchiveInputsVerified": 925,
+      "generatedProjectInputs": []
+    },
+    {
+      "id": "org.libretro.stella2014",
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/stella2014.source.tar.gz",
+        "sha256": "264d6fd075130db989a16a0d18cda8a6c737711cb6ec3d26be1edd374d5e9963",
+        "sizeBytes": 85325890
+      },
+      "sourcePins": {
+        "frontend": "4d4bfc0fbaacca30d433e5c11b0b2b5242141b66",
+        "core": "7d1361e407e63f29e52892655069e5fb4096e691"
+      },
+      "publishedPackage": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/stella2014.ecsplayer",
+        "sha256": "ef724d23b070d5035dcaeab774ca1c5a15a8c37bebd54d39e2bddfad7b530f13",
+        "sizeBytes": 4547701
+      },
+      "reconstructedPackage": {
+        "sha256": "ef724d23b070d5035dcaeab774ca1c5a15a8c37bebd54d39e2bddfad7b530f13",
+        "sizeBytes": 4547701,
+        "matchesPublished": true
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 272126,
+          "sha256": "1cc2bc284a0f8ccec76dd60961b6b5d00d49fcb7fae7e57cb5e5cda80cc35837",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 4274766,
+          "sha256": "4d046dfbcff33dd146cb568d1efe874ce6423f52dd981580832f5a6a924b4c89",
+          "matchesPublished": true
+        }
+      ],
+      "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvmRevision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "sourceDateEpoch": 1793404800,
+      "freshSourceExtraction": true,
+      "rebuildExitCode": 0,
+      "debugRelinkBytesMatch": true,
+      "linkArchiveInputs": [
+        {
+          "path": "source/frontend/libretro_emscripten.a",
+          "sha256": "952637bd22b5a9256c7cc783625242e38fba01cd5e7e14ab3f9db6159e213ee1",
+          "sizeBytes": 2423546
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libz.a",
+          "sha256": "f729df8cfe71fb428c82a9a938e639354a09c371ddbe824b092e9438afdd3c62",
+          "sizeBytes": 288016
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libfetch.a",
+          "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+          "sizeBytes": 12934
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libGL-webgl2.a",
+          "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+          "sizeBytes": 69090
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libal.a",
+          "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+          "sizeBytes": 19862
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libhtml5.a",
+          "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+          "sizeBytes": 42794
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+          "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+          "sizeBytes": 25080
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc.a",
+          "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+          "sizeBytes": 3195430
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+          "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+          "sizeBytes": 69162
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libcompiler_rt.a",
+          "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+          "sizeBytes": 504350
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++-noexcept.a",
+          "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+          "sizeBytes": 7404918
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libc++abi-noexcept.a",
+          "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+          "sizeBytes": 929960
+        },
+        {
+          "path": "sdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/libsockets.a",
+          "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+          "sizeBytes": 43226
+        }
+      ],
+      "compilerInvocations": 405,
+      "reportedInputCount": 1867,
+      "inlineNoticeInputCount": 1479,
+      "unresolvedDependencyCount": 0,
+      "publishedBuildReceipt": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/catalog.json",
+        "sha256": "d23bd4c9146739d4469b7141edd469578bc5c2a2b656b06f994ee0148ae19483",
+        "sizeBytes": 3532
+      },
+      "compiledSourceArchiveInputsVerified": 1111,
+      "generatedProjectInputs": []
+    }
+  ]
+}
