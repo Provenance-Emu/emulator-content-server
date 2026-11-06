@@ -1,0 +1,1498 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06T22:43:09.265988+00:00",
+  "scope": "Historical build-source candidates for the eleven profiles whose exact pinned WASM lacks an identified core revision self-report, plus SDK release correlation for all fifty profiles.",
+  "method": "Read-only primary-source public GitLab pipeline/job APIs, commit-pinned GitHub source files and official SDK release metadata. Rehash the 100 original catalog binaries from retained files. This CI/SDK research performed no binary rebuild. No erased job trace endpoint was retried. Job source candidates remain distinct from exact binary/source provenance.",
+  "counts": {
+    "profiles": 50,
+    "exactPinnedPairsRehashed": 50,
+    "unresolvedCoreEmbeddedRevisionProfiles": 11,
+    "unresolvedCoreProfilesWithSuccessfulHistoricalEmscriptenJobCandidates": 11,
+    "historicalCandidatePipelines": 14,
+    "historicalRelevantJobs": 14,
+    "historicalRelevantJobsErased": 14,
+    "historicalRelevantJobsWithRetainedArtifacts": 0,
+    "fullSourceBuildMappingsVerified": 0,
+    "exactBinaryToJobChecksumMatchesAdded": 0,
+    "sdkCompilerRevisionCorroboratedProfiles": 50
+  },
+  "baselineBinaryMapping": "docs/operations/upstream-binary-mapping-2026-11-06.json",
+  "archive": {
+    "url": "https://buildbot.libretro.com/nightly/emscripten/2026-10-31_RetroArch.7z",
+    "sizeBytes": 774877505,
+    "sha256": "44ad5820a2b947f1a6f90e17d4decd29e332a748bbcfaa6383be8e8704c633ba"
+  },
+  "sdkContext": {
+    "status": "corroborated-historical-sdk-candidate",
+    "sdkVersion": "3.1.46",
+    "releaseCommit": "21644188d5c473e92f1d7df2f9f60c758a78a486",
+    "dependencyRevisions": {
+      "binaryen_revision": "16a59938563c93d8459bf36679c83497aeba7cc7",
+      "emscripten_revision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+      "llvm_project_revision": "75501f53624de92aafce2f1da698b249a7293dc7",
+      "v8_revision": "47e19a8e4fa44c554d1ee94ae11182e403bc8b13"
+    },
+    "llvmRevisionMatchesEveryPinnedBinaryEmbeddedCompilerIdentity": true,
+    "matchingProfiles": 50,
+    "limitations": "The compiler self-report matches a dependency revision in this official SDK release. The actual container digest, SDK installation and all runtime/core object toolchains used per pair remain unverified. SDK archive was inspected by HEAD only, so its binary SHA256 was not calculated.",
+    "sources": [
+      {
+        "url": "https://raw.githubusercontent.com/emscripten-core/emsdk/3.1.46/emscripten-releases-tags.json",
+        "httpStatus": 200,
+        "sizeBytes": 11235,
+        "sha256": "c9a9a768bc858a1a685935e03c223a32f3f1228fb9844169d37b6d2ea61cb143"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/emscripten-core/emsdk/3.1.46/emsdk_manifest.json",
+        "httpStatus": 200,
+        "sizeBytes": 25157,
+        "sha256": "0d6ac54f42ba0a39473943900bd1d46d75d56646e51ab171da9d799168695fa6"
+      },
+      {
+        "url": "https://chromium.googlesource.com/emscripten-releases/+/21644188d5c473e92f1d7df2f9f60c758a78a486/DEPS?format=TEXT",
+        "httpStatus": 200,
+        "sizeBytes": 4648,
+        "sha256": "b4d938289a459ebba9788344781761971054e5815a1529c63b1d12eb5084731a"
+      }
+    ],
+    "decodedDependencyManifest": {
+      "encoding": "base64 decoded from the DEPS source response",
+      "sha256": "480c3c83f6566c0eac0bc263bcf499a3405e6d8fe740a8ec2844acb98814fc04"
+    },
+    "publishedDistribution": {
+      "url": "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/21644188d5c473e92f1d7df2f9f60c758a78a486/wasm-binaries.tbz2",
+      "inspectionMethod": "HEAD",
+      "httpStatus": 200,
+      "sizeBytes": 345164719,
+      "objectGeneration": "1695323965955235",
+      "etag": "\"72eed06e5f9f98cc007e583e7ea8f701\"",
+      "reportedChecksum": "crc32c=AkqrRg==",
+      "binaryDownloaded": false,
+      "binarySha256": null
+    }
+  },
+  "profiles": [
+    {
+      "id": "org.libretro.snes9x2002",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "snes9x2002_libretro.js",
+          "sha256": "865b7ac0f0604319f01c7b426e4fd97b350eea74c4ebbda4455de76b279ef2a4",
+          "sizeBytes": 270624,
+          "publicationUrl": "https://web.libretro.com/snes9x2002_libretro.js",
+          "archiveMember": "retroarch/snes9x2002_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "snes9x2002_libretro.wasm",
+          "sha256": "8d77c02fed15012f6b18cc429600724f53ffba427245039ceaa949a88c38a5f5",
+          "sizeBytes": 4227847,
+          "publicationUrl": "https://web.libretro.com/snes9x2002_libretro.wasm",
+          "archiveMember": "retroarch/snes9x2002_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Fsnes9x2002/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 615,
+        "sha256": "874913496f1c94ae7aa46488d7b30d6bf2904202130d634b9da5d975a6b58218"
+      },
+      "candidates": [
+        {
+          "coreCommit": "6ffbf9ef4f0063e1f1b78a40d10c50fc52f2524c",
+          "ref": "master",
+          "pipelineId": 129732,
+          "pipelineUrl": "https://git.libretro.com/libretro/snes9x2002/-/pipelines/129732",
+          "pipelineCreatedAt": "2026-10-30T05:06:45.998Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fsnes9x2002/pipelines/129732/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 71417,
+            "sha256": "dc9d98c2009be3ae03b11bd56d6e6647a616801ac52b606044c905a628c2efa6"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/snes9x2002/6ffbf9ef4f0063e1f1b78a40d10c50fc52f2524c/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 6750,
+              "sha256": "13bfc7602fb419d4436aab7f2d8cb7d90f407b1bb1428769f55226b920902aeb"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/snes9x2002/6ffbf9ef4f0063e1f1b78a40d10c50fc52f2524c/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 15512,
+              "sha256": "d0944fdf08b1143f9aade55cecb500b0cd5bddeae5c11faa82fd1098cfc07726"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2680436,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T09:07:48.001Z",
+              "finished_at": "2026-10-30T09:08:46.528Z",
+              "erased_at": "2026-11-02T07:04:40.703Z",
+              "web_url": "https://git.libretro.com/libretro/snes9x2002/-/jobs/2680436",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.beetle-pce-fast",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "400d7ed4a362c37963caf7f2564d0d51481fe696",
+      "resources": [
+        {
+          "file": "mednafen_pce_fast_libretro.js",
+          "sha256": "97723a4dfe04496e18cfbb026289adb4c0a6fcdff6a19a8bc2c6f504c012f5f0",
+          "sizeBytes": 270661,
+          "publicationUrl": "https://web.libretro.com/mednafen_pce_fast_libretro.js",
+          "archiveMember": "retroarch/mednafen_pce_fast_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "mednafen_pce_fast_libretro.wasm",
+          "sha256": "7b01651a5191e94f881a37b5e6909407cd892c7b72c99c2c67e4fb2fba8e4fcc",
+          "sizeBytes": 4272602,
+          "publicationUrl": "https://web.libretro.com/mednafen_pce_fast_libretro.wasm",
+          "archiveMember": "retroarch/mednafen_pce_fast_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Fbeetle-pce-fast-libretro/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 965,
+        "sha256": "578452e2c85f7752ad047d6cada89314a8b0ca49bcfe3ca5fa61a1a687c02ea1"
+      },
+      "candidates": [
+        {
+          "coreCommit": "2de1ce1c3f237b161c126c54ba407990bb86d1e9",
+          "ref": "master",
+          "pipelineId": 129757,
+          "pipelineUrl": "https://git.libretro.com/libretro/beetle-pce-fast-libretro/-/pipelines/129757",
+          "pipelineCreatedAt": "2026-10-30T11:15:16.049Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fbeetle-pce-fast-libretro/pipelines/129757/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 89774,
+            "sha256": "5475adbf727d921e40c1225ade91f14e2f9ae086958e0dc8c91f5047068f1680"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/beetle-pce-fast-libretro/2de1ce1c3f237b161c126c54ba407990bb86d1e9/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 8163,
+              "sha256": "452fd8eef786bfe4db5a6fa50d9fe1656ade3df317e1510a66d75af39430c620"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/beetle-pce-fast-libretro/2de1ce1c3f237b161c126c54ba407990bb86d1e9/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 24860,
+              "sha256": "e9796dcd944543329cf252a67f3bd5323ae537c29c4c32da68dd374d63baa15d"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2680966,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T11:15:46.453Z",
+              "finished_at": "2026-10-30T11:19:09.037Z",
+              "erased_at": "2026-11-02T07:05:00.516Z",
+              "web_url": "https://git.libretro.com/libretro/beetle-pce-fast-libretro/-/jobs/2680966",
+              "artifacts": []
+            }
+          ]
+        },
+        {
+          "coreCommit": "4eee99c451f85ebe66d1591de88b892015b23059",
+          "ref": "master",
+          "pipelineId": 129729,
+          "pipelineUrl": "https://git.libretro.com/libretro/beetle-pce-fast-libretro/-/pipelines/129729",
+          "pipelineCreatedAt": "2026-10-30T05:06:42.054Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fbeetle-pce-fast-libretro/pipelines/129729/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 91364,
+            "sha256": "0bae0e43d1bcc00eab62782555bd21c7804592e6c1293e43320f13bb486838cb"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/beetle-pce-fast-libretro/4eee99c451f85ebe66d1591de88b892015b23059/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 8163,
+              "sha256": "452fd8eef786bfe4db5a6fa50d9fe1656ade3df317e1510a66d75af39430c620"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/beetle-pce-fast-libretro/4eee99c451f85ebe66d1591de88b892015b23059/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 24860,
+              "sha256": "e9796dcd944543329cf252a67f3bd5323ae537c29c4c32da68dd374d63baa15d"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2680334,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T09:09:21.451Z",
+              "finished_at": "2026-10-30T09:10:56.471Z",
+              "erased_at": "2026-11-02T07:04:36.845Z",
+              "web_url": "https://git.libretro.com/libretro/beetle-pce-fast-libretro/-/jobs/2680334",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "preferredCandidate": {
+        "commit": "2de1ce1c3f237b161c126c54ba407990bb86d1e9",
+        "basis": "UTF-8 source-literal differential fingerprint against exact pinned WASM"
+      },
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.fbneo",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "fbneo_libretro.js",
+          "sha256": "485bcaf90ba2097c4e54c264ca14ab9d37aec4ff4e023984759aae2d6cd86399",
+          "sizeBytes": 272115,
+          "publicationUrl": "https://web.libretro.com/fbneo_libretro.js",
+          "archiveMember": "retroarch/fbneo_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "fbneo_libretro.wasm",
+          "sha256": "9b4c8d148edb320b8f35d3b5a5ec68f5a06f2c5af086f3bef72b7fcd6882a840",
+          "sizeBytes": 42222119,
+          "publicationUrl": "https://web.libretro.com/fbneo_libretro.wasm",
+          "archiveMember": "retroarch/fbneo_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Ffbneo/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 911,
+        "sha256": "f03e099236887e7f1bc5132ea3995e7eead291ab9cbde5b95b5a1481a9acb7ff"
+      },
+      "candidates": [
+        {
+          "coreCommit": "9d82650bb9591966987a4c36ae8a1409ce0d5d68",
+          "ref": "master",
+          "pipelineId": 129568,
+          "pipelineUrl": "https://git.libretro.com/libretro/FBNeo/-/pipelines/129568",
+          "pipelineCreatedAt": "2026-10-30T05:04:33.036Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Ffbneo/pipelines/129568/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 54133,
+            "sha256": "c2c0cf703ddd5b369c9e9c3cecde9fb7dbe0facae4edb70c3bbd77de997123f2"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/fbneo/9d82650bb9591966987a4c36ae8a1409ce0d5d68/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 5871,
+              "sha256": "7295e7fb10ed1831488f2be4ed2e5d95718c08ea0862988df9405a6680fef63a"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/fbneo/9d82650bb9591966987a4c36ae8a1409ce0d5d68/src/burner/libretro/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 25743,
+              "sha256": "9a41c11abeb3f34c4af5c14a6b006c2240c7e41460d9718b5bfc622a54cba586"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2676660,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T08:06:40.683Z",
+              "finished_at": "2026-10-30T08:11:49.844Z",
+              "erased_at": "2026-11-02T07:02:48.625Z",
+              "web_url": "https://git.libretro.com/libretro/FBNeo/-/jobs/2676660",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.fbalpha2012-cps1",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "fbalpha2012_cps1_libretro.js",
+          "sha256": "94f52c82e55ecf7a73648e38805bd1831abf01422e4e6506f085ed563c491f95",
+          "sizeBytes": 272061,
+          "publicationUrl": "https://web.libretro.com/fbalpha2012_cps1_libretro.js",
+          "archiveMember": "retroarch/fbalpha2012_cps1_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "fbalpha2012_cps1_libretro.wasm",
+          "sha256": "bbca2953ae0b607325a0b2f1f665b134c737d36566c24766162ff37f1e14253f",
+          "sizeBytes": 4685602,
+          "publicationUrl": "https://web.libretro.com/fbalpha2012_cps1_libretro.wasm",
+          "archiveMember": "retroarch/fbalpha2012_cps1_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Ffbalpha2012_cps1/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 627,
+        "sha256": "5bcb100f5dcdb595ad47de465585faeb2e2cdc4d932d8ddc574b70a8ec0b79b3"
+      },
+      "candidates": [
+        {
+          "coreCommit": "5542c1848ef81e92db311193b01dc349bc29d7cc",
+          "ref": "master",
+          "pipelineId": 129679,
+          "pipelineUrl": "https://git.libretro.com/libretro/fbalpha2012_cps1/-/pipelines/129679",
+          "pipelineCreatedAt": "2026-10-30T05:06:02.106Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Ffbalpha2012_cps1/pipelines/129679/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 67485,
+            "sha256": "8f72082e88d507d413906a9b947320436e511ab02516f1ee50ca22c527be724e"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/fbalpha2012_cps1/5542c1848ef81e92db311193b01dc349bc29d7cc/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 6429,
+              "sha256": "f8cba6c43899e9aff5ddb21b22c952c8dcd4a4fc829e34b88cbdceb5358a8ab3"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/fbalpha2012_cps1/5542c1848ef81e92db311193b01dc349bc29d7cc/makefile.libretro",
+              "httpStatus": 200,
+              "sizeBytes": 15554,
+              "sha256": "d127a63df7ba372af21917126c8a4c684c067a203e69e4388489bf43f03c8426"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2679060,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T08:11:09.047Z",
+              "finished_at": "2026-10-30T08:12:08.772Z",
+              "erased_at": "2026-11-02T07:03:43.785Z",
+              "web_url": "https://git.libretro.com/libretro/fbalpha2012_cps1/-/jobs/2679060",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.fbalpha2012-cps2",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "fbalpha2012_cps2_libretro.js",
+          "sha256": "4a46c6b66561aeca22be6ec31a560518e63e912c8d5dfedcca13796defc99887",
+          "sizeBytes": 272061,
+          "publicationUrl": "https://web.libretro.com/fbalpha2012_cps2_libretro.js",
+          "archiveMember": "retroarch/fbalpha2012_cps2_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "fbalpha2012_cps2_libretro.wasm",
+          "sha256": "12ead3d9155720b77e3669925fd875bc8034db3269118918ec58cbdc003123a8",
+          "sizeBytes": 4575710,
+          "publicationUrl": "https://web.libretro.com/fbalpha2012_cps2_libretro.wasm",
+          "archiveMember": "retroarch/fbalpha2012_cps2_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Ffbalpha2012_cps2/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 627,
+        "sha256": "4602b56333e46d1b745bed1ac11c2a1d3228e9e38e36d641ad5c227e1abda249"
+      },
+      "candidates": [
+        {
+          "coreCommit": "e3f3ae46f120228b74d41e2b2862f1fbf1d7eb5b",
+          "ref": "master",
+          "pipelineId": 129678,
+          "pipelineUrl": "https://git.libretro.com/libretro/fbalpha2012_cps2/-/pipelines/129678",
+          "pipelineCreatedAt": "2026-10-30T05:06:01.459Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Ffbalpha2012_cps2/pipelines/129678/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 67481,
+            "sha256": "7f654741697c69c57a4d3b38940497ef73c8e6f4d71cef12f0f830b315220dc8"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/fbalpha2012_cps2/e3f3ae46f120228b74d41e2b2862f1fbf1d7eb5b/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 6429,
+              "sha256": "4334bcb163674bd44a218a1d6d74e58fcb39d96d72508f65948c8d45e199892d"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/fbalpha2012_cps2/e3f3ae46f120228b74d41e2b2862f1fbf1d7eb5b/makefile.libretro",
+              "httpStatus": 200,
+              "sizeBytes": 15482,
+              "sha256": "92e3cb7e6d07094799d4d2c821b9becb94d229dbc60c30d0202cb4d999a2ceb6"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2679036,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T08:09:15.900Z",
+              "finished_at": "2026-10-30T08:10:40.110Z",
+              "erased_at": "2026-11-02T07:03:42.902Z",
+              "web_url": "https://git.libretro.com/libretro/fbalpha2012_cps2/-/jobs/2679036",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.ecwolf",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "ecwolf_libretro.js",
+          "sha256": "2a60b2d29ce950b37ad1f2ddcce8c435321e4ee7d23e4ff389cc22930cc5c3a9",
+          "sizeBytes": 272096,
+          "publicationUrl": "https://web.libretro.com/ecwolf_libretro.js",
+          "archiveMember": "retroarch/ecwolf_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "ecwolf_libretro.wasm",
+          "sha256": "82d4fb132a4b3d631921859d3d31a05f6ec65432dda234d53dbb40a7dee1e880",
+          "sizeBytes": 4758413,
+          "publicationUrl": "https://web.libretro.com/ecwolf_libretro.wasm",
+          "archiveMember": "retroarch/ecwolf_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Fecwolf/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 607,
+        "sha256": "13b74219ccfb5d6a80569d52ef85775961de6e62c0c1b197f92a9502a6b7d8fd"
+      },
+      "candidates": [
+        {
+          "coreCommit": "0cccd9a85d7ffa33fb695691a8a5db246606518c",
+          "ref": "master",
+          "pipelineId": 129700,
+          "pipelineUrl": "https://git.libretro.com/libretro/ecwolf/-/pipelines/129700",
+          "pipelineCreatedAt": "2026-10-30T05:06:19.011Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fecwolf/pipelines/129700/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 96871,
+            "sha256": "f94254533d6d1d5c78fcc9541d3eddca6bd339f4cd78857bbf3c99f2148bbce6"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/ecwolf/0cccd9a85d7ffa33fb695691a8a5db246606518c/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 8245,
+              "sha256": "2d8aadd91ee619f227266d67313f0aa50b5dcdeeab1ed988517fff9bc532f7a8"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/ecwolf/0cccd9a85d7ffa33fb695691a8a5db246606518c/src/libretro/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 18717,
+              "sha256": "462bfcb463ebd75efd2ed541497d761bd622608f27a5d4d5867466bc8c3836ab"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2679586,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T08:40:34.522Z",
+              "finished_at": "2026-10-30T08:41:46.088Z",
+              "erased_at": "2026-11-02T07:04:05.635Z",
+              "web_url": "https://git.libretro.com/libretro/ecwolf/-/jobs/2679586",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.vitaquake2",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "vitaquake2_libretro.js",
+          "sha256": "e08efe6b2e892a5d4fafe81f0a3f16dd080746660dece9731859d7bec0c817d1",
+          "sizeBytes": 270624,
+          "publicationUrl": "https://web.libretro.com/vitaquake2_libretro.js",
+          "archiveMember": "retroarch/vitaquake2_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "vitaquake2_libretro.wasm",
+          "sha256": "30ea55b6256cbd5aa8a5f8fd8a58ca34b0bb4f7c72c462ec3888465e7a8a9e83",
+          "sizeBytes": 4546368,
+          "publicationUrl": "https://web.libretro.com/vitaquake2_libretro.wasm",
+          "archiveMember": "retroarch/vitaquake2_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Fvitaquake2/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 621,
+        "sha256": "a3de0a7534cca2171163539f70e9ad19062c6d9f042b93f227831ae2f0ebd6a1"
+      },
+      "candidates": [
+        {
+          "coreCommit": "4b333fe18e8816974f04432af01f87654ae16e21",
+          "ref": "libretro",
+          "pipelineId": 129591,
+          "pipelineUrl": "https://git.libretro.com/libretro/vitaquake2/-/pipelines/129591",
+          "pipelineCreatedAt": "2026-10-30T05:04:51.713Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fvitaquake2/pipelines/129591/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 242658,
+            "sha256": "aa8f93a0c412d986848d698b978ab27607423d2b50b8267bbaf0cd90bb563b06"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/vitaquake2/4b333fe18e8816974f04432af01f87654ae16e21/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 15649,
+              "sha256": "f62cd8096424b35e44514582a75ef7383bb14f4a62024796308d9df219673c9c"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/vitaquake2/4b333fe18e8816974f04432af01f87654ae16e21/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 9207,
+              "sha256": "3d37c5809d8bb92b2a73545a26518e78e35d4798af4f650017909f24b3cd425a"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2677149,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T06:49:17.323Z",
+              "finished_at": "2026-10-30T06:50:32.536Z",
+              "erased_at": "2026-11-01T07:06:50.177Z",
+              "web_url": "https://git.libretro.com/libretro/vitaquake2/-/jobs/2677149",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.vba-next",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "vba_next_libretro.js",
+          "sha256": "f02cdeb10709e50cdbc252cf512d84d64607120e1ebc691f136295a980cd0bdb",
+          "sizeBytes": 270616,
+          "publicationUrl": "https://web.libretro.com/vba_next_libretro.js",
+          "archiveMember": "retroarch/vba_next_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "vba_next_libretro.wasm",
+          "sha256": "a80d3e073d2ae0885b4169ad9d63ba589b80e0683583079f3a27b02f9b534f0c",
+          "sizeBytes": 4148343,
+          "publicationUrl": "https://web.libretro.com/vba_next_libretro.wasm",
+          "archiveMember": "retroarch/vba_next_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Fvba-next/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 611,
+        "sha256": "c5ae51097479bdeda7baba9f851b602ab772655400b8aa0f7b0195d902ada6ff"
+      },
+      "candidates": [
+        {
+          "coreCommit": "788192f215ad0a1413f1625b40ebba3423fa0ade",
+          "ref": "master",
+          "pipelineId": 129722,
+          "pipelineUrl": "https://git.libretro.com/libretro/vba-next/-/pipelines/129722",
+          "pipelineCreatedAt": "2026-10-30T05:06:36.822Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fvba-next/pipelines/129722/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 122078,
+            "sha256": "67f8490b703ee9e7e285b54356a57cc939ede80b464b2b339720a2e652e74368"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/vba-next/788192f215ad0a1413f1625b40ebba3423fa0ade/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 6884,
+              "sha256": "024796d7b7246b66e684246181dda2880ca7465bb893ca2809161055eb3d3773"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/vba-next/788192f215ad0a1413f1625b40ebba3423fa0ade/Makefile.libretro",
+              "httpStatus": 200,
+              "sizeBytes": 20757,
+              "sha256": "8d940216069bb48416fa789f7647cc4b4f0bffc2b3c172c2786ac73a88a530e7"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2680157,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T09:00:51.409Z",
+              "finished_at": "2026-10-30T09:02:01.698Z",
+              "erased_at": "2026-11-02T07:04:30.174Z",
+              "web_url": "https://git.libretro.com/libretro/vba-next/-/jobs/2680157",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.gearcoleco",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "376110ae9be900d17ecc70efa495ae29d07ac72e",
+      "resources": [
+        {
+          "file": "gearcoleco_libretro.js",
+          "sha256": "8b6506aee3f2a8c4da1d29eae8fdb432a0c5560742c1963893b3c14299a560a0",
+          "sizeBytes": 270713,
+          "publicationUrl": "https://web.libretro.com/gearcoleco_libretro.js",
+          "archiveMember": "retroarch/gearcoleco_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "gearcoleco_libretro.wasm",
+          "sha256": "85fe2ed3ddac38b0f711abc0fd2f8115e3fa2a74291166595710a485e4e35165",
+          "sizeBytes": 3961834,
+          "publicationUrl": "https://web.libretro.com/gearcoleco_libretro.wasm",
+          "archiveMember": "retroarch/gearcoleco_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Fgearcoleco/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 1843,
+        "sha256": "ffc8132be32b0bf9ca839a71fca72e53ef4613519a76f54bcc07529bda2c9aa7"
+      },
+      "candidates": [
+        {
+          "coreCommit": "063fa52151581b356f466905c74a79f9df8d19d7",
+          "ref": "main",
+          "pipelineId": 129819,
+          "pipelineUrl": "https://git.libretro.com/libretro/gearcoleco/-/pipelines/129819",
+          "pipelineCreatedAt": "2026-10-30T19:53:21.789Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fgearcoleco/pipelines/129819/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 76490,
+            "sha256": "427745c6bdcc2aa1d03a4a60bcd1859f3bbcb303569f57a4395effacf6c59a34"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/drhelius/Gearcoleco/063fa52151581b356f466905c74a79f9df8d19d7/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 7045,
+              "sha256": "e77a2be2cd847c67133a0389f9e4c32482ff361674c192f1b682b631b96d38c7"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/drhelius/Gearcoleco/063fa52151581b356f466905c74a79f9df8d19d7/platforms/libretro/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 13313,
+              "sha256": "4d626cf0497f740e1c3031e1bbab8947076cba26044ccd8320f6eaa23ab19253"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2682276,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T20:10:21.005Z",
+              "finished_at": "2026-10-30T20:11:23.879Z",
+              "erased_at": "2026-11-02T07:05:58.778Z",
+              "web_url": "https://git.libretro.com/libretro/gearcoleco/-/jobs/2682276",
+              "artifacts": []
+            }
+          ]
+        },
+        {
+          "coreCommit": "1938f3f856b36b5f1a766a960e52f37159f8cd87",
+          "ref": "main",
+          "pipelineId": 129804,
+          "pipelineUrl": "https://git.libretro.com/libretro/gearcoleco/-/pipelines/129804",
+          "pipelineCreatedAt": "2026-10-30T19:22:24.445Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fgearcoleco/pipelines/129804/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 77505,
+            "sha256": "0fbef993935628387679850ee3fbc3519cb719ffe3125f2f7ee816a11cdba415"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/drhelius/Gearcoleco/1938f3f856b36b5f1a766a960e52f37159f8cd87/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 7045,
+              "sha256": "e77a2be2cd847c67133a0389f9e4c32482ff361674c192f1b682b631b96d38c7"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/drhelius/Gearcoleco/1938f3f856b36b5f1a766a960e52f37159f8cd87/platforms/libretro/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 13313,
+              "sha256": "4d626cf0497f740e1c3031e1bbab8947076cba26044ccd8320f6eaa23ab19253"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2681879,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T19:28:11.540Z",
+              "finished_at": "2026-10-30T19:29:07.867Z",
+              "erased_at": "2026-11-02T07:05:40.924Z",
+              "web_url": "https://git.libretro.com/libretro/gearcoleco/-/jobs/2681879",
+              "artifacts": []
+            }
+          ]
+        },
+        {
+          "coreCommit": "ac4a52033b7dd16a13a372cdfb5fba0e0e9a0726",
+          "ref": "main",
+          "pipelineId": 129602,
+          "pipelineUrl": "https://git.libretro.com/libretro/gearcoleco/-/pipelines/129602",
+          "pipelineCreatedAt": "2026-10-30T05:05:01.632Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Fgearcoleco/pipelines/129602/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 79537,
+            "sha256": "7b2ca57f12d5d43698766588262a8af6aea76772c22671601cdcee9e17228ba9"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/drhelius/Gearcoleco/ac4a52033b7dd16a13a372cdfb5fba0e0e9a0726/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 7045,
+              "sha256": "e77a2be2cd847c67133a0389f9e4c32482ff361674c192f1b682b631b96d38c7"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/drhelius/Gearcoleco/ac4a52033b7dd16a13a372cdfb5fba0e0e9a0726/platforms/libretro/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 13313,
+              "sha256": "4d626cf0497f740e1c3031e1bbab8947076cba26044ccd8320f6eaa23ab19253"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2677432,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T06:43:40.008Z",
+              "finished_at": "2026-10-30T06:44:52.742Z",
+              "erased_at": "2026-11-01T07:06:59.995Z",
+              "web_url": "https://git.libretro.com/libretro/gearcoleco/-/jobs/2677432",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "preferredCandidate": {
+        "commit": "063fa52151581b356f466905c74a79f9df8d19d7",
+        "basis": "Exact WASM embeds release version 1.7.6. Current annotated tag 1.7.6 points to this candidate. Candidate Makefile derives EMULATOR_BUILD with git describe --abbrev=7 --dirty --always --tags. Historical tag identity and full working tree remain unverified.",
+        "embeddedVersion": "1.7.6",
+        "versionBinaryOffset": 3347309,
+        "tagEvidence": [
+          {
+            "url": "https://api.github.com/repos/drhelius/Gearcoleco/git/ref/tags/1.7.6",
+            "httpStatus": 200,
+            "sizeBytes": 339,
+            "sha256": "991b7b248c5173d0f85f5a80e163d048e9587253a7e8bb63acc8c6e5ac275f0f"
+          },
+          {
+            "url": "https://api.github.com/repos/drhelius/Gearcoleco/git/tags/2d388dbaadb23fa398fb9136f24e4230cb0f2f5d",
+            "httpStatus": 200,
+            "sizeBytes": 1944,
+            "sha256": "c7e5c63e3df63726928a4b85f69cc63f49908b12c7930471d9e284b0485e2e62"
+          }
+        ]
+      },
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.gme",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "gme_libretro.js",
+          "sha256": "10b26c2fd7f637700843ec9012ea033d8b61020cfbff5afba5cc7a4c24afafc1",
+          "sizeBytes": 270596,
+          "publicationUrl": "https://web.libretro.com/gme_libretro.js",
+          "archiveMember": "retroarch/gme_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "gme_libretro.wasm",
+          "sha256": "4828b93ee37c7a40c9f455f67328b18b88e7e93618a64a8eef38cbeafb36de75",
+          "sizeBytes": 3932123,
+          "publicationUrl": "https://web.libretro.com/gme_libretro.wasm",
+          "archiveMember": "retroarch/gme_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Flibretro-gme/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 619,
+        "sha256": "04f902efa15e4caae7e606ca7fd309a29effba86174fd46441dfc0924e6d4d37"
+      },
+      "candidates": [
+        {
+          "coreCommit": "1562f6207a066e9807243c89648d1cb44e411971",
+          "ref": "master",
+          "pipelineId": 129685,
+          "pipelineUrl": "https://git.libretro.com/libretro/libretro-gme/-/pipelines/129685",
+          "pipelineCreatedAt": "2026-10-30T05:06:06.880Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Flibretro-gme/pipelines/129685/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 87762,
+            "sha256": "283725af568964030fca91e65f8e02639d5ddc7551c6d02342fa77f2d88b1f06"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/libretro-gme/1562f6207a066e9807243c89648d1cb44e411971/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 8299,
+              "sha256": "50ba19a300ffc17c9101acab4ce5be8c98b5b38056499e86087d36aeb59d1f25"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/libretro-gme/1562f6207a066e9807243c89648d1cb44e411971/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 22103,
+              "sha256": "1ef3b442b675997e171cd95d678a7b567edb2485ccdc758ff533f55516539a48"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2679221,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T08:15:45.937Z",
+              "finished_at": "2026-10-30T08:17:03.772Z",
+              "erased_at": "2026-11-02T07:03:50.220Z",
+              "web_url": "https://git.libretro.com/libretro/libretro-gme/-/jobs/2679221",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    },
+    {
+      "id": "org.libretro.minivmac",
+      "sourceMapping": "unverified",
+      "coreRevisionStatus": "unresolved",
+      "candidateStatus": "historical-ci-source-candidate",
+      "exactBinaryToJobChecksumMatch": false,
+      "frontendRevisionSelfReport": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "resources": [
+        {
+          "file": "minivmac_libretro.js",
+          "sha256": "e55f808d364f3998f6766c346934deccff0e5bca20a5a0f03210eab867ec4c6c",
+          "sizeBytes": 270616,
+          "publicationUrl": "https://web.libretro.com/minivmac_libretro.js",
+          "archiveMember": "retroarch/minivmac_libretro.js",
+          "pinMatches": true
+        },
+        {
+          "file": "minivmac_libretro.wasm",
+          "sha256": "880d0f19eefe6864c09143339ff03645f7420b2f5770e9ef5591eef36d2d2907",
+          "sizeBytes": 3829416,
+          "publicationUrl": "https://web.libretro.com/minivmac_libretro.wasm",
+          "archiveMember": "retroarch/minivmac_libretro.wasm",
+          "pinMatches": true
+        }
+      ],
+      "pipelineSearch": {
+        "url": "https://git.libretro.com/api/v4/projects/libretro%2Flibretro-minivmac/pipelines?updated_before=2026-10-31T02:00:00Z&updated_after=2026-10-29T00:00:00Z&per_page=100",
+        "httpStatus": 200,
+        "sizeBytes": 631,
+        "sha256": "d761ba1f2f699fe36e3b3ae079fb82c51807d7508be4116be0bc3496497bf4bd"
+      },
+      "candidates": [
+        {
+          "coreCommit": "babdf7b53d361a7225858b68a8a64efe8b06f5e5",
+          "ref": "master",
+          "pipelineId": 129668,
+          "pipelineUrl": "https://git.libretro.com/libretro/libretro-minivmac/-/pipelines/129668",
+          "pipelineCreatedAt": "2026-10-30T05:05:54.350Z",
+          "jobListEvidence": {
+            "url": "https://git.libretro.com/api/v4/projects/libretro%2Flibretro-minivmac/pipelines/129668/jobs?per_page=100",
+            "httpStatus": 200,
+            "sizeBytes": 91481,
+            "sha256": "16ec6768f56d271993ea94ea04e1aa9031b7ddbb03f583d9c4f5cc32c507bcf9"
+          },
+          "sourceBuildFiles": [
+            {
+              "url": "https://raw.githubusercontent.com/libretro/libretro-minivmac/babdf7b53d361a7225858b68a8a64efe8b06f5e5/.gitlab-ci.yml",
+              "httpStatus": 200,
+              "sizeBytes": 8513,
+              "sha256": "648459352e3a142a3463b41ee4ba2309bb1e076c6eac08f593b7182b43876680"
+            },
+            {
+              "url": "https://raw.githubusercontent.com/libretro/libretro-minivmac/babdf7b53d361a7225858b68a8a64efe8b06f5e5/Makefile",
+              "httpStatus": 200,
+              "sizeBytes": 12975,
+              "sha256": "27f1a3370265e3d2879b65e026c89944df07f71bb3fb2aa8c656568f553111da"
+            }
+          ],
+          "jobs": [
+            {
+              "id": 2678863,
+              "name": "libretro-build-emscripten",
+              "status": "success",
+              "started_at": "2026-10-30T08:02:38.725Z",
+              "finished_at": "2026-10-30T08:03:39.862Z",
+              "erased_at": "2026-11-02T07:03:35.220Z",
+              "web_url": "https://git.libretro.com/libretro/libretro-minivmac/-/jobs/2678863",
+              "artifacts": []
+            }
+          ]
+        }
+      ],
+      "remainingCoreResolutionInput": "An upstream retained manifest/checksum binding the exact JS and WASM pair to a job/source SHA, or an independently reproducible pair from that source with recorded inputs."
+    }
+  ],
+  "beetlePceFastSourceFingerprint": {
+    "profile": "org.libretro.beetle-pce-fast",
+    "candidateCommit": "2de1ce1c3f237b161c126c54ba407990bb86d1e9",
+    "status": "candidate-discrimination-by-source-literals",
+    "addedLiteralsChecked": 31,
+    "addedLiteralsPresent": 31,
+    "removedLiteralsChecked": 29,
+    "removedLiteralsAbsent": 29,
+    "comparisons": [
+      {
+        "change": "removed",
+        "macro": "#define CATEGORY_CHANNEL_VOLUME_INFO_0_SV",
+        "utf8Bytes": 56,
+        "literalSha256": "1c402c5bb2f2311a18abda5873c76bd87873242b280ddb553922c68aea9fcff0",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define CATEGORY_CHANNEL_VOLUME_INFO_0_SV",
+        "utf8Bytes": 56,
+        "literalSha256": "7b8a3c32c02f9a23aec0c34dd5324d9310f3c1bbc8da00a955a43d3dbf85e4c1",
+        "binaryOffset": 3460374
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_PALETTE_INFO_0_SV",
+        "utf8Bytes": 109,
+        "literalSha256": "d1afc0e483883f02cfd3b09674a7af9fb262a084148e58fecdfd3c3d8f9a1e28",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_PALETTE_INFO_0_SV",
+        "utf8Bytes": 103,
+        "literalSha256": "010e00d18581a7ecd698b7f6e7c565f8fe24e8f4c183ce9aeeecc7fd14df4a10",
+        "binaryOffset": 3473661
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_FRAMESKIP_INFO_0_SV",
+        "utf8Bytes": 321,
+        "literalSha256": "fc64634a2701f6417a5a1c38f3b606fc675965f24785a5d58a844ad64459650b",
+        "binaryOffset": 3419621
+      },
+      {
+        "change": "added",
+        "macro": "#define OPTION_VAL_AUTO_SV",
+        "utf8Bytes": 11,
+        "literalSha256": "dc48eb18a33457782c3925ce06eb85fee409c6314904d299c558c37b78018e33",
+        "binaryOffset": 3349181
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_HOVERSCAN_LABEL_SV",
+        "utf8Bytes": 52,
+        "literalSha256": "284d13f52bffed1f02846a44ad2f2d902141229b91f699068e53d521393a08e3",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_HOVERSCAN_INFO_0_SV",
+        "utf8Bytes": 132,
+        "literalSha256": "1185e29849e36affe650b0f008e7274fc4c2d61f502229830ca184ca9742f66d",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_HOVERSCAN_LABEL_SV",
+        "utf8Bytes": 51,
+        "literalSha256": "96b8e8be1b0b8b8d9ba779787bccb5752fc132f88f58af93d4fee78e466305cc",
+        "binaryOffset": 3402926
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_HOVERSCAN_INFO_0_SV",
+        "utf8Bytes": 118,
+        "literalSha256": "a3519a94d739eedbe63e656078b7afa4230391ce80967a79f263eb49bfd26e23",
+        "binaryOffset": 3514211
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DISABLE_SOFTRESET_INFO_0_SV",
+        "utf8Bytes": 125,
+        "literalSha256": "0fd20bed5c1c4b18f4387a506a3d456161dfed7dd4e51b75c34bc3d9abb3e2cc",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P1_LABEL_SV",
+        "utf8Bytes": 43,
+        "literalSha256": "9d44c34dd0abbcbcb0c30c0a0adc47a71be53138b6c6539a2133580c7eefb51c",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P1_INFO_0_SV",
+        "utf8Bytes": 299,
+        "literalSha256": "d18c5c6cc5041f8e879362322e9b7e4afcf8d4ad0727271a44a7de0cc217f5d9",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DISABLE_SOFTRESET_INFO_0_SV",
+        "utf8Bytes": 124,
+        "literalSha256": "fc52bedbb28b00548bda3959a84276277492974a6c72195882e7fa0830007924",
+        "binaryOffset": 3441107
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P1_LABEL_SV",
+        "utf8Bytes": 34,
+        "literalSha256": "340b2e1858a69e8245ea5915e1a562cf123691df70d16cd4bbc417f57e36229f",
+        "binaryOffset": 3366631
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P1_INFO_0_SV",
+        "utf8Bytes": 285,
+        "literalSha256": "e723ccabb13783113841a3078d0c614f222d7e77d393e025542cbe97c93b6a7c",
+        "binaryOffset": 3475112
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P2_LABEL_SV",
+        "utf8Bytes": 43,
+        "literalSha256": "aae2dfaae7a5d4766f7b2be60b68bc701b222d41a3d444d93c153f85cb426189",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P2_INFO_0_SV",
+        "utf8Bytes": 299,
+        "literalSha256": "79d5912d22e6b418821f7ee88d1fe2619f72416e95becc9b2fa598af26a112dd",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P3_LABEL_SV",
+        "utf8Bytes": 43,
+        "literalSha256": "f3b3ff712dc19bfc3ddcecad1332d601a828bdd1167eb7e1b242c7320ea25762",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P3_INFO_0_SV",
+        "utf8Bytes": 299,
+        "literalSha256": "35eed8e5750aefa74f3191379d00347e46071d1023db3dcabc26f9308880456d",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P4_LABEL_SV",
+        "utf8Bytes": 43,
+        "literalSha256": "efb0e090be6ce0396cb3604e6c0725c2a4c5788ec11ec60bd68dcaa6103de6fd",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P4_INFO_0_SV",
+        "utf8Bytes": 299,
+        "literalSha256": "bdccdb082b33a3a8ef0ba48f536b96b463e591325ca3b725f374519ebd373271",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P5_LABEL_SV",
+        "utf8Bytes": 43,
+        "literalSha256": "e37b33330216c3f9240134e2aa291ac2d4d6c616986b8af265927f8aae0bcf08",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P5_INFO_0_SV",
+        "utf8Bytes": 299,
+        "literalSha256": "6073c17cdff7aea9a2476d65b97f8791de9c6a5118e5eb1f237961e35430aa8e",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P2_LABEL_SV",
+        "utf8Bytes": 34,
+        "literalSha256": "9646777d05b8b1f1e05ed4378fdebfdad7580ef4947c294262f64024c0cfb79b",
+        "binaryOffset": 3366596
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P2_INFO_0_SV",
+        "utf8Bytes": 285,
+        "literalSha256": "06fa8ef2f8c1779056b54ce20ae5dbf745aef400be6715c49d7dddea97d3a7c9",
+        "binaryOffset": 3474826
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P3_LABEL_SV",
+        "utf8Bytes": 34,
+        "literalSha256": "de367fef4d534541afd55ec38327cabe382c86991298834b3fd52acad3c71ef5",
+        "binaryOffset": 3366561
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P3_INFO_0_SV",
+        "utf8Bytes": 285,
+        "literalSha256": "15f1f3f34a9311ff0057e9b952f677ae0eda28e6fdbc3ff3ec40853583f86c87",
+        "binaryOffset": 3474540
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P4_LABEL_SV",
+        "utf8Bytes": 34,
+        "literalSha256": "abd8af707c54ec4429608bef850c0ed8b00f1072efc1e8d05e944b6dcea7d62e",
+        "binaryOffset": 3366526
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P4_INFO_0_SV",
+        "utf8Bytes": 285,
+        "literalSha256": "aee1c77e7d3fca17c3afcfe898de519468067bbf0da97f77c9ab213be0568230",
+        "binaryOffset": 3474254
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P5_LABEL_SV",
+        "utf8Bytes": 34,
+        "literalSha256": "f58519587ce945ffce1368c345405d30deca859bb8f19b2c168e90898ed2048a",
+        "binaryOffset": 3366491
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_DEFAULT_JOYPAD_TYPE_P5_INFO_0_SV",
+        "utf8Bytes": 285,
+        "literalSha256": "305330629cd20f0640536480b9b7c62cef7704d89021067f2c27c88d76ce7680",
+        "binaryOffset": 3473968
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_TURBO_TOGGLING_INFO_0_SV",
+        "utf8Bytes": 65,
+        "literalSha256": "ea99821fa5b00ed0f4a4d57be788f9b460952357c8033495c544788d35ab3253",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_TURBO_TOGGLING_INFO_0_SV",
+        "utf8Bytes": 74,
+        "literalSha256": "c006d024594c5c1f9c35627cc4f8939e99228bcb2e62474ca61af6284e3dbe2d",
+        "binaryOffset": 3518434
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_TURBO_TOGGLE_HOTKEY_INFO_0_SV",
+        "utf8Bytes": 274,
+        "literalSha256": "4d6d75e1186c92b6b235b9567cc98d68f29c88b4d6e6bd481313db477db24324",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_TURBO_TOGGLE_HOTKEY_INFO_0_SV",
+        "utf8Bytes": 295,
+        "literalSha256": "a784b06a2b343a5ae5c99010c4a7aec7827594903c518029950de2c762e93875",
+        "binaryOffset": 3461150
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_TURBO_DELAY_INFO_0_SV",
+        "utf8Bytes": 44,
+        "literalSha256": "3e83225ca549dd720f8ff5201f5b16a809f079d0723627f109d58b461fd82bd9",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_TURBO_DELAY_INFO_0_SV",
+        "utf8Bytes": 46,
+        "literalSha256": "f35592eb4d815b3cd07cd020988317d443a05b83cad3e7b6f5fd5bc5a8efbbb9",
+        "binaryOffset": 3515802
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_CDBIOS_INFO_0_SV",
+        "utf8Bytes": 99,
+        "literalSha256": "0f0b35f271401ce5cdf847079b294d101d385c4c93f33d86f49a2c5b7b01f745",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_CDBIOS_INFO_0_SV",
+        "utf8Bytes": 96,
+        "literalSha256": "b47b8756bad3917230402715fcd977fba97a25917abb91bbf74bfdc6b6f61f41",
+        "binaryOffset": 3473564
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_ADPCMVOLUME_LABEL_SV",
+        "utf8Bytes": 18,
+        "literalSha256": "5c7bf24c42e94fbd9efa5f734c68e83970bccffbe1a87b7b7632b13cf5049ac5",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_ADPCMVOLUME_LABEL_CAT_SV",
+        "utf8Bytes": 18,
+        "literalSha256": "01b1d408fcdee3087e876e7f67668a32105d09b27b99ffa4720a900f29afe77c",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_ADPCMVOLUME_INFO_0_SV",
+        "utf8Bytes": 120,
+        "literalSha256": "d5464fa802ccc6adf4b8a500ce04a49563ed16ba2fc2bbabc0a20e04bef1ffa1",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_ADPCMVOLUME_LABEL_SV",
+        "utf8Bytes": 18,
+        "literalSha256": "ffe676bb0d2935560f04115583eae57dccccab376d2333541a6bc7a1a61813c8",
+        "binaryOffset": 3536448
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_ADPCMVOLUME_LABEL_CAT_SV",
+        "utf8Bytes": 13,
+        "literalSha256": "cbed3e5fdb7b47c21a89faba989548a926e82e25b7923d3904ece735226df8a1",
+        "binaryOffset": 3536453
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_ADPCMVOLUME_INFO_0_SV",
+        "utf8Bytes": 84,
+        "literalSha256": "57498220519bd77bc3c40491c38552153289c0c4d9a4f203688d3893cd31ca50",
+        "binaryOffset": 3413860
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_ADPCMLP_LABEL_CAT_SV",
+        "utf8Bytes": 20,
+        "literalSha256": "39eb78acb9b9f2cdf6ef2981ad3d6387e435891d9f6e052355ed7b9f182949ed",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_ADPCMLP_LABEL_CAT_SV",
+        "utf8Bytes": 20,
+        "literalSha256": "9b2ff42b86b4c2b59265d278571a2717894283988a86fe44f99d0b76403f2aca",
+        "binaryOffset": 3359024
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_CDDAVOLUME_LABEL_SV",
+        "utf8Bytes": 17,
+        "literalSha256": "6ae09aa4bc5cf8ca7e5b1719881a538ed04ab994b726867a45e4a4e1fd62f53a",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_CDDAVOLUME_LABEL_CAT_SV",
+        "utf8Bytes": 17,
+        "literalSha256": "a5d2da25aa9a5d5a430cdf9ad1e0e2c892890fca4ec89f3446e31019b401267c",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_CDPSGVOLUME_LABEL_SV",
+        "utf8Bytes": 16,
+        "literalSha256": "ca047e050cf4906b8399a95114c62049dff4da85a6fda50c85e16461457b5d34",
+        "binaryOffset": -1
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_CDPSGVOLUME_LABEL_CAT_SV",
+        "utf8Bytes": 19,
+        "literalSha256": "6d598acb8334648ef80b7ec42a0e97c74c9b97920ac0078c123a01c23c06218d",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_CDDAVOLUME_LABEL_SV",
+        "utf8Bytes": 17,
+        "literalSha256": "280ed5446eab74a32fd5a386659ed0678fe3d6c5ec02271a6df93756f13d2146",
+        "binaryOffset": 3536499
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_CDDAVOLUME_LABEL_CAT_SV",
+        "utf8Bytes": 12,
+        "literalSha256": "4e3af3d783971e1ce9ebca847fdf4d2325abae23f8c01c3b454de8f27d098842",
+        "binaryOffset": 3536504
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_CDPSGVOLUME_LABEL_SV",
+        "utf8Bytes": 16,
+        "literalSha256": "da39f9fdc603cc58c83d189c3ceb482fa07d406915b314da004421e09b6845b5",
+        "binaryOffset": 3536482
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_CDPSGVOLUME_LABEL_CAT_SV",
+        "utf8Bytes": 14,
+        "literalSha256": "79bbd840439cd0b4d4a5fc107435cc56f44108e598754c1c606b43d4cc0d76bf",
+        "binaryOffset": 3536467
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_NOSPRITELIMIT_LABEL_SV",
+        "utf8Bytes": 23,
+        "literalSha256": "2c92c7ada880816664afd6efe0187c6d069faedfc8edc89825cb48ddad297413",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_NOSPRITELIMIT_LABEL_SV",
+        "utf8Bytes": 18,
+        "literalSha256": "bfb761cf722147b81cb51532a54009f4822e7540ac69212e057af5bc0c9a2440",
+        "binaryOffset": 3352893
+      },
+      {
+        "change": "removed",
+        "macro": "#define PCE_FAST_OCMULTIPLIER_LABEL_SV",
+        "utf8Bytes": 49,
+        "literalSha256": "c23318406353f7abb340261c5cacbef92ed1d14856437dcbe7867557fa9aaf6b",
+        "binaryOffset": -1
+      },
+      {
+        "change": "added",
+        "macro": "#define PCE_FAST_OCMULTIPLIER_LABEL_SV",
+        "utf8Bytes": 49,
+        "literalSha256": "efc24569aa2bea552d22d553233f1559ab577a58a6b6ded782a09985e74b0205",
+        "binaryOffset": 3525992
+      }
+    ],
+    "limitations": "The source literal fingerprint favors the later Oct30 candidate and excludes the earlier candidate unmodified source. These literals do not establish the complete working tree, dependency closure, flags or exact binary-to-job linkage.",
+    "sourceCommitEvidence": {
+      "url": "https://api.github.com/repos/libretro/beetle-pce-fast-libretro/commits/2de1ce1c3f237b161c126c54ba407990bb86d1e9",
+      "httpStatus": 200,
+      "sizeBytes": 17598,
+      "sha256": "71d9c4c4a4c09c85d24ff3b8b713de33ed169af7e5a22776cd0e93127a36a61c"
+    },
+    "binarySha256": "7b01651a5191e94f881a37b5e6909407cd892c7b72c99c2c67e4fb2fba8e4fcc",
+    "binaryArchiveMember": "retroarch/mednafen_pce_fast_libretro.wasm",
+    "method": "Read the commit API patch for libretro_core_options_intl.h, select added/removed C string literals without backslash escapes, encode their complete values as UTF-8 and search the exact catalog WASM bytes. Store each source macro, literal hash, byte length and binary offset. A binary offset of -1 means absent."
+  },
+  "remainingInputsForAll50": [
+    "A retained source/build manifest or reproducible result tying each exact loader/WASM SHA256 pair to the recorded frontend/core source inputs",
+    "Exact container digest and installed SDK/distribution checksums used for the build",
+    "Full source working trees, local patches, submodule/dependency revisions and notices for every statically linked component",
+    "Exact compiler/linker flags, environment and precompiled frontend artifact/cache inputs",
+    "Independent rebuild comparison against the pinned pair hashes"
+  ],
+  "limitations": [
+    "GitLab source-file API returned HTTP429 after six successful source reads. Commit-pinned public GitHub mirrors supplied the source files. 429 responses are retained and excluded from successful evidence.",
+    "The exact source commit for the 11 cores remains unresolved. All 11 now have historical CI candidates, with additional literal/tag corroboration for two profiles.",
+    "All 50 complete build mappings remain unverified."
+  ],
+  "externalEvidenceRetention": {
+    "directory": "/var/tmp/ecs-upstream-build-resolution-2026-11-06",
+    "consolidatedRecord": {
+      "file": "upstream-build-resolution.json",
+      "sizeBytes": 261857,
+      "sha256": "7057716e22978479ba4e324e288fa6524f5afd85745b9e9917b3e04685753017"
+    },
+    "allPinnedPairRehashes": {
+      "file": "pinned-pairs-rehashed.json",
+      "sizeBytes": 42331,
+      "sha256": "c70debb0f65862269833647f47b34cb647d6d312c1b927a46b3f790c02b04ed5"
+    },
+    "note": "The local directory retains raw responses, response headers and detailed research records. Portable source URLs, content hashes and archive member pointers are embedded in this document."
+  }
+}

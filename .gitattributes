@@ -11,3 +11,6 @@
 *.wasm binary
 *.zip binary
 *.7z binary
+
+# Preserve the original author grant bytes used by the notice receipt.
+docs/operations/notices/sha1-fpl.txt -text

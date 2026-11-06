@@ -1,0 +1,475 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-11-06T22:44:44.080808+00:00",
+  "task": "#29 incorporated SHA1 and historical IJG grant provenance only",
+  "offsetConvention": "UTF-8 bytes, zero-based start and exclusive end; lines one-based inclusive. No newline translation when measuring.",
+  "downloads": [
+    {
+      "filename": "sha1-c.zip",
+      "url": "https://www.packetizer.com/security/hash/sha1/sha1-c.zip",
+      "finalUrl": "https://www.packetizer.com/security/hash/sha1/sha1-c.zip",
+      "sizeBytes": 6885,
+      "sha256": "b8a128e0316c72688848d2654631245779d2009f41beb72821b73c54955f3f33"
+    },
+    {
+      "filename": "sha1-author.html",
+      "url": "https://www.packetizer.com/security/hash/sha1/",
+      "finalUrl": "https://www.packetizer.com/security/hash/sha1/",
+      "sizeBytes": 14652,
+      "sha256": "d5c59336c474d31d9b65890a57168a67612893ffa60af86037bb44d339b159a6"
+    },
+    {
+      "filename": "jpegsrc.v4.tar.Z",
+      "url": "https://ftp.funet.fi/index/pics/viewers/unix/jpeg/jpegsrc.v4.tar.Z",
+      "finalUrl": "https://ftp.funet.fi/index/pics/viewers/unix/jpeg/jpegsrc.v4.tar.Z",
+      "sizeBytes": 459539,
+      "sha256": "51a80823dce330769ab0e109964dd55d0fe59e2cb96a8a5ebdb73cfbde45a8e7"
+    },
+    {
+      "filename": "ffmpeg-jrevdct.c",
+      "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/master/libavcodec/jrevdct.c",
+      "finalUrl": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/master/libavcodec/jrevdct.c",
+      "sizeBytes": 44399,
+      "sha256": "7e8d6215664de8f620e94a7d6304f19675bc5174a9db4cb86611749e188c35bc"
+    },
+    {
+      "filename": "funet-index.html",
+      "url": "https://ftp.funet.fi/index/pics/viewers/unix/jpeg/",
+      "finalUrl": "https://ftp.funet.fi/index/pics/viewers/unix/jpeg/",
+      "sizeBytes": 3354,
+      "sha256": "c2d81de4c994817f182838044bc74f5e6b7eeca2e282b9019ddc8d54c63b57c9"
+    }
+  ],
+  "normalization": {
+    "ijg": "Remove C comments and whitespace, replace identifier INT32 with int32. No algorithm/value changes normalized.",
+    "sha1": "Remove C comments and whitespace, replace only Message_Block->block, Message_Digest->digest, Message_Block_Index->block_index, Length_Low->length_low, Length_High->length_high, Computed->computed, Corrupted->corrupted. No braces, control flow, constants or operators normalized."
+  },
+  "components": [
+    {
+      "id": "frontend-sha1",
+      "grantProvenanceStatus": "resolved",
+      "grantNameAsPublished": "Freeware Public License (FPL)",
+      "grantFile": {
+        "path": "evidence/license.txt",
+        "sizeBytes": 702,
+        "sha256": "2a147c48b8645d808731c27373c4863417162f4f7a562c4bff7a4f86eccb05a2"
+      },
+      "grantSpan": {
+        "file": "evidence/license.txt",
+        "byteStart": 0,
+        "byteEndExclusive": 702,
+        "lineStart": 1,
+        "lineEndInclusive": 14,
+        "sizeBytes": 702,
+        "sha256": "2a147c48b8645d808731c27373c4863417162f4f7a562c4bff7a4f86eccb05a2"
+      },
+      "authorArchiveSha1": "43a368a64feef8339ccf389a5ce9f1b4c5d5637a",
+      "authorPublishedArchiveSha1": "43a368a64feef8339ccf389a5ce9f1b4c5d5637a",
+      "authorArchiveFingerprintVerified": true,
+      "upstreamSource": {
+        "path": "evidence/sha1.c",
+        "sizeBytes": 10382,
+        "sha256": "8ee810ad32b0f33620297090bae75763dd8a83c2e01adda6e70699765d584dd1"
+      },
+      "sourceHeader": {
+        "file": "evidence/sha1.c",
+        "byteStart": 0,
+        "byteEndExclusive": 1645,
+        "lineStart": 1,
+        "lineEndInclusive": 39,
+        "sizeBytes": 1645,
+        "sha256": "2d81d1815e3b69062df6a11e535a5be96a57609753b554dbf7b43e6032faaf2d"
+      },
+      "incorporatedHeader": {
+        "file": "custom-builds/prosystem/source/frontend/libretro-common/hash/lrc_hash.c",
+        "byteStart": 13951,
+        "byteEndExclusive": 15596,
+        "lineStart": 445,
+        "lineEndInclusive": 483,
+        "sizeBytes": 1645,
+        "sha256": "2d81d1815e3b69062df6a11e535a5be96a57609753b554dbf7b43e6032faaf2d"
+      },
+      "headersEqualAfterNewlineNormalization": true,
+      "incorporatedFiles": [
+        {
+          "path": "custom-builds/atari800/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "custom-builds/freeintv/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "custom-builds/mednafen-pcfx/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "custom-builds/pokemini/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "custom-builds/potator/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "custom-builds/prosystem/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "custom-builds/sameduck/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "custom-builds/stella2014/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "legacy-builds/fceumm/source/retroarch/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        },
+        {
+          "path": "legacy-builds/jaguar/source/frontend/libretro-common/hash/lrc_hash.c",
+          "sizeBytes": 37727,
+          "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+        }
+      ],
+      "allTenIncorporatedFilesByteIdentical": true,
+      "matches": [
+        {
+          "label": "80-round compression and digest accumulation (after initial schedule)",
+          "upstream": {
+            "file": "evidence/sha1.c",
+            "byteStart": 6296,
+            "byteEndExclusive": 8020,
+            "lineStart": 237,
+            "lineEndInclusive": 298,
+            "sizeBytes": 1724,
+            "sha256": "3b4f101c88cd260562f74e1af3988d7c8516654552ce4a2375cf93350ea28c2a"
+          },
+          "incorporated": {
+            "file": "custom-builds/prosystem/source/frontend/libretro-common/hash/lrc_hash.c",
+            "byteStart": 20546,
+            "byteEndExclusive": 22036,
+            "lineStart": 646,
+            "lineEndInclusive": 707,
+            "sizeBytes": 1490,
+            "sha256": "aacee6a48e022b6d648ea94bf6666727c2cb6d3ba7e40cbffe19c70174ca7870"
+          },
+          "normalization": "sha1",
+          "normalizedSha256": "807933812c6352ffbc69a3832395d48d1291e7608a8e98084f2cc72347b54bd8",
+          "normalizedBytes": 910,
+          "equalAfterNormalization": true
+        },
+        {
+          "label": "message-length octet serialization",
+          "upstream": {
+            "file": "evidence/sha1.c",
+            "byteStart": 9799,
+            "byteEndExclusive": 10340,
+            "lineStart": 361,
+            "lineEndInclusive": 368,
+            "sizeBytes": 541,
+            "sha256": "1c8357f0df73a664a117110da288e160dd2c9bde0088eafae51a12e597dfb109"
+          },
+          "incorporated": {
+            "file": "custom-builds/prosystem/source/frontend/libretro-common/hash/lrc_hash.c",
+            "byteStart": 23413,
+            "byteEndExclusive": 23882,
+            "lineStart": 755,
+            "lineEndInclusive": 762,
+            "sizeBytes": 469,
+            "sha256": "635cd0f54d8df473c44a6fbe32a4ef4e01ef1f3fbfef71247b426b083e3498cd"
+          },
+          "normalization": "sha1",
+          "normalizedSha256": "1fc464a28d8c58d26754e35ca961d0774225a74159b3d0e2da6fd7edfe3f77a3",
+          "normalizedBytes": 394,
+          "equalAfterNormalization": true
+        }
+      ],
+      "basis": [
+        "Author-hosted archive contains sha1.c and license.txt together.",
+        "Archive source carries the exact revision $Id: sha1.c 12 2009-06-22 19:34:25Z paulej $ and 1998,2009 attribution found in incorporated source.",
+        "Both long executable-code spans match after explicitly enumerated identifier/comment/whitespace normalization.",
+        "All eight modern and both legacy frontend copies are byte-identical."
+      ],
+      "publishedGrantSummary": [
+        "Permission to distribute source and binary forms, including incorporation into other products, without a fee.",
+        "AS IS warranty disclaimer and author liability exclusion."
+      ],
+      "remainingLimits": [
+        "This records the author FPL verbatim from the matching distribution, without reclassifying it as MIT or another standard license.",
+        "The published FPL does not separately enumerate a modification right, attribution-retention condition, or source-offer condition. Preserve its actual wording when publishing notices."
+      ],
+      "incorporatedScopeSpan": {
+        "file": "custom-builds/prosystem/source/frontend/libretro-common/hash/lrc_hash.c",
+        "byteStart": 13951,
+        "byteEndExclusive": 25555,
+        "lineStart": 445,
+        "lineEndInclusive": 841,
+        "sizeBytes": 11604,
+        "sha256": "f28ce12657cd8bc94a056813f71377d26afc0119ae75c282ca3ba78ceb303052"
+      }
+    },
+    {
+      "id": "pcfx-jpeg-idct",
+      "grantProvenanceStatus": "resolved-from-historical-source-distribution-mirror",
+      "grantNameAsPublished": "Independent JPEG Group release 4 README, 10-Dec-92",
+      "historicalTransport": "Funet mirror of original IJG source artifact; not presently retrieved from ijg.org or ftp.uu.net. README identifies official archive name jpegsrc.v4.tar.Z and permits mirror copies.",
+      "readme": {
+        "path": "evidence/jpeg-v4-README",
+        "sizeBytes": 21128,
+        "sha256": "a1c127ce9bb177cfd15354278f745e4020fea5a4e45cb2007d79d335a4d695a9"
+      },
+      "readmeIdentitySpan": {
+        "file": "evidence/jpeg-v4-README",
+        "byteStart": 0,
+        "byteEndExclusive": 391,
+        "lineStart": 1,
+        "lineEndInclusive": 9,
+        "sizeBytes": 391,
+        "sha256": "08beba4a66a6c0b21548623595863ad478d9c5c6384c3698d3e66a645768f433"
+      },
+      "completeLegalIssuesSpan": {
+        "file": "evidence/jpeg-v4-README",
+        "byteStart": 17135,
+        "byteEndExclusive": 20260,
+        "lineStart": 320,
+        "lineEndInclusive": 380,
+        "sizeBytes": 3125,
+        "sha256": "46360ba160f053e0b45cab8c7c9c2bf86fd543d1a148ef00d0f42e86683d4ef6"
+      },
+      "componentGrantSpan": {
+        "file": "evidence/jpeg-v4-README",
+        "byteStart": 17162,
+        "byteEndExclusive": 18793,
+        "lineStart": 323,
+        "lineEndInclusive": 352,
+        "sizeBytes": 1631,
+        "sha256": "e70386057c33d9f97a664150eb0a43121cddc2dbce10463c98be01d53466062c"
+      },
+      "archiveProvenanceSpan": {
+        "file": "evidence/jpeg-v4-README",
+        "byteStart": 5391,
+        "byteEndExclusive": 6122,
+        "lineStart": 110,
+        "lineEndInclusive": 121,
+        "sizeBytes": 731,
+        "sha256": "f5c59846f19156aa336298829df6a6678f559013b311bb48739216e3a647b1a7"
+      },
+      "upstreamSource": {
+        "path": "evidence/jpeg-v4-jrevdct.c",
+        "sizeBytes": 14090,
+        "sha256": "2686cddb2a89f07edbb4a1434acb9068dd7e299ecf35ed7812eef584b1061b17"
+      },
+      "incorporatedSource": {
+        "path": "custom-builds/mednafen-pcfx/source/mednafen-pcfx/mednafen/pcfx/jrevdct.c",
+        "sizeBytes": 10982,
+        "sha256": "d803404c1be9ce5fe6460cc2d4e3c8c8a1bcb5f1104c191d6a151c47f9c87764"
+      },
+      "sourceHeader": {
+        "file": "evidence/jpeg-v4-jrevdct.c",
+        "byteStart": 0,
+        "byteEndExclusive": 917,
+        "lineStart": 1,
+        "lineEndInclusive": 19,
+        "sizeBytes": 917,
+        "sha256": "67f375341e8dbbe0012691c1bf43d2cf87e6cf88693141deb87706eb2753a417"
+      },
+      "incorporatedHeader": {
+        "file": "custom-builds/mednafen-pcfx/source/mednafen-pcfx/mednafen/pcfx/jrevdct.c",
+        "byteStart": 0,
+        "byteEndExclusive": 917,
+        "lineStart": 1,
+        "lineEndInclusive": 19,
+        "sizeBytes": 917,
+        "sha256": "67f375341e8dbbe0012691c1bf43d2cf87e6cf88693141deb87706eb2753a417"
+      },
+      "headersByteIdentical": true,
+      "matches": [
+        {
+          "label": "row transform, including output stage",
+          "upstream": {
+            "file": "evidence/jpeg-v4-jrevdct.c",
+            "byteStart": 7901,
+            "byteEndExclusive": 10136,
+            "lineStart": 202,
+            "lineEndInclusive": 260,
+            "sizeBytes": 2235,
+            "sha256": "1db40673758044aea9d167ce9a70c804d6393b45e35473f68b0f74b8e1fc0b24"
+          },
+          "incorporated": {
+            "file": "custom-builds/mednafen-pcfx/source/mednafen-pcfx/mednafen/pcfx/jrevdct.c",
+            "byteStart": 5944,
+            "byteEndExclusive": 8179,
+            "lineStart": 150,
+            "lineEndInclusive": 208,
+            "sizeBytes": 2235,
+            "sha256": "cd553819f8e6f2328e8d538827e6922679f7cd60812c9c46ed92b3937db011ec"
+          },
+          "normalization": "ijg",
+          "normalizedSha256": "9778c7e6f5ff1cfe89badb9a42c1e02334b667f307a3baa5534fd912f0f9918c",
+          "normalizedBytes": 1356,
+          "equalAfterNormalization": true
+        },
+        {
+          "label": "column transform before modified final scale",
+          "upstream": {
+            "file": "evidence/jpeg-v4-jrevdct.c",
+            "byteStart": 11590,
+            "byteEndExclusive": 12948,
+            "lineStart": 301,
+            "lineEndInclusive": 336,
+            "sizeBytes": 1358,
+            "sha256": "a4ba26f9cfde9618844702dbbe205a26c4ef4f5199b51a32f23c4003b413065c"
+          },
+          "incorporated": {
+            "file": "custom-builds/mednafen-pcfx/source/mednafen-pcfx/mednafen/pcfx/jrevdct.c",
+            "byteStart": 8546,
+            "byteEndExclusive": 9904,
+            "lineStart": 220,
+            "lineEndInclusive": 255,
+            "sizeBytes": 1358,
+            "sha256": "b7d789247981e333b442aeea2653fb1413ea8a853444b81808c2673a405865a3"
+          },
+          "normalization": "ijg",
+          "normalizedSha256": "be44497801aa94cdabefdc5a6d9b76ea4ffb2b9f0840cfd52881b3fce2bdb1dd",
+          "normalizedBytes": 795,
+          "equalAfterNormalization": true
+        }
+      ],
+      "basis": [
+        "README and original jrevdct.c occur inside the same historical IJG release 4 archive.",
+        "Original and incorporated jrevdct.c first comment headers are byte-identical, including 1991,1992 copyright and README reference.",
+        "Substantial row and column inverse-DCT sequences match after only comments/whitespace and INT32->int32 type-identifier normalization.",
+        "Source-specific Mednafen modifications are visible in the recorded diff."
+      ],
+      "publishedGrantSummary": [
+        "Use, copy, modify and distribute all or portions for any purpose without fee, subject to the README conditions.",
+        "Source redistribution must include this README with copyright and warranty notice unaltered, with additions/deletions/changes clearly indicated in accompanying documentation.",
+        "Executable-only documentation must acknowledge the Independent JPEG Group using the specified statement.",
+        "User accepts responsibility and authors exclude liability.",
+        "IJG author/company names may not be used for advertising or publicity, and product vendor assumes warranty/liability claims."
+      ],
+      "observedModificationSummary": [
+        "2007 Mednafen usage marker and local includes.",
+        "INT32 identifier becomes int32 and sample configuration fixed to 8-bit parameters.",
+        "Zero-row/column shortcuts and multiply portability branches removed.",
+        "Final column output scaling changes CONST_BITS+PASS1_BITS+3 to CONST_BITS+PASS1_BITS+1."
+      ],
+      "remainingLimits": [
+        "Distribution transport is a historical mirror. The retrieved README/source are primary authored artifacts with exact source continuity; no original publisher cryptographic signature was available.",
+        "FFmpeg current source was retrieved as corroboration only. Its expanded notice is not substituted for the historical README.",
+        "The complete README and change documentation are retained in this repository. Existing published packages/source archives have not been replaced with these materials."
+      ]
+    }
+  ],
+  "archiveMembers": [
+    {
+      "archive": "evidence/sha1-c.zip",
+      "member": "sha1-c/sha1.c",
+      "extractedFile": {
+        "path": "evidence/sha1.c",
+        "sizeBytes": 10382,
+        "sha256": "8ee810ad32b0f33620297090bae75763dd8a83c2e01adda6e70699765d584dd1"
+      },
+      "storedMemberCrc32": "c8020cd8",
+      "memberDateTime": [
+        2009,
+        6,
+        22,
+        16,
+        21,
+        24
+      ]
+    },
+    {
+      "archive": "evidence/sha1-c.zip",
+      "member": "sha1-c/sha1.h",
+      "extractedFile": {
+        "path": "evidence/sha1.h",
+        "sizeBytes": 1574,
+        "sha256": "3da74d0b5dcca8bd389332e6bdde2935ff54dcde9c28e3bce33fb9e26f0f0d0a"
+      },
+      "storedMemberCrc32": "d46496e6",
+      "memberDateTime": [
+        2009,
+        6,
+        22,
+        16,
+        21,
+        24
+      ]
+    },
+    {
+      "archive": "evidence/sha1-c.zip",
+      "member": "sha1-c/license.txt",
+      "extractedFile": {
+        "path": "evidence/license.txt",
+        "sizeBytes": 702,
+        "sha256": "2a147c48b8645d808731c27373c4863417162f4f7a562c4bff7a4f86eccb05a2"
+      },
+      "storedMemberCrc32": "36cadd46",
+      "memberDateTime": [
+        2009,
+        6,
+        22,
+        16,
+        33,
+        58
+      ]
+    },
+    {
+      "archive": "evidence/jpegsrc.v4.tar.Z",
+      "member": "README",
+      "extractedFile": {
+        "path": "evidence/jpeg-v4-README",
+        "sizeBytes": 21128,
+        "sha256": "a1c127ce9bb177cfd15354278f745e4020fea5a4e45cb2007d79d335a4d695a9"
+      },
+      "listing": "-rw-r--r--  0 301    30      21128 Dec 10  1992 README"
+    },
+    {
+      "archive": "evidence/jpegsrc.v4.tar.Z",
+      "member": "jrevdct.c",
+      "extractedFile": {
+        "path": "evidence/jpeg-v4-jrevdct.c",
+        "sizeBytes": 14090,
+        "sha256": "2686cddb2a89f07edbb4a1434acb9068dd7e299ecf35ed7812eef584b1061b17"
+      },
+      "listing": "-rw-r--r--  0 301    30      14090 Nov 10  1992 jrevdct.c"
+    }
+  ],
+  "evidencePaths": "evidence/ identifies members of the retained research archive. custom-builds/ and legacy-builds/ identify source trees in the hash-bound prior build audits. Download URLs, archive member names, source hashes and spans provide portable reconstruction identifiers.",
+  "priorBuildAudits": [
+    "docs/operations/custom-build-verification-2026-11-06.json",
+    "docs/operations/legacy-build-verification-2026-11-06.json"
+  ],
+  "retainedRedistributionMaterials": [
+    {
+      "path": "docs/operations/notices/sha1-fpl.txt",
+      "sha256": "2a147c48b8645d808731c27373c4863417162f4f7a562c4bff7a4f86eccb05a2",
+      "sizeBytes": 702
+    },
+    {
+      "path": "docs/operations/notices/ijg-v4-README.txt",
+      "sha256": "a1c127ce9bb177cfd15354278f745e4020fea5a4e45cb2007d79d335a4d695a9",
+      "sizeBytes": 21128
+    },
+    {
+      "path": "docs/operations/sha1-ijg-resolution-2026-11-06.md",
+      "sha256": "f46986b847dffa1294ac340e07c95271bc9a77b50de075b499acbd551ed15797",
+      "sizeBytes": 3310
+    }
+  ],
+  "redistributionStatus": "Grant recovery and repository notice materials complete. Existing published core packages and separately hosted source archives have not been replaced. Packaging these materials with future redistributed artifacts and evaluating final-code scope remain open.",
+  "scope": "Ten custom frontends share the SHA1 source. IJG applies to the custom PCFX core source. Upstream core final-code scope remains unaudited."
+}
