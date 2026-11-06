@@ -2,6 +2,7 @@
   import type { ContentClient, Library } from '@ecs/client';
   import type { FolderContext } from './lib/folder-selection';
   import type { ApplicationState } from './lib/application';
+  import type { ServerUpdatesView } from './lib/server-updates';
   import SettingsLibraries from './SettingsLibraries.svelte';
   import StorageSettings from './StorageSettings.svelte';
   import Grants from './Grants.svelte';
@@ -11,9 +12,11 @@
   import EmulatorSettings from './EmulatorSettings.svelte';
   import Audit from './Audit.svelte';
   import Status from './Status.svelte';
+  import ServerUpdateSettings from './ServerUpdateSettings.svelte';
   let {
     client,
     appState,
+    updates,
     onback,
     onview,
     onrejected,
@@ -21,6 +24,7 @@
   }: {
     client: ContentClient;
     appState: ApplicationState;
+    updates?: ServerUpdatesView;
     onback: () => void;
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
@@ -29,9 +33,10 @@
   } = $props();
   let selected = $state('Libraries');
   let noted = $state(0);
-  const sections = ['Libraries', 'Storage', 'Emulators', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status'];
+  const sections = ['Libraries', 'Storage', 'Emulators', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status', 'Updates'];
   const visibleSections = $derived(sections.filter(name => name === 'WebDAV'
     ? appState.capabilities?.features.webdav && appState.hasSession
+    : name === 'Updates' ? appState.owner && appState.hasSession && updates
     : appState.owner || name === 'Server status'));
 </script>
 
@@ -66,7 +71,7 @@
         {client}
         onchange={() => noted++}
       />{:else if appState.owner && selected === 'Devices'}<DeviceTokens {client} {onrejected} />{:else if selected === 'WebDAV' && visibleSections.includes('WebDAV')}<WebDav {client} origin={context.origin} {onrejected} />{:else if appState.owner && selected === 'Activity'}<h1>Activity</h1>
-      <Audit {client} {noted} />{:else}<h1>Server status</h1>
+      <Audit {client} {noted} />{:else if updates && selected === 'Updates' && visibleSections.includes('Updates')}<ServerUpdateSettings {updates} />{:else}<h1>Server status</h1>
       <Status capabilities={appState.capabilities} reachable={appState.reachable === true} />{/if}
   </div>
 </div>

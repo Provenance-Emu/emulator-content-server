@@ -48,6 +48,48 @@ Interactive desktop installation, real hardware, emulator playback and app-to-se
 
 ## Upgrades and maintainer operation
 
-Stop the server, back up the data directory, extract the new build into a fresh directory and run it against the same external data path. Do not extract over a running installation or copy your data into the release archive. Keep the old build and matching data backup until testing passes.
+In a portable package that includes the updater, sign in as the server owner
+and open **Settings → Updates**. Choose **Release** for tagged server builds
+(including tagged alphas during pre-release) or **Nightly** for the moving
+nightly build. **Off** disables checks. **Manual** checks hourly and offers
+**Update now**, **Later** (24 hours), or **Skip this version**. **Automatic**
+checks hourly and installs eligible builds even when the web UI is closed.
+The server keeps serving during download and restarts to activate the verified
+archive. If the new build fails to start, the launcher restores the previous
+build and its pre-update catalog.
+
+For unattended operation, keep the extracted launcher in a permanent
+location and install the per-user service using the same data path and listen
+options as the current installation. On macOS or Linux:
+
+```sh
+./ecs service install --data "$HOME/EmulationServerData" --host 127.0.0.1
+```
+
+On Windows, run `ecs.cmd service install` with the corresponding Windows data
+path and listen options. Select **Nightly → Automatic** in the web UI once the
+service starts. The launcher retains update preferences and managed builds
+in the server's data directory. Source checkouts, externally managed
+deployments and desktop companions use their existing installation methods.
+
+For a one-time migration from an older installation, back up the data directory,
+extract an updater-enabled package into a fresh directory and install its
+service using the existing data path and flags. For a foreground installation,
+stop the old server first and start the new package with `ecs serve`. Keep the
+old build and matching data backup until testing passes.
 
 The [Nightly distributions workflow](https://github.com/Provenance-Emu/emulator-content-server/actions/workflows/nightly.yml) builds only committed source and production dependencies. Pull requests retain the regular Linux verification; the full distribution matrix runs only on the nightly schedule or manual dispatch. Publication requires every job to succeed on main and links the exact tested commit, even if main advances while installers build. Assets have stable names plus per-platform and combined SHA-256 manifests. No new signing secrets or paid runners are required. A manual run on a branch provides Actions artifacts only. These packages do not replace the separate routine verification workflow or establish full release readiness.
+
+To attach update-enabled archives to a tagged server release, run the same
+workflow on the tag after creating the GitHub release. Use a tag that includes
+the updater and workflow changes:
+
+```sh
+gh workflow run nightly.yml --ref v0.2.0 -f release_tag=v0.2.0
+```
+
+The workflow adds platform archives and updater manifests to the tagged
+release after native package smoke tests. Each manifest identifies a build
+and the expected SHA-256 of its archive. The updater selects compatible
+server assets from the project repository, so catalog, core and desktop-only
+releases do not enter the server update feed.

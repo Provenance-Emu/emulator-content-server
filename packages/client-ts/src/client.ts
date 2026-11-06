@@ -60,6 +60,9 @@ import type {
   PlayerIsolationSession,
   PlayerManagement,
   Problem,
+  ServerUpdateDecision,
+  ServerUpdateSettings,
+  ServerUpdateStatus,
   SessionResponse,
   SourceFileList,
   SourceGroup,
@@ -228,6 +231,18 @@ export class ContentClient {
         requestOptions.timeoutMs > 120_000)
     )
       throw new RangeError('Invalid request timeout');
+  }
+
+  serverUpdates(): Promise<ServerUpdateStatus> {
+    return this.getJson('/api/v1/server/updates');
+  }
+
+  configureServerUpdates(settings: ServerUpdateSettings): Promise<ServerUpdateStatus> {
+    return this.putJson('/api/v1/server/updates', settings);
+  }
+
+  decideServerUpdate(decision: ServerUpdateDecision): Promise<ServerUpdateStatus> {
+    return this.post('/api/v1/server/updates', decision);
   }
 
   private requestSignal(signal?: AbortSignal): AbortSignal | undefined {

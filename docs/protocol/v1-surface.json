@@ -44,6 +44,7 @@
     "GET /api/v1/roots",
     "GET /api/v1/roots/:rootId/organization-policy",
     "GET /api/v1/roots/:rootId/watching-policy",
+    "GET /api/v1/server/updates",
     "GET /api/v1/sources",
     "GET /api/v1/sources/:sourceId/bundle",
     "GET /api/v1/sources/:sourceId/content",
@@ -99,6 +100,7 @@
     "POST /api/v1/player/management/install/:id",
     "POST /api/v1/roots",
     "POST /api/v1/roots/:rootId/scan",
+    "POST /api/v1/server/updates",
     "POST /api/v1/sources/:sourceId/matches",
     "POST /api/v1/sources/:sourceId/organization/apply",
     "POST /api/v1/sources/:sourceId/organization/preview",
@@ -130,11 +132,60 @@
     "PUT /api/v1/roots/:rootId/library",
     "PUT /api/v1/roots/:rootId/organization-policy",
     "PUT /api/v1/roots/:rootId/watching-policy",
+    "PUT /api/v1/server/updates",
     "PUT /api/v1/sources/:sourceId/matches/selections",
     "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
   ],
   "schemas": {
+    "ServerUpdateSettings": {
+      "properties": [
+        "channel",
+        "mode"
+      ],
+      "required": [
+        "channel",
+        "mode"
+      ]
+    },
+    "ServerUpdateDecision": {
+      "properties": [
+        "action",
+        "buildId"
+      ],
+      "required": [
+        "action"
+      ]
+    },
+    "ServerUpdateBuild": {
+      "properties": [
+        "channel",
+        "id",
+        "version"
+      ],
+      "required": [
+        "channel",
+        "id",
+        "version"
+      ]
+    },
+    "ServerUpdateStatus": {
+      "properties": [
+        "available",
+        "current",
+        "message",
+        "phase",
+        "prompt",
+        "settings",
+        "supported"
+      ],
+      "required": [
+        "phase",
+        "prompt",
+        "settings",
+        "supported"
+      ]
+    },
     "Problem": {
       "properties": [
         "detail",

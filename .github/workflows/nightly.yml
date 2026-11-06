@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: '17 6 * * *'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional existing version tag. Run on that tag to attach server packages to its GitHub release.'
+        type: string
 
 permissions:
   contents: read
@@ -24,6 +28,8 @@ jobs:
           - { os: macos-15, platform: macos, arch: arm64, extension: tar.gz }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    env:
+      ECS_RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -41,16 +47,20 @@ jobs:
       - name: Build self-contained server archive
         run: pnpm package:nightly
       - name: Smoke test extracted distribution
-        run: node scripts/smoke-nightly.mjs dist-release/nightly/Emulation-Server-nightly-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.extension }}
+        shell: bash
+        run: |
+          tag="${ECS_RELEASE_TAG:-nightly}"
+          node scripts/smoke-nightly.mjs "dist-release/$tag/Emulation-Server-${tag#v}-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.extension }}"
       - uses: actions/upload-artifact@v4
         with:
           name: server-${{ matrix.platform }}-${{ matrix.arch }}
-          path: dist-release/nightly/*
+          path: dist-release/${{ inputs.release_tag || 'nightly' }}/*
           if-no-files-found: error
           retention-days: 7
 
   desktop:
     name: Desktop (${{ matrix.platform }}-${{ matrix.arch }})
+    if: '!inputs.release_tag'
     strategy:
       fail-fast: false
       matrix:
@@ -100,9 +110,12 @@ jobs:
           retention-days: 7
 
   publish:
-    name: Update stable nightly release
+    name: Publish verified distributions
     needs: [server, desktop]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: >-
+      always() && needs.server.result == 'success' &&
+      ((!inputs.release_tag && github.ref == 'refs/heads/main' && needs.desktop.result == 'success') ||
+      (inputs.release_tag && github.ref == format('refs/tags/{0}', inputs.release_tag)))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -114,11 +127,27 @@ jobs:
           merge-multiple: true
       - name: Verify complete release checksums
         working-directory: dist-release/all
+        env:
+          ECS_RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           cat SHA256SUMS-*.txt > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
-          test "$(wc -l < SHA256SUMS.txt)" -eq 7
+          if test -n "$ECS_RELEASE_TAG"; then
+            test "$(wc -l < SHA256SUMS.txt)" -eq 3
+          else
+            test "$(wc -l < SHA256SUMS.txt)" -eq 7
+          fi
+          test "$(find . -name 'ecs-update-*.json' | wc -l)" -eq 3
+      - name: Attach server packages to the tagged release
+        if: inputs.release_tag
+        working-directory: dist-release/all
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ECS_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          gh release upload "$ECS_RELEASE_TAG" Emulation-Server-* SHA256SUMS-server-* ecs-update-*.json
       - name: Publish verified artifacts
+        if: '!inputs.release_tag'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

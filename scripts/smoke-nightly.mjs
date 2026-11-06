@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { lstat, mkdtemp, readdir, readFile, readlink, realpath, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const archive = resolve(process.argv[2]);
@@ -51,6 +52,21 @@ try {
   await assertContainedLinks(root, await realpath(root));
   const metadata = JSON.parse(await readFile(join(root, 'BUILD.json'), 'utf8'));
   assert.equal(metadata.arch, process.arch);
+  assert.match(metadata.id, /^[a-f0-9]{64}$/);
+  const updateManifest = JSON.parse(
+    await readFile(
+      join(dirname(archive), `ecs-update-${metadata.platform}-${metadata.arch}.json`),
+      'utf8',
+    ),
+  );
+  assert.deepEqual(updateManifest.build, metadata);
+  assert.equal(updateManifest.archive, basename(archive));
+  assert.equal(
+    updateManifest.sha256,
+    createHash('sha256')
+      .update(await readFile(archive))
+      .digest('hex'),
+  );
   const node = join(root, 'runtime', process.platform === 'win32' ? 'node.exe' : 'node');
   assert.equal(execFileSync(node, ['--version'], { encoding: 'utf8' }).trim(), `v${metadata.node}`);
   const cli = join(root, 'server/dist/src/main.js');
@@ -76,7 +92,7 @@ try {
   child = spawn(
     node,
     [
-      cli,
+      join(root, 'server', 'dist', 'src', 'supervise.js'),
       'serve',
       '--data',
       join(temporary, 'generated-data'),
@@ -125,5 +141,5 @@ try {
     child.kill('SIGTERM');
     await stopped;
   }
-  await rm(temporary, { recursive: true, force: true });
+  await rm(temporary, { recursive: true, force: true, maxRetries: 10 });
 }

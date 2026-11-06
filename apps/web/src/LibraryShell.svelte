@@ -3,17 +3,24 @@
   import { get } from 'svelte/store';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { createApplication, type ServerContext } from './lib/application';
+  import { createServerUpdates } from './lib/server-updates';
   import type { FolderContext, FolderSelectionAdapter } from './lib/folder-selection';
   import LibraryEditor from './LibraryEditor.svelte';
   import Login from './Login.svelte';
   import LibraryBrowser from './LibraryBrowser.svelte';
   import SettingsShell from './SettingsShell.svelte';
+  import ServerUpdatePrompt from './ServerUpdatePrompt.svelte';
   import Modal from './components/Modal.svelte';
   let {
     context,
     folderSelection,
   }: { context: ServerContext; folderSelection?: FolderSelectionAdapter } = $props();
   const application = untrack(() => createApplication(context));
+  const updates = untrack(() => createServerUpdates(context.client));
+  const updateAccess = $derived($application.owner && $application.hasSession ? $application.authEpoch : null);
+  $effect(() => {
+    if (updateAccess !== null) return updates.start();
+  });
   let scope = $state<LibraryScope | null>(null);
   let rootId = $state('');
   let rootIntent = $state(0);
@@ -100,6 +107,7 @@
         {@render navigation()}
       </Modal>{/if}
     <main id="main-content" class="application-content">
+      {#if $application.owner && $application.hasSession}<ServerUpdatePrompt {updates} />{/if}
       {#if $application.localWarning}<p role="status" class="problem">{$application.localWarning}</p>{/if}
       {#if $application.failure}<p class="problem connection-message" role="status">
           {$application.failure}
@@ -122,6 +130,7 @@
           />{/key}
         </div>
         {#if settings}<SettingsShell
+            {updates}
             onplayerschange={async () => { await application.revalidate(); playerEpoch++; }}
             client={context.client}
             appState={$application}
