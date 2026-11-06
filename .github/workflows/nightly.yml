@@ -104,19 +104,90 @@ jobs:
         run: node scripts/publish-desktop.mjs nightly apps/tray/src-tauri/target/release/bundle --stage-only
       - uses: actions/upload-artifact@v4
         with:
-          # Hosted macOS builds have no Developer ID credentials. Keep them as
-          # test artifacts and preserve the notarized release download.
+          # Signing uses a separate job and receives only this run's artifact.
           name: ${{ runner.os == 'macOS' && 'test-desktop-macos-arm64' || format('desktop-{0}-{1}', matrix.platform, matrix.arch) }}
+          path: dist-release/desktop/*
+          if-no-files-found: error
+          retention-days: 7
+
+  sign_macos:
+    name: Sign and notarize macOS installer
+    needs: desktop
+    if: >-
+      !inputs.release_tag && github.ref == 'refs/heads/main' &&
+      vars.ECS_NIGHTLY_MACOS_SIGNING == 'true'
+    runs-on: macos-15
+    timeout-minutes: 40
+    environment: nightly-macos-signing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-desktop-macos-arm64
+          path: ${{ runner.temp }}/ecs-unsigned
+      - name: Sign, notarize and verify this run's DMG
+        shell: bash
+        env:
+          P12_BASE64: ${{ secrets.ECS_MACOS_SIGNING_P12 }}
+          P12_PASSWORD: ${{ secrets.ECS_MACOS_SIGNING_PASSWORD }}
+          ASC_KEY_P8: ${{ secrets.ECS_MACOS_NOTARY_KEY }}
+          ASC_KEY_ID: ${{ secrets.ECS_MACOS_NOTARY_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ECS_MACOS_NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          : "${P12_BASE64:?Missing ECS_MACOS_SIGNING_P12}"
+          : "${P12_PASSWORD:?Missing ECS_MACOS_SIGNING_PASSWORD}"
+          : "${ASC_KEY_P8:?Missing ECS_MACOS_NOTARY_KEY}"
+          : "${ASC_KEY_ID:?Missing ECS_MACOS_NOTARY_KEY_ID}"
+          : "${ASC_ISSUER_ID:?Missing ECS_MACOS_NOTARY_ISSUER_ID}"
+          umask 077
+          credentials=$(mktemp -d "$RUNNER_TEMP/ecs-signing.XXXXXX")
+          keychain="$credentials/signing.keychain-db"
+          cleanup() {
+            security delete-keychain "$keychain" >/dev/null 2>&1 || true
+            rm -rf "$credentials"
+          }
+          trap cleanup EXIT
+          printf '%s' "$P12_BASE64" | base64 -D > "$credentials/identity.p12"
+          printf '%s\n' "$ASC_KEY_P8" > "$credentials/notary.p8"
+          keychain_password=$(openssl rand -hex 32)
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 1800 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$credentials/identity.p12" -P "$P12_PASSWORD" -f pkcs12 -k "$keychain" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" >/dev/null
+          rm "$credentials/identity.p12"
+          unset P12_BASE64 P12_PASSWORD ASC_KEY_P8 keychain_password
+          identity=$(security find-identity -v -p codesigning "$keychain" |
+            awk '/Developer ID Application:/ {hash=$2; count++} END {if (count != 1) exit 1; print hash}')
+          (cd "$RUNNER_TEMP/ecs-unsigned" && shasum -a 256 --check SHA256SUMS-desktop-darwin-arm64.txt)
+          name=Emulation-Server-nightly-macos-arm64.dmg
+          mkdir "$RUNNER_TEMP/ecs-signed"
+          APPLE_SIGNING_IDENTITY="$identity" APPLE_SIGNING_KEYCHAIN="$keychain" \
+            ASC_KEY_PATH="$credentials/notary.p8" bash scripts/sign-nightly-macos.sh \
+            "$RUNNER_TEMP/ecs-unsigned/$name" "$RUNNER_TEMP/ecs-signed/$name"
+      - name: Stage notarized installer and checksum
+        shell: bash
+        run: node scripts/publish-desktop.mjs nightly "$RUNNER_TEMP/ecs-signed" --stage-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-arm64
           path: dist-release/desktop/*
           if-no-files-found: error
           retention-days: 7
 
   publish:
     name: Publish verified distributions
-    needs: [server, desktop]
+    needs: [server, desktop, sign_macos]
     if: >-
       always() && needs.server.result == 'success' &&
-      ((!inputs.release_tag && github.ref == 'refs/heads/main' && needs.desktop.result == 'success') ||
+      ((!inputs.release_tag && github.ref == 'refs/heads/main' && needs.desktop.result == 'success' &&
+        (needs.sign_macos.result == 'success' || vars.ECS_NIGHTLY_MACOS_SIGNING != 'true')) ||
       (inputs.release_tag && github.ref == format('refs/tags/{0}', inputs.release_tag)))
     runs-on: ubuntu-24.04
     permissions:
@@ -138,11 +209,15 @@ jobs:
         working-directory: dist-release/all
         env:
           ECS_RELEASE_TAG: ${{ inputs.release_tag }}
+          ECS_MACOS_SIGNED: ${{ needs.sign_macos.result == 'success' }}
         run: |
           cat SHA256SUMS-*.txt > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
           if test -n "$ECS_RELEASE_TAG"; then
             test "$(wc -l < SHA256SUMS.txt)" -eq 3
+          elif test "$ECS_MACOS_SIGNED" = true; then
+            test "$(wc -l < SHA256SUMS.txt)" -eq 7
+            test -f Emulation-Server-nightly-macos-arm64.dmg
           else
             test "$(wc -l < SHA256SUMS.txt)" -eq 6
           fi
@@ -160,31 +235,45 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          ECS_MACOS_SIGNED: ${{ needs.sign_macos.result == 'success' }}
         run: |
           # Runs on main serialize through the workflow concurrency group. Publish
           # this tested commit even if main advanced while installers were building.
+          mac_note='The macOS tray installer retains the last notarized build. Its asset label identifies its source commit.'
+          if [[ "$ECS_MACOS_SIGNED" == true ]]; then
+            mac_note='The macOS tray installer was Developer ID signed and Apple notarized from the same commit.'
+          fi
           cat > "$RUNNER_TEMP/nightly-notes.md" <<NOTES
           Automated test builds from commit $GITHUB_SHA.
 
           [Installation and testing guide](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md)
           [Build and smoke-test evidence](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
 
-          Server archives include Node.js and the web interface. Desktop installers are API companions; run the server separately. Linux and Windows installers are unsigned. The macOS tray installer is refreshed separately after Apple notarization, and its asset label identifies its source commit.
+          Server archives include Node.js and the web interface. Desktop installers are API companions; run the server separately. Linux and Windows installers are unsigned. $mac_note
 
           Platforms: Linux x64 (Ubuntu 24.04), Windows x64, macOS arm64 (Apple Silicon). Other architectures and GUI interaction are unverified. Emulator cores, ROMs, BIOS files and user data are not included. Back up data before testing; database downgrades require restoring a backup.
 
           The nightly tag and automated packages refresh after a complete successful matrix. Verify your download against SHA256SUMS.txt on this release.
           NOTES
-          if gh release view nightly >/dev/null 2>&1; then
+          if [[ "$ECS_MACOS_SIGNED" != true ]] && gh release view nightly >/dev/null 2>&1; then
             mac_digest=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" --jq '
               .assets[] | select(.name == "Emulation-Server-nightly-macos-arm64.dmg" and
                 ((.label // "") | startswith("macOS tray installer (notarized, "))) | .digest')
             if [[ "$mac_digest" =~ ^sha256:([0-9a-f]{64})$ ]]; then
               printf '%s  Emulation-Server-nightly-macos-arm64.dmg\n' "${BASH_REMATCH[1]}" >> dist-release/all/SHA256SUMS.txt
             fi
-            gh release upload nightly dist-release/all/* --clobber
+          fi
+          assets=()
+          for asset in dist-release/all/*; do
+            if [[ "$asset" == */Emulation-Server-nightly-macos-arm64.dmg ]]; then
+              asset="$asset#macOS tray installer (notarized, ${GITHUB_SHA:0:7})"
+            fi
+            assets+=("$asset")
+          done
+          if gh release view nightly >/dev/null 2>&1; then
+            gh release upload nightly "${assets[@]}" --clobber
             gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$GITHUB_SHA" -F force=true
             gh release edit nightly --title 'Emulation Server nightly' --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --latest=false
           else
-            gh release create nightly dist-release/all/* --target "$GITHUB_SHA" --title 'Emulation Server nightly' --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --latest=false
+            gh release create nightly "${assets[@]}" --target "$GITHUB_SHA" --title 'Emulation Server nightly' --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --latest=false
           fi
