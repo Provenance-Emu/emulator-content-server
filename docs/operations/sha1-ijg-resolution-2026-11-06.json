@@ -382,14 +382,7 @@
         "sha256": "8ee810ad32b0f33620297090bae75763dd8a83c2e01adda6e70699765d584dd1"
       },
       "storedMemberCrc32": "c8020cd8",
-      "memberDateTime": [
-        2009,
-        6,
-        22,
-        16,
-        21,
-        24
-      ]
+      "memberDateTime": [2009, 6, 22, 16, 21, 24]
     },
     {
       "archive": "evidence/sha1-c.zip",
@@ -400,14 +393,7 @@
         "sha256": "3da74d0b5dcca8bd389332e6bdde2935ff54dcde9c28e3bce33fb9e26f0f0d0a"
       },
       "storedMemberCrc32": "d46496e6",
-      "memberDateTime": [
-        2009,
-        6,
-        22,
-        16,
-        21,
-        24
-      ]
+      "memberDateTime": [2009, 6, 22, 16, 21, 24]
     },
     {
       "archive": "evidence/sha1-c.zip",
@@ -418,14 +404,7 @@
         "sha256": "2a147c48b8645d808731c27373c4863417162f4f7a562c4bff7a4f86eccb05a2"
       },
       "storedMemberCrc32": "36cadd46",
-      "memberDateTime": [
-        2009,
-        6,
-        22,
-        16,
-        33,
-        58
-      ]
+      "memberDateTime": [2009, 6, 22, 16, 33, 58]
     },
     {
       "archive": "evidence/jpegsrc.v4.tar.Z",
