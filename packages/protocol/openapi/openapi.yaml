@@ -28,6 +28,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Capabilities'
+  /api/v1/server/updates:
+    get:
+      operationId: getServerUpdates
+      description: Signed-in owner only. Server installation and update status.
+      responses:
+        '200':
+          description: Update status.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServerUpdateStatus' }
+    put:
+      operationId: configureServerUpdates
+      description: Signed-in owner only. Select a GitHub server channel and update mode.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServerUpdateSettings' }
+      responses:
+        '200':
+          description: Saved settings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServerUpdateStatus' }
+    post:
+      operationId: decideServerUpdate
+      description: Signed-in owner only. Check for updates or act on a specific build.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServerUpdateDecision' }
+      responses:
+        '200':
+          description: Current status. An installation can continue in the background.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServerUpdateStatus' }
   /api/v1/player/core:
     get:
       operationId: getPlayerCore
@@ -1255,6 +1293,36 @@ paths:
 
 components:
   schemas:
+    ServerUpdateSettings:
+      type: object
+      required: [channel, mode]
+      properties:
+        channel: { type: string, enum: [release, nightly] }
+        mode: { type: string, enum: ['off', manual, automatic] }
+    ServerUpdateDecision:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [check, install, later, skip] }
+        buildId: { type: string }
+    ServerUpdateBuild:
+      type: object
+      required: [id, version, channel]
+      properties:
+        id: { type: string }
+        version: { type: string }
+        channel: { type: string, enum: [release, nightly] }
+    ServerUpdateStatus:
+      type: object
+      required: [supported, settings, phase, prompt]
+      properties:
+        supported: { type: boolean }
+        settings: { $ref: '#/components/schemas/ServerUpdateSettings' }
+        current: { $ref: '#/components/schemas/ServerUpdateBuild' }
+        available: { $ref: '#/components/schemas/ServerUpdateBuild' }
+        phase: { type: string, enum: [idle, checking, downloading, restarting] }
+        prompt: { type: boolean }
+        message: { type: string }
     Problem:
       type: object
       required: [type, title, status]

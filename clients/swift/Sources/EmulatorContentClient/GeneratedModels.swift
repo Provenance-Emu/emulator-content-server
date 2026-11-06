@@ -2,6 +2,58 @@
 
 import Foundation
 
+public struct ServerUpdateSettings: Codable, Equatable, Sendable {
+    public var channel: String
+    public var mode: String
+
+    public init(channel: String, mode: String) {
+        self.channel = channel
+        self.mode = mode
+    }
+}
+
+public struct ServerUpdateDecision: Codable, Equatable, Sendable {
+    public var action: String
+    public var buildId: String?
+
+    public init(action: String, buildId: String? = nil) {
+        self.action = action
+        self.buildId = buildId
+    }
+}
+
+public struct ServerUpdateBuild: Codable, Equatable, Sendable {
+    public var id: String
+    public var version: String
+    public var channel: String
+
+    public init(id: String, version: String, channel: String) {
+        self.id = id
+        self.version = version
+        self.channel = channel
+    }
+}
+
+public struct ServerUpdateStatus: Codable, Equatable, Sendable {
+    public var supported: Bool
+    public var settings: ServerUpdateSettings
+    public var current: ServerUpdateBuild?
+    public var available: ServerUpdateBuild?
+    public var phase: String
+    public var prompt: Bool
+    public var message: String?
+
+    public init(supported: Bool, settings: ServerUpdateSettings, current: ServerUpdateBuild? = nil, available: ServerUpdateBuild? = nil, phase: String, prompt: Bool, message: String? = nil) {
+        self.supported = supported
+        self.settings = settings
+        self.current = current
+        self.available = available
+        self.phase = phase
+        self.prompt = prompt
+        self.message = message
+    }
+}
+
 public struct Problem: Codable, Equatable, Sendable {
     public var type: String
     public var title: String

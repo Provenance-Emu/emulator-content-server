@@ -27,12 +27,15 @@ import { loadPlayerCatalogSnapshot } from './player-catalog-file.js';
 import { registerPlayerIsolation } from './player-isolation.js';
 import { loadPlayerProfiles } from './player-profiles.js';
 import { registerRoutes } from './routes.js';
+import { registerServerUpdates, type ServerUpdates } from './server-updates.js';
 import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
 import { registerWebDavCredentials } from './webdav-credentials.js';
 import { authenticateWorkflowPrincipal } from './workflow-auth.js';
 
 export interface OpenServerOptions {
   dataDir: string;
+  updates?: ServerUpdates;
+  supervisedStartup?: { activated: Promise<void>; acceptingRequests: () => boolean };
   /** Trusted operator-installed matching provider and manager directory. */
   matchingPluginsDir?: string;
   /** Trusted native read adapters for identification only; omitted paths are discovered locally. */
@@ -123,7 +126,8 @@ export async function openServer(options: OpenServerOptions): Promise<{
     // pending scans belong to an abandoned run. Auxiliary catalog opens must
     // preserve active scans and never perform this recovery.
     catalog.recoverInterruptedRootScans();
-    app = await buildApp(context, options.logger ?? false);
+    app = await buildApp(context, options.logger ?? false, options.supervisedStartup);
+    registerServerUpdates(app, options.updates);
   } catch (error) {
     await virtual.close();
     catalog.close();
@@ -146,7 +150,11 @@ export async function openServer(options: OpenServerOptions): Promise<{
   };
 }
 
-export async function buildApp(context: ServerContext, logger = false): Promise<FastifyInstance> {
+export async function buildApp(
+  context: ServerContext,
+  logger = false,
+  startup?: OpenServerOptions['supervisedStartup'],
+): Promise<FastifyInstance> {
   context.catalog.ensureServer(context.displayName);
   const app = Fastify({
     logger: logger
@@ -167,6 +175,13 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
   });
   app.decorateRequest('actor', null);
   app.decorateRequest('workflowPrincipal', null);
+  if (startup) {
+    app.addHook('onRequest', async (_request, reply) => {
+      if (!startup.acceptingRequests()) {
+        return reply.code(503).send({ status: 503, title: 'Server restarting' });
+      }
+    });
+  }
   // A generous socket ceiling also bounds invalid bearer attempts before authentication.
   // DAV's much smaller failed-login budget remains independent of successful reads.
   await app.register(rateLimit, {
@@ -261,6 +276,7 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
   });
   const folderWatcher = new FolderWatcher(context.catalog);
   const collectWorkflowArtifacts = () => {
+    if (startup && !startup.acceptingRequests()) return;
     try {
       context.catalog.workflowProposals.collectWorkflowArtifacts();
     } catch {
@@ -269,9 +285,20 @@ export async function buildApp(context: ServerContext, logger = false): Promise<
   };
   const workflowCollection = setInterval(collectWorkflowArtifacts, 3_600_000);
   workflowCollection.unref();
-  app.addHook('onReady', async () => {
+  const startBackgroundWork = () => {
     collectWorkflowArtifacts();
     folderWatcher.reconcile();
+  };
+  app.addHook('onReady', async () => {
+    if (startup) {
+      void startup.activated
+        .then(startBackgroundWork)
+        .catch((error: unknown) =>
+          app.log.error({ err: error }, 'could not start background work'),
+        );
+    } else {
+      startBackgroundWork();
+    }
   });
   app.addHook('preClose', async () => {
     clearInterval(workflowCollection);

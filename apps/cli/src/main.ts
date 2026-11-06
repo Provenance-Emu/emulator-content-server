@@ -22,6 +22,7 @@ import {
 } from './lifecycle.js';
 import { captureDaemonLogs } from './log.js';
 import { playerCatalogSelection } from './player-catalog-options.js';
+import { ServerUpdater } from './server-updater.js';
 import {
   installService,
   readBootstrapped,
@@ -31,6 +32,7 @@ import {
   uninstallService,
   writeServicePid,
 } from './service.js';
+import { isBuild, lockUpdateFile, readJson, runtime, updateDirectory } from './update-files.js';
 
 const DEFAULT_PORT = 8473;
 
@@ -162,6 +164,51 @@ async function serve(dataDir: string): Promise<void> {
 }
 
 async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> {
+  const supervised =
+    typeof process.send === 'function' && Boolean(process.env.ECS_SERVER_BOOTSTRAP);
+  let activate = () => {};
+  const activation = supervised
+    ? new Promise<void>((resolve) => {
+        activate = resolve;
+      })
+    : undefined;
+  let accepting = !supervised;
+  let stopping = false;
+  let shutdown: (() => Promise<void>) | undefined;
+  let updates: ServerUpdater | undefined;
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    void shutdown?.();
+  };
+  if (supervised) {
+    const directory = updateDirectory(dataDir);
+    const lease = lockUpdateFile(directory, 'worker', true, 10_000);
+    process.once('exit', () => lease.close());
+    process.once('disconnect', stop);
+    process.on('message', (value: unknown) => {
+      const message = value as { type?: string; failed?: string } | null;
+      if (message?.type === 'ecs-stop') stop();
+      if (message?.type === 'ecs-update-busy') updates?.deferRestart();
+      if (message?.type === 'ecs-activate' && !accepting && !stopping) {
+        accepting = true;
+        activate();
+        updates?.start(message.failed);
+      }
+    });
+    const build = await readJson(fileURLToPath(new URL('../../../BUILD.json', import.meta.url)));
+    if (!isBuild(build)) throw new Error('Missing portable server build metadata');
+    updates = await ServerUpdater.open(
+      directory,
+      build,
+      (id) =>
+        new Promise<void>((resolve, reject) => {
+          if (!process.connected || !process.send)
+            return reject(new Error('Server launcher disconnected'));
+          process.send({ type: 'ecs-install', id }, (error) => (error ? reject(error) : resolve()));
+        }),
+    );
+  }
   const selectedCatalog = selectedPlayerCatalog();
   if (selectedCatalog) await loadPlayerCatalogSnapshot(selectedCatalog.file, selectedCatalog.id);
   const displayName = value('--name') ?? 'Emulation Server';
@@ -175,6 +222,15 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   try {
     server = await openServer({
       dataDir,
+      updates,
+      ...(activation
+        ? {
+            supervisedStartup: {
+              activated: activation,
+              acceptingRequests: () => accepting && !stopping,
+            },
+          }
+        : {}),
       ...(matchingDirectory ? { matchingPluginsDir: resolve(matchingDirectory) } : {}),
       ...(decoder === undefined ? {} : { chdmanPath: decoder }),
       displayName,
@@ -220,15 +276,18 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   }
   console.log(`listening on http://${listen.host}:${listen.port}`);
   if (uiDir) console.log(`interface at http://${listen.host}:${listen.port}/ui/`);
-  const shutdown = async () => {
+  shutdown = async () => {
+    await updates?.stop();
     announcement?.stop();
     await server.close();
     if (daemon) await removeServicePid(dataDir);
     await logging?.close();
     process.exit(0);
   };
-  process.on('SIGINT', () => void shutdown());
-  process.on('SIGTERM', () => void shutdown());
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
+  if (stopping) await shutdown();
+  if (supervised && process.connected) process.send?.({ type: 'ecs-ready' }, () => {});
 }
 
 /**
@@ -288,6 +347,7 @@ function serviceSpec(dataDir: string): ServiceSpec {
   const listen = listenConfig();
   const absolute = resolve(dataDir);
   const decoder = chdmanPath();
+  const bootstrap = process.env.ECS_SERVER_BOOTSTRAP;
   return {
     platform: process.platform,
     home: homedir(),
@@ -295,8 +355,10 @@ function serviceSpec(dataDir: string): ServiceSpec {
     playerDir: playerDirectory(),
     playerPluginsDir: selectedAbsolutePath('--player-plugins', 'ECS_PLAYER_PLUGINS', 'directory'),
     playerCatalogSnapshot: selectedPlayerCatalog(),
-    executable: process.execPath,
-    script: process.argv[1] ?? fileURLToPath(import.meta.url),
+    executable: bootstrap ? runtime(bootstrap) : process.execPath,
+    script: bootstrap
+      ? join(bootstrap, 'server', 'dist', 'src', 'supervise.js')
+      : (process.argv[1] ?? fileURLToPath(import.meta.url)),
     host: listen.host,
     port: listen.port,
     advertise: listen.advertise,

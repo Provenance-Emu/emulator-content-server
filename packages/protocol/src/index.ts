@@ -57,6 +57,7 @@ export {
   strongEtag,
 } from './ranges.js';
 export { detectRomSystem, isRomExtension, type RomSystemDetection } from './rom-systems.js';
+export type * from './server-updates.js';
 export { PROVENANCE_SYSTEMS, type SystemSummary } from './systems.js';
 export {
   API_MAJOR,

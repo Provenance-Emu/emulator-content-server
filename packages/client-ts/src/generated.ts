@@ -1,5 +1,31 @@
 // Generated from packages/protocol/openapi/openapi.yaml. Do not edit.
 
+export interface ServerUpdateSettings {
+  channel: string;
+  mode: string;
+}
+
+export interface ServerUpdateDecision {
+  action: string;
+  buildId?: string;
+}
+
+export interface ServerUpdateBuild {
+  id: string;
+  version: string;
+  channel: string;
+}
+
+export interface ServerUpdateStatus {
+  supported: boolean;
+  settings: ServerUpdateSettings;
+  current?: ServerUpdateBuild;
+  available?: ServerUpdateBuild;
+  phase: string;
+  prompt: boolean;
+  message?: string;
+}
+
 export interface Problem {
   type: string;
   title: string;
