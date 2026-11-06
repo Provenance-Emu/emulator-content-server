@@ -63,7 +63,8 @@ test('custom entries retain full component and selected SDK notice evidence', ()
   assert.equal(custom.length, 10);
   for (const entry of custom) {
     for (const report of [components, sdk]) {
-      const artifact = entry.provenance?.artifacts?.find((a) => a.sha256 === report.ref.sha256);
+      const artifact: { kind: string; sizeBytes?: number; url: string } | undefined =
+        entry.provenance?.artifacts?.find((a) => a.sha256 === report.ref.sha256);
       assert.equal(artifact?.kind, 'notices');
       assert.equal(artifact?.sizeBytes, report.ref.sizeBytes);
       assert.match(artifact?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\//);
@@ -118,5 +119,74 @@ test('legacy notice closure retains source patch evidence and hash-bound compone
     const entry = playerCatalog.find((e) => e.id === build.id);
     assert.ok(entry?.provenance?.artifacts?.some((a) => a.sha256 === proof.ref.sha256));
     assert.ok(entry?.provenance?.artifacts?.some((a) => a.sha256 === inventory.ref.sha256));
+  }
+});
+
+test('recovered SHA1 and IJG grants retain complete hash-bound redistribution materials', () => {
+  const { record, ref } = evidence('sha1-ijg-resolution');
+  assert.equal(record.components[0].grantNameAsPublished, 'Freeware Public License (FPL)');
+  assert.equal(record.components[0].authorArchiveFingerprintVerified, true);
+  assert.equal(record.components[0].incorporatedFiles.length, 10);
+  assert.equal(record.components[0].allTenIncorporatedFilesByteIdentical, true);
+  assert.equal(record.components[1].headersByteIdentical, true);
+  for (const component of record.components) {
+    for (const match of component.matches) assert.equal(match.equalAfterNormalization, true);
+  }
+  for (const material of record.retainedRedistributionMaterials) {
+    const bytes = readFileSync(new URL(`../../../../${material.path}`, import.meta.url));
+    assert.equal(bytes.length, material.sizeBytes);
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), material.sha256);
+  }
+  for (const entry of playerCatalog.filter((entry) => entry.url && !entry.upstream)) {
+    const artifact = entry.provenance?.artifacts?.find((a) => a.sha256 === ref.sha256);
+    assert.equal(artifact?.kind, 'notices');
+    assert.equal(artifact?.sizeBytes, ref.sizeBytes);
+    assert.match(artifact?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\/sha1-ijg-resolution/);
+    assert.equal(entry.provenance?.artifacts?.length, 16);
+  }
+});
+
+test('upstream CI candidates stay distinct from reproducible pairs and complete mappings', () => {
+  const ci = evidence('upstream-build-resolution');
+  const rebuild = evidence('vecx-upstream-rebuild');
+  assert.equal(ci.record.profiles.length, 11);
+  const jobs = ci.record.profiles.flatMap((p: { candidates: { jobs: unknown[] }[] }) =>
+    p.candidates.flatMap((c) => c.jobs),
+  ) as { status: string; erased_at: string; artifacts: unknown[] }[];
+  assert.equal(jobs.length, 14);
+  for (const job of jobs) {
+    assert.equal(job.status, 'success');
+    assert.ok(job.erased_at);
+    assert.deepEqual(job.artifacts, []);
+  }
+  assert.equal(rebuild.record.status, 'exact-runtime-pair-reproduced');
+  assert.equal(rebuild.record.compilerCapture.failedCommands, 0);
+  assert.equal(rebuild.record.compilerCapture.inputs.length, 1071);
+  assert.equal(
+    rebuild.record.compilerCapture.inputs.filter(
+      (input: { origin: string }) => input.origin === 'pinned-archive',
+    ).length,
+    972,
+  );
+  for (const input of rebuild.record.compilerCapture.inputs) {
+    if (input.origin === 'pinned-archive') assert.equal(input.matchesSourceArchive, true);
+  }
+  const vecx = playerCatalog.find((entry) => entry.id === rebuild.record.id);
+  for (const resource of rebuild.record.resources) {
+    const pin = vecx?.upstream?.resources.find((r) => r.file === resource.file);
+    assert.ok(pin);
+    assert.equal(resource.matchesPublished, true);
+    assert.equal(resource.sha256, pin.sha256);
+    assert.equal(resource.sizeBytes, pin.sizeBytes);
+  }
+  for (const entry of playerCatalog.filter((entry) => entry.upstream)) {
+    assert.equal(entry.provenance?.sourceMapping, 'unverified');
+    for (const report of entry.id === rebuild.record.id ? [ci, rebuild] : [ci]) {
+      const artifact: { kind: string; sizeBytes?: number; url: string } | undefined =
+        entry.provenance?.artifacts?.find((a) => a.sha256 === report.ref.sha256);
+      assert.equal(artifact?.kind, 'build');
+      assert.equal(artifact?.sizeBytes, report.ref.sizeBytes);
+      assert.match(artifact?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\//);
+    }
   }
 });

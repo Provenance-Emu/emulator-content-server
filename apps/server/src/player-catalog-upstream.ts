@@ -9,6 +9,20 @@ const upstreamBuildEvidence = {
   sizeBytes: 212794,
 } as const;
 
+const upstreamBuildResolution = {
+  kind: 'build',
+  url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/d98397772118a76f01de1d4e24acb3d30fae34bd/docs/operations/upstream-build-resolution-2026-11-06.json',
+  sha256: 'fc05e0eb04a8a2ae029215a1d60e0d4164805dec624020f6aee998f110e583d6',
+  sizeBytes: 66663,
+} as const;
+
+const vecxRebuildEvidence = {
+  kind: 'build',
+  url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/d98397772118a76f01de1d4e24acb3d30fae34bd/docs/operations/vecx-upstream-rebuild-2026-11-06.json',
+  sha256: '24e6b482c9ddbda7acaf29225b490c3d3004955738716fbe77f992810817830c',
+  sizeBytes: 286538,
+} as const;
+
 const APP_ID = 'com.provenance.emulator-content-server';
 const BASE_URL = 'https://web.libretro.com';
 const CONTENT_LIMIT = 512 * 1024 * 1024;
@@ -81,7 +95,11 @@ export const upstreamPlayerCatalog: readonly TrustedPlayer[] = CORE_PINS.map((pi
       license: pin.license,
       firmware: pin.firmware,
       sourceMapping: 'unverified',
-      artifacts: [upstreamBuildEvidence],
+      artifacts: [
+        upstreamBuildEvidence,
+        upstreamBuildResolution,
+        ...(pin.id === 'org.libretro.vecx' ? [vecxRebuildEvidence] : []),
+      ],
     },
     upstream: {
       manifest: plugin,

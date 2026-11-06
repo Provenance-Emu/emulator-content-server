@@ -66,9 +66,10 @@ and their independent expected IDs for offline reuse of older cache entries.
    335 selected SDK archive members across all ten custom builds. New instrumented
    FCEUmm/Jaguar rebuilds matched published runtime bytes. Restrictive Caprice32 and
    M65C02 notices are exposed in catalog summaries. Full LGPL text and historical
-   bcdec grant pointers supplement the source-specific notices. The IJG historical
-   README and incorporated Paul E. Jones SHA1 grant provenance remain individual
-   questions. SDK archive reconstruction and final-code notice applicability
+   bcdec grant pointers supplement the source-specific notices. The [historical grant follow-up](../operations/sha1-ijg-resolution-2026-11-06.md)
+   recovers the IJG README and author-published Paul E. Jones SHA1 grant, with
+   full texts and IJG modification documentation retained in the repository.
+   Carrying these materials into future published artifacts remains required. SDK archive reconstruction and final-code notice applicability
    remain open. Compiler input and archive selection precede code elimination.
 3. Gameplay qualification remains separate from factory startup and source
    reconstruction. PCSX's generated content acceptance covers EXE, ISO and Mode 2
@@ -121,3 +122,35 @@ legacy selectors, shared source identities, document hashes and SDK member refer
 A generated 25,000-notice fixture reproduced quadratic line counting. Incremental
 line tracking passes that timeout-backed regression. Supplementary grant references
 resolve the earlier bcdec and PIC16C5x notice-text inspection questions.
+
+
+## Historical build and grant follow-up
+
+The [upstream CI/SDK follow-up](../operations/upstream-build-resolution-2026-11-06.md)
+records fourteen successful historical jobs covering all eleven cores whose
+embedded revision remains unresolved. All fourteen job artifact sets were erased.
+The official Emscripten 3.1.46 dependency chain matches the compiler identity in
+all fifty pinned pairs. PCE Fast source-literal evidence and Gearcoleco version/tag
+evidence narrow candidates without establishing exact source identity.
+
+The [VecX reconstruction](../operations/vecx-upstream-rebuild-2026-11-06.md)
+independently reproduced both published files byte-for-byte from commit-pinned
+core/frontend archives and SDK 3.1.46. All core/frontend compiler inputs match
+those archives. One of fifty upstream pairs now has an independent exact runtime
+reconstruction. All fifty complete source/build/notice mappings retain unverified
+status. Remaining work includes the other forty-nine reconstructions, eleven
+exact core identities, historical job/SDK/cache binding, independent SDK source
+reconstruction and component-specific final-code notice scope.
+
+All ten custom catalog entries retain a hash-pinned aggregate grant follow-up
+within the sixteen-artifact bound. All fifty upstream entries retain the CI/SDK
+follow-up, with the VecX receipt additionally attached to its own catalog entry.
+Earlier immutable records are preserved as audit checkpoints.
+
+
+The follow-up passed 61 focused collector, provenance and catalog tests, the
+server TypeScript build, changed-file Biome checks, secret/fixture scan, package
+boundaries and whitespace checks. Independent review verified the retained grant
+Git blobs, all 972 source-archive compiler inputs, 339 successful compile records,
+source archive hashes and direct runtime byte comparisons. The original SHA1
+grant uses a path-specific Git text attribute to preserve its CRLF bytes.
