@@ -44,3 +44,15 @@ export function sourcePlayHref(cores: PlayableCores, source: SourceFile): string
       : undefined;
   return core ? `/play/?source=${encodeURIComponent(source.id)}${profileQuery(core)}` : null;
 }
+
+/** Return links carry collection state without permitting another destination. */
+export function playerReturnHref(value: string | null, origin: string): string {
+  if (!value?.startsWith('/ui/')) return '/ui/';
+  try {
+    const destination = new URL(value, origin);
+    if (destination.origin !== origin || destination.pathname !== '/ui/') return '/ui/';
+    return destination.pathname + destination.search + destination.hash;
+  } catch {
+    return '/ui/';
+  }
+}

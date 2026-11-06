@@ -103,12 +103,17 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     const capture = page.getByRole('button', { name: 'Capture screenshot', exact: true });
     await expect(capture).toBeEnabled({ timeout: 45000 });
+    const tools = page.getByRole('tablist', { name: 'Player tools', exact: true });
+    const selectTool = async (name: string) =>
+      tools.getByRole('tab', { name, exact: true }).click();
+    await selectTool('Controls');
     const input = page.getByRole('region', { name: 'Input mappings' });
     await expect(page.getByRole('region', { name: 'Skins', exact: true })).toBeVisible();
     await expect(input.getByRole('button', { name: 'Edit layout', exact: true })).toBeEnabled({
       timeout: 15000,
     });
     async function screenshot(name: string) {
+      const previousTool = await tools.getByRole('tab', { selected: true }).textContent();
       await capture.click();
       await expect(
         page.getByRole('button', { name: 'Download screenshot', exact: true }),
@@ -124,6 +129,7 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
       const download = await downloading;
       const path = testInfo.outputPath(name);
       await download.saveAs(path);
+      if (previousTool) await selectTool(previousTool);
       return await readFile(path);
     }
     async function pixel(bytes: Uint8Array) {
@@ -159,6 +165,7 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
     expect(preview).toBeDefined();
     const previewBytes = (await client.collect(preview?.id)).bytes;
     expect(Array.from(previewBytes.slice(0, 8))).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    await selectTool('Saves');
     const browser = page.getByRole('region', { name: 'Save state browser' });
     await expect(browser.getByRole('img', { name: 'Preview of saved game' })).toBeVisible();
     await page.frameLocator('iframe').locator('canvas').click();
@@ -172,26 +179,31 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
     await expect(browser.getByText('State loaded.', { exact: true })).toBeVisible();
     const restored = await screenshot('restored.png');
     expect(await pixel(restored)).toEqual(firstPixel);
-    const settings = page.getByRole('region', { name: 'Core options and shaders' });
+    await selectTool('Core options');
+    const settings = page.locator('.settings-controls');
     await expect(
-      settings.getByRole('button', { name: 'Edit Color Palette', exact: true }),
+      settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
     ).toBeVisible({ timeout: 15000 });
     await settings.getByRole('searchbox', { name: 'Search core options' }).fill('Color Palette');
-    await settings.getByRole('button', { name: 'Edit Color Palette', exact: true }).click();
+    await selectTool('Core options');
     await settings
       .getByRole('combobox', { name: 'Color Palette', exact: true })
       .selectOption('rgb');
-    await settings.getByRole('button', { name: 'Apply option', exact: true }).click();
-    await expect(settings.getByRole('button', { name: 'Apply option', exact: true })).toBeEnabled();
+    await expect(
+      settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
+    ).toBeEnabled();
     expect(await pixel(await screenshot('palette-rgb.png'))).not.toEqual(firstPixel);
     await settings
       .getByRole('combobox', { name: 'Color Palette', exact: true })
       .selectOption('default');
-    await settings.getByRole('button', { name: 'Apply option', exact: true }).click();
-    await expect(settings.getByRole('button', { name: 'Apply option', exact: true })).toBeEnabled();
+    await expect(
+      settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
+    ).toBeEnabled();
     expect(await pixel(await screenshot('palette-restored.png'))).toEqual(firstPixel);
+    await selectTool('Video');
     const shaders = settings.getByRole('combobox', { name: 'Shader preset', exact: true });
     const plain = await screenshot('shader-off-before.png');
+    await selectTool('Video');
     await shaders.selectOption('scanlines');
     await expect(settings.getByText(/Scanlines requested/)).toBeVisible();
     const scanlines = await screenshot('shader-scanlines.png');
@@ -204,11 +216,14 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
     expect(await pixel(await screenshot('shader-off-after.png'))).toEqual(firstPixel);
     await page.getByRole('button', { name: 'Save state', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Save state', exact: true })).toBeEnabled();
+    await selectTool('Saves');
     await expect(browser.getByRole('button', { name: 'Load state', exact: true })).toHaveCount(2);
     await browser.getByRole('button', { name: 'Load state', exact: true }).first().click();
     await expect(browser.getByText('State loaded.', { exact: true })).toBeVisible();
-    await settings.getByRole('button', { name: 'Remember for this game', exact: true }).click();
+    await selectTool('Core options');
+    await settings.getByRole('button', { name: 'Remember changes', exact: true }).click();
     await expect(settings.getByText(/Remembered for this game/)).toBeVisible();
+    await selectTool('Video');
     const controls = page.getByRole('region', { name: 'Display controls' });
     await controls.getByRole('combobox', { name: 'Scaling', exact: true }).selectOption('fill');
     await controls
@@ -226,28 +241,35 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
         throw Error((await page.getByRole('alert').allTextContents()).join(' | '));
       });
     // Remember actual non-default settings, restart through normal startup, then clear.
+    await selectTool('Core options');
     await settings
       .getByRole('combobox', { name: 'Color Palette', exact: true })
       .selectOption('rgb');
-    await settings.getByRole('button', { name: 'Apply option', exact: true }).click();
-    await expect(settings.getByRole('button', { name: 'Apply option', exact: true })).toBeEnabled();
+    await expect(
+      settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
+    ).toBeEnabled();
+    await selectTool('Video');
     await shaders.selectOption('scanlines');
     await expect(settings.getByText(/Scanlines requested/)).toBeVisible();
-    await settings.getByRole('button', { name: 'Remember for this game', exact: true }).click();
+    await selectTool('Core options');
+    await settings.getByRole('button', { name: 'Remember changes', exact: true }).click();
     await page.reload();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await selectTool('Video');
     await expect(settings.getByText(/Scanlines requested/)).toBeVisible({ timeout: 30000 });
-    await settings.getByRole('button', { name: 'Edit Color Palette', exact: true }).click();
+    await selectTool('Core options');
     await expect(
       settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
     ).toHaveValue('rgb');
+    await settings.locator('.player-technical-details > summary').click();
     await settings.getByRole('button', { name: 'Clear game preferences', exact: true }).click();
     await page.reload();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
-    await settings.getByRole('button', { name: 'Edit Color Palette', exact: true }).click();
+    await selectTool('Core options');
     await expect(
       settings.getByRole('combobox', { name: 'Color Palette', exact: true }),
     ).toHaveValue('default');
+    await selectTool('Video');
     await expect(shaders).toHaveValue('off');
     await expect(page.getByRole('alert'))
       .toHaveCount(0)
@@ -264,25 +286,30 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
     await expect(
       page.getByRole('button', { name: 'Export captured save', exact: true }),
     ).toBeVisible();
+    await selectTool('Video');
     await expect(shaders).toBeDisabled();
+    await selectTool('Controls');
     await expect(
       input.getByRole('button', { name: 'Rebind keyboard', exact: true }),
     ).toBeDisabled();
     await expect(
       input.getByRole('button', { name: 'Release all controls', exact: true }),
     ).toBeEnabled();
+    await selectTool('Core options');
     await expect(
-      settings.getByRole('button', { name: 'Remember for this game', exact: true }),
+      settings.getByRole('button', { name: 'Remember changes', exact: true }),
     ).toBeDisabled();
     await page.unroute('**/api/v1/uploads');
     await page.getByRole('button', { name: 'Retry upload', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Retry upload', exact: true })).toHaveCount(0);
+    await selectTool('Video');
     await expect(shaders).toBeEnabled();
     await expect(page.getByRole('alert'))
       .toHaveCount(0)
       .catch(async () => {
         throw Error((await page.getByRole('alert').allTextContents()).join(' | '));
       });
+    await selectTool('Controls');
     await input.getByRole('button', { name: 'Configure A', exact: true }).click();
     await input.getByRole('button', { name: 'Rebind keyboard', exact: true }).click();
     await page.keyboard.press('c');
@@ -393,6 +420,7 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
     await input.getByRole('button', { name: 'Remember for this game', exact: true }).click();
     await page.reload();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await selectTool('Controls');
     await input.getByRole('button', { name: 'Configure A', exact: true }).click();
     await expect(input.getByText('Keyboard: KeyC', { exact: true })).toBeVisible();
     await input.getByLabel('Layout orientation', { exact: true }).selectOption('portrait');

@@ -25,6 +25,7 @@ test('all games remain reachable in a bounded collection and detail back restore
   await expect(results.last()).toHaveAccessibleName('Open Game 119');
   await page.getByRole('button', { name: 'Previous page' }).click();
   await expect(results).toHaveCount(50);
+  await page.locator('.collection-options summary').click();
   await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('name_desc');
   await expect(results.first()).toHaveAccessibleName('Open Game 119');
   await page.getByRole('radio', { name: 'List', exact: true }).check();
@@ -59,7 +60,7 @@ test('categories and settings preserve contextual files without scanning or lega
   for (const name of ['Storage', 'Access', 'Activity', 'Server status', 'Libraries']) {
     await page.getByRole('button', { name, exact: true }).click();
     if (name === 'Storage')
-      await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
+      await page.getByRole('tab', { name: 'Upload destinations', exact: true }).click();
   }
   expect(
     fixture.requests.some(

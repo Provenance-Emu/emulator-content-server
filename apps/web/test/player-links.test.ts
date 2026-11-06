@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assetPlayHref, sourcePlayHref } from '../src/player/links.js';
+import { assetPlayHref, playerReturnHref, sourcePlayHref } from '../src/player/links.js';
 import { fixture } from './player-fixture.js';
 
 test('Play links admit only supported NES content and currently local sources, with encoded IDs', () => {
@@ -26,4 +26,25 @@ test('Play links admit only supported NES content and currently local sources, w
     sourcePlayHref(f.core, { ...f.source, id: 'source&item=guess' }),
     '/play/?source=source%26item%3Dguess',
   );
+});
+
+test('player return destinations stay on the local library route', () => {
+  const origin = 'https://library.example';
+  assert.equal(
+    playerReturnHref('/ui/?library=arcade&search=quiet', origin),
+    '/ui/?library=arcade&search=quiet',
+  );
+  for (const value of [
+    null,
+    '',
+    '//other.example/ui/',
+    'https://other.example/ui/',
+    'javascript:alert(1)',
+    '/ui/../api/v1/users',
+    '/play/',
+    '/ui/game',
+    '/ui/\\other.example',
+  ]) {
+    assert.equal(playerReturnHref(value, origin), '/ui/');
+  }
 });

@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { build } from 'vite';
 import { expect, test } from './fixture';
+import { mountRuntimeCanvas } from './player-runtime-fixture';
 
 declare global {
   interface Window {
@@ -68,6 +69,7 @@ test('settings bridge discovers real exports, bounds option commands and recover
     r.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/settings-test.js');
     const logs: string[] = [];
@@ -131,6 +133,7 @@ test('playback without settings helpers explicitly reports unavailable capabilit
     r.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/settings-test.js');
     const loaded = await api.importBrowserRuntime(
@@ -164,6 +167,7 @@ test('legacy save-only helpers do not trigger an unsupported settings probe', as
     r.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/settings-test.js');
     const loaded = await api.importBrowserRuntime(
@@ -191,19 +195,24 @@ test('legacy save-only helpers do not trigger an unsupported settings probe', as
 async function mountView(
   page: import('@playwright/test').Page,
   fixture: Parameters<typeof import('./fixture').signIn>[1],
+  optionCount = 2,
 ) {
   const core = await fixture.client.playerProfile('org.example.generated-gba');
   await page.route('**/ui/settings-view-test.js', (r) =>
     r.fulfill({ contentType: 'text/javascript', body: viewHarness }),
   );
   await page.goto(`${fixture.origin}/play/`);
-  await page.evaluate(async (core) => {
-    const api = await import('/ui/settings-view-test.js');
-    window.settingsView = api.mountSettings(core);
-  }, core);
+  await mountRuntimeCanvas(page);
+  await page.evaluate(
+    async ({ core, optionCount }) => {
+      const api = await import('/ui/settings-view-test.js');
+      window.settingsView = api.mountSettings(core, optionCount);
+    },
+    { core, optionCount },
+  );
   const settings = page.getByRole('region', { name: 'Core options and shaders' });
   await expect(
-    settings.getByRole('button', { name: 'Remember for this game', exact: true }),
+    settings.getByRole('button', { name: 'Remember changes', exact: true }),
   ).toBeEnabled();
   return settings;
 }
@@ -212,7 +221,7 @@ test('remembering game changes keeps unrelated inherited core keys out of the ga
   fixture,
 }) => {
   const settings = await mountView(page, fixture);
-  await settings.getByRole('button', { name: 'Remember for this game', exact: true }).click();
+  await settings.getByRole('button', { name: 'Remember changes', exact: true }).click();
   const prefs = await page.evaluate(() => {
     window.settingsView.updateCore();
     return window.settingsView.preferences();
@@ -239,8 +248,63 @@ test('a deferred shader failure is shown and removes the failed remembered shade
     .getByRole('combobox', { name: 'Shader preset', exact: true })
     .selectOption('scanlines');
   await expect(settings.getByText(/Scanlines requested/)).toBeVisible();
-  await settings.getByRole('button', { name: 'Remember for this game', exact: true }).click();
+  await settings.getByRole('button', { name: 'Remember changes', exact: true }).click();
   await page.evaluate(() => window.settingsView.failShader());
   await expect(settings.getByRole('alert')).toContainText(/failed/i);
   expect((await page.evaluate(() => window.settingsView.preferences())).shader).toBe('off');
+});
+
+test('core options edit directly and restore keyboard focus after applying', async ({
+  page,
+  fixture,
+}) => {
+  const settings = await mountView(page, fixture);
+  const region = settings.getByRole('combobox', { name: 'region', exact: true });
+  await expect(region).toBeEnabled();
+  await expect(settings.getByRole('button', { name: /^Edit / })).toHaveCount(0);
+  await expect(settings.getByRole('button', { name: 'Apply option', exact: true })).toHaveCount(0);
+  await region.focus();
+  await region.selectOption('Auto');
+  await expect(region).toHaveValue('Auto');
+  await expect(region).toBeFocused();
+  await expect(
+    settings.getByText('Applied to this session. Some options need a fresh launch.'),
+  ).toBeVisible();
+  await settings.getByRole('button', { name: 'Remember changes', exact: true }).click();
+  expect((await page.evaluate(() => window.settingsView.preferences())).options.region).toBe(
+    'Auto',
+  );
+});
+
+test('a rejected inline option restores the accepted value beside its error', async ({
+  page,
+  fixture,
+}) => {
+  const settings = await mountView(page, fixture);
+  const region = settings.getByRole('combobox', { name: 'region', exact: true });
+  await expect(region).toBeEnabled();
+  await page.evaluate(() => window.settingsView.rejectOption());
+  await region.selectOption('Auto');
+  await expect(region).toHaveValue('PAL');
+  await expect(region).toBeFocused();
+  await expect(settings.getByRole('alert')).toContainText('This value was rejected by the core');
+  await settings.getByRole('button', { name: 'Remember changes', exact: true }).click();
+  expect((await page.evaluate(() => window.settingsView.preferences())).options.region).toBe('PAL');
+});
+
+test('choice loading stays bounded and search hydrates the matching row without player busy changes', async ({
+  page,
+  fixture,
+}) => {
+  const settings = await mountView(page, fixture, 130);
+  await expect(settings.getByRole('combobox', { name: 'option15', exact: true })).toBeEnabled();
+  expect(await page.evaluate(() => window.settingsView.choiceReads().length)).toBe(16);
+  const busy = await page.evaluate(() => window.settingsView.busyChanges());
+  await settings
+    .getByRole('searchbox', { name: 'Search core options', exact: true })
+    .fill('option110');
+  const option = settings.getByRole('combobox', { name: 'option110', exact: true });
+  await expect(option).toBeEnabled();
+  expect(await page.evaluate(() => window.settingsView.choiceReads().length)).toBe(17);
+  expect(await page.evaluate(() => window.settingsView.busyChanges())).toEqual(busy);
 });

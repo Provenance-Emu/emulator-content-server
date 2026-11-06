@@ -73,6 +73,7 @@ test('unsupported browser play explains downloading and sign-in explains library
   ).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true });
   await page.route('**/api/v1/player/core', (route) => route.fulfill({ status: 404 }));
+  await page.route('**/api/v1/player/profiles', (route) => route.fulfill({ status: 404 }));
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
   await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();

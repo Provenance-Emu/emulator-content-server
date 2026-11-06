@@ -15,9 +15,7 @@
     systemCounts: SystemCount[];
     onchange: (patch: Partial<BrowseFilters>) => void;
   } = $props();
-  let expanded = $state(
-    typeof window !== 'undefined' && window.matchMedia('(min-width: 761px)').matches,
-  );
+  let expanded = $state(false);
   const activeFilters = $derived(
     filters.systemIds.length + (filters.systemId ? 1 : 0) + (filters.rootId ? 1 : 0),
   );
@@ -99,6 +97,14 @@
       </fieldset>
     </div>
   </details>
+  {#if filters.search || filters.systemId || filters.systemIds.length || filters.rootId}
+    <div class="active-filters" aria-label="Active collection filters">
+      {#if filters.search}<button class="filter-chip" type="button" aria-label="Remove search filter" onclick={() => onchange({ search: '' })}>“{filters.search}” <span aria-hidden="true">×</span></button>{/if}
+      {#each filters.systemIds as id}<button class="filter-chip" type="button" aria-label={`Remove ${systemLabel(id, systems)} filter`} onclick={() => onchange({ systemId: '', systemIds: filters.systemIds.filter(value => value !== id) })}>{systemLabel(id, systems)} <span aria-hidden="true">×</span></button>{/each}
+      {#if filters.systemId && !filters.systemIds.includes(filters.systemId)}<button class="filter-chip" type="button" aria-label={`Remove ${systemLabel(filters.systemId, systems)} filter`} onclick={() => onchange({ systemId: '' })}>{systemLabel(filters.systemId, systems)} <span aria-hidden="true">×</span></button>{/if}
+      {#if filters.rootId}<button class="filter-chip" type="button" aria-label="Remove folder filter" onclick={() => onchange({ rootId: '' })}>{folders.find(folder => folder.root.id === filters.rootId)?.root.label ?? 'Folder'} <span aria-hidden="true">×</span></button>{/if}
+    </div>
+  {/if}
   {#if filters.search || filters.systemId || filters.systemIds.length || filters.rootId}<button
       type="button"
       onclick={() => onchange({ search: '', systemId: '', systemIds: [], rootId: '' })}

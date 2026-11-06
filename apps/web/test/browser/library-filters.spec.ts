@@ -12,6 +12,7 @@ test('an empty system-chip result is shown as filtered and clearing filters rest
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+  await page.locator('.collection-options summary').click();
   const systems = page.getByRole('group', { name: 'Systems with games', exact: true });
   await expect(systems.getByRole('button')).toHaveCount(2);
   await systems.getByRole('button').nth(1).click();

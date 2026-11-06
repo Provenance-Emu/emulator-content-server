@@ -319,7 +319,7 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
         await page.getByRole('button', { name: 'Settings', exact: true }).click();
         if (action === 'upload-storage') {
           await page.getByRole('button', { name: 'Storage', exact: true }).click();
-          await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
+          await page.getByRole('tab', { name: 'Upload destinations', exact: true }).click();
           await expect(
             page.getByRole('button', { name: 'Add destination', exact: true }),
           ).toBeVisible();
@@ -375,7 +375,7 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
         await page.getByRole('button', { name: 'Settings', exact: true }).click();
         if (action === 'upload-storage') {
           await page.getByRole('button', { name: 'Storage', exact: true }).click();
-          await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
+          await page.getByRole('tab', { name: 'Upload destinations', exact: true }).click();
         }
         await page
           .getByRole('button', {

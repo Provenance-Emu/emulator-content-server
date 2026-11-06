@@ -1,12 +1,12 @@
 import { mount } from 'svelte';
-import type { CommandChannel } from '../../src/player/commands.js';
+import { type CommandChannel, CoreOptionRejected } from '../../src/player/commands.js';
 import { createPreferenceStore } from '../../src/player/preferences.js';
 import type { BrowserCore, PlayerRuntime } from '../../src/player/runtime.js';
 import SettingsControls from '../../src/player/SettingsControls.svelte';
 import type { ShaderResult } from '../../src/player/shaders.js';
 
 /** External core/device boundary for focused tests of the real settings component. */
-export function mountSettings(core: BrowserCore) {
+export function mountSettings(core: BrowserCore, optionCount = 2) {
   const store = createPreferenceStore(location.origin, core, 'item:test');
   store.remember('core', { options: { region: 'PAL' } });
   store.remember('game', { options: { palette: 'rgb' } });
@@ -14,7 +14,11 @@ export function mountSettings(core: BrowserCore) {
   let failFocus = false,
     failed = false;
   let shaderResult: ShaderResult = { selection: 'off', status: 'off' };
-  const values = { region: 'PAL', palette: 'rgb' };
+  let rejected = false;
+  const choiceReads: string[] = [];
+  const busyChanges: boolean[] = [];
+  const values: Record<string, string> = { region: 'PAL', palette: 'rgb' };
+  for (let index = 2; index < optionCount; index++) values[`option${index}`] = 'default';
   const option = (key: keyof typeof values) => ({
     key,
     value: values[key],
@@ -22,15 +26,25 @@ export function mountSettings(core: BrowserCore) {
     values: key === 'region' ? ['Auto', 'PAL'] : ['default', 'rgb'],
   });
   const commands = {
-    listOptions: async () => [option('region'), option('palette')],
-    option: async (key: keyof typeof values) => option(key),
+    listOptions: async () =>
+      Object.keys(values).map((key) => {
+        const { values: choices, ...summary } = option(key);
+        return summary;
+      }),
+    option: async (key: keyof typeof values) => {
+      choiceReads.push(key);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return option(key);
+    },
     setOption: async (key: keyof typeof values, value: string) => {
+      if (rejected) throw new CoreOptionRejected('This value was rejected by the core');
       values[key] = value;
       return option(key);
     },
   } as unknown as CommandChannel;
   const runtime = {
     focus: async () => {
+      document.querySelector<HTMLCanvasElement>('canvas')?.focus();
       if (failFocus) throw Error('Game focus unavailable');
     },
     settingsInfo: async () => ({
@@ -45,8 +59,20 @@ export function mountSettings(core: BrowserCore) {
   } as PlayerRuntime;
   const target = document.createElement('div');
   document.body.append(target);
-  mount(SettingsControls, { target, props: { runtime, commands, store, initial } });
+  mount(SettingsControls, {
+    target,
+    props: { runtime, commands, store, initial, onbusy: (busy) => busyChanges.push(busy) },
+  });
   return {
+    choiceReads() {
+      return choiceReads;
+    },
+    busyChanges() {
+      return busyChanges;
+    },
+    rejectOption() {
+      rejected = true;
+    },
     failFocus() {
       failFocus = true;
     },

@@ -322,18 +322,20 @@ summary:focus-visible {
   outline: var(--focus-width) solid var(--focus-color);
   outline-offset: var(--focus-offset);
 }
+/* Mounted panels leave the layout and keyboard order across responsive display rules. */
 [hidden] {
-  display: none;
+  /* biome-ignore lint/complexity/noImportantStyles: Hidden mounted panels must override responsive display rules. */
+  display: none !important;
 }
 .application-shell {
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-columns: 13.5rem minmax(0, 1fr);
 }
 .application-content {
-  max-width: none;
+  max-width: 94rem;
   width: 100%;
-  margin: 0;
+  margin: 0 auto;
   padding: 2rem clamp(1rem, 3vw, 3rem) 4rem;
   min-width: 0;
 }
@@ -575,7 +577,7 @@ small {
 }
 .settings-shell {
   display: grid;
-  grid-template-columns: 12rem minmax(0, 1fr);
+  grid-template-columns: 11.5rem minmax(0, 1fr);
   gap: var(--space-8);
 }
 .settings-navigation {
@@ -584,8 +586,80 @@ small {
   align-items: stretch;
   gap: var(--space-2);
 }
+.settings-sidebar {
+  align-self: start;
+  position: sticky;
+  top: 1.5rem;
+}
+.settings-server-identity {
+  margin: var(--space-6) 0 0;
+}
+.settings-heading {
+  font-size: 1.25rem;
+  font-weight: var(--weight-semibold);
+  margin: var(--space-2) 0 var(--space-4);
+}
+.settings-navigation-group {
+  display: grid;
+  gap: var(--space-1);
+}
+.settings-navigation-group + .settings-navigation-group {
+  margin-top: var(--space-4);
+}
+.settings-navigation-group .nav-label {
+  margin: 0 0 var(--space-2);
+}
+.settings-section-picker {
+  display: none;
+}
+.settings-library-picker {
+  max-width: 24rem;
+  margin-block: var(--space-6);
+}
+.settings-unassigned,
+.home-management {
+  margin-top: var(--space-8);
+}
+.settings-unassigned > summary,
+.home-management > summary {
+  cursor: pointer;
+  color: var(--ink-dim);
+  padding-block: var(--space-3);
+}
 .settings-content {
   min-width: 0;
+}
+.skip-link {
+  position: fixed;
+  inset: 0 auto auto 1rem;
+  transform: translateY(-120%);
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: var(--panel);
+  color: var(--ink);
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+.library-tools {
+  position: relative;
+}
+.library-management-actions {
+  position: absolute;
+  inset: calc(100% + 0.4rem) 0 auto auto;
+  z-index: 5;
+  width: max-content;
+  max-width: min(21rem, calc(100vw - 2rem));
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--panel);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-dialog);
+  box-shadow: 0 12px 30px var(--color-backdrop);
+}
+.library-management-actions button {
+  text-align: left;
 }
 .settings-content section:first-child {
   margin-top: 0;
@@ -651,9 +725,27 @@ dialog input[type="file"] {
     grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
   }
+  .settings-sidebar {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+  .settings-heading {
+    margin: var(--space-2) 0 0;
+  }
+  .settings-back {
+    justify-self: start;
+  }
+  .settings-section-picker {
+    display: flex;
+    max-width: 100%;
+  }
+  .settings-section-picker select {
+    width: 100%;
+  }
   .settings-navigation {
-    flex-direction: row;
-    flex-wrap: wrap;
+    display: none;
   }
   .navigation-dialog {
     margin: 0;
@@ -727,7 +819,7 @@ button.play-action {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-on-primary);
-  font-weight: 650;
+  font-weight: var(--weight-semibold);
 }
 button.primary:hover:not(:disabled),
 button.play-action:hover:not(:disabled) {
@@ -779,10 +871,13 @@ button.secondary {
   gap: 0.65rem;
 }
 .collection-toolbar form {
-  flex-basis: 100%;
+  flex: 1 1 22rem;
 }
 .collection-options {
-  width: 100%;
+  flex: 0 0 auto;
+}
+.collection-options[open] {
+  flex-basis: 100%;
 }
 .collection-options summary,
 .library-tools summary {
@@ -846,7 +941,7 @@ button.secondary {
 }
 .placeholder-title {
   font-size: clamp(1.1rem, 2vw, 1.4rem);
-  font-weight: 650;
+  font-weight: var(--weight-semibold);
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
@@ -1109,7 +1204,7 @@ button.secondary {
 }
 .welcome-steps li::marker {
   color: var(--accent);
-  font-weight: 650;
+  font-weight: var(--weight-semibold);
 }
 .welcome-steps strong {
   display: block;
@@ -1148,6 +1243,9 @@ button.secondary {
   }
   .collection-toolbar form {
     gap: 0.5rem;
+  }
+  .collection-options {
+    flex-basis: 100%;
   }
   .collection-options summary {
     width: 100%;
@@ -1327,4 +1425,53 @@ button.secondary {
     padding-block: var(--control-padding-block);
     font-size: var(--control-font-size);
   }
+}
+
+.active-filters {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  background: var(--color-selected);
+  border-color: var(--color-selected-border);
+  color: var(--color-selected-text);
+}
+@media (min-width: 761px) and (max-width: 1000px) {
+  .settings-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+  .settings-sidebar {
+    position: static;
+  }
+  .settings-section-picker {
+    display: flex;
+    max-width: 25rem;
+  }
+  .settings-navigation {
+    display: none;
+  }
+}
+
+.settings-content .settings-form {
+  max-width: 48rem;
+}
+
+.application-shell.settings-active {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-active > .library-sidebar {
+  display: none;
+}
+
+.settings-active .application-content {
+  max-width: 82rem;
 }

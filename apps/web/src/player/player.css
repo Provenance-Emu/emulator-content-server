@@ -1,20 +1,205 @@
-.player-canvas {
+.browser-player {
+  max-width: 100rem;
+  padding: 1.75rem clamp(1rem, 3vw, 3rem) 3rem;
+}
+.player-session-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.player-session-identity {
+  min-width: 0;
+}
+.player-session-identity h1 {
+  overflow-wrap: anywhere;
+}
+.player-session-identity p {
+  margin: 0.35rem 0 0;
+  font-size: var(--text-label);
+}
+.player-library-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: var(--text-label);
+}
+.player-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.player-selectors {
+  max-width: 48rem;
+  margin: 2rem auto;
+}
+.player-setup-heading {
+  margin-bottom: 1.25rem;
+}
+.player-setup-heading p {
+  margin-bottom: 0;
+}
+.player-setup-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+}
+.player-selectors select {
+  width: 100%;
+  min-width: 0;
+}
+.player-starting-saves {
+  border-top: 1px solid var(--line);
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+}
+.player-starting-saves summary {
+  cursor: pointer;
+  min-height: 2.75rem;
+}
+.player-starting-saves summary span {
+  margin-left: 0.5rem;
+  font-size: var(--text-small);
+}
+.player-save-confirmation {
+  display: flex;
+  flex-direction: row;
+  align-items: start;
+  gap: 0.6rem;
+  margin: 1.25rem 0;
+}
+.player-save-confirmation input {
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+.player-launch-actions {
+  margin-top: 1.5rem;
+}
+.player-launch-actions .primary {
+  min-width: 7rem;
+}
+.player-preparing {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+.player-workbench:not(.starting) {
+  display: none;
+}
+.player-workbench.running {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(21rem, 26rem);
+  gap: 1.5rem;
+  align-items: start;
+}
+.player-stage-column {
+  min-width: 0;
+}
+.player-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 65svh;
+  min-height: 16rem;
+  max-height: 90svh;
+  overflow: hidden;
+  resize: vertical;
+  background: #000;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+.player-game {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.player-game > .player-canvas {
   display: block;
   width: 100%;
-  max-height: 70vh;
-  aspect-ratio: 4 / 3;
-  object-fit: contain;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+  margin: 0;
   background: #000;
-  margin: 1rem 0;
+  object-fit: contain;
 }
 .player-canvas:focus-visible {
   outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
-.player-log {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-height: 9rem;
-  overflow-y: auto;
+.player-stage:fullscreen {
+  height: 100%;
+  max-height: none;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+}
+.player-stage-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  margin-top: 0.6rem;
+}
+.player-stage-footer button {
+  font-size: var(--text-small);
+}
+.player-stage-footer button:first-child {
+  margin-right: auto;
+}
+.player-game-view-reason {
+  font-size: var(--text-small);
+}
+.player-inspector {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+.player-inspector > .category-tabs {
+  flex-wrap: nowrap;
+  gap: 0;
+  margin: 0;
+  padding: 0.6rem 0.35rem;
+  overflow-x: auto;
+}
+.player-inspector > .category-tabs button {
+  flex: 1;
+  padding: 0.55rem 0.6rem;
+  white-space: nowrap;
+  font-size: var(--text-small);
+}
+.player-tool-panel {
+  min-width: 0;
+  padding: 1.25rem;
+}
+.player-tool-panel section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.player-tool-panel section + section {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+.player-tool-panel h2 {
+  font-size: 1.05rem;
+}
+.player-tool-panel p {
+  font-size: var(--text-small);
+}
+.player-tool-panel label {
+  font-size: var(--text-small);
+}
+.player-tool-panel .player-controls {
+  align-items: end;
 }
 .player-controls {
   display: flex;
@@ -22,36 +207,19 @@
   gap: 0.6rem;
   align-items: center;
 }
-.player-selectors label {
-  display: block;
-  margin: 0.8rem 0;
+.player-controls button {
+  min-height: 2.75rem;
 }
-.player-selectors select {
+.player-controls label {
+  min-width: 0;
+}
+.player-controls select,
+.player-controls input {
   max-width: 100%;
 }
-.player-stage {
+.player-tool-panel .display-controls > .player-controls {
   display: grid;
-  place-items: center;
-  width: 100%;
-  height: 65svh;
-  min-height: 12rem;
-  max-height: 90svh;
-  overflow: hidden;
-  resize: vertical;
-  background: #000;
-  margin: 1rem 0;
-}
-.player-stage > .player-canvas {
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  aspect-ratio: auto;
-  margin: 0;
-}
-.player-stage:fullscreen {
-  height: 100%;
-  max-height: none;
-  resize: none;
+  grid-template-columns: minmax(0, 1fr);
 }
 .display-controls label {
   display: grid;
@@ -60,25 +228,135 @@
 .display-controls select,
 .display-controls input {
   max-width: 100%;
+  width: 100%;
+  min-width: 0;
 }
-.state-browser {
-  margin-block: 1.5rem;
+.player-session-details {
+  margin-top: 1.5rem;
 }
-.state-confirm {
-  display: flex;
-  gap: 0.5rem;
-  align-items: start;
-  margin-block: 0.8rem;
+.player-session-details > .state-browser {
+  max-width: 48rem;
+  margin-inline: auto;
+}
+.player-log {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 9rem;
+  overflow-y: auto;
+  font-size: var(--text-small);
+}
+.player-technical-details {
+  color: var(--ink-dim);
+  margin-top: 1rem;
+  font-size: var(--text-small);
+}
+.player-technical-details summary {
+  cursor: pointer;
+  min-height: 2.25rem;
+}
+.player-technical-details p {
+  margin-block: 0.5rem 1rem;
+}
+.player-preference-actions {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.player-preference-actions > .player-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+.player-preference-actions > p {
+  font-size: var(--text-small);
+  margin-bottom: 0;
+}
+.player-preference-actions button {
+  font-size: var(--text-small);
+}
+.player-preference-actions select {
+  width: 100%;
+}
+.core-option-search input {
+  width: 100%;
+}
+.core-option-count {
+  margin-block: 0.75rem;
+  font-size: var(--text-small);
+}
+.core-option-list {
+  margin-block: 0.5rem 1rem;
+}
+.core-option-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, 46%);
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.core-option-row label {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.core-option-row select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--text-small);
+}
+.core-option-info {
+  grid-column: 1 / -1;
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+}
+.core-option-info:empty {
+  display: none;
+}
+.core-option-info .problem {
+  margin: 0;
+}
+.core-option-keys {
+  margin-block: 1rem;
+}
+.core-option-keys div {
+  margin-bottom: 0.75rem;
+}
+.core-option-keys dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.shader-settings > label {
+  max-width: 24rem;
+}
+.save-recovery {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--color-surface-inset);
+}
+.save-recovery h2 {
+  font-size: 1rem;
+}
+.save-recovery p,
+.save-recovery button {
+  font-size: var(--text-small);
+}
+.player-tool-notice {
+  padding: 1rem 1.25rem 0;
+  font-size: var(--text-small);
 }
 .state-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
   gap: 1rem;
 }
 .state-card {
-  border: 1px solid var(--border, #444);
+  border: 1px solid var(--line);
   padding: 0.8rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-control);
   min-width: 0;
 }
 .state-card img,
@@ -91,7 +369,7 @@
 .state-placeholder {
   display: grid;
   place-items: center;
-  color: #aaa;
+  color: var(--ink-dim);
 }
 .state-card p {
   margin-block: 0.65rem;
@@ -99,91 +377,114 @@
 .state-name {
   overflow-wrap: anywhere;
 }
-.player-controls button {
-  min-height: 2.75rem;
+.state-confirm {
+  display: flex;
+  gap: 0.5rem;
+  align-items: start;
+  margin-block: 0.8rem;
+}
+.player-skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -6rem;
+  z-index: 20;
+  padding: 0.75rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+}
+.player-skip-link:focus {
+  top: 0.75rem;
+}
+@media (min-width: 1051px) {
+  .player-stage-column,
+  .player-inspector {
+    position: sticky;
+    top: 1.25rem;
+  }
+  .player-inspector {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100svh - 2.5rem);
+  }
+  .player-inspector > .category-tabs,
+  .player-inspector > .save-recovery {
+    flex-shrink: 0;
+  }
+  .player-tool-panel {
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+@media (max-width: 1050px) {
+  .player-workbench.running {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .player-stage {
+    height: 52svh;
+  }
+  .player-tool-panel .display-controls > .player-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 600px) {
+  .browser-player {
+    padding: 1.25rem max(0.75rem, env(safe-area-inset-right)) 2.5rem
+      max(0.75rem, env(safe-area-inset-left));
+  }
+  .player-session-header {
+    gap: 1rem;
+  }
+  .player-session-identity h1 {
+    font-size: 1.5rem;
+  }
+  .player-session-actions {
+    width: 100%;
+  }
+  .player-session-actions button {
+    flex: 1 1 40%;
+    font-size: var(--text-small);
+  }
   .player-stage {
-    min-height: 10rem;
+    height: 38svh;
+    min-height: 12rem;
     resize: none;
   }
-  .display-controls .player-controls {
-    align-items: stretch;
+  .player-stage-footer {
+    gap: 0.25rem;
   }
-  .display-controls label {
-    flex: 1 1 40%;
+  .player-stage-footer button {
+    padding-inline: 0.35rem;
+  }
+  .player-tool-panel {
+    padding: 1rem;
+  }
+  .player-inspector > .category-tabs button {
+    padding-inline: 0.5rem;
+  }
+  .core-option-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+  .core-option-info {
+    grid-column: auto;
+  }
+  .core-option-row select {
+    font-size: var(--text-label);
+  }
+  .player-starting-saves summary span {
+    display: block;
+    margin-left: 1rem;
+  }
+  .player-tool-panel .display-controls > .player-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .player-launch-actions button {
+    flex: 1;
   }
   .state-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
-  main {
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(1rem, env(safe-area-inset-right));
-  }
-}
-.settings-controls {
-  margin-block: 1.5rem;
-}
-.core-option-list {
-  max-height: 22rem;
-  overflow-y: auto;
-  margin-block: 0.75rem;
-}
-.core-option-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem;
-  border-bottom: 1px solid var(--border, #444);
-}
-.core-option-row small {
-  display: block;
-  opacity: 0.7;
-  overflow-wrap: anywhere;
-}
-.core-option-row span {
-  min-width: 0;
-}
-.settings-controls input[type="search"] {
-  width: min(100%, 28rem);
-}
-.settings-controls select {
-  max-width: min(100%, 32rem);
-}
-.browser-player {
-  max-width: 78rem;
-}
-.player-workbench.running {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 21rem;
-  gap: 1.25rem;
-  align-items: start;
-}
-.player-stage {
-  position: relative;
-}
-.player-game {
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-}
-.player-game > .player-canvas {
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  aspect-ratio: auto;
-  margin: 0;
-}
-.player-release {
-  position: absolute;
-  z-index: 5;
-  top: max(0.4rem, env(safe-area-inset-top));
-  right: max(0.4rem, env(safe-area-inset-right));
-  font-size: 0.75rem;
-  padding: 0.3rem 0.5rem;
-  min-height: 2rem;
 }
 .input-controls {
   margin-block: 1rem;
@@ -557,12 +858,6 @@
   }
 }
 
-.browser-player .player-chrome[hidden],
-.browser-player .player-inspector[hidden],
-.game-view-toolbar[hidden],
-.player-release[hidden] {
-  display: none;
-}
 .browser-player.game-view {
   padding: 0;
   margin: 0;

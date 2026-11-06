@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { build } from 'vite';
 import { expect, test } from './fixture';
+import { mountRuntimeCanvas } from './player-runtime-fixture';
 
 test('disc staging enforces one aggregate budget while allowing safe overwrites inside the opaque runtime', async ({
   page,
@@ -24,6 +25,7 @@ test('disc staging enforces one aggregate budget while allowing safe overwrites 
     route.fulfill({ contentType: 'text/javascript', body: entry.code }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/player-media-harness.js');
     const loader = new TextEncoder().encode(

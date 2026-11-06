@@ -3,6 +3,7 @@ import { mount } from 'svelte';
 import App from './App.svelte';
 import type { ServerContext } from './lib/application';
 import { createSessionStore } from './lib/session';
+import { readShellLocation, shellLocationSearch } from './lib/shell-navigation';
 import './app.css';
 
 const target = document.getElementById('app');
@@ -19,7 +20,10 @@ function createBrowserContext(): ServerContext {
     client: new ContentClient(origin),
     sessions: createSessionStore(origin),
     openPlayer(relativeHref) {
-      window.location.assign(new URL(relativeHref, origin));
+      const target = new URL(relativeHref, origin);
+      const returnSearch = shellLocationSearch(readShellLocation(window.location.search));
+      target.searchParams.set('returnTo', window.location.pathname + returnSearch);
+      window.location.assign(target);
     },
   };
 }

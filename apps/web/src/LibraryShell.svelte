@@ -2,9 +2,13 @@
   import type { Library, LibraryScope } from '@ecs/client';
   import { get } from 'svelte/store';
   import { onDestroy, onMount, untrack } from 'svelte';
-  import { createApplication, type ServerContext } from './lib/application';
+  import { createApplication, type ApplicationState, type ServerContext } from './lib/application';
   import { createServerUpdates } from './lib/server-updates';
   import type { FolderContext, FolderSelectionAdapter } from './lib/folder-selection';
+  import {
+    readShellLocation, shellLocationSearch,
+    type ShellLocation, type SettingsDestination, type SettingsSection,
+  } from './lib/shell-navigation';
   import LibraryEditor from './LibraryEditor.svelte';
   import Login from './Login.svelte';
   import LibraryBrowser from './LibraryBrowser.svelte';
@@ -25,18 +29,33 @@
   let rootId = $state('');
   let rootIntent = $state(0);
   let settings = $state(false);
+  let settingsSection = $state<SettingsSection>('libraries');
+  let settingsLibraryId = $state('');
+  let pendingLocation: ShellLocation | null = typeof window === 'undefined'
+    ? null : readShellLocation(window.location.search);
+  let authenticated = false;
   let playerEpoch = $state(0);
   let drawer = $state(false);
   let signingIn = $state(false);
   let editing = $state<Library | null | undefined>(undefined);
   const unsubscribe = application.subscribe((state) => {
     if (!state.signedIn) {
+      if (authenticated) pendingLocation = null;
+      const wasAuthenticated = authenticated;
+      authenticated = false;
       editing = undefined;
       scope = null;
       rootId = '';
       settings = false;
+      settingsLibraryId = '';
       drawer = false;
+      if (wasAuthenticated) recordLocation(true);
     } else {
+      authenticated = true;
+      if (pendingLocation) {
+        applyLocation(pendingLocation, state);
+        pendingLocation = null;
+      }
       if (!state.owner) editing = undefined;
       const selected = scope;
       if (
@@ -47,21 +66,68 @@
       ) {
         scope = null;
         rootId = '';
+        recordLocation(true);
+      }
+      if (settingsLibraryId && !state.libraries.some(library => library.id === settingsLibraryId)) {
+        settingsLibraryId = '';
       }
     }
   });
+  function recordLocation(replace = false) {
+    if (typeof window === 'undefined') return;
+    const search = shellLocationSearch({
+      libraryId: scope && 'libraryId' in scope ? scope.libraryId : '',
+      unassigned: !!scope && 'unassigned' in scope,
+      rootId,
+      settings: settings ? settingsSection : null,
+      settingsLibraryId,
+    });
+    const href = window.location.pathname + search;
+    if (href === window.location.pathname + window.location.search) return;
+    if (replace) window.history.replaceState(null, '', href);
+    else window.history.pushState(null, '', href);
+  }
+  function applyLocation(location: ShellLocation, state: ApplicationState) {
+    const libraryId = state.libraries.some(library => library.id === location.libraryId) ? location.libraryId : '';
+    const unassigned = !libraryId && location.unassigned && state.owner;
+    const nextRoot = libraryId || unassigned ? location.rootId : '';
+    const previousLibrary = scope && 'libraryId' in scope ? scope.libraryId : '';
+    if (previousLibrary !== libraryId || (!!scope && 'unassigned' in scope) !== unassigned || rootId !== nextRoot) {
+      rootIntent++;
+    }
+    scope = libraryId ? { libraryId } : unassigned ? { unassigned: true } : null;
+    rootId = nextRoot;
+    settings = location.settings !== null;
+    settingsSection = location.settings ?? 'libraries';
+    if (!state.owner && settingsSection !== 'webdav') settingsSection = 'status';
+    settingsLibraryId = state.libraries.some(library => library.id === location.settingsLibraryId) ? location.settingsLibraryId : '';
+    drawer = false;
+  }
+  function openSettings(destination: SettingsDestination = { section: 'libraries' }) {
+    settingsSection = destination.section;
+    settingsLibraryId = destination.libraryId ?? '';
+    settings = true;
+    drawer = false;
+    recordLocation();
+  }
+  function backToCollection() {
+    settings = false;
+    recordLocation();
+  }
   function choose(next: LibraryScope | null) {
     rootIntent++;
     scope = next;
     rootId = '';
     settings = false;
     drawer = false;
+    recordLocation();
   }
   function viewFolder(root: string, library: string | null) {
     rootIntent++;
     scope = library ? { libraryId: library } : { unassigned: true };
     rootId = root;
     settings = false;
+    recordLocation();
   }
   function rejectOwnerSummary(status: 401 | 403, expectedEpoch: number) {
     if (get(application).authEpoch !== expectedEpoch) return;
@@ -84,7 +150,15 @@
     };
   }
   onMount(() => {
+    const restore = () => {
+      const location = readShellLocation(window.location.search);
+      const state = get(application);
+      if (state.signedIn) applyLocation(location, state);
+      else pendingLocation = location;
+    };
+    window.addEventListener('popstate', restore);
     void application.start();
+    return () => window.removeEventListener('popstate', restore);
   });
   onDestroy(() => {
     unsubscribe();
@@ -92,7 +166,8 @@
   });
 </script>
 
-<div class="application-shell">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<div class="application-shell" class:settings-active={settings}>
   <header class="mobile-header">
     {#if $application.signedIn}
       <button type="button" aria-label="Open navigation" onclick={() => (drawer = true)}>
@@ -106,7 +181,7 @@
     {#if drawer}<Modal title="Library navigation" navigation onclose={() => (drawer = false)}>
         {@render navigation()}
       </Modal>{/if}
-    <main id="main-content" class="application-content">
+    <main id="main-content" tabindex="-1" class="application-content">
       {#if $application.owner && $application.hasSession}<ServerUpdatePrompt {updates} />{/if}
       {#if $application.localWarning}<p role="status" class="problem">{$application.localWarning}</p>{/if}
       {#if $application.failure}<p class="problem connection-message" role="status">
@@ -124,17 +199,22 @@
             {rootIntent}
             owner={$application.owner}
             libraries={$application.libraries}
-            onsettings={() => (settings = true)}
+            onsettings={openSettings}
             onchoose={choose}
             oncreate={() => (editing = null)}
           />{/key}
         </div>
         {#if settings}<SettingsShell
             {updates}
+            serverLabel={context.label}
             onplayerschange={async () => { await application.revalidate(); playerEpoch++; }}
             client={context.client}
             appState={$application}
-            onback={() => (settings = false)}
+            bind:selected={settingsSection}
+            bind:libraryId={settingsLibraryId}
+            onselect={() => recordLocation()}
+            onlibrarychange={() => recordLocation(true)}
+            onback={backToCollection}
             onview={viewFolder}
             onrejected={(status) => rejectOwnerSummary(status, expectedEpoch)}
             context={actionContext(expectedEpoch)}
@@ -150,7 +230,7 @@
           />{/if}
       {/key}
     </main>
-  {:else}<main class="login-content">
+  {:else}<main id="main-content" tabindex="-1" class="login-content">
       {#if $application.localWarning}<p role="status" class="problem">{$application.localWarning}</p>{/if}
       <p class="eyebrow">{context.label}</p>
       <h1>Emulation Server</h1>
@@ -208,8 +288,7 @@
         type="button"
         aria-current={settings ? 'page' : undefined}
         onclick={() => {
-          settings = true;
-          drawer = false;
+          openSettings();
         }}
       >
         Settings

@@ -3,6 +3,7 @@
   import type { FolderContext } from './lib/folder-selection';
   import type { ApplicationState } from './lib/application';
   import type { ServerUpdatesView } from './lib/server-updates';
+  import { settingsSections, type SettingsSection } from './lib/shell-navigation';
   import SettingsLibraries from './SettingsLibraries.svelte';
   import StorageSettings from './StorageSettings.svelte';
   import Grants from './Grants.svelte';
@@ -13,65 +14,95 @@
   import Audit from './Audit.svelte';
   import Status from './Status.svelte';
   import ServerUpdateSettings from './ServerUpdateSettings.svelte';
+
   let {
-    client,
-    appState,
-    updates,
-    onback,
-    onview,
-    onrejected,
-    context, onrename, onplayerschange,
+    client, appState, updates, onback, onview, onrejected, context,
+    serverLabel = 'Emulation Server',
+    onrename, onplayerschange,
+    selected = $bindable<SettingsSection>('libraries'),
+    libraryId = $bindable(''),
+    onselect = () => {},
+    onlibrarychange = () => {},
   }: {
     client: ContentClient;
+    serverLabel?: string;
     appState: ApplicationState;
     updates?: ServerUpdatesView;
     onback: () => void;
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
-    context: FolderContext; onrename: (library: Library) => void;
+    context: FolderContext;
+    onrename: (library: Library) => void;
     onplayerschange?: () => void | Promise<void>;
+    selected?: SettingsSection;
+    libraryId?: string;
+    onselect?: () => void;
+    onlibrarychange?: () => void;
   } = $props();
-  let selected = $state('Libraries');
   let noted = $state(0);
-  const sections = ['Libraries', 'Storage', 'Emulators', 'Access', 'Devices', 'WebDAV', 'Activity', 'Server status', 'Updates'];
-  const visibleSections = $derived(sections.filter(name => name === 'WebDAV'
-    ? appState.capabilities?.features.webdav && appState.hasSession
-    : name === 'Updates' ? appState.owner && appState.hasSession && updates
-    : appState.owner || name === 'Server status'));
+  const visibleSections = $derived(settingsSections.filter(section =>
+    section.id === 'webdav'
+      ? appState.capabilities?.features.webdav && appState.hasSession
+      : section.id === 'updates' ? appState.owner && appState.hasSession && updates
+      : appState.owner || section.id === 'status',
+  ));
+  const active = $derived(visibleSections.some(section => section.id === selected) ? selected : 'status');
+  function choose(value: string) {
+    const section = visibleSections.find(section => section.id === value);
+    if (!section) return;
+    selected = section.id;
+    onselect();
+  }
 </script>
 
 <div class="settings-shell compact-controls">
-  <nav class="settings-navigation ui-navigation" aria-label="Settings">
-    <button type="button" onclick={onback}>Back to library</button>
-    {#each visibleSections as name}<button
-        type="button"
-        aria-current={(visibleSections.includes(selected) ? selected : 'Server status') === name ? 'page' : undefined}
-        onclick={() => (selected = name)}
-      >
-        {name}
-      </button>{/each}
-  </nav>
+  <aside class="settings-sidebar">
+    <button class="settings-back" type="button" onclick={onback}>Back to library</button>
+    <p class="settings-server-identity eyebrow">{serverLabel}</p>
+    <p class="settings-heading">Settings</p>
+    <label class="settings-section-picker">
+      Settings section
+      <select value={active} onchange={event => choose(event.currentTarget.value)}>
+        {#each visibleSections as section}<option value={section.id}>{section.label}</option>{/each}
+      </select>
+    </label>
+    <nav class="settings-navigation ui-navigation" aria-label="Settings">
+      {#each ['Collection', 'Sharing', 'Server'] as group}
+        {@const sections = visibleSections.filter(section => section.group === group)}
+        {#if sections.length}<div class="settings-navigation-group">
+          <p class="nav-label">{group}</p>
+          {#each sections as section}<button
+            type="button"
+            aria-current={active === section.id ? 'page' : undefined}
+            onclick={() => choose(section.id)}
+          >{section.label}</button>{/each}
+        </div>{/if}
+      {/each}
+    </nav>
+  </aside>
   <div class="settings-content">
-    {#if appState.owner && selected === 'Libraries'}<SettingsLibraries
-        {client}
-        libraries={appState.libraries}
-        invalidation={appState.invalidation}
-        {onview}
-        {onrejected}
-        {context} {onrename}
-      />{:else if appState.owner && selected === 'Storage'}<StorageSettings
-        {client}
-        libraries={appState.libraries}
-        invalidation={appState.invalidation}
-        {onview} {onrejected} {context} {onrename}
-        onchange={() => noted++}
-      />{:else if appState.owner && selected === 'Emulators'}<EmulatorSettings {client} {onrejected} onchange={onplayerschange ?? context.onchanged ?? (() => {})} />{:else if appState.owner && selected === 'Access'}<h1>Access</h1>
+    {#if appState.owner && active === 'libraries'}<SettingsLibraries
+      {client} libraries={appState.libraries} invalidation={appState.invalidation}
+      {onview} {onrejected} {context} {onrename}
+      bind:libraryId onlibrarychange={onlibrarychange}
+    />{:else if appState.owner && active === 'storage'}<StorageSettings
+      {client} {context} onchange={() => noted++}
+      onmanagefolders={() => choose('libraries')}
+    />{:else if appState.owner && active === 'emulators'}<EmulatorSettings
+      {client} {onrejected} onchange={onplayerschange ?? context.onchanged ?? (() => {})}
+    />{:else if appState.owner && active === 'access'}
+      <h1>Access</h1>
       <Accounts {client} libraries={appState.libraries} {onrejected} onchange={context.onchanged ?? (() => {})} />
-      <Grants
-        {client}
-        onchange={() => noted++}
-      />{:else if appState.owner && selected === 'Devices'}<DeviceTokens {client} {onrejected} />{:else if selected === 'WebDAV' && visibleSections.includes('WebDAV')}<WebDav {client} origin={context.origin} {onrejected} />{:else if appState.owner && selected === 'Activity'}<h1>Activity</h1>
-      <Audit {client} {noted} />{:else if updates && selected === 'Updates' && visibleSections.includes('Updates')}<ServerUpdateSettings {updates} />{:else}<h1>Server status</h1>
-      <Status capabilities={appState.capabilities} reachable={appState.reachable === true} />{/if}
+      <Grants {client} onchange={() => noted++} />
+    {:else if appState.owner && active === 'devices'}<DeviceTokens {client} {onrejected} />
+    {:else if active === 'webdav'}<WebDav {client} origin={context.origin} {onrejected} />
+    {:else if appState.owner && active === 'activity'}
+      <h1>Activity</h1>
+      <Audit {client} {noted} />
+    {:else if updates && active === 'updates'}<ServerUpdateSettings {updates} />
+    {:else}
+      <h1>Server status</h1>
+      <Status capabilities={appState.capabilities} reachable={appState.reachable === true} />
+    {/if}
   </div>
 </div>

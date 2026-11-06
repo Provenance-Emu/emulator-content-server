@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { build } from 'vite';
 import { expect, test } from './fixture';
+import { mountRuntimeCanvas } from './player-runtime-fixture';
 
 test.use({ headless: true });
 test.setTimeout(60000);
@@ -37,6 +38,7 @@ test('realtime touch bypasses a busy RPC, preserves taps, and watchdog releases 
     route.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/input-test.js'),
       logs: string[] = [];
@@ -95,6 +97,7 @@ test('pad mode blocks old native bindings and suppresses held repeats after rele
     route.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/input-test.js'),
       canvas = document.querySelector('canvas')!;
@@ -137,6 +140,7 @@ test('controller assignment, neutral capture, axes, disconnect and mouse pulses 
     route.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/input-test.js'),
       canvas = document.querySelector('canvas')!;
@@ -279,6 +283,7 @@ test('watchdog releases native keys and re-arms held controllers only after neut
     route.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/input-test.js'),
       canvas = document.querySelector('canvas')!;

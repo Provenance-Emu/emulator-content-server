@@ -5,7 +5,49 @@ import { expect, signIn, test } from './fixture';
 test.use({ headless: true });
 // This fixture has no audio API or emulator; its changing canvas proves a live session.
 async function setup(page: Page, context: BrowserContext, fixture: Parameters<typeof signIn>[1]) {
-  const loader = `export default async o=>{const files=new Map();let reply;const m={FS:{mkdirTree(){},writeFile(p,b){files.set(p,new Uint8Array(b));},readFile(p){return files.get(p)??new Uint8Array([1,2,3]);}},EmscriptenSendCommand(c){if(c.startsWith('GET_CORE_OPTION'))reply='';else{if(c==='SAVE_STATE_SLOT 0')files.set('/ecs/states/game.state',new Uint8Array([4,5,6]));reply=c==='SAVE_FILES'?'OK':c;}},EmscriptenReceiveCommandReply(){const r=reply;reply=undefined;return r;},callMain(){o.print('Window fixture started');const ctx=o.canvas.getContext('2d');let frame=0;function draw(){ctx.fillStyle=++frame%2?'#3399cc':'#3366cc';ctx.fillRect(0,0,o.canvas.width,o.canvas.height);m.postMainLoop?.();requestAnimationFrame(draw);}draw();}};return m;}`;
+  const loader = `export default async options => {
+    const files = new Map();
+    const coreOptions = {
+      region: { value: 'Auto', description: 'Console region', values: ['Auto', 'NTSC', 'PAL'] },
+      interpolation: { value: 'Gaussian', description: 'Audio interpolation', values: ['Gaussian', 'Cubic', 'Sinc'] },
+      overclock: { value: 'Disabled', description: 'CPU overclock', values: ['Disabled', 'Compatible'] },
+    };
+    const summary = key => key + '\\t' + coreOptions[key].value + '\\t' + coreOptions[key].description;
+    let reply;
+    const runtime = {
+      FS: {
+        mkdirTree() {},
+        writeFile(path, bytes) { files.set(path, new Uint8Array(bytes)); },
+        readFile(path) { return files.get(path) ?? new Uint8Array([1, 2, 3]); },
+      },
+      EmscriptenSendCommand(command) {
+        const [operation, key, value] = command.split(' ');
+        if (operation === 'GET_CORE_OPTION') {
+          reply = key ? summary(key) + '\\t' + coreOptions[key].values.join('|') : Object.keys(coreOptions).map(summary).join('\\n');
+        } else if (operation === 'SET_CORE_OPTION') {
+          coreOptions[key].value = value;
+          reply = summary(key);
+        } else {
+          if (command === 'SAVE_STATE_SLOT 0') files.set('/ecs/states/game.state', new Uint8Array([4, 5, 6]));
+          reply = command === 'SAVE_FILES' ? 'OK' : command;
+        }
+      },
+      EmscriptenReceiveCommandReply() { const result = reply; reply = undefined; return result; },
+      callMain() {
+        options.print('Window fixture started');
+        const context = options.canvas.getContext('2d');
+        let frame = 0;
+        function draw() {
+          context.fillStyle = ++frame % 2 ? '#3399cc' : '#3366cc';
+          context.fillRect(0, 0, options.canvas.width, options.canvas.height);
+          runtime.postMainLoop?.();
+          requestAnimationFrame(draw);
+        }
+        draw();
+      },
+    };
+    return runtime;
+  }`;
   const profile = await fixture.client.playerProfile('org.example.generated-gba');
   profile.loader.sha256 = createHash('sha256').update(loader).digest('hex');
   profile.loader.sizeBytes = Buffer.byteLength(loader);
@@ -61,6 +103,7 @@ test('window launch copies setup, requires fresh save confirmation and unlocks o
   fixture,
 }) => {
   const f = await setup(page, context, fixture);
+  await page.locator('.player-starting-saves > summary').click();
   await page
     .getByRole('combobox', { name: 'Compatible battery save', exact: true })
     .selectOption(f.assets.battery_save!);
@@ -170,6 +213,11 @@ test('pending uploads remain recoverable when leaving game view or cancelling St
   );
   await page.getByRole('button', { name: 'Save screenshot to library', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Retry upload', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Core options', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Retry upload', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Download pending image', exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Game view', exact: true })).toBeDisabled();
   await page.getByRole('link', { name: 'Stop and return to library', exact: true }).click();
   const confirm = page.getByRole('dialog', { name: 'Leave this game?', exact: true });
@@ -188,4 +236,102 @@ test('pending uploads remain recoverable when leaving game view or cancelling St
   expect(await warns()).toBe(true);
   await page.getByRole('button', { name: 'Dismiss pending screenshot', exact: true }).click();
   await expect.poll(warns).toBe(false);
+});
+
+test('player tools preserve the running session and captures across keyboard panel changes', async ({
+  page,
+  context,
+  fixture,
+}, testInfo) => {
+  try {
+    const f = await setup(page, context, fixture);
+    await expect(
+      page.getByRole('heading', { name: 'Silent window test', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    const capture = page.getByRole('button', { name: 'Capture screenshot', exact: true });
+    await expect(capture).toBeEnabled();
+    await capture.click();
+    await expect(
+      page.getByRole('button', { name: 'Download screenshot', exact: true }),
+    ).toBeVisible();
+    await page.locator('iframe').evaluate((element) => {
+      element.setAttribute('data-original-session', 'true');
+    });
+    const tools = page.getByRole('tablist', { name: 'Player tools', exact: true });
+    for (const name of ['Controls', 'Video', 'Core options']) {
+      await tools.getByRole('tab', { name, exact: true }).click();
+      await expect(page.getByRole('tabpanel', { name, exact: true })).toBeVisible();
+      await expect(capture).toBeEnabled();
+      await expect(page.locator('iframe[data-original-session=true]')).toHaveCount(1);
+      await expect(
+        page.getByRole('region', { name: 'Input mappings', includeHidden: true }),
+      ).toHaveCount(1);
+    }
+    await tools.getByRole('tab', { name: 'Controls', exact: true }).click();
+    await page.getByRole('button', { name: 'Import or browse skins', exact: true }).click();
+    const skins = page.getByRole('dialog', { name: 'Skin library', exact: true });
+    await expect(skins).toBeVisible();
+    await expect(capture).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Save state', exact: true })).toBeDisabled();
+    await skins.getByRole('button', { name: 'Close skins', exact: true }).click();
+    await expect(capture).toBeEnabled();
+    await tools.getByRole('tab', { name: 'Core options', exact: true }).focus();
+    await page.keyboard.press('Home');
+    await expect(tools.getByRole('tab', { name: 'Saves', exact: true })).toBeFocused();
+    await expect(
+      page.getByRole('button', { name: 'Download screenshot', exact: true }),
+    ).toBeVisible();
+    expect(f.starts()).toBe(1);
+    await tools.getByRole('tab', { name: 'Core options', exact: true }).click();
+    const region = page.getByRole('combobox', { name: 'Console region', exact: true });
+    await expect(region).toBeEnabled();
+    await region.selectOption('PAL');
+    await expect(region).toBeEnabled();
+    await expect(region).toHaveValue('PAL');
+    await page.screenshot({
+      path: testInfo.outputPath('player-workspace-desktop.png'),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await tools.getByRole('tab', { name: 'Core options', exact: true }).click();
+    await page.screenshot({
+      path: testInfo.outputPath('player-workspace-phone.png'),
+      fullPage: true,
+    });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  } finally {
+    // Close the isolated player origin and its browser keep-alive sockets before the server fixture.
+    await context.close();
+  }
+});
+
+test('player and copied game setup retain a validated collection return destination', async ({
+  page,
+  context,
+  fixture,
+}) => {
+  const f = await setup(page, context, fixture);
+  const returnTo = '/ui/?library=arcade&search=quiet&settings=emulators';
+  await page.goto(`${f.url}&returnTo=${encodeURIComponent(returnTo)}`);
+  await expect(page.getByRole('link', { name: 'Back to library', exact: true })).toHaveAttribute(
+    'href',
+    returnTo,
+  );
+  const popup = context.waitForEvent('page');
+  await page.getByRole('button', { name: 'Open game window', exact: true }).click();
+  const child = await popup;
+  await child.waitForLoadState('domcontentloaded');
+  await expect(child.getByRole('link', { name: 'Back to library', exact: true })).toHaveAttribute(
+    'href',
+    returnTo,
+  );
+  await child.close();
+  await page.goto(`${f.url}&returnTo=${encodeURIComponent('//other.example/ui/')}`);
+  await expect(page.getByRole('link', { name: 'Back to library', exact: true })).toHaveAttribute(
+    'href',
+    '/ui/',
+  );
 });

@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { build } from 'vite';
 import { expect, test } from './fixture';
+import { mountRuntimeCanvas } from './player-runtime-fixture';
 
 let harness = '';
 test.beforeAll(async () => {
@@ -28,6 +29,7 @@ test('plugin runtime runs WASM behind an opaque frame and cannot read app storag
     r.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     localStorage.setItem('ecs.private-sandbox-test', 'generated-secret');
     const api = await import('/ui/player-runtime-test.js');
@@ -104,7 +106,7 @@ test('installed plugin is selected for its system and executes declared WASM/dat
   );
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await page.getByText('Runtime messages', { exact: true }).click();
+  await page.getByText('Session details and runtime messages', { exact: true }).click();
   await expect(page.getByText('WASM tick: 8', { exact: true })).toBeVisible();
   await expect(page.locator('iframe')).toHaveAttribute('sandbox', 'allow-scripts');
   await expect(page.getByRole('button', { name: 'Save battery', exact: true })).toHaveCount(0);
@@ -121,6 +123,7 @@ test('sandbox blocks privileged network reads and releases stalled startup on ca
     r.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/player-runtime-test.js');
     const logs: string[] = [];
@@ -168,6 +171,7 @@ test('capture bridge returns current PNG pixels, clears stale previews and appli
     r.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/player-runtime-test.js');
     const loaded = await api.importBrowserRuntime(
@@ -237,6 +241,7 @@ test('preview bridge ignores stable incomplete bytes until the native writer fin
     r.fulfill({ contentType: 'text/javascript', body: harness }),
   );
   await page.goto(`${fixture.origin}/play/`);
+  await mountRuntimeCanvas(page);
   const result = await page.evaluate(async () => {
     const api = await import('/ui/player-runtime-test.js');
     const loaded = await api.importBrowserRuntime(

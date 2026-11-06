@@ -18,18 +18,18 @@ test('library staging and Escape write nothing, preserve the edited name, and re
   fixture,
 }) => {
   await signIn(page, fixture);
+  const stagedFolder = join(fixture.directory, 'generated', 'Arcade');
+  await mkdir(stagedFolder, { recursive: true });
   fixture.requests.length = 0;
   const add = page.getByRole('button', { name: 'Add library', exact: true });
   await add.click();
   const editor = page.getByRole('dialog', { name: 'Create library', exact: true });
   await editor.getByRole('button', { name: 'Select server folder' }).click();
-  await editor
-    .getByRole('textbox', { name: 'Server folder path', exact: true })
-    .fill('/generated/Arcade');
+  await editor.getByRole('textbox', { name: 'Server folder path', exact: true }).fill(stagedFolder);
   await editor.getByRole('button', { name: 'Select folder', exact: true }).click();
   await expect(editor.getByRole('textbox', { name: 'Library name' })).toHaveValue('Arcade');
   await editor.getByRole('textbox', { name: 'Library name' }).fill('Personal');
-  await expect(editor.getByText('/generated/Arcade', { exact: true })).toBeVisible();
+  await expect(editor.getByText(stagedFolder, { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(editor).toHaveCount(0);
   await expect(add).toBeFocused();
@@ -174,6 +174,7 @@ test('unassigned folders require explicit assignment with a permissions warning'
   const root = await fixture.legacy();
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.locator('.settings-unassigned > summary').click();
   await page.getByRole('button', { name: 'Assign External folder', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Assign folder', exact: true });
   await expect(dialog.getByText(/library permissions/i)).toBeVisible();
@@ -200,7 +201,7 @@ test('Add destination retains the write target by default; explicit selection fa
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Storage', exact: true }).click();
-  await page.getByRole('tab', { name: 'Uploaded files', exact: true }).click();
+  await page.getByRole('tab', { name: 'Upload destinations', exact: true }).click();
   const add = page.getByRole('button', { name: 'Add destination', exact: true });
   await add.click();
   const chooser = page.getByRole('dialog', { name: 'Add upload destination', exact: true });
@@ -260,6 +261,7 @@ test('home offers unassigned folders and links plus scans only after a click', a
   await writeFile(join(folder, 'generated.nes'), new Uint8Array([78, 69, 83, 26]));
   const root = await fixture.client.addRoot({ path: folder, label: 'Older games' });
   await signIn(page, fixture);
+  await page.locator('.home-management > summary').click();
   const prompt = page.getByRole('region', { name: 'Existing folders without a library' });
   await expect(prompt).toBeVisible();
   fixture.requests.length = 0;
@@ -286,6 +288,7 @@ test('linking keeps a failed scan visible and retry never registers again', asyn
   await page.route('**/api/v1/roots/*/scan', (route) =>
     route.fulfill({ status: 503, json: { title: 'Scan unavailable', status: 503 } }),
   );
+  await page.locator('.home-management > summary').click();
   const prompt = page.getByRole('region', { name: 'Existing folders without a library' });
   await prompt.getByRole('combobox', { name: 'Add folders to' }).selectOption(fixture.empty.id);
   await prompt.getByRole('button', { name: 'Add selected folders' }).click();
@@ -295,7 +298,7 @@ test('linking keeps a failed scan visible and retry never registers again', asyn
   await prompt.getByRole('button', { name: 'Open library', exact: true }).click();
   await page.unroute('**/api/v1/roots/*/scan');
   fixture.requests.length = 0;
-  await page.getByText('Library tools', { exact: true }).click();
+  await page.getByLabel('Manage library', { exact: true }).click();
   await page.getByRole('button', { name: 'Scan folders for games', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open external.nes', exact: true })).toBeVisible();
   expect(fixture.requests.filter((r) => /^(PUT|POST) .*\/(roots|library)$/.test(r))).toHaveLength(

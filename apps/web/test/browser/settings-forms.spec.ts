@@ -14,7 +14,9 @@ for (const device of [
       await signIn(page, fixture);
       if (device.hasTouch) await page.getByRole('button', { name: 'Open navigation' }).click();
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await page.getByRole('button', { name: 'Devices', exact: true }).click();
+      if (device.hasTouch)
+        await page.getByRole('combobox', { name: 'Settings section' }).selectOption('devices');
+      else await page.getByRole('button', { name: 'Devices', exact: true }).click();
       await expect(page.getByText('No device tokens yet.', { exact: true })).toBeVisible();
       const name = page.getByRole('textbox', { name: 'Device name', exact: true });
       await expect(name).toHaveAccessibleDescription(
@@ -76,7 +78,9 @@ for (const device of [
         fullPage: true,
       });
 
-      await page.getByRole('button', { name: 'Access', exact: true }).click();
+      if (device.hasTouch)
+        await page.getByRole('combobox', { name: 'Settings section' }).selectOption('access');
+      else await page.getByRole('button', { name: 'Access', exact: true }).click();
       await expect(
         page.getByRole('combobox', { name: 'Account', exact: true }),
       ).toHaveAccessibleDescription('Choose the account you want to manage.');

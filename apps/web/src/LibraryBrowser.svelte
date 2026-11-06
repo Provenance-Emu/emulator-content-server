@@ -27,6 +27,7 @@
   import {createLibraryFolders} from './lib/library-folders';
   import { chooseFolder, type FolderContext } from './lib/folder-selection';
   import LibraryJobs from './LibraryJobs.svelte';
+  import type { SettingsDestination } from './lib/shell-navigation';
   let {
     context,
     application,
@@ -48,13 +49,14 @@
     rootIntent?: number;
     owner: boolean;
     libraries: Library[];
-    onsettings: () => void;
+    onsettings: (destination?: SettingsDestination) => void;
     onchoose: (scope: LibraryScope) => void;
     oncreate: () => void;
   } = $props();
   const browser = untrack(() => createLibraryBrowser(context.client, null));
   const authEpoch = untrack(() => get(application).authEpoch);
   let bulkOpen = $state(false);
+  let workTitle = $state('Library activity');
   let disposed = false;
   // Keep controller identity intact for stale-instance and authorization-loss guards.
   let detail = $state.raw<DetailController | null>(null);
@@ -350,13 +352,12 @@
   {#if !scope}<section class="library-home">
       <header class="page-heading">
         <div>
-          <p class="eyebrow">Your collection, together</p>
           <h1>{libraries.length || !owner ? 'Your libraries' : 'Welcome to your game library'}</h1>
-          <p class="dim">Keep your games in one place. Open a library to play supported games in your browser, download files, or use them in your emulator.</p>
+          <p class="dim">{libraries.length ? 'Choose a library to browse, play or manage your games.' : 'Create a library, add your games, then play or download them.'}</p>
         </div>
         {#if owner}<button class="primary" type="button" onclick={oncreate}>{libraries.length ? 'Create a library' : 'Create your first library'}</button>{/if}
       </header>
-      {#if owner}<UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
+      {#if owner && !libraries.length}<UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
       {#if libraries.length}
         <div class="library-choice-grid" aria-label="Choose a library">
           {#each libraries as library (library.id)}
@@ -365,7 +366,7 @@
             </button>
           {/each}
         </div>
-        {#if owner}<p class="dim">A library is a collection you name, such as “My games” or “Family favorites”. You choose who can access it in Settings.</p>{/if}
+        {#if owner}<details class="home-management"><summary>Unassigned folders</summary><UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} /></details>{/if}
       {:else if owner}
         <ol class="welcome-steps">
           <li><strong>Create a library</strong><p>Give your collection a name. You can change it later.</p></li>
@@ -398,11 +399,14 @@
       <div class="actions" role="group" aria-label="Library actions">
         {#if canAdd}<button class="primary" type="button" disabled={addingFolderBusy || $folderAdder?.busy} onclick={() => (addChoices = true)}>{$browser.filters.category === 'games' ? 'Add games' : 'Add files'}</button>{/if}
         <details class="library-tools">
-          <summary>Library tools</summary>
-          <div class="actions">
-            {#if owner}<button type="button" onclick={() => (bulkOpen = true)}>Library activity</button>
+          <summary aria-label="Manage library">Manage</summary>
+          <div class="library-management-actions">
+            {#if owner}
+              <button type="button" onclick={() => onsettings({ section: 'libraries', libraryId: scope && 'libraryId' in scope ? scope.libraryId : undefined })}>Folders</button>
+              <button type="button" onclick={() => { workTitle = 'Match games'; bulkOpen = true; }}>Match games</button>
+              <button type="button" onclick={() => { workTitle = 'Library activity'; bulkOpen = true; }}>Library activity</button>
               <button type="button" disabled={!folders.length || !!$folderAdder?.busy} onclick={()=>void scanSavedFolders()}>Scan folders for games</button>
-              <button type="button" onclick={onsettings}>Library settings</button>{/if}
+              <button type="button" onclick={() => onsettings({ section: 'libraries', libraryId: scope && 'libraryId' in scope ? scope.libraryId : undefined })}>Library settings</button>{/if}
             <button type="button" disabled={$browser.loading} onclick={refreshCollection}>Refresh</button>
           </div>
         </details>
@@ -486,7 +490,7 @@
     {#if $folderAdder?.notice}<p role="status">{$folderAdder.notice}</p>{/if}
     {#if owner && !addingFolder && (folderSelectionFailure || $folderAdder?.failure)}<p class="problem" role="alert">{folderSelectionFailure || $folderAdder?.failure}</p>{/if}
   {/if}
-  {#if bulkOpen && owner && scope}<Modal title="Library activity" onclose={() => { bulkOpen = false; refreshCollection(); }}>
+  {#if bulkOpen && owner && scope}<Modal title={workTitle} onclose={() => { bulkOpen = false; refreshCollection(); }}>
     <LibraryJobs {context} {scope} {libraries} roots={folders} onchanged={refreshCollection} />
   </Modal>{/if}
   {#if scope && 'libraryId' in scope && ((addChoices && canAdd) || (upload && canCreate) || (addingFolder && owner))}<Modal
