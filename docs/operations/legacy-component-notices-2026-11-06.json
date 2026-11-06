@@ -1,0 +1,830 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06",
+  "scope": "Actual captured legacy2 source/header closure with exact published artifact matches. Compiler input can include code removed by linker. Source-component evidence, not legal certification.",
+  "method": {
+    "maxConcurrentBuilds": 2,
+    "makeJobsPerBuild": 2,
+    "compilerWrapper": "/var/tmp/ecs-custom-verification-2026-11-06/compiler-capture.py",
+    "helperNode": "16.20.0 SDK bundled because emsdk_env prepended PATH",
+    "collectorNode": "22.22.2",
+    "collectorCliAdjustment": "External copy guard changed resolve(argv[1]) to realpathSync(argv[1]) for macOS /var/tmp symlink. Scan logic unchanged.",
+    "collectorSha256": "e3fad231da7c5ac04916179e1a906cf2cc136c50b644c66cdfc37e82c6e11e10",
+    "freshArchivesHashVerified": true
+  },
+  "builds": [
+    {
+      "id": "org.libretro.fceumm",
+      "exitCode": 0,
+      "elapsedSeconds": 274.7,
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 270617,
+          "sha256": "4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 4209159,
+          "sha256": "c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205",
+          "matchesPublished": true
+        }
+      ],
+      "compilerCalls": 806
+    },
+    {
+      "id": "org.libretro.virtualjaguar",
+      "exitCode": 0,
+      "elapsedSeconds": 191.0,
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 273128,
+          "sha256": "18e98d8ad251363d509782023e34b2b7bffa3a4048856ebe922a2957c9c2531b",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 4330867,
+          "sha256": "fff4746e146f15ea968edeb8ece6c1b8558ab5fe8819ec50814359ac52e7cc27",
+          "matchesPublished": true
+        }
+      ],
+      "compilerCalls": 378
+    }
+  ],
+  "perBuild": {
+    "fceumm": {
+      "inputCount": 1614,
+      "sourceInputCount": 1517,
+      "compileCount": 806,
+      "failedCompileCount": 0,
+      "unresolved": [],
+      "sharedContentComponentMatches": [
+        {
+          "modernComponent": "frontend-xxhash",
+          "declaredLicenseExpression": "BSD-2-Clause",
+          "matches": [
+            {
+              "path": "source/retroarch/deps/xxHash/xxhash.h",
+              "sha256": "1da8a804f334be687bcb1c676b18e4e353dbe21c7b0b6aef892087a5640aef74"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-snes-ntsc",
+          "declaredLicenseExpression": "LGPL-2.1-or-later",
+          "matches": [
+            {
+              "path": "source/retroarch/gfx/video_filters/snes_ntsc/snes_ntsc_config.h",
+              "sha256": "05eca37ec9e15dea03855c845a12b511fc5cdb93a154ada80b45eeb2614dcb49"
+            },
+            {
+              "path": "source/retroarch/gfx/video_filters/snes_ntsc/snes_ntsc_impl.h",
+              "sha256": "40e4220bf4da10b1e214a6577e5343e18dcd403a7d11c459cd06589b9bbb1f89"
+            },
+            {
+              "path": "source/retroarch/gfx/video_filters/snes_ntsc/snes_ntsc.c",
+              "sha256": "1d126a89deb2c737fcdbd9cc95a6c3a4cb2cac0ae69d6ff8869003e413083519"
+            },
+            {
+              "path": "source/retroarch/gfx/video_filters/snes_ntsc/snes_ntsc.h",
+              "sha256": "e7b14f76f67dc00df3f7df8b3f51b9dd5b13ea6c72aa3e37d5516780e8b03c12"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-nebuleon-scaler",
+          "declaredLicenseExpression": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+          "matches": [
+            {
+              "path": "source/retroarch/gfx/video_filters/upscale_1_66x_fast.c",
+              "sha256": "1579cc14b0a9376da733898636d0d255d6daff8a1a47dc5135fa8faa4897f8d4"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-hyllian-2xbr",
+          "declaredLicenseExpression": "GPL-3.0-or-later AND GPL-2.0-or-later",
+          "matches": [
+            {
+              "path": "source/retroarch/gfx/video_filters/2xbr.c",
+              "sha256": "710ca1e0279d858cb8d38a270eb78c881f5daf548e6255607f95228cc9dbf06c"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-modtracker",
+          "declaredLicenseExpression": "BSD-3-Clause",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/formats/mod/rmodtracker.c",
+              "sha256": "864106340ce21cfa172c397b275854ebf130f6ef61999a83bb2454da5d341f4a"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-rar",
+          "declaredLicenseExpression": "MIT AND BSD-2-Clause",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/formats/rar/rrar_archive.c",
+              "sha256": "eeebb32e9b0d962cbdae5a4f75689f360f065f64fe73488ee03d0af3eb17b21d"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-base64",
+          "declaredLicenseExpression": "Zlib",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/encodings/encoding_base64.c",
+              "sha256": "18a9a0e9874e4a0bc6bd0153399b3ebcc863bc10230f1a0827b471045b47165a"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-md5",
+          "declaredLicenseExpression": "LicenseRef-Public-Domain-OR-BSD-fallback",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/include/lrc_hash.h",
+              "sha256": "9891fb7b8bdc2c3237e7534d271b3c64a4b17d293c2c1c6ac36f2bc3ffed8e28"
+            },
+            {
+              "path": "source/retroarch/libretro-common/utils/md5.c",
+              "sha256": "eac29a1b5ce298408fb43d3b9bbf80aac0429d65c2ae6bca23b4f376c018c566"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-sha1",
+          "declaredLicenseExpression": null,
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/hash/lrc_hash.c",
+              "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-pdjson",
+          "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/formats/json/rjson.c",
+              "sha256": "1cbf68afea605e5c5ba4ff554f7d96d90f9da69fce598c1801f89970842a4768"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-bcdec",
+          "declaredLicenseExpression": "MIT AND (MIT OR Unlicense)",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/formats/dds/rdds.c",
+              "sha256": "c88b5fe6bbfdef650ae65ebe94a3950283d5ba223c888f304427ddee45866ada"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-ppmd",
+          "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/formats/rar/rrar_ppmd7.c",
+              "sha256": "c5b096e8d182b55d7c6330154af4fc35d94bfe23b6a0055579544c5444080828"
+            },
+            {
+              "path": "source/retroarch/libretro-common/formats/rar/rrar_ppmd7.h",
+              "sha256": "ae90ae3b32e5aa974ec7b5884a09a9256702a28b6e48cd081134b024156e924a"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-bitwise",
+          "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+          "matches": [
+            {
+              "path": "source/retroarch/libretro-common/include/array/rbuf.h",
+              "sha256": "d8f7e6b2aefaa5f053693e265e416e54c37e54fa2c97fd676d8911666f55f78c"
+            },
+            {
+              "path": "source/retroarch/libretro-common/include/array/rhmap.h",
+              "sha256": "ab94b92686718619065e9ebd2096010a74ac967a25f2e9df068d101718ebd2fe"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        }
+      ],
+      "noticeInventorySha256": "4a772890f5cbdab3635f38d5150fb24cf89ec111ad2cc22c541afe1e1ee3f11f",
+      "sourceByteVerification": {
+        "sourceInputs": 1517,
+        "matched": 1516,
+        "changed": [
+          {
+            "path": "source/retroarch/save.c",
+            "archiveSha256": "e32c304b65e44a6f3e400f1839e2bd51d6cdbde978d1c6f9fe089b02986e1f5c",
+            "compiledSha256": "c9bb69fa6c8beef66cb633f65ec1f6275f506628295e25b6a496ca308961f387",
+            "matchesArchive": false
+          }
+        ],
+        "notInArchive": [],
+        "collectorSha256": "e3fad231da7c5ac04916179e1a906cf2cc136c50b644c66cdfc37e82c6e11e10",
+        "compileCount": 806,
+        "failedCompileCount": 0,
+        "unresolvedCount": 0,
+        "noticeFiles": 6
+      },
+      "patchVerification": {
+        "patchPath": "source/retroarch-save-files.patch",
+        "patchSha256": "ffc78048f23214a2aaccd84e7c8e443edfce06a194aa501818dcb11923738f21",
+        "archiveSaveSha256": "e32c304b65e44a6f3e400f1839e2bd51d6cdbde978d1c6f9fe089b02986e1f5c",
+        "patchedSaveSha256": "c9bb69fa6c8beef66cb633f65ec1f6275f506628295e25b6a496ca308961f387",
+        "reconstructedFromArchiveAndRetainedPatch": true
+      }
+    },
+    "jaguar": {
+      "inputCount": 1197,
+      "sourceInputCount": 1100,
+      "compileCount": 378,
+      "failedCompileCount": 0,
+      "unresolved": [],
+      "sharedContentComponentMatches": [
+        {
+          "modernComponent": "frontend-xxhash",
+          "declaredLicenseExpression": "BSD-2-Clause",
+          "matches": [
+            {
+              "path": "source/frontend/deps/xxHash/xxhash.h",
+              "sha256": "1da8a804f334be687bcb1c676b18e4e353dbe21c7b0b6aef892087a5640aef74"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-snes-ntsc",
+          "declaredLicenseExpression": "LGPL-2.1-or-later",
+          "matches": [
+            {
+              "path": "source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc_config.h",
+              "sha256": "05eca37ec9e15dea03855c845a12b511fc5cdb93a154ada80b45eeb2614dcb49"
+            },
+            {
+              "path": "source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc_impl.h",
+              "sha256": "40e4220bf4da10b1e214a6577e5343e18dcd403a7d11c459cd06589b9bbb1f89"
+            },
+            {
+              "path": "source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.c",
+              "sha256": "1d126a89deb2c737fcdbd9cc95a6c3a4cb2cac0ae69d6ff8869003e413083519"
+            },
+            {
+              "path": "source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.h",
+              "sha256": "e7b14f76f67dc00df3f7df8b3f51b9dd5b13ea6c72aa3e37d5516780e8b03c12"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-nebuleon-scaler",
+          "declaredLicenseExpression": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+          "matches": [
+            {
+              "path": "source/frontend/gfx/video_filters/upscale_1_66x_fast.c",
+              "sha256": "1579cc14b0a9376da733898636d0d255d6daff8a1a47dc5135fa8faa4897f8d4"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-hyllian-2xbr",
+          "declaredLicenseExpression": "GPL-3.0-or-later AND GPL-2.0-or-later",
+          "matches": [
+            {
+              "path": "source/frontend/gfx/video_filters/2xbr.c",
+              "sha256": "710ca1e0279d858cb8d38a270eb78c881f5daf548e6255607f95228cc9dbf06c"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-modtracker",
+          "declaredLicenseExpression": "BSD-3-Clause",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/formats/mod/rmodtracker.c",
+              "sha256": "864106340ce21cfa172c397b275854ebf130f6ef61999a83bb2454da5d341f4a"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-rar",
+          "declaredLicenseExpression": "MIT AND BSD-2-Clause",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/formats/rar/rrar_archive.c",
+              "sha256": "eeebb32e9b0d962cbdae5a4f75689f360f065f64fe73488ee03d0af3eb17b21d"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-base64",
+          "declaredLicenseExpression": "Zlib",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/encodings/encoding_base64.c",
+              "sha256": "18a9a0e9874e4a0bc6bd0153399b3ebcc863bc10230f1a0827b471045b47165a"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-md5",
+          "declaredLicenseExpression": "LicenseRef-Public-Domain-OR-BSD-fallback",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/include/lrc_hash.h",
+              "sha256": "9891fb7b8bdc2c3237e7534d271b3c64a4b17d293c2c1c6ac36f2bc3ffed8e28"
+            },
+            {
+              "path": "source/frontend/libretro-common/utils/md5.c",
+              "sha256": "eac29a1b5ce298408fb43d3b9bbf80aac0429d65c2ae6bca23b4f376c018c566"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-sha1",
+          "declaredLicenseExpression": null,
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/hash/lrc_hash.c",
+              "sha256": "582edc5204adc64e52f73c27ca1fdfdbfd4215bfaccebc9e7f3bf5adc2253da4"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-pdjson",
+          "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/formats/json/rjson.c",
+              "sha256": "1cbf68afea605e5c5ba4ff554f7d96d90f9da69fce598c1801f89970842a4768"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-bcdec",
+          "declaredLicenseExpression": "MIT AND (MIT OR Unlicense)",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/formats/dds/rdds.c",
+              "sha256": "c88b5fe6bbfdef650ae65ebe94a3950283d5ba223c888f304427ddee45866ada"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-ppmd",
+          "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/formats/rar/rrar_ppmd7.c",
+              "sha256": "c5b096e8d182b55d7c6330154af4fc35d94bfe23b6a0055579544c5444080828"
+            },
+            {
+              "path": "source/frontend/libretro-common/formats/rar/rrar_ppmd7.h",
+              "sha256": "ae90ae3b32e5aa974ec7b5884a09a9256702a28b6e48cd081134b024156e924a"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        },
+        {
+          "modernComponent": "frontend-bitwise",
+          "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+          "matches": [
+            {
+              "path": "source/frontend/libretro-common/include/array/rbuf.h",
+              "sha256": "d8f7e6b2aefaa5f053693e265e416e54c37e54fa2c97fd676d8911666f55f78c"
+            },
+            {
+              "path": "source/frontend/libretro-common/include/array/rhmap.h",
+              "sha256": "ab94b92686718619065e9ebd2096010a74ac967a25f2e9df068d101718ebd2fe"
+            }
+          ],
+          "scope": "Exact full source-file byte identity to modern component inputs, preserving legacy source archive paths. Full modern narrow-component interpretation and unresolved issues apply."
+        }
+      ],
+      "noticeInventorySha256": "be94aafaed8ba225bb39a28c2924f5e535a89191bbe12f9d73ae301f277abb66",
+      "sourceByteVerification": {
+        "sourceInputs": 1100,
+        "matched": 1100,
+        "changed": [],
+        "notInArchive": [],
+        "collectorSha256": "e3fad231da7c5ac04916179e1a906cf2cc136c50b644c66cdfc37e82c6e11e10",
+        "compileCount": 378,
+        "failedCompileCount": 0,
+        "unresolvedCount": 0,
+        "noticeFiles": 7
+      }
+    }
+  },
+  "remaining": [
+    "SDK member selection is retained in the linked SDK evidence. SDK archive byte reconstruction from source remains open.",
+    "The shared frontend SHA1 incorporated grant and PCFX historical IJG README remain open in the modern matrix."
+  ],
+  "modernMatrix": {
+    "path": "docs/operations/component-notice-audit-2026-11-06.json",
+    "sha256": "aaa1fe41451ab3db5be0a774b93b73382e277f0955abdf59e6a72a660fba41e7",
+    "sizeBytes": 707762
+  },
+  "noticeInventory": {
+    "path": "docs/operations/legacy-build-notices-2026-11-06.json",
+    "sha256": "f4df30bc8ee1c1d89730a3b7db31b30d61d44df3984a3c6c7ee81cb5bd6afec7",
+    "sizeBytes": 1389719
+  },
+  "components": [
+    {
+      "id": "fceumm-frontend",
+      "label": "RetroArch common frontend",
+      "build": "org.libretro.fceumm",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "scope": "Broad main declaration, narrower per-file/shared-content matches retain their notices.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 906,
+      "noticePointers": [
+        {
+          "path": "source/retroarch/COPYING",
+          "kind": "complete-notice-file",
+          "sizeBytes": 35147,
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+        }
+      ],
+      "inputSelector": {
+        "prefix": "source/retroarch/"
+      }
+    },
+    {
+      "id": "fceumm-libretro-common",
+      "label": "libretro-common and libretro-db actual inputs",
+      "build": "org.libretro.fceumm",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "declaredLicenseExpression": "MIT",
+      "scope": "Broad grouping only. Specialized notices and shared-content component mappings below override or supplement per-file MIT notices.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 330,
+      "noticePointers": [],
+      "inputSelector": {
+        "pathContainsAny": ["/libretro-common/", "/libretro-db/"]
+      }
+    },
+    {
+      "id": "jaguar-frontend",
+      "label": "RetroArch common frontend",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "scope": "Broad main declaration, narrower per-file/shared-content matches retain their notices.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 892,
+      "noticePointers": [
+        {
+          "path": "source/frontend/COPYING",
+          "kind": "complete-notice-file",
+          "sizeBytes": 35147,
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+        }
+      ],
+      "inputSelector": {
+        "prefix": "source/frontend/"
+      }
+    },
+    {
+      "id": "jaguar-libretro-common",
+      "label": "libretro-common and libretro-db actual inputs",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "MIT",
+      "scope": "Broad grouping only. Specialized notices and shared-content component mappings below override or supplement per-file MIT notices.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 291,
+      "noticePointers": [],
+      "inputSelector": {
+        "pathContainsAny": ["/libretro-common/", "/libretro-db/"]
+      }
+    },
+    {
+      "id": "fceumm-main",
+      "label": "FCEUmm core",
+      "build": "org.libretro.fceumm",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "scope": "Main core terms. Nested libretro-common and narrower subcomponents retain independent notices.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 611,
+      "noticePointers": [
+        {
+          "path": "source/fceumm/Copying",
+          "kind": "complete-notice-file",
+          "sizeBytes": 18010,
+          "sha256": "a6996dcf0c334281f734560926e079b2dbbd5b78e81c0ca00a413ec01e1cd2fb"
+        }
+      ],
+      "inputSelector": {
+        "prefix": "source/fceumm/"
+      }
+    },
+    {
+      "id": "fceumm-nes-ntsc",
+      "label": "blargg NES NTSC0.2.2",
+      "build": "org.libretro.fceumm",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "scope": "",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 4,
+      "inputPaths": [
+        "source/fceumm/src/ntsc/nes_ntsc_config.h",
+        "source/fceumm/src/ntsc/nes_ntsc_impl.h",
+        "source/fceumm/src/ntsc/nes_ntsc.c",
+        "source/fceumm/src/ntsc/nes_ntsc.h"
+      ],
+      "noticePointers": [
+        {
+          "path": "source/fceumm/src/ntsc/license.txt",
+          "kind": "complete-notice-file",
+          "sizeBytes": 26940,
+          "sha256": "319daefe38ebeead3df178e5937898a52d67c0c795f54f1c0bb10ac3b9cffb63"
+        }
+      ]
+    },
+    {
+      "id": "fceumm-pic16c5x",
+      "label": "Tony La Porta Microchip PIC16C5x from MAME",
+      "build": "org.libretro.fceumm",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "scope": "",
+      "issues": [
+        "Source/archive contains SPDX-style license:BSD-3-Clause and copyright attribution, but no complete narrow BSD3 grant file. Exact upstream grant text could supplement the archived identifier."
+      ],
+      "upstreamNotices": [],
+      "inputCount": 2,
+      "inputPaths": ["source/fceumm/src/boards/pic16c5x.c", "source/fceumm/src/boards/pic16c5x.h"],
+      "noticePointers": []
+    },
+    {
+      "id": "fceumm-md5",
+      "label": "Christophe Devine RFC1321 MD5",
+      "build": "org.libretro.fceumm",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "scope": "Narrow source says licensed under GPL without version. Main core declaration supplies GPL2+ context. Preserve original attribution and record this version-context inference.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 1,
+      "inputPaths": ["source/fceumm/src/md5.c"],
+      "noticePointers": []
+    },
+    {
+      "id": "jaguar-main",
+      "label": "Virtual Jaguar main core",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "scope": "Main core only. Broad parent overlaps narrower libchdr/dependency scopes below.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 208,
+      "noticePointers": [
+        {
+          "path": "source/virtualjaguar/LICENSE",
+          "kind": "complete-notice-file",
+          "sizeBytes": 35147,
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+        }
+      ],
+      "inputSelector": {
+        "prefix": "source/virtualjaguar/"
+      }
+    },
+    {
+      "id": "jaguar-uae-m68k",
+      "label": "UAE-derived68000 emulation",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "scope": "Bernd Schmidt and Virtual Jaguar attributions in actual compiled sources.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 13,
+      "noticePointers": [],
+      "inputSelector": {
+        "prefix": "source/virtualjaguar/src/m68000/"
+      }
+    },
+    {
+      "id": "jaguar-libchdr",
+      "label": "libchdr unity and codecs",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "scope": "Independent nested dependencies below override narrow scope. unity.c includes their implementation sources directly.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 42,
+      "noticePointers": [
+        {
+          "path": "source/virtualjaguar/deps/libchdr/LICENSE.txt",
+          "kind": "complete-notice-file",
+          "sizeBytes": 1493,
+          "sha256": "e3989a7aee74a91b8cdbdfe204a6b8d03288863ec7533a21c51f1a987ba73539"
+        }
+      ],
+      "inputSelector": {
+        "prefix": "source/virtualjaguar/deps/libchdr/"
+      }
+    },
+    {
+      "id": "jaguar-dr-flac",
+      "label": "dr_flac0.13.3",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "Unlicense OR MIT-0",
+      "scope": "Full dual choice at header end. Distinct version from PCFX0.12.42.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 1,
+      "inputPaths": ["source/virtualjaguar/deps/libchdr/include/dr_libs/dr_flac.h"],
+      "noticePointers": []
+    },
+    {
+      "id": "jaguar-lzma",
+      "label": "LZMA SDK25.01",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-Declaration",
+      "scope": "",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 5,
+      "inputPaths": [
+        "source/virtualjaguar/deps/libchdr/deps/lzma-25.01/include/LzmaDec.h",
+        "source/virtualjaguar/deps/libchdr/deps/lzma-25.01/include/real/7zTypes.h",
+        "source/virtualjaguar/deps/libchdr/deps/lzma-25.01/include/real/LzmaDec.h",
+        "source/virtualjaguar/deps/libchdr/deps/lzma-25.01/src/LzmaDec.c",
+        "source/virtualjaguar/deps/libchdr/deps/lzma-25.01/src/real/LzmaDec.c"
+      ],
+      "noticePointers": [
+        {
+          "path": "source/virtualjaguar/deps/libchdr/deps/lzma-25.01/LICENSE",
+          "kind": "complete-notice-file",
+          "sizeBytes": 261,
+          "sha256": "06721414a6decad6d6677feb470f01f47126e154d895d85bc1e17628697715e5"
+        }
+      ]
+    },
+    {
+      "id": "jaguar-miniz",
+      "label": "miniz3.1.1",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "MIT",
+      "scope": "Inline complete grant. Copyright RAD Game Tools/Valve, Rich Geldreich/Tenacious and additional subparts retained in full span inventory.",
+      "issues": [],
+      "upstreamNotices": [],
+      "inputCount": 2,
+      "inputPaths": [
+        "source/virtualjaguar/deps/libchdr/deps/miniz-3.1.1/miniz.c",
+        "source/virtualjaguar/deps/libchdr/deps/miniz-3.1.1/miniz.h"
+      ],
+      "noticePointers": []
+    },
+    {
+      "id": "jaguar-zstd",
+      "label": "Zstandard1.5.7 amalgamated decompressor",
+      "build": "org.libretro.virtualjaguar",
+      "sourceArchive": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "declaredLicenseExpression": "BSD-3-Clause OR GPL-2.0-only",
+      "scope": "Archive input declares version1.5.7 and license choice but omits referenced full LICENSE/COPYING. Supplement fetched at immutable upstream1.5.7 tag commit. Full notice bytes identical to PCFX1.5.5 retained files.",
+      "issues": [],
+      "upstreamNotices": [
+        {
+          "url": "https://raw.githubusercontent.com/facebook/zstd/f8745da6ff1ad1e7bab384bd1f9d742439278e99/LICENSE",
+          "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8",
+          "sizeBytes": 1549
+        },
+        {
+          "url": "https://raw.githubusercontent.com/facebook/zstd/f8745da6ff1ad1e7bab384bd1f9d742439278e99/COPYING",
+          "sha256": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
+          "sizeBytes": 18091
+        }
+      ],
+      "inputCount": 2,
+      "inputPaths": [
+        "source/virtualjaguar/deps/libchdr/deps/zstd-1.5.7/zstd.h",
+        "source/virtualjaguar/deps/libchdr/deps/zstd-1.5.7/zstddeclib.c"
+      ],
+      "noticePointers": []
+    }
+  ],
+  "rootSdkLinkEvidence": {
+    "path": "docs/operations/sdk-link-notices-2026-11-06.json",
+    "sha256": "a745a2de37170442ed10bf214d6649529275b15a7e5340f6b1a117253b06d66b",
+    "sizeBytes": 510743
+  }
+}

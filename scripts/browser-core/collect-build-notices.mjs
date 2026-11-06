@@ -46,15 +46,22 @@ export function parseMakeDependencies(text) {
 }
 
 function inlineNotices(bytes) {
-  const text = bytes.subarray(0, 65536).toString('latin1');
-  const result = [];
+  const text = bytes.toString('latin1');
+  const groups = [];
   for (const match of text.matchAll(/\/\*[\s\S]*?\*\/|(?:^[\t ]*\/\/[^\r\n]*(?:\r?\n|$))+/gm)) {
+    const previous = groups.at(-1);
+    if (previous && !text.slice(previous.end, match.index).trim())
+      previous.end = match.index + match[0].length;
+    else groups.push({ start: match.index, end: match.index + match[0].length });
+  }
+  const result = [];
+  for (const { start, end } of groups) {
     if (
-      !/copyright|licen[cs]e|SPDX|permission|public domain|GNU (?:general|lesser)/i.test(match[0])
+      !/copyright|licen[cs]e|SPDX|permission|public domain|GNU (?:general|lesser)/i.test(
+        text.slice(start, end),
+      )
     )
       continue;
-    const start = match.index,
-      end = start + match[0].length;
     result.push({
       startByte: start,
       endByte: end,
@@ -99,10 +106,22 @@ export function collectBuildNotices(captureDirectory, sourceDirectory, sdkDirect
       if (!directoryNotices.has(directory)) {
         const found = [];
         for (const entry of readdirSync(directory, { withFileTypes: true })) {
-          if (!entry.isFile() || !/^(?:copying|copyright|license|notice)/i.test(entry.name))
+          if (
+            (!entry.isFile() && !entry.isSymbolicLink()) ||
+            !/^(?:copying|copyright|license|notice)/i.test(entry.name)
+          )
             continue;
-          const candidate = locate(join(directory, entry.name));
-          if (!candidate) continue;
+          let candidate;
+          try {
+            candidate = locate(join(directory, entry.name));
+          } catch {
+            unresolved.push({ name: entry.name, reason: 'missing-notice' });
+            continue;
+          }
+          if (!candidate) {
+            unresolved.push({ name: entry.name, reason: 'notice-outside-allowed-roots' });
+            continue;
+          }
           const bytes = readRegular(candidate.actual);
           noticeFiles.set(candidate.path, {
             path: candidate.path,
@@ -167,6 +186,7 @@ export function collectBuildNotices(captureDirectory, sourceDirectory, sdkDirect
     schemaVersion: 1,
     scope:
       'Compiler-reported C/C++ sources and includes. Comment spans and ancestor notice filenames are evidence candidates; applicability requires component review.',
+    inlineSearchBytes: MAX_FILE_BYTES,
     compileCount,
     failedCompileCount,
     inputs: [...inputs.values()].sort((a, b) => a.path.localeCompare(b.path)),
@@ -175,7 +195,7 @@ export function collectBuildNotices(captureDirectory, sourceDirectory, sdkDirect
   };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length !== 6)
     throw new Error(
       'Usage: collect-build-notices.mjs CAPTURE_DIRECTORY SOURCE_ROOT SDK_ROOT NEW_OUTPUT',

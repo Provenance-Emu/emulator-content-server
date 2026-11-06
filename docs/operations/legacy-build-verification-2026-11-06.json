@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06",
+  "scope": "Two legacy exact resource rebuilds, full compiler dependency closure and source archive/retained-patch byte verification.",
+  "method": {
+    "maxConcurrentBuilds": 2,
+    "makeJobsPerBuild": 2,
+    "compilerWrapper": "/var/tmp/ecs-custom-verification-2026-11-06/compiler-capture.py",
+    "helperNode": "16.20.0 SDK bundled because emsdk_env prepended PATH",
+    "collectorNode": "22.22.2",
+    "collectorCliAdjustment": "External copy guard changed resolve(argv[1]) to realpathSync(argv[1]) for macOS /var/tmp symlink. Scan logic unchanged.",
+    "collectorSha256": "e3fad231da7c5ac04916179e1a906cf2cc136c50b644c66cdfc37e82c6e11e10",
+    "freshArchivesHashVerified": true
+  },
+  "builds": [
+    {
+      "id": "org.libretro.fceumm",
+      "exitCode": 0,
+      "elapsedSeconds": 274.7,
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz",
+        "sha256": "690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff",
+        "sizeBytes": 86189038
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 270617,
+          "sha256": "4198e886f14d2c82a41c6405523f6dc748177bf1a4cadb97e93ce49a77cfcef8",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 4209159,
+          "sha256": "c54d033d3f7856074e48bf824bc92b9b2e6f9cf3d529d4d646685ed626d62205",
+          "matchesPublished": true
+        }
+      ],
+      "compilerCalls": 806
+    },
+    {
+      "id": "org.libretro.virtualjaguar",
+      "exitCode": 0,
+      "elapsedSeconds": 191.0,
+      "source": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz",
+        "sha256": "592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d",
+        "sizeBytes": 90859298
+      },
+      "resources": [
+        {
+          "file": "loader.js",
+          "sizeBytes": 273128,
+          "sha256": "18e98d8ad251363d509782023e34b2b7bffa3a4048856ebe922a2957c9c2531b",
+          "matchesPublished": true
+        },
+        {
+          "file": "core.wasm",
+          "sizeBytes": 4330867,
+          "sha256": "fff4746e146f15ea968edeb8ece6c1b8558ab5fe8819ec50814359ac52e7cc27",
+          "matchesPublished": true
+        }
+      ],
+      "compilerCalls": 378
+    }
+  ],
+  "noticeInventory": {
+    "path": "docs/operations/legacy-build-notices-2026-11-06.json",
+    "sha256": "f4df30bc8ee1c1d89730a3b7db31b30d61d44df3984a3c6c7ee81cb5bd6afec7",
+    "sizeBytes": 1389719,
+    "uniqueInputs": 2714,
+    "uniqueNoticeFiles": 11
+  },
+  "sourceVerification": {
+    "fceumm": {
+      "sourceInputs": 1517,
+      "matched": 1516,
+      "changed": [
+        {
+          "path": "source/retroarch/save.c",
+          "archiveSha256": "e32c304b65e44a6f3e400f1839e2bd51d6cdbde978d1c6f9fe089b02986e1f5c",
+          "compiledSha256": "c9bb69fa6c8beef66cb633f65ec1f6275f506628295e25b6a496ca308961f387",
+          "matchesArchive": false
+        }
+      ],
+      "notInArchive": [],
+      "collectorSha256": "e3fad231da7c5ac04916179e1a906cf2cc136c50b644c66cdfc37e82c6e11e10",
+      "compileCount": 806,
+      "failedCompileCount": 0,
+      "unresolvedCount": 0,
+      "noticeFiles": 6
+    },
+    "jaguar": {
+      "sourceInputs": 1100,
+      "matched": 1100,
+      "changed": [],
+      "notInArchive": [],
+      "collectorSha256": "e3fad231da7c5ac04916179e1a906cf2cc136c50b644c66cdfc37e82c6e11e10",
+      "compileCount": 378,
+      "failedCompileCount": 0,
+      "unresolvedCount": 0,
+      "noticeFiles": 7
+    }
+  },
+  "fceummPatch": {
+    "patchPath": "source/retroarch-save-files.patch",
+    "patchSha256": "ffc78048f23214a2aaccd84e7c8e443edfce06a194aa501818dcb11923738f21",
+    "archiveSaveSha256": "e32c304b65e44a6f3e400f1839e2bd51d6cdbde978d1c6f9fe089b02986e1f5c",
+    "patchedSaveSha256": "c9bb69fa6c8beef66cb633f65ec1f6275f506628295e25b6a496ca308961f387",
+    "reconstructedFromArchiveAndRetainedPatch": true
+  },
+  "componentMatrix": {
+    "path": "docs/operations/legacy-component-notices-2026-11-06.json",
+    "sha256": "3c5f6ebbb9f61d10819ddaff3cf2ce5e97aee9bc4f0d2a77a2e0f2e30fe8dc5e",
+    "sizeBytes": 37324
+  }
+}
