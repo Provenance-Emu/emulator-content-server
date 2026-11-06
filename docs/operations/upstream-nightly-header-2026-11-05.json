@@ -1,0 +1,63 @@
+{
+  "observedAt": "2026-11-05",
+  "url": "https://buildbot.libretro.com/nightly/emscripten/2026-11-04_RetroArch.7z",
+  "archiveSizeBytes": 775282631,
+  "inspection": "7-Zip header and filename inventory only. Encoded header decoded by 7zz from sparse file containing first32 and final1048576 bytes. Runtime/archive payload files were not extracted.",
+  "downloadedRanges": [
+    {
+      "start": 0,
+      "end": 31,
+      "sha256": "705f82ae1c964045a0424639b2c819a2f3694aa11a691204521ab47b74c7eca7"
+    },
+    {
+      "start": 774234055,
+      "end": 775282630,
+      "sha256": "ab8e820f026c4d2caa6b44d2b59a6ce8c0b918bc43799e4421d6efeeffb40771"
+    }
+  ],
+  "archiveEntries": 898,
+  "runtimePairCount": 100,
+  "assetIndexCount": 59,
+  "candidateRule": "Non-index files with json/txt/info/md/cfg/ini/yml/yaml/xml/log/sha256/sh extensions or COPYING/LICENSE/NOTICE/BUILD/VERSION/SOURCE/REVISION/MANIFEST/README filename prefixes.",
+  "candidateMetadata": [
+    {
+      "Path": "retroarch/assets/cores/Sega - Mega Drive - Genesis/Break An Egg.md",
+      "Size": "262144",
+      "Packed Size": "",
+      "Modified": "2026-11-03 19:03:17.0000000",
+      "Attributes": "A -rw-r--r--",
+      "CRC": "F293655F",
+      "Encrypted": "-",
+      "Method": "LZMA2:26",
+      "Block": "0"
+    },
+    {
+      "Path": "retroarch/assets/cores/Sega - Mega Drive - Genesis/POLYGAMe_SMD_controller_test 2.0.md",
+      "Size": "131072",
+      "Packed Size": "",
+      "Modified": "2026-11-03 19:03:17.0000000",
+      "Attributes": "A -rw-r--r--",
+      "CRC": "CD605A83",
+      "Encrypted": "-",
+      "Method": "LZMA2:26",
+      "Block": "0"
+    },
+    {
+      "Path": "retroarch/assets/cores/Sega - Mega Drive - Genesis/Ultimate Tetris.md",
+      "Size": "851673",
+      "Packed Size": "",
+      "Modified": "2026-11-03 19:03:17.0000000",
+      "Attributes": "A -rw-r--r--",
+      "CRC": "5E2ADCF8",
+      "Encrypted": "-",
+      "Method": "LZMA2:26",
+      "Block": "0"
+    }
+  ],
+  "limitations": [
+    "Filename inventory only; embedded strings and zipped content are outside this inspection.",
+    "This later dated archive has no asserted byte identity with the pinned web pairs.",
+    "The full archive SHA-256 and payload CRCs were not checked by this header-only inspection."
+  ],
+  "candidateInterpretation": "The three extension matches are .md cartridge-content entries in the Sega Mega Drive asset directory. Source/build/notice record filenames were not identified by the search."
+}

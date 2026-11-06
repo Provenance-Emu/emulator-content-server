@@ -79,8 +79,16 @@ mapping remains unverified for all 50 profiles. The inspected
 [nightly index](https://buildbot.libretro.com/nightly/emscripten/) and
 [build instructions](https://github.com/libretro/RetroArch/blob/master/pkg/emscripten/README.md)
 provide artifact locations and frontend-linking guidance. A corresponding receipt
-for ECS's pinned pairs remains outstanding. Full nightly-archive contents also
-remain an inspection gap.
+for ECS's pinned pairs remains outstanding.
+
+A subsequent [header-only nightly inspection](./upstream-nightly-header-2026-11-05.json)
+listed 898 entries, 100 runtime pairs and 59 asset indexes in the November 4
+archive. It downloaded the first 32 bytes and final 1 MiB, then decoded the 7-Zip
+filename inventory from a sparse file. The source/build/notice filename search
+matched three `.md` cartridge-content entries in the Sega asset directory.
+Embedded metadata and zipped content remain outside this inspection. Payload
+CRCs, whole-archive SHA-256 and identity with the pinned web pairs remain
+unverified. The inspected archive URL and downloaded range hashes are recorded.
 
 Closing that gap requires a source/build record tying each exact loader/WASM hash
 to core/frontend revisions, SDK/compiler, flags, patches and applicable source and

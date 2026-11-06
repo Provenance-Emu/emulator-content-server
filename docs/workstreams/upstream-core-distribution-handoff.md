@@ -53,8 +53,11 @@ and their independent expected IDs for offline reuse of older cache entries.
    Their existing core-info hashes and license facts remain retained. The audit
    enumerates every affected profile. Closing this requires a receipt tying the
    pinned resource hashes to complete core/frontend/SDK revisions, flags, patches,
-   source and applicable notice records. Full nightly-archive inspection remains
-   outstanding. A current repository head cannot supply historical build proof.
+   source and applicable notice records. A range-based nightly header inspection
+   records 100 runtime pairs and 59 asset indexes. Named source/build receipt
+   files were absent from its search results. Embedded/zipped metadata and payload
+   identity remain inspection gaps. A current repository head cannot supply
+   historical build proof.
 2. Named notice inventories preserve available files. Inline copyright headers,
    exact linked-dependency applicability and notice-completeness review remain
    open. The archived source and pinned SDK notice files are the evidence base.
