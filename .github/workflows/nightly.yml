@@ -259,7 +259,7 @@ jobs:
           [Installation and testing guide](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md)
           [Build and smoke-test evidence](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
 
-          **Desktop app** opens the library and connects to an existing server. **Standalone server** is the command-line package for the computer hosting the library. After extracting it, follow the [start commands](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md#start-the-server).
+          **Desktop app** opens the library and connects to an existing server. **Standalone server** is the command-line package for the computer hosting the library. Use the [one-command installer](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md#install-with-one-command) or follow the [manual start commands](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/operations/nightly-builds.md#start-the-server).
 
           Linux and Windows desktop installers are unsigned. $mac_note
 

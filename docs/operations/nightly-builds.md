@@ -2,6 +2,26 @@
 
 Download from the stable [nightly release](https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly). CI refreshes the server packages and desktop installers after the nightly matrix passes. The release notes link the exact source commit and build run. A failed matrix leaves the previous nightly in place. Back up your data before upgrading. Restoring that backup is required to downgrade a database.
 
+## Install with one command
+
+On Apple Silicon macOS or Linux x64, paste this in Terminal.
+
+```sh
+curl -qfsSL https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/scripts/install-server.sh | bash
+```
+
+On Windows x64, paste this in PowerShell.
+
+```powershell
+& ([ScriptBlock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/scripts/install-server.ps1')))
+```
+
+Choose **Nightly** or **Release**. Release selects the most recent tagged server package for your platform when one is available. The installer verifies the download and starts a per-user service. It offers the desktop app if the selected build includes one and your session supports it. On Linux, run as your own user with systemd and Python 3 available. A headless Linux install enables systemd lingering when the account has permission so the server can stay up after logout.
+
+Open <http://127.0.0.1:8473/ui/> on the host and use the one-time setup code from the file named by the installer. For an existing service, use its **Settings → Updates** or the [upgrade instructions](#upgrades-and-maintainer-operation).
+
+To install a fresh headless nightly without prompts, append `-s -- nightly server` to `bash` on macOS or Linux, or `-Channel nightly -Components server` to the PowerShell command.
+
 ## Choose a download
 
 | System | Standalone server (includes Node and web UI) | Desktop app |
