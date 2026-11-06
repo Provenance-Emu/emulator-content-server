@@ -1727,9 +1727,7 @@
       ],
       "declaredLicenseExpression": "MIT AND (MIT OR Unlicense)",
       "scope": "rdds.c asserts bcdec0.97 derivation and MIT/Unlicense choice. Exact original choice grant absent from this source file.",
-      "issues": [
-        "Need pinned bcdec0.97 upstream grant text and independent provenance pointer for derived block core. Current file includes own MIT grant and descriptive public-domain/MIT claim."
-      ],
+      "issues": [],
       "sourceArchives": [
         {
           "build": "org.libretro.atari800",
@@ -1781,7 +1779,8 @@
         }
       ],
       "inputIndexes": [1257],
-      "noticeIndexes": [135, 136, 637]
+      "noticeIndexes": [135, 136, 637],
+      "supplementaryNoticeReference": "upstreamBcdec.notices retains the historical version0.97 choice grant identified by this source."
     },
     {
       "id": "frontend-ppmd",

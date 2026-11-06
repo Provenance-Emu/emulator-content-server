@@ -209,3 +209,39 @@ test('collector CLI follows a symlinked entry point and writes its output', () =
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('full-file scans count lines incrementally for many separate notice groups', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ecs-notice-many-'));
+  try {
+    for (const directory of ['source', 'sdk', 'capture']) mkdirSync(join(root, directory));
+    writeFileSync(
+      join(root, 'source', 'generated.c'),
+      '/* Copyright Generated Author */ int generated;\n'.repeat(25000),
+    );
+    writeFileSync(join(root, 'capture', 'deps.d'), 'out.o: generated.c\n');
+    writeFileSync(
+      join(root, 'capture', 'commands.jsonl'),
+      `${JSON.stringify({ cwd: join(root, 'source'), args: ['clang', '-c', 'generated.c'], exitCode: 0, dependencyFile: join(root, 'capture/deps.d') })}\n`,
+    );
+    const output = join(root, 'output.json');
+    const result = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL('./browser-core/collect-build-notices.mjs', import.meta.url)),
+        join(root, 'capture'),
+        join(root, 'source'),
+        join(root, 'sdk'),
+        output,
+      ],
+      { timeout: 4000, encoding: 'utf8' },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    const spans = JSON.parse(readFileSync(output, 'utf8')).inputs[0].inlineNotices;
+    assert.equal(spans.length, 25000);
+    assert.equal(spans.at(-1).startLine, 25000);
+    assert.equal(spans.at(-1).endLine, 25000);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

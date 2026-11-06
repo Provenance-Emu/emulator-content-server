@@ -462,8 +462,8 @@
   ],
   "modernMatrix": {
     "path": "docs/operations/component-notice-audit-2026-11-06.json",
-    "sha256": "aaa1fe41451ab3db5be0a774b93b73382e277f0955abdf59e6a72a660fba41e7",
-    "sizeBytes": 707762
+    "sha256": "96527b71f80f0f273cc54159e24cf841915930fad4748f89c9b66ea6598e3079",
+    "sizeBytes": 707705
   },
   "noticeInventory": {
     "path": "docs/operations/legacy-build-notices-2026-11-06.json",
@@ -627,13 +627,12 @@
       },
       "declaredLicenseExpression": "BSD-3-Clause",
       "scope": "",
-      "issues": [
-        "Source/archive contains SPDX-style license:BSD-3-Clause and copyright attribution, but no complete narrow BSD3 grant file. Exact upstream grant text could supplement the archived identifier."
-      ],
+      "issues": [],
       "upstreamNotices": [],
       "inputCount": 2,
       "inputPaths": ["source/fceumm/src/boards/pic16c5x.c", "source/fceumm/src/boards/pic16c5x.h"],
-      "noticePointers": []
+      "noticePointers": [],
+      "supplementaryNoticeReference": "modernMatrix.supplementaryNotices retains full BSD-3-Clause text alongside the archived SPDX identifier and attribution."
     },
     {
       "id": "fceumm-md5",

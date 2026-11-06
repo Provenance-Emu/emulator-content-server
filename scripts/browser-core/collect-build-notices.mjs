@@ -54,6 +54,14 @@ function inlineNotices(bytes) {
       previous.end = match.index + match[0].length;
     else groups.push({ start: match.index, end: match.index + match[0].length });
   }
+  let scannedBytes = 0;
+  let currentLine = 1;
+  function lineAt(offset) {
+    for (; scannedBytes < offset; scannedBytes++) {
+      if (text.charCodeAt(scannedBytes) === 10) currentLine++;
+    }
+    return currentLine;
+  }
   const result = [];
   for (const { start, end } of groups) {
     if (
@@ -65,8 +73,8 @@ function inlineNotices(bytes) {
     result.push({
       startByte: start,
       endByte: end,
-      startLine: text.slice(0, start).split('\n').length,
-      endLine: text.slice(0, end - 1).split('\n').length,
+      startLine: lineAt(start),
+      endLine: lineAt(end - 1),
       sizeBytes: end - start,
       sha256: hash(bytes.subarray(start, end)),
     });
