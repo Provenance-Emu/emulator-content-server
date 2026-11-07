@@ -1,0 +1,50 @@
+name: Diagnose upstream VitaQuake2 reconstruction
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-vitaquake2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  linux-vitaquake2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SOURCE_DATE_EPOCH: '1793318400'
+      EMCC_CORES: '2'
+      BINARYEN_CORES: '2'
+      LC_ALL: C.UTF-8
+      EMCC_DEBUG: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check diagnostic comparison logic
+        run: python3 scripts/browser-core/reconstruct-vitaquake2.py --self-test
+      - name: Install archive reader and pinned SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y p7zip-full
+          git clone --quiet https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          git -C "$RUNNER_TEMP/emsdk" checkout --detach 93360d3670018769b424e4e8f1d3d9b26d32c977
+          "$RUNNER_TEMP/emsdk/emsdk" install 3.1.46
+          "$RUNNER_TEMP/emsdk/emsdk" activate 3.1.46
+      - name: Reconstruct and compare the pinned pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          python3 scripts/browser-core/reconstruct-vitaquake2.py \
+            --sdk "$RUNNER_TEMP/emsdk" --output "$RUNNER_TEMP/vitaquake2-diagnostic"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vitaquake2-linux-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/vitaquake2-diagnostic/evidence/
+          if-no-files-found: warn
+          retention-days: 14
