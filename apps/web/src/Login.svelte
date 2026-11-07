@@ -11,6 +11,8 @@
     setup = false,
     setupCode,
     revealSetupCode,
+    simple = false,
+    onbusy = () => {},
   }: {
     client: ContentClient;
     origin: string;
@@ -19,6 +21,8 @@
     setup?: boolean;
     setupCode?: string;
     revealSetupCode?: () => Promise<void>;
+    simple?: boolean;
+    onbusy?: (busy: boolean) => void;
   } = $props();
 
   let token = $state('');
@@ -28,8 +32,9 @@
   let working = $state(false);
   let failure = $state<string | null>(null);
   let disposed = false;
+  $effect(() => { onbusy(working); });
   $effect(() => { if (setup && setupCode) token = setupCode; });
-  onDestroy(() => { disposed = true; password = ''; token = ''; });
+  onDestroy(() => { disposed = true; password = ''; token = ''; onbusy(false); });
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -81,9 +86,9 @@
     <p class="sign-in-intro">Sign in to browse your games, download them to an emulator, or play supported games in your browser.</p>
   {/if}
   <form class="stack sign-in-form" onsubmit={submit} aria-busy={working}>
-    {#if setup}
+    {#if setup && !(simple && setupCode)}
       <label>
-        Setup code (bootstrap token)
+        {simple ? 'Setup code' : 'Setup code (bootstrap token)'}
         <input type="password" bind:value={token} autocomplete="off" required disabled={working} />
       </label>
     {/if}
@@ -105,12 +110,12 @@
       />
     </label>{/if}
     <button type="submit" class="primary" disabled={working}>
-      {working ? (setup ? 'Creating your account…' : 'Signing in…') : setup ? 'Create owner' : useToken ? 'Connect with token' : 'Sign in'}
+      {working ? (setup ? 'Creating your account…' : 'Signing in…') : setup ? simple ? 'Create account' : 'Create owner' : useToken ? 'Connect with token' : 'Sign in'}
     </button>
   </form>
   {#if !setup}
     <p class="sign-in-help dim">Use the account provided by the person who manages this library. If this is your library, use the account you created during setup.</p>
-    <button class="text-button" type="button" disabled={working} onclick={() => { useToken = !useToken; token = ''; password = ''; failure = null; }}>{useToken ? 'Use username and password' : 'Use an access token'}</button>
+    <details open={!simple || useToken}><summary>More sign-in options</summary><button class="text-button" type="button" disabled={working} onclick={() => { useToken = !useToken; token = ''; password = ''; failure = null; }}>{useToken ? 'Use username and password' : 'Use an access token'}</button></details>
     <p class="dim">This browser stays signed in until the session expires or you sign out.</p>
   {/if}
   {#if failure}

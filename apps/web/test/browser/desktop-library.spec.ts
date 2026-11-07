@@ -10,6 +10,7 @@ test('bundled desktop library shares sign-out across windows and downloads via t
   context,
   fixture,
 }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('ecs.tray.setup.skipped', '1'));
   const root = resolve('../tray/dist');
   const server = createServer(async (request, response) => {
     const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
@@ -24,7 +25,8 @@ test('bundled desktop library shares sign-out across windows and downloads via t
         : file.endsWith('.css')
           ? 'text/css'
           : 'text/javascript';
-      response.writeHead(200, { 'content-type': type }).end(await readFile(file));
+      const content = await readFile(file);
+      response.writeHead(200, { 'content-type': type }).end(content);
     } catch {
       response.writeHead(404).end();
     }

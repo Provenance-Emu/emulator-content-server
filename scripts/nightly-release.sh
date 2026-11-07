@@ -26,7 +26,7 @@ write_nightly_notes() {
   case "$mac_status" in
     fresh)
       mac_download="[**Download for Mac (.dmg)**]($download/Emulation-Server-nightly-macos-arm64.dmg)"
-      mac_setup='Drag the app into Applications. To host a library here, choose **Open Library → Set up this Mac**. The owner form fills in your setup code.'
+      mac_setup='Drag the app into Applications, then choose **Open Library**. Choose **Set up this computer** or **Connect to another computer**, and follow the setup guide.'
       mac_build='Apple notarized this Mac download.'
       ;;
     retained)
@@ -57,7 +57,7 @@ write_nightly_notes() {
 | **Windows (64-bit)** | [**Download for Windows (.msi)**]($download/Emulation-Server-nightly-windows-x64.msi) | Run the installer and open Emulation Server. |
 | **Linux (64-bit)** | [**Ubuntu (.deb)**]($download/Emulation-Server-nightly-linux-x64.deb) or [**AppImage**]($download/Emulation-Server-nightly-linux-x64.AppImage) | Install the DEB or make the AppImage executable and open it. |
 
-**Already have a server?** Open the desktop app, choose **Open Library**, and enter your server address.
+**Already have a server?** In **Open Library**, choose **Connect to another computer**. If a library is already open, choose **Add another computer**. Enter the computer’s name or server address and follow the sign-in steps.
 
 ## Set up a server
 

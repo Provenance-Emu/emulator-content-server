@@ -7,7 +7,8 @@
   import { clearSession, loadSession, saveSession } from '../lib/session';
   import { startPlayer, type PlayerSelection } from './controller.js';
   import { allItems } from './preflight.js';
-  import { type BrowserCore, contentExtensions, importBrowserRuntime, validateProfile } from './runtime.js';
+  import { supportsContentName } from './archive.js';
+  import { type BrowserCore, importBrowserRuntime, validateProfile } from './runtime.js';
   import SaveControls from './SaveControls.svelte';
   import SaveRecovery from './SaveRecovery.svelte';
   import Tabs from '../components/Tabs.svelte';
@@ -218,7 +219,7 @@
         system=item.systemIdentifier;name=file.relativePath;title=item.title;size=file.size;targets=[item];
       }
       if(/\.(gdi|ccd|m3u)$/i.test(name))throw new Error('This disc layout needs a compatible media profile.');
-      const compatibleProfiles=available.filter(profile=>{try{validateProfile(profile);return profile.systems.includes(system??'') && size>0 && size<=profile.maxContentBytes && contentExtensions(profile).some(extension=>name.toLowerCase().endsWith(`.${extension}`));}catch{return false;}});
+      const compatibleProfiles=available.filter(profile=>{try{validateProfile(profile);return profile.systems.includes(system??'') && size>0 && size<=profile.maxContentBytes && supportsContentName(profile,name);}catch{return false;}});
       if(!compatibleProfiles.length)throw new Error('No installed emulator supports this game file. Download it to use another emulator.');
       if(profileId&&!compatibleProfiles.some(profile=>profile.id===profileId))throw new Error('The selected emulator profile does not support this game.');
       if(disposed||run!==generation)return;

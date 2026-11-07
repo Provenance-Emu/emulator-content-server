@@ -3,7 +3,11 @@ import test from 'node:test';
 import { get } from 'svelte/store';
 import { createApplication } from '../../web/src/lib/application.js';
 import { AccessDesk } from '../src/lib/access.js';
-import { createDesktopContext, createDesktopSelection } from '../src/lib/application.js';
+import {
+  connectionAddress,
+  createDesktopContext,
+  createDesktopSelection,
+} from '../src/lib/application.js';
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -297,4 +301,19 @@ test('a status login finishing after profile replacement cannot restore A into e
     selection.dispose();
     globalThis.fetch = previous;
   }
+});
+
+test('desktop connection accepts computer names and UI URLs without accepting credentials or protocols', () => {
+  assert.equal(connectionAddress(' Studio.local '), 'http://studio.local:8473');
+  assert.equal(connectionAddress('192.168.1.20:9000'), 'http://192.168.1.20:9000');
+  assert.equal(connectionAddress('https://library.example/ui/'), 'https://library.example');
+  assert.equal(connectionAddress('http://localhost:8473'), 'http://localhost:8473');
+  for (const value of [
+    '',
+    'file:///tmp/library',
+    'https://owner:password@library.example',
+    'https://library.example/api/v1',
+    'https://library.example/?token=secret',
+  ])
+    assert.throws(() => connectionAddress(value));
 });
