@@ -1417,3 +1417,41 @@ test('known games use the best front cover across edition differences while reje
     'another dump of a saved game may use the cover',
   );
 });
+
+test('a catalog entry for another dump cannot poison covers of a saved game', () => {
+  const request: matching.MatchingInput = {
+    ...input,
+    facts: facts({
+      hashes: [{ algorithm: 'md5', value: md5, size: 4, representation: 'raw', verified: true }],
+    }),
+    selectedMetadata: {
+      id: 'saved',
+      revision: 1,
+      title: 'Original Game v1.04',
+      systemId,
+      metadata: { systemId },
+    },
+  };
+  const otherDump = {
+    ...candidate({ md5: 'f'.repeat(32), hashSize: '4', systemId }),
+    title: 'Original Game',
+  };
+  const cover: matching.MatchCandidate = {
+    id: 'cover',
+    kind: 'artwork',
+    title: 'Original Game (World)',
+    confidence: 'name',
+    metadata: { systemId, artworkRole: 'front', identityConflict: 'true' },
+  };
+  assert.equal(matching.hasIdentityConflict(request, [otherDump]), true);
+  assert.equal(matching.hasIdentityConflict(request, [otherDump], cover), false);
+  assert.ok(matching.automaticMatchRank(request, cover) > 0);
+  assert.equal(
+    matching.automaticMatchRank(request, {
+      ...cover,
+      metadata: { ...cover.metadata, md5: 'f'.repeat(32), hashSize: '4' },
+    }),
+    0,
+    'actual candidate byte contradictions still block',
+  );
+});

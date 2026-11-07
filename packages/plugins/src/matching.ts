@@ -862,14 +862,32 @@ export function automaticEvidence(
       savedSelectionEvidence(input, candidate, allArtworkRoles))
   );
 }
+function savedGameCoverScore(input: MatchingInput, candidate: MatchCandidate): number {
+  const saved = input.selectedMetadata;
+  if (
+    !saved ||
+    discIdentityConflict(input) ||
+    candidate.kind !== 'artwork' ||
+    (candidate.metadata.artworkRole ?? 'front') !== 'front' ||
+    saved.systemId !== input.systemId ||
+    candidate.metadata.systemId !== saved.systemId ||
+    input.facts?.identifiers.some(
+      (id) => id.verified && id.systemId && id.systemId !== saved.systemId,
+    )
+  )
+    return 0;
+  return artworkGameScore(saved.title, candidate.title);
+}
+
 /** Rank server-checked evidence for automatic library filling without relying on list order. */
 export function automaticMatchRank(
   input: MatchingInput,
   candidate: MatchCandidate & { providerId?: string },
 ): number {
+  const knownCover = savedGameCoverScore(input, candidate);
   if (
     discIdentityConflict(input) ||
-    candidate.metadata.identityConflict === 'true' ||
+    (candidate.metadata.identityConflict === 'true' && !knownCover) ||
     candidate.metadata.matchEvidence === 'identity-conflict' ||
     (input.systemId &&
       candidate.metadata.systemId &&
@@ -901,28 +919,17 @@ export function automaticMatchRank(
   if (candidate.kind === 'artwork') {
     const anchor = selectedArtworkAnchor(input);
     // Saved game identity also covers alternate dumps/editions; never reuse their ROM hashes.
-    const saved = input.selectedMetadata;
-    const coverTitle =
-      candidate.metadata.artworkRole === 'front' &&
-      saved?.systemId === input.systemId &&
-      !input.facts?.identifiers.some(
-        (id) => id.verified && id.systemId && id.systemId !== saved.systemId,
-      )
-        ? saved?.title
-        : undefined;
-    const titles = anchor?.titles ?? (coverTitle ? [coverTitle] : []);
-    const score = titles.length
-      ? Math.max(
-          0,
-          ...titles.map((title) =>
-            candidate.metadata.artworkRole === 'front'
-              ? artworkGameScore(title, candidate.title)
-              : artworkTitleMatches(title, candidate.title)
-                ? 100
-                : 0,
-          ),
-        )
-      : 0;
+    const titles = anchor?.titles ?? [];
+    const score = Math.max(
+      knownCover,
+      ...titles.map((title) =>
+        candidate.metadata.artworkRole === 'front'
+          ? artworkGameScore(title, candidate.title)
+          : artworkTitleMatches(title, candidate.title)
+            ? 100
+            : 0,
+      ),
+    );
     if (candidate.metadata.systemId === input.systemId && score > 0) return 2 + score / 1000;
   }
   if (automatic) return savedSelectionEvidence(input, candidate, true) ? 2 : 1;
@@ -999,6 +1006,13 @@ export function hasIdentityConflict(
   candidates: readonly MatchCandidate[],
   candidate?: MatchCandidate,
 ): boolean {
+  // An alternate dump's checksum does not contradict the artwork of a saved game.
+  if (
+    candidate &&
+    savedGameCoverScore(input, candidate) > 0 &&
+    !assessEvidence(input, candidate.metadata).conflict
+  )
+    return false;
   return candidates.some((conflict) => {
     if (conflict.kind !== 'metadata' || !assessEvidence(input, conflict.metadata).conflict)
       return false;
