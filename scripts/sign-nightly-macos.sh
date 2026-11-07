@@ -56,7 +56,22 @@ if ! jq -e '.status == "Accepted"' "$result" >/dev/null; then
   exit 1
 fi
 xcrun stapler staple "$dmg"
-xcrun stapler validate "$dmg"
+# Stapler's exit code also covers invalid tickets. Retry only URL transport errors.
+for attempt in 1 2 3; do
+  if validation=$(xcrun stapler validate "$dmg" 2>&1); then
+    printf '%s\n' "$validation"
+    break
+  else
+    status=$?
+  fi
+  printf '%s\n' "$validation" >&2
+  if (( attempt == 3 )) || ! [[ $validation =~ Domain=NSURLErrorDomain[[:space:]]Code=-(1001|1004|1005)($|[[:space:]]) ]]; then
+    exit "$status"
+  fi
+  delay=$((attempt * 5))
+  printf 'Ticket validation hit a network error (attempt %s/3). Retrying in %s seconds.\n' "$attempt" "$delay" >&2
+  sleep "$delay"
+done
 hdiutil verify "$dmg" >/dev/null
 spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
 hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$dmg" >/dev/null
