@@ -1,0 +1,1315 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-07T06:55:56.421104+00:00",
+  "status": "completed-bounded-investigation",
+  "scope": "Continued investigation of two pinned runtime mismatches using structural diagnostics, preserved object inputs and controlled link replays. Exact resource hashes, sizes and direct byte comparisons determine runtime equality independently of diagnostic normalization.",
+  "counts": {
+    "profilesInvestigated": 2,
+    "newExactRuntimePairs": 0,
+    "cumulativeExactRuntimePairs": 48,
+    "totalPinnedRuntimePairs": 50,
+    "remainingMismatches": 2
+  },
+  "previousFrozenReport": {
+    "path": "/Users/jmattiello/.codex/worktrees/web-app-redesign/emulator-content-server/docs/operations/upstream-reconstructions-2026-11-06.json",
+    "sha256": "5322feffa54401d01741ea2f5dfdaaea3eaabfd98c66003dfd1bbb60e4ceefd7",
+    "sizeBytes": 14625083
+  },
+  "sdkArchiveSourceReconstruction": {
+    "path": "/Users/jmattiello/.codex/worktrees/web-app-redesign/emulator-content-server/docs/operations/sdk-archive-reconstruction-2026-11-07.json",
+    "sha256": "cfd2e53939b51adeb91c8c09df3d714ffad238ed037982545f534c9fd6c42605",
+    "sizeBytes": 13512800
+  },
+  "collector": {
+    "currentSource": {
+      "path": "/Users/jmattiello/.codex/worktrees/web-app-redesign/emulator-content-server/scripts/browser-core/compare-upstream-wasm.py",
+      "sha256": "0e689566aca235d6403d3452528c214a07cb617f366c241873af92f83e7cf2c2",
+      "sizeBytes": 41258
+    },
+    "currentSafetyRegression": {
+      "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/collector-exclusive-receipt.json",
+      "sha256": "00750d99a33fb7de163a7462c0feec8cb5496fcd63e5dfd9cf1675fd1d1b91f6",
+      "sizeBytes": 719
+    },
+    "vitaDatasetSource": {
+      "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/compare-upstream-wasm-8dcc6c.py",
+      "sha256": "8dcc6c554d7af45b06f4e2e13a9e5db5acf1223576bb0f9ea943c72f57b803af",
+      "sizeBytes": 38039
+    },
+    "hostedFbNeoDatasetSource": {
+      "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/compare-upstream-wasm-before-exclusive-88076f7ccd3f62c2119b390455887aba91553e77fab75e3aee6754e8ed9656b5.py",
+      "sha256": "88076f7ccd3f62c2119b390455887aba91553e77fab75e3aee6754e8ed9656b5",
+      "sizeBytes": 38427
+    },
+    "scope": "The recorded datasets bind their actual collector source bytes. Later formatting preserves analysis semantics, and the current CLI creates output exclusively with alias/existing-file regressions. Complete numeric operands support subsequent analysis without serializing function body bytes.",
+    "canonicalizationScope": {
+      "referenceFingerprint": "Preserves the function signature, instruction opcodes, locals, branch depths, memory operands, constants and literal float bits. Replaces function references with their parameter/result signatures, type indices with signatures, and global references with value type/mutability. Function and global identity within the same signature/type can merge under this normalization.",
+      "layoutFingerprint": "Applies reference normalization and replaces i32.const values within the module's initialized data address span and load/store offsets within that span with address markers. Other integer constants and memory offsets are preserved. Numeric values within that span can merge with addresses under this normalization.",
+      "opcodeShapeFingerprint": "Preserves the function signature, local declarations and instruction opcode sequence, including extended subopcodes, block types and call/global type signatures. Drops other immediates. Functions with different constants, branch targets or operand indices can merge under this normalization.",
+      "operandMetadata": "Per-function integerConstants and functionReferences are complete numeric triples [zero-based instruction ordinal, opcode, value or function index]. indirectReferences are [ordinal, opcode, type index, table index]. Ordinals count decoded instructions after local declarations. Unsupported instructions make operandMetadataComplete false.",
+      "purpose": "Diagnostic correspondence hints. Exact resource and body byte comparisons remain independent of these fingerprints.",
+      "unsupportedInstructions": "An unsupported instruction leaves both canonical fingerprints unavailable for that function and records its opcode and byte offset. Its exact body fingerprint remains available."
+    }
+  },
+  "profiles": [
+    {
+      "id": "org.libretro.vitaquake2",
+      "status": "runtime-pair-mismatch",
+      "sourceMapping": "unverified",
+      "coreRevision": "4b333fe18e8816974f04432af01f87654ae16e21",
+      "frontendRevision": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "sourceArchives": [
+        {
+          "role": "core",
+          "repository": "libretro/vitaquake2",
+          "revision": "4b333fe18e8816974f04432af01f87654ae16e21",
+          "url": "https://codeload.github.com/libretro/vitaquake2/tar.gz/4b333fe18e8816974f04432af01f87654ae16e21",
+          "sha256": "c91570472a0f9265d9166496bd80b7950e52555d8ea521ae0a62feade4468429",
+          "sizeBytes": 2677193
+        },
+        {
+          "role": "frontend",
+          "repository": "libretro/RetroArch",
+          "revision": "6ebf66b6433235d582e627fc802ff4b966613720",
+          "url": "https://codeload.github.com/libretro/RetroArch/tar.gz/6ebf66b6433235d582e627fc802ff4b966613720",
+          "sha256": "b8a1a7ed3019bcd6621bffc4cb69039649c48c7c54b73621e16803bf9033f9e5",
+          "sizeBytes": 82616406
+        }
+      ],
+      "resources": [
+        {
+          "file": "vitaquake2_libretro.js",
+          "sha256": "e08efe6b2e892a5d4fafe81f0a3f16dd080746660dece9731859d7bec0c817d1",
+          "sizeBytes": 270624,
+          "expectedSha256": "e08efe6b2e892a5d4fafe81f0a3f16dd080746660dece9731859d7bec0c817d1",
+          "expectedSizeBytes": 270624,
+          "hashAndSizeMatch": true,
+          "directByteEquality": true,
+          "priorRebuildDirectByteEquality": true,
+          "comparisonLocation": "local-retained-output",
+          "retainedOutputPath": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-link-control-argv/vitaquake2_libretro.js",
+          "retainedOriginalPath": "/var/tmp/ecs-upstream-mapping-research-2026-11-06/archive-pairs/vitaquake2_libretro.js"
+        },
+        {
+          "file": "vitaquake2_libretro.wasm",
+          "sha256": "3ef5e2579008d4355675724036ec02d9955e67f33b45df8ce1796a61c3e8f4ae",
+          "sizeBytes": 4546370,
+          "expectedSha256": "30ea55b6256cbd5aa8a5f8fd8a58ca34b0bb4f7c72c462ec3888465e7a8a9e83",
+          "expectedSizeBytes": 4546368,
+          "hashAndSizeMatch": false,
+          "directByteEquality": false,
+          "priorRebuildDirectByteEquality": true,
+          "comparisonLocation": "local-retained-output",
+          "retainedOutputPath": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-link-control-argv/vitaquake2_libretro.wasm",
+          "retainedOriginalPath": "/var/tmp/ecs-upstream-mapping-research-2026-11-06/archive-pairs/vitaquake2_libretro.wasm"
+        }
+      ],
+      "effectiveHeapAuditCorrection": {
+        "schemaVersion": 1,
+        "id": "org.libretro.vitaquake2",
+        "status": "prior-effective-heap-field-corrected",
+        "scope": "Audit correction of requested Make MEMORY argument versus effective pinned frontend INITIAL_HEAP and actual WASM memory. Runtime bytes and the original recorded commands are preserved.",
+        "frozenReport": {
+          "path": "/Users/jmattiello/.codex/worktrees/web-app-redesign/emulator-content-server/docs/operations/upstream-reconstructions-2026-11-06.json",
+          "sha256": "5322feffa54401d01741ea2f5dfdaaea3eaabfd98c66003dfd1bbb60e4ceefd7",
+          "sizeBytes": 14625083
+        },
+        "correctedField": {
+          "jsonPath": "$.profiles[?(@.id == \"org.libretro.vitaquake2\")].buildRecipeEvidence.effectiveFrontendHeapBytes",
+          "priorValue": 402653184,
+          "effectiveValue": 134217728
+        },
+        "relatedPriorInvestigationField": {
+          "receipt": {
+            "path": "/var/tmp/ecs-upstream-reconstructions-2026-11-06/vitaquake2-investigation.json",
+            "sha256": "4f014967f34e4b4d1c575e5485d73624845be2c7ed278f96864fa565a9a66f05",
+            "sizeBytes": 20046
+          },
+          "jsonPath": "$.frontendHeapBytes",
+          "priorValue": 402653184,
+          "effectiveValue": 134217728
+        },
+        "requestedArgument": "MEMORY=402653184",
+        "effectiveMakeVariable": "INITIAL_HEAP",
+        "actualLinkArgument": "--initial-memory=134217728",
+        "sourceMakefile": {
+          "path": "/var/tmp/ecs-upstream-rebuild-probe-2026-11-06/frontend/Makefile.emscripten",
+          "sha256": "f9e8f0d2465d9f54043926823110cdec572d33247db2ae447ec3575a8b2172c2",
+          "sizeBytes": 11143,
+          "sourceArchiveRevision": "6ebf66b6433235d582e627fc802ff4b966613720",
+          "url": "https://github.com/libretro/RetroArch/blob/6ebf66b6433235d582e627fc802ff4b966613720/Makefile.emscripten",
+          "defaultLine": 129,
+          "useLine": 189
+        },
+        "recordedBuildLog": {
+          "path": "/var/tmp/ecs-upstream-reconstructions-2026-11-06/vitaquake2/build.log",
+          "sha256": "ddcf9470289d8648f319df4030873b9672aeea2991077d6592ffa342d1e3c1ec",
+          "sizeBytes": 689214
+        },
+        "recoveredExactLinkResponse": {
+          "path": "/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-original-recorded-link.rsp",
+          "sha256": "1b7a6e39b2a0a523c6ffbefa1d7dc79c1aa77e4e87f683eda2843593f81b1518",
+          "sizeBytes": 18347
+        },
+        "originalWasm": {
+          "path": "/var/tmp/ecs-upstream-mapping-research-2026-11-06/archive-pairs/vitaquake2_libretro.wasm",
+          "sha256": "30ea55b6256cbd5aa8a5f8fd8a58ca34b0bb4f7c72c462ec3888465e7a8a9e83",
+          "sizeBytes": 4546368,
+          "memory": {
+            "sectionSha256": "e70f7c44151a148c235a933a21ff5a0a2bcaf7ccb5b1531172db5e83ba2b708e",
+            "limits": [
+              {
+                "flags": 1,
+                "minimum": 2048,
+                "maximum": 32768
+              }
+            ],
+            "initialBytes": 134217728
+          }
+        },
+        "rebuiltWasm": {
+          "path": "/var/tmp/ecs-upstream-reconstructions-2026-11-06/vitaquake2/vitaquake2_libretro.wasm",
+          "sha256": "3ef5e2579008d4355675724036ec02d9955e67f33b45df8ce1796a61c3e8f4ae",
+          "sizeBytes": 4546370,
+          "memory": {
+            "sectionSha256": "e70f7c44151a148c235a933a21ff5a0a2bcaf7ccb5b1531172db5e83ba2b708e",
+            "limits": [
+              {
+                "flags": 1,
+                "minimum": 2048,
+                "maximum": 32768
+              }
+            ],
+            "initialBytes": 134217728
+          }
+        },
+        "memorySectionBytesEqual": true,
+        "sourceMapping": "unverified"
+      },
+      "functionComparison": {
+        "originalDefinedFunctionCount": 6468,
+        "builtDefinedFunctionCount": 6468,
+        "sameDefinedIndexExactBodyCount": 5425,
+        "bodyLengthMultisetsEqual": true,
+        "exactBodyHashMultisetsEqual": false,
+        "referenceSha256": {
+          "originalCompletedCount": 6468,
+          "builtCompletedCount": 6468,
+          "multisetsEqual": false,
+          "originalUnmatchedOccurrences": 827,
+          "builtUnmatchedOccurrences": 827
+        },
+        "layoutSha256": {
+          "originalCompletedCount": 6468,
+          "builtCompletedCount": 6468,
+          "multisetsEqual": false,
+          "originalUnmatchedOccurrences": 806,
+          "builtUnmatchedOccurrences": 806
+        },
+        "opcodeShapeSha256": {
+          "originalCompletedCount": 6468,
+          "builtCompletedCount": 6468,
+          "multisetsEqual": true,
+          "originalUnmatchedOccurrences": 0,
+          "builtUnmatchedOccurrences": 0
+        },
+        "uniqueShapePairCount": 4919,
+        "changedOperandCategoryCounts": {
+          "function-reference": 364,
+          "integer-constant": 687
+        }
+      },
+      "asciiPayloadStringMultisetsEqual": true,
+      "integerCorrespondence": {
+        "uniqueShapePairs": 4919,
+        "changedIntegerOccurrences": 6047,
+        "integerClassificationCounts": {
+          "uninitialized-data-address-candidate": 5764,
+          "function-table-index-with-matching-target-shape": 259,
+          "initialized-data-address-candidate": 19,
+          "negated-initialized-data-address-candidate": 5
+        },
+        "changedFunctionReferenceTargetComparison": {
+          "matching-target-shape": 650
+        },
+        "uninitializedAddressCandidateSpans": [[973184, 27966976], [973184, 27966960]]
+      },
+      "integerValueMappingIsBijective": true,
+      "attribution": {
+        "linkerMetadataFlagsPreserveExactCheckpointBytes": true,
+        "allThreeNamesOnlyStagesPreserveNonCustomSections": true,
+        "finalNonCustomSectionsEqual": true,
+        "definedFunctionCount": 6468,
+        "uniquelyAttributedFunctionCount": 6448,
+        "coreAttributedFunctionCount": 1628,
+        "scope": "Positive function-name provenance. Link-map metadata options preserve exact preoptimizer bytes. Each names-only Binaryen replay reads its original checkpoint and preserves every serialized noncustom section. Later generated names refer to zero-based defined input function ordinals. Duplicate map names retain ambiguous ownership; missing names give no exclusion claim."
+      },
+      "archiveOrderInference": {
+        "status": "historical-order-underdetermined",
+        "currentCoreBssOwnerGroups": 85,
+        "changedAddressMappedCoreGroups": 36,
+        "archiveMemberCount": 167,
+        "sourceEvidence": [
+          {
+            "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/binaryen-order-pass-receipt.json",
+            "sha256": "5a3919f4ddc910fcc0a881d1da0ac0c39b119db3d3e131a8b928c3b64da58c8f",
+            "sizeBytes": 392
+          },
+          {
+            "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/binaryen-istring-receipt.json",
+            "sha256": "38361e4f46a4eddb60bc9eb552e3af22c64961a0e21de4f571e0d8d33e2b7170",
+            "sizeBytes": 371
+          },
+          {
+            "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vita-history-0-receipt.json",
+            "sha256": "13d13d15a833d6ee6262562a3e597bf1bcd4d76dff359814467aa0e7c5d9964e",
+            "sizeBytes": 376
+          },
+          {
+            "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vita-history-1-receipt.json",
+            "sha256": "4edb5a42c4f9295340fb96e5c44c06d21c29bcb5958819a0456fbc59dc747e56",
+            "sizeBytes": 367
+          },
+          {
+            "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vita-commit-7731666-receipt.json",
+            "sha256": "9a07a062acc97aaa11b7f3edb1a2bb0752134d6ae857788edf7231d735e741f9",
+            "sizeBytes": 301
+          }
+        ],
+        "findings": [
+          "Pinned Binaryen ReorderFunctions sorts by static call/export/element use counts and descending function names. Final function indices interleave object ownership.",
+          "Changed-address joins give original relative BSS constraints for 36 core owner groups, including shared.o before rand.o and rearranged game groups.",
+          "Pinned history adds rand.c during the 2020 game/player/monster refactor, which also renames objects. These observations leave the historical full 167-member archive order and cache identity unresolved."
+        ]
+      },
+      "evidence": [
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-link-control/receipt.json",
+          "sha256": "685de6e6c30651081ef7f73fa010ad06195e10288e00219698d2ffc690b1fb45",
+          "sizeBytes": 841
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-link-control/plan.json",
+          "sha256": "94e99c98341141c82a68888000c48b7f41e71097f8828ed7088df4945465e63f",
+          "sizeBytes": 124243
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/replay-vita-link-v1.py",
+          "sha256": "5eb4d2c22fcade05b6ac7e36559e65f64de634e885079493f89d66d0258655f9",
+          "sizeBytes": 6972
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-link-control-argv/receipt.json",
+          "sha256": "157a831a8da9aeb62d7593fd06ee9e5e9df5486f71d9c915dc0ebadb1f0a90a1",
+          "sizeBytes": 2639
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-link-control-argv/plan.json",
+          "sha256": "48cad7d2782d48b480c6ec5b7194fc4bfb8f90bddc7ad464c4cd0fe979cb3287",
+          "sizeBytes": 124188
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/replay-vita-link.py",
+          "sha256": "1d33791b28bff075131574f8121c3cf4bcd68beb6bb184cd727b7515530b684f",
+          "sizeBytes": 7164
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-function-attribution/receipt.json",
+          "sha256": "b464a06496ad2b2c5952ad1f7f69acca6f2b89980c124d16e945f9464c94bdc0",
+          "sizeBytes": 7483
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-function-attribution/linker-control.json",
+          "sha256": "ecc4a2cc1abd7a8c3c3f2520bc97a8a0f71f52f9e733beca5626e62775d98151",
+          "sizeBytes": 42140
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-function-attribution/final-function-attribution.json",
+          "sha256": "89765ec4dc69e6d93d833d9ae337984bbf81142c9cea5dc6e8ebf019b8a24e78",
+          "sizeBytes": 3783289
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/attribute-vita-functions.py",
+          "sha256": "a385daab4607ccfc00d8eb0d66cb784af3c4e07a7aa613ad3be2a68f5114d266",
+          "sizeBytes": 10493
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-baseline-structure.json",
+          "sha256": "eacec91782783f6d38feae3709a807d0d9397605008c25e1b8d0529054599d96",
+          "sizeBytes": 27864106
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-operand-classification.json",
+          "sha256": "a3c3da83a5d913697df8a983a1dbb6c53bde0ae1120b7bc843e2ec6cf9cde221",
+          "sizeBytes": 116103
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/classify-layout-operands.py",
+          "sha256": "1f4e34aa43b30813641f308d3e494b2f239b570ebcb6deca601f933518f29b27",
+          "sizeBytes": 6921
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-bss-map-join.json",
+          "sha256": "42558b85f819df7fff8d527a60f4a43ed35aba597e46ceb66166414727efceea",
+          "sizeBytes": 685071
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/vitaquake2-heap-field-correction.json",
+          "sha256": "de987a7b4eab16a812c97ff08eed5876fbceebb2a9d9c82049a66fdcc058ba98",
+          "sizeBytes": 3304
+        }
+      ],
+      "remaining": "The original pair and its complete historical archive/link input identity remain unresolved."
+    },
+    {
+      "id": "org.libretro.fbneo",
+      "status": "runtime-pair-mismatch",
+      "sourceMapping": "unverified",
+      "coreRevision": "9d82650bb9591966987a4c36ae8a1409ce0d5d68",
+      "frontendRevision": "6ebf66b6433235d582e627fc802ff4b966613720",
+      "sourceArchives": [
+        {
+          "url": "https://codeload.github.com/libretro/fbneo/tar.gz/9d82650bb9591966987a4c36ae8a1409ce0d5d68",
+          "sha256": "671498c5a0cbcfac28a69427800a7f679ad68002da705bbf5e8d5a5ab7ef33ba",
+          "sizeBytes": 27498805,
+          "role": "core",
+          "revision": "9d82650bb9591966987a4c36ae8a1409ce0d5d68"
+        },
+        {
+          "url": "https://codeload.github.com/libretro/RetroArch/tar.gz/6ebf66b6433235d582e627fc802ff4b966613720",
+          "sha256": "b8a1a7ed3019bcd6621bffc4cb69039649c48c7c54b73621e16803bf9033f9e5",
+          "sizeBytes": 82616406,
+          "role": "frontend",
+          "revision": "6ebf66b6433235d582e627fc802ff4b966613720"
+        }
+      ],
+      "resources": [
+        {
+          "file": "fbneo_libretro.js",
+          "sha256": "7e30c26177133ad1d39a2830d05416cdfe52de90ce76b32e4e463fa83e2564ee",
+          "sizeBytes": 272115,
+          "expectedSha256": "485bcaf90ba2097c4e54c264ca14ab9d37aec4ff4e023984759aae2d6cd86399",
+          "expectedSizeBytes": 272115,
+          "originalMatchesCatalogPin": true,
+          "hashAndSizeMatch": false,
+          "directByteEquality": false,
+          "comparisonLocation": "github-actions-runner"
+        },
+        {
+          "file": "fbneo_libretro.wasm",
+          "sha256": "985c92a2cb37cb04b5e3743724d9b172e569a3bee1973b2cb997f113297fda06",
+          "sizeBytes": 42222475,
+          "expectedSha256": "9b4c8d148edb320b8f35d3b5a5ec68f5a06f2c5af086f3bef72b7fcd6882a840",
+          "expectedSizeBytes": 42222119,
+          "originalMatchesCatalogPin": true,
+          "hashAndSizeMatch": false,
+          "directByteEquality": false,
+          "comparisonLocation": "github-actions-runner"
+        }
+      ],
+      "hostedRun": {
+        "url": "https://github.com/Provenance-Emu/emulator-content-server/actions/runs/42347211935",
+        "commit": "acd2a8903e23cc5c8d7f3cf6ad93a1ac7a24aff7",
+        "receipt": {
+          "path": "/var/tmp/ecs-gap-closure-2026-11-07/fbneo-linux-run3/fbneo-linux-diagnostic-42347211935/receipt.json",
+          "sha256": "53dfc21a091f70ffb507aa5f35358878b4374be2dea1acb04d3a236d028ee23d",
+          "sizeBytes": 13231
+        },
+        "runtimeComparison": {
+          "path": "/var/tmp/ecs-gap-closure-2026-11-07/fbneo-linux-run3/fbneo-linux-diagnostic-42347211935/runtime-comparison.json",
+          "sha256": "9c8a0f76e3df88d9a908bb36af7187ebcfce6514be22419c64c37faebb4e3c9f",
+          "sizeBytes": 357418109
+        },
+        "scope": "Both original resource pins and dated archive pin are verified before runner-side direct comparisons. Local analysis verifies every captured source/header snapshot and command/log hash. Runtime outputs are compared on the runner."
+      },
+      "recipeEnvironment": {
+        "SOURCE_DATE_EPOCH": "1793318400",
+        "EMCC_CORES": "2",
+        "BINARYEN_CORES": "2",
+        "LC_ALL": "C.UTF-8",
+        "EMCC_DEBUG": "1",
+        "EM_COMPILER_WRAPPER": "/home/runner/work/emulator-content-server/emulator-content-server/scripts/browser-core/capture-upstream-compiler.py",
+        "ECS_COMPILE_CAPTURE": "/home/runner/work/_temp/fbneo-diagnostic/evidence/capture"
+      },
+      "recipeCommands": [
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": ["git", "-C", "/home/runner/work/_temp/emsdk", "rev-parse", "HEAD"],
+          "exitCode": 0,
+          "log": {
+            "file": "command-01.log",
+            "sha256": "bde94f5bb2332129ffc14774203f97ab7575d3122ae2ffcc0d2400b916f62574",
+            "sizeBytes": 41
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": ["emcc", "--version"],
+          "exitCode": 0,
+          "log": {
+            "file": "command-02.log",
+            "sha256": "812227dae0a627388a9756c996b2b3000308c47d4e044ccdec2c1c0edbf430a5",
+            "sizeBytes": 1311
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": ["/home/runner/work/_temp/emsdk/upstream/bin/wasm-ld", "--version"],
+          "exitCode": 0,
+          "log": {
+            "file": "command-03.log",
+            "sha256": "a0a638373ca6e9c731ed37eac14b1aa1331df58e4b7c998a02bee4c58e78df47",
+            "sizeBytes": 11
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": ["/home/runner/work/_temp/emsdk/upstream/bin/wasm-opt", "--version"],
+          "exitCode": 0,
+          "log": {
+            "file": "command-04.log",
+            "sha256": "e5fdd0eed640429b8141c113aea87e84764385e588bd3baaf528ea0c161834ba",
+            "sizeBytes": 48
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": ["/home/runner/work/_temp/emsdk/node/16.20.0_64bit/bin/node", "--version"],
+          "exitCode": 0,
+          "log": {
+            "file": "command-05.log",
+            "sha256": "a466ed98c82ac00e6a318e77d35abb7119611b10192cf0ede643bab200b268ed",
+            "sizeBytes": 9
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": ["make", "--version"],
+          "exitCode": 0,
+          "log": {
+            "file": "command-06.log",
+            "sha256": "8ee498ee2fc27e8dcdf99191b454077df95e3840d841ec94321748b6d7f36819",
+            "sizeBytes": 297
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": [
+            "7z",
+            "x",
+            "-so",
+            "/home/runner/work/_temp/fbneo-diagnostic/originals.7z",
+            "retroarch/fbneo_libretro.js"
+          ],
+          "exitCode": 0,
+          "log": {
+            "file": "extract-fbneo_libretro.js.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "sizeBytes": 0
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": [
+            "7z",
+            "x",
+            "-so",
+            "/home/runner/work/_temp/fbneo-diagnostic/originals.7z",
+            "retroarch/fbneo_libretro.wasm"
+          ],
+          "exitCode": 0,
+          "log": {
+            "file": "extract-fbneo_libretro.wasm.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "sizeBytes": 0
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic/core/src/burner/libretro",
+          "args": [
+            "emmake",
+            "make",
+            "-j2",
+            "platform=emscripten",
+            "MEMORY=134217728",
+            "GIT_VERSION=9d82650",
+            "GIT_DATE=261029"
+          ],
+          "exitCode": 0,
+          "log": {
+            "file": "command-09.log",
+            "sha256": "025dd620f393b9dd377b82439868518b93881a275244ee8299bd1d775418a46b",
+            "sizeBytes": 8893114
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic/frontend",
+          "args": [
+            "emmake",
+            "make",
+            "-j2",
+            "-f",
+            "Makefile.emscripten",
+            "LIBRETRO=fbneo",
+            "MEMORY=134217728",
+            "GIT_VERSION=6ebf66b"
+          ],
+          "exitCode": 0,
+          "log": {
+            "file": "command-10.log",
+            "sha256": "26d3f92b637ba0aa84b6ddb2bc81b4f0d55b3acf01e0d78c0df66f1e858a6863",
+            "sizeBytes": 1728063
+          }
+        },
+        {
+          "cwd": "/home/runner/work/_temp/fbneo-diagnostic",
+          "args": [
+            "/usr/bin/python3",
+            "/home/runner/work/emulator-content-server/emulator-content-server/scripts/browser-core/compare-upstream-wasm.py",
+            "--original-wasm",
+            "/home/runner/work/_temp/fbneo-diagnostic/originals/fbneo_libretro.wasm",
+            "--built-wasm",
+            "/home/runner/work/_temp/fbneo-diagnostic/frontend/fbneo_libretro.wasm",
+            "--original-js",
+            "/home/runner/work/_temp/fbneo-diagnostic/originals/fbneo_libretro.js",
+            "--built-js",
+            "/home/runner/work/_temp/fbneo-diagnostic/frontend/fbneo_libretro.js",
+            "--output",
+            "/home/runner/work/_temp/fbneo-diagnostic/evidence/runtime-comparison.json"
+          ],
+          "exitCode": 0,
+          "log": {
+            "file": "command-11.log",
+            "sha256": "51dbea5217ce4568fb190ff222927a79b248de1b0c16043a22e544dff407560c",
+            "sizeBytes": 942
+          }
+        }
+      ],
+      "functionComparison": {
+        "originalDefinedFunctionCount": 102390,
+        "builtDefinedFunctionCount": 102390,
+        "sameDefinedIndexExactBodyCount": 270,
+        "bodyLengthMultisetsEqual": false,
+        "exactBodyHashMultisetsEqual": false,
+        "referenceSha256": {
+          "originalCompletedCount": 102390,
+          "builtCompletedCount": 102390,
+          "multisetsEqual": false,
+          "originalUnmatchedOccurrences": 95489,
+          "builtUnmatchedOccurrences": 95489
+        },
+        "layoutSha256": {
+          "originalCompletedCount": 102390,
+          "builtCompletedCount": 102390,
+          "multisetsEqual": false,
+          "originalUnmatchedOccurrences": 89859,
+          "builtUnmatchedOccurrences": 89859
+        },
+        "opcodeShapeSha256": {
+          "originalCompletedCount": 102390,
+          "builtCompletedCount": 102390,
+          "multisetsEqual": false,
+          "originalUnmatchedOccurrences": 11,
+          "builtUnmatchedOccurrences": 11
+        },
+        "uniqueShapePairCount": 24925,
+        "changedOperandCategoryCounts": {
+          "integer-constant": 20950,
+          "function-reference": 8684,
+          "local-index": 1
+        }
+      },
+      "unmatchedStructuralPatterns": {
+        "originalOccurrences": 11,
+        "builtOccurrences": 11,
+        "originalFunctions": [
+          {
+            "functionIndex": 1723,
+            "bodyBytes": 25785,
+            "instructionCount": 11592,
+            "signature": {
+              "params": ["i32"],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 3405,
+            "bodyBytes": 17801,
+            "instructionCount": 8004,
+            "signature": {
+              "params": ["i32"],
+              "results": []
+            }
+          },
+          {
+            "functionIndex": 4325,
+            "bodyBytes": 3095,
+            "instructionCount": 1131,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 5782,
+            "bodyBytes": 13127,
+            "instructionCount": 4835,
+            "signature": {
+              "params": ["i32", "i32"],
+              "results": []
+            }
+          },
+          {
+            "functionIndex": 8125,
+            "bodyBytes": 1248,
+            "instructionCount": 532,
+            "signature": {
+              "params": ["i32"],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 8126,
+            "bodyBytes": 3025,
+            "instructionCount": 1185,
+            "signature": {
+              "params": ["i32", "i32"],
+              "results": []
+            }
+          },
+          {
+            "functionIndex": 8420,
+            "bodyBytes": 9974,
+            "instructionCount": 4803,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 25973,
+            "bodyBytes": 3604,
+            "instructionCount": 1480,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 25975,
+            "bodyBytes": 5333,
+            "instructionCount": 2271,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 25998,
+            "bodyBytes": 2213,
+            "instructionCount": 1046,
+            "signature": {
+              "params": ["i32", "i32", "i32"],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 25999,
+            "bodyBytes": 4967,
+            "instructionCount": 2189,
+            "signature": {
+              "params": ["i32", "i32", "i32", "i32"],
+              "results": []
+            }
+          }
+        ],
+        "builtFunctions": [
+          {
+            "functionIndex": 1723,
+            "bodyBytes": 25785,
+            "instructionCount": 11592,
+            "signature": {
+              "params": ["i32"],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 3409,
+            "bodyBytes": 17793,
+            "instructionCount": 8000,
+            "signature": {
+              "params": ["i32"],
+              "results": []
+            }
+          },
+          {
+            "functionIndex": 4331,
+            "bodyBytes": 3095,
+            "instructionCount": 1131,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 5739,
+            "bodyBytes": 13129,
+            "instructionCount": 4836,
+            "signature": {
+              "params": ["i32", "i32"],
+              "results": []
+            }
+          },
+          {
+            "functionIndex": 8045,
+            "bodyBytes": 1252,
+            "instructionCount": 534,
+            "signature": {
+              "params": ["i32"],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 8046,
+            "bodyBytes": 3029,
+            "instructionCount": 1187,
+            "signature": {
+              "params": ["i32", "i32"],
+              "results": []
+            }
+          },
+          {
+            "functionIndex": 8376,
+            "bodyBytes": 9978,
+            "instructionCount": 4805,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 20044,
+            "bodyBytes": 2217,
+            "instructionCount": 1048,
+            "signature": {
+              "params": ["i32", "i32", "i32"],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 20045,
+            "bodyBytes": 4965,
+            "instructionCount": 2188,
+            "signature": {
+              "params": ["i32", "i32", "i32", "i32"],
+              "results": []
+            }
+          },
+          {
+            "functionIndex": 26679,
+            "bodyBytes": 3602,
+            "instructionCount": 1479,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          },
+          {
+            "functionIndex": 26682,
+            "bodyBytes": 5357,
+            "instructionCount": 2283,
+            "signature": {
+              "params": [],
+              "results": ["i32"]
+            }
+          }
+        ],
+        "attributionScope": "Indices and numeric operand metadata identify structural differences. Object/source ownership of these patterns remains unresolved."
+      },
+      "sections": [
+        {
+          "id": 1,
+          "name": "type",
+          "originalPayloadBytes": 1764,
+          "builtPayloadBytes": 1764,
+          "payloadHashesEqual": false
+        },
+        {
+          "id": 2,
+          "name": "import",
+          "originalPayloadBytes": 3252,
+          "builtPayloadBytes": 3252,
+          "payloadHashesEqual": true
+        },
+        {
+          "id": 3,
+          "name": "function",
+          "originalPayloadBytes": 102464,
+          "builtPayloadBytes": 102464,
+          "payloadHashesEqual": false
+        },
+        {
+          "id": 4,
+          "name": "table",
+          "originalPayloadBytes": 9,
+          "builtPayloadBytes": 9,
+          "payloadHashesEqual": true
+        },
+        {
+          "id": 5,
+          "name": "memory",
+          "originalPayloadBytes": 7,
+          "builtPayloadBytes": 7,
+          "payloadHashesEqual": true
+        },
+        {
+          "id": 6,
+          "name": "global",
+          "originalPayloadBytes": 14,
+          "builtPayloadBytes": 14,
+          "payloadHashesEqual": false
+        },
+        {
+          "id": 7,
+          "name": "export",
+          "originalPayloadBytes": 341,
+          "builtPayloadBytes": 341,
+          "payloadHashesEqual": false
+        },
+        {
+          "id": 9,
+          "name": "element",
+          "originalPayloadBytes": 286900,
+          "builtPayloadBytes": 286900,
+          "payloadHashesEqual": false
+        },
+        {
+          "id": 10,
+          "name": "code",
+          "originalPayloadBytes": 24233791,
+          "builtPayloadBytes": 24233833,
+          "payloadHashesEqual": false
+        },
+        {
+          "id": 11,
+          "name": "data",
+          "originalPayloadBytes": 17593490,
+          "builtPayloadBytes": 17593804,
+          "payloadHashesEqual": false
+        }
+      ],
+      "javascriptDifference": {
+        "scope": "Bounded comparison of every reported aligned JavaScript differing span. All30 differing bytes are covered by these spans.",
+        "alignedByteDifferenceCount": 30,
+        "reportedSpanBytes": 30,
+        "spans": [
+          {
+            "start": 7701,
+            "end": 7704,
+            "originalAddressKeys": ["19245408"],
+            "builtAddressKeys": ["19245552"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 7791,
+            "end": 7794,
+            "originalAddressKeys": ["19245487"],
+            "builtAddressKeys": ["19245631"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 8073,
+            "end": 8076,
+            "originalAddressKeys": ["19245780"],
+            "builtAddressKeys": ["19245924"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 8194,
+            "end": 8198,
+            "originalAddressKeys": ["19245902"],
+            "builtAddressKeys": ["19246046"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 8264,
+            "end": 8268,
+            "originalAddressKeys": ["19245971"],
+            "builtAddressKeys": ["19246115"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 9065,
+            "end": 9068,
+            "originalAddressKeys": ["19246818"],
+            "builtAddressKeys": ["19246962"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 9176,
+            "end": 9180,
+            "originalAddressKeys": ["19246934"],
+            "builtAddressKeys": ["19247078"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 9393,
+            "end": 9396,
+            "originalAddressKeys": ["19247147"],
+            "builtAddressKeys": ["19247291"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          },
+          {
+            "start": 9596,
+            "end": 9599,
+            "originalAddressKeys": ["19247350"],
+            "builtAddressKeys": ["19247494"],
+            "deltas": [144],
+            "contextsEqualAfterAddressKeyRemoval": true
+          }
+        ]
+      },
+      "asciiPayloadDifference": {
+        "equal": false,
+        "originalOccurrences": 177955,
+        "builtOccurrences": 177954,
+        "originalDistinct": 175227,
+        "builtDistinct": 175227,
+        "originalOnlyOccurrences": 17,
+        "builtOnlyOccurrences": 16,
+        "originalOnlyDistinct": 17,
+        "builtOnlyDistinct": 16,
+        "sampleLimit": 80,
+        "originalOnlySample": [
+          {
+            "sha256": "1f01853bbd9c8f95054c54279abb80abceec4a19037bec1c57181a71a0dbf7d4",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": " h'h5",
+            "textTruncated": false
+          },
+          {
+            "sha256": "7cda48f0c0ca2d9249afde04d1bf987ea1d8fc44ff070bf1cf9c027edfb24d98",
+            "lengthBytes": 31,
+            "count": 1,
+            "text": "!]Super Kaneko Nova System BIOS",
+            "textTruncated": false
+          },
+          {
+            "sha256": "440484212bffecd1a054a2158eb3fe2afa0621cd34e0d321011f0358f1787374",
+            "lengthBytes": 19,
+            "count": 1,
+            "text": "-V0/O1/G20A31<427+3",
+            "textTruncated": false
+          },
+          {
+            "sha256": "e51208dfb7d9c98e12251059964a9a4f99d81bdfc7ed7e66a3a774aab036c0b5",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": "0h0h6",
+            "textTruncated": false
+          },
+          {
+            "sha256": "bf68ba54e51ee3901d7a1ea50735ed9c9fec5f940d5f80ad1cd8bccc0d8b1168",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": ">&  3",
+            "textTruncated": false
+          },
+          {
+            "sha256": "5f7f994b48b9c16b1bb7070e0fe16af4e30895bee38f8f677e1aef627e553f10",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": ">(  A",
+            "textTruncated": false
+          },
+          {
+            "sha256": "1a39d9eea145578451d2d42fcbeca48afd882b40262a1c4baa144f283106ad10",
+            "lengthBytes": 29,
+            "count": 1,
+            "text": "?Mad Motor (prototype, set 1)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "58204208db5842652110d8532fc5bd4109afe0dff5a8f863333b155fea384e72",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": "@(\"\"4",
+            "textTruncated": false
+          },
+          {
+            "sha256": "96349b5dca72f87cd01e81bb826651f508d7a3c18e7820606f685b29c825cc40",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": "@*\"\"B",
+            "textTruncated": false
+          },
+          {
+            "sha256": "20c7241f6fced6107d3598a6be85a272dc0e0a059f0583c3bea77db8b0e07d6e",
+            "lengthBytes": 19,
+            "count": 1,
+            "text": "@Panda Jump (set 1)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "de45dc2dd7ed2660765e49e00e128d60f4541ad9781e41f1fc2873f30adbbbfa",
+            "lengthBytes": 18,
+            "count": 1,
+            "text": "Bank Panic (Japan)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "f0d9b4b1618bbb8f86e1f094c9d354034f838ffa5b112a94007862e47ecbca3e",
+            "lengthBytes": 21,
+            "count": 1,
+            "text": "Game Boy Advance BIOS",
+            "textTruncated": false
+          },
+          {
+            "sha256": "00e36c26797a4e1d7f37bc269ecf0d3432f4bbc3524ce6af8e9d389cf6c67b77",
+            "lengthBytes": 31,
+            "count": 1,
+            "text": "Heavy Smash (Europe version -2)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "bfeb42560b5e1501d5c3e713ffe421321f920cb2e8d0e320efd39b365d2f8bf0",
+            "lengthBytes": 53,
+            "count": 1,
+            "text": "NR4(Ace Attacker (Japan, System 16A, FD1094 317-0060)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "bcad3076f581062a2f6add32638287e87587cd5ff115c88aa8f90eafe47bfeba",
+            "lengthBytes": 27,
+            "count": 1,
+            "text": "Tetris Plus 2 (World, V2.8)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "32689e554ff522c93c4d2f2cfda09a3d67b7a9d50272b9991be7885d0f9fa888",
+            "lengthBytes": 16,
+            "count": 1,
+            "text": "ZX Spectrum BIOS",
+            "textTruncated": false
+          },
+          {
+            "sha256": "f1e6723c9d2eee97100c22114804e3ff12911d3d6560c06472f4b7f9df610006",
+            "lengthBytes": 7,
+            "count": 1,
+            "text": "lIGSPGM",
+            "textTruncated": false
+          }
+        ],
+        "builtOnlySample": [
+          {
+            "sha256": "903a7640ff29bdb0d7add5821831bdec1a1fd70e32af8b8837716eab4621987a",
+            "lengthBytes": 29,
+            "count": 1,
+            "text": "!]Tetris Plus 2 (World, V2.8)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "dd63fd3c0b097654f8bba010af8cb1905fa59cc0a93fb747fe57e5d358500f0f",
+            "lengthBytes": 35,
+            "count": 1,
+            "text": "-V0/O1/G20A31<427+3ZX Spectrum BIOS",
+            "textTruncated": false
+          },
+          {
+            "sha256": "60474b242381851b9186d3ea461bd6a400c7d9dae0fcffbd2c5c766507dad9eb",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": "<$  =",
+            "textTruncated": false
+          },
+          {
+            "sha256": "0733b4811300694836d9f38f255e83c4a18535e53236deb9e6e2d41f16ab8c24",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": "<&  W",
+            "textTruncated": false
+          },
+          {
+            "sha256": "c55278ff82fb254fe43e6f1ef345fb52a239e490335eb389b0bdbd1d2a80bf60",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": ">&  >",
+            "textTruncated": false
+          },
+          {
+            "sha256": "baf988e2aff032933b403d84dfd37f75a43bb7eb46648f89849bf7d60fa4d92e",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": ">(  X",
+            "textTruncated": false
+          },
+          {
+            "sha256": "baab491c6ec655a2829ecbe65242b02c71e34e613d6a2c17ce3a02e6dbb52ced",
+            "lengthBytes": 32,
+            "count": 1,
+            "text": "?Heavy Smash (Europe version -2)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "bdc8a470e75bd64748116e54b8cda8937835d8a1f83bb2791815afd9e1ea9c60",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": "@(\"\"?",
+            "textTruncated": false
+          },
+          {
+            "sha256": "b0c1a0642abecdde877fc5f6e3b39ff29b0ba6096322b0d073b49867f616e596",
+            "lengthBytes": 5,
+            "count": 1,
+            "text": "@*\"\"Y",
+            "textTruncated": false
+          },
+          {
+            "sha256": "d26039157709031637d291ab80ecba579c72b02fd0ab75d16c3d0e1d9e171229",
+            "lengthBytes": 22,
+            "count": 1,
+            "text": "@Game Boy Advance BIOS",
+            "textTruncated": false
+          },
+          {
+            "sha256": "d31325b126b7d54db4363f94495304a1e852996337f3f967eeb965c53c4ab17f",
+            "lengthBytes": 49,
+            "count": 1,
+            "text": "Ace Attacker (Japan, System 16A, FD1094 317-0060)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "733c99bd60a6f90375e864b06691b8deb1fa5358974ab8fe026b0539f1310e3c",
+            "lengthBytes": 6,
+            "count": 1,
+            "text": "IGSPGM",
+            "textTruncated": false
+          },
+          {
+            "sha256": "52afd9465375e3e907eef6abf13601b3254d910dbfd020f1c4d93f84ee296c59",
+            "lengthBytes": 28,
+            "count": 1,
+            "text": "Mad Motor (prototype, set 1)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "09056d37ea151a77385e5546fd230f9e7efcbffafb7414d36c44b04798e0b785",
+            "lengthBytes": 22,
+            "count": 1,
+            "text": "NR4(Bank Panic (Japan)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "62a49e3b368be5802a91441bd58e01ef632a22b0aebb9edd52eac4f90891876c",
+            "lengthBytes": 18,
+            "count": 1,
+            "text": "Panda Jump (set 1)",
+            "textTruncated": false
+          },
+          {
+            "sha256": "164e829b1737646f53df9d00065bfc39aab412862e1d619af0d2128a5ca174e3",
+            "lengthBytes": 29,
+            "count": 1,
+            "text": "Super Kaneko Nova System BIOS",
+            "textTruncated": false
+          }
+        ]
+      },
+      "boundedWorkerMemory": {
+        "budgetBytes": 1342177280,
+        "summaryPeakResidentBytes": 28442624,
+        "functionGapPeakResidentBytes": 39108608,
+        "captureVerificationPeakResidentBytes": 34619392
+      },
+      "captureVerification": {
+        "schemaVersion": 1,
+        "scope": "Local verification of every hosted command record, compiler input snapshot, manifest and command log pin. New source/header path/hash/size tuples and runtime resource comparison results are compared with the previous corrected Linux recipe.",
+        "newReceipt": {
+          "path": "/var/tmp/ecs-gap-closure-2026-11-07/fbneo-linux-run3/fbneo-linux-diagnostic-42347211935/receipt.json",
+          "sha256": "53dfc21a091f70ffb507aa5f35358878b4374be2dea1acb04d3a236d028ee23d",
+          "sizeBytes": 13231
+        },
+        "priorReceipt": {
+          "path": "/var/tmp/ecs-upstream-reconstructions-2026-11-06/fbneo-linux-run2/fbneo-linux-diagnostic-42341542139/receipt.json",
+          "sha256": "02e7e5d9866fcafedcd0ff08eaf182b3c6dbca30e67ca15a21a6a6800e5f2114",
+          "sizeBytes": 11896
+        },
+        "captureManifest": {
+          "path": "/var/tmp/ecs-gap-closure-2026-11-07/fbneo-linux-run3/fbneo-linux-diagnostic-42347211935/capture/manifest.json",
+          "sha256": "9fc6f31e42010eb9c459d16e5c7d056e01348aafbb038e4f5f137e722f3f453d",
+          "sizeBytes": 855396
+        },
+        "commandRecordsVerified": 1468,
+        "sourceHeaderSnapshotsVerified": 2767,
+        "sourceHeaderSnapshotBytes": 129961371,
+        "uniqueSourceHeaderPathHashSizeTuples": 2774,
+        "inputTuplesEqualPriorAttempt": true,
+        "resourceComparisonsEqualPriorAttempt": true,
+        "peakResidentBytes": 34619392,
+        "workerMemoryBudgetBytes": 1342177280,
+        "verificationDriver": {
+          "path": "/var/tmp/ecs-gap-closure-2026-11-07/mismatches/verify-fbneo-capture.py",
+          "sha256": "bbe98938b6253e63eb2b37c59948d63c0ecaf659c8babfeaa1bca585bf63b4d5",
+          "sizeBytes": 3437
+        }
+      },
+      "evidence": [
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/fbneo-structural-summary.json",
+          "sha256": "a6d06f0de4d6c2be1d71fb3eaedbb09a4a3ad7704f4a75fbbbee1b7ae3ae5f73",
+          "sizeBytes": 37185
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/summarize-runtime-comparison.py",
+          "sha256": "6ba0b41f6b17edfe56f00a5b5752c84585d13633f1b71ca95f55f0bcbb464abe",
+          "sizeBytes": 2871
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/fbneo-unmatched-function-patterns.json",
+          "sha256": "3a383271f694dd31d0711522d80b4e272965af7160f288fc49093c720ac1e24d",
+          "sizeBytes": 1647858
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/stream-function-gaps.py",
+          "sha256": "55dfd6b08f1912c396b3b1224ba22490a4c20c9bdeaeda822723e3c275a8305a",
+          "sizeBytes": 4445
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/fbneo-javascript-address-differences.json",
+          "sha256": "565f407304fd88b39bf655d80d0ea3093fdd2f83633fde8e16b7686b93f4f20b",
+          "sizeBytes": 2532
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/fbneo-capture-verification.json",
+          "sha256": "d3cce34294668574f70be089a8fde682b7d5f7d5d44f67fe605ca397427662aa",
+          "sizeBytes": 1590
+        },
+        {
+          "path": "/private/var/tmp/ecs-gap-closure-2026-11-07/mismatches/verify-fbneo-capture.py",
+          "sha256": "bbe98938b6253e63eb2b37c59948d63c0ecaf659c8babfeaa1bca585bf63b4d5",
+          "sizeBytes": 3437
+        }
+      ],
+      "remaining": "Archive/data layout and the 11 unmatched structural patterns require historical input provenance or further source attribution before an exact pair can be established."
+    }
+  ],
+  "remainingScope": [
+    "Both original runtime pairs retain a mismatch result and sourceMapping unverified.",
+    "Function fingerprints deliberately normalize selected references/addresses; they provide correspondence evidence, while executable-byte equality remains the runtime criterion.",
+    "The full historical archive/cache identity and remaining component-specific final-code notice scope remain open. The linked SDK archive reconstruction report records native-tool bootstrap scope."
+  ],
+  "externalReportDriver": {
+    "path": "/var/tmp/ecs-gap-closure-2026-11-07/mismatches/write-mismatch-report.py",
+    "sha256": "57d105d53be938919094f8326ddeea3303f3c7d20aad4738025d093cda6528bc",
+    "sizeBytes": 20097
+  }
+}
