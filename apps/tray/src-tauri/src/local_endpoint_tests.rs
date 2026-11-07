@@ -2,16 +2,22 @@ use super::*;
 
 #[test]
 fn setup_code_path_comes_from_the_registered_data_argument() {
-    let job = "gui/501/app.emulator-content-server = {\n\targuments = {\n\t\t/opt/ecs/node\n\t\t--data\n\t\t/Users/test/Library/Application Support/Emulation Server/data\n\t\t--port\n\t\t8473\n\t}\n}";
-    let directory =
-        std::path::Path::new("/Users/test/Library/Application Support/Emulation Server/data");
-    assert_eq!(mac_registered_data(job), Some(directory));
+    let directory = if cfg!(windows) {
+        r"C:\Users\test\Emulation Server\data"
+    } else {
+        "/Users/test/Library/Application Support/Emulation Server/data"
+    };
+    let job = format!("gui/501/app.emulator-content-server = {{\n\targuments = {{\n\t\t/opt/ecs/node\n\t\t--data\n\t\t{directory}\n\t\t--port\n\t\t8473\n\t}}\n}}");
     assert_eq!(
-        mac_registered_data(&job.replace("/Users/test/", "relative/")),
+        mac_registered_data(&job),
+        Some(std::path::Path::new(directory))
+    );
+    assert_eq!(
+        mac_registered_data(&job.replace(directory, "relative/data")),
         None
     );
     assert_eq!(
-        mac_registered_data(&job.replace("--port\n\t\t8473", "--data\n\t\t/tmp/second")),
+        mac_registered_data(&job.replace("--port\n\t\t8473", &format!("--data\n\t\t{directory}"))),
         None
     );
 }
