@@ -290,6 +290,7 @@ function runRequired(runner: CommandRunner, argv: readonly string[]): void {
 
 function renderPlist(args: readonly string[]): string {
   const items = args.map((arg) => `    <string>${xml(arg)}</string>`).join('\n');
+  // UI requests and matching deadlines need normal scheduling under macOS load.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -300,6 +301,8 @@ function renderPlist(args: readonly string[]): string {
   <true/>
   <key>KeepAlive</key>
   <true/>
+  <key>ProcessType</key>
+  <string>Interactive</string>
   <key>ProgramArguments</key>
   <array>
 ${items}
