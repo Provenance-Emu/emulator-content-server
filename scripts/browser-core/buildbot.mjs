@@ -6,6 +6,11 @@ import { copyFile, mkdir, readFile, realpath, writeFile } from 'node:fs/promises
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { smokeLibretroPairs } from './libretro-runtime-audit.mjs';
+import {
+  addRecoveredArtifactNotices,
+  addRecoveredPlayerNotices,
+  addRecoveredSourceNotices,
+} from './recovered-notices.mjs';
 
 const repository = fileURLToPath(new URL('../..', import.meta.url));
 export const buildbotConfig = JSON.parse(
@@ -53,6 +58,20 @@ async function checkout(source, path) {
   if (run('git', ['rev-parse', 'HEAD'], path, true) !== source.revision)
     throw new Error('Source checkout pin mismatch');
 }
+/** Archive a fresh source tree, including the recipe's already-sanitized Jaguar tree. */
+export async function packageBuildbotSource(
+  source,
+  destination,
+  id,
+  { sanitizedArchive, packageBytes } = {},
+) {
+  if (sanitizedArchive) {
+    await mkdir(source);
+    run('tar', ['-xzf', sanitizedArchive, '-C', source], dirname(source));
+  }
+  await addRecoveredSourceNotices(source, id, { packageBytes });
+  run('tar', ['-czf', destination, '-C', source, '.'], dirname(source));
+}
 export async function runBuildbot(id, destination, { verifyRebuild = false } = {}) {
   const plan = buildPlan(id),
     output = resolve(destination);
@@ -87,6 +106,7 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
     const { installPinnedPlayer } = await import('./install-plugin.mjs');
     await installPinnedPlayer(join(output, 'raw-core'), player);
   }
+  await addRecoveredPlayerNotices(player, id);
   const { packagePlayer } = await import('./package-player.mjs');
   const packageBytes = await packagePlayer(player, join(artifacts, `${id}.ecsplayer`));
   const manifest = JSON.parse(await readFile(join(player, 'plugin.json'), 'utf8')),
@@ -133,10 +153,9 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
     )
   )
     throw new Error('Production opaque-sandbox startup acceptance failed');
-  const sourceArchive = join(artifacts, `${id}.source.tar.gz`);
-  if (plan.core.sanitizedSourceArchive) await copyFile(`${player}.source.tar.gz`, sourceArchive);
-  else {
-    const source = join(output, 'corresponding-source');
+  const sourceArchive = join(artifacts, `${id}.source.tar.gz`),
+    source = join(output, 'corresponding-source');
+  if (!plan.core.sanitizedSourceArchive) {
     await mkdir(source);
     for (const [checkoutPath, name] of [
       [frontend, 'frontend'],
@@ -205,10 +224,13 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
       );
     await writeFile(
       join(source, 'REBUILD.md'),
-      `Activate Emscripten ${plan.emsdk.version} (compiler ${plan.emsdk.compilerRevision}, emsdk ${plan.emsdk.revision}); run node ecs-recipes/${plan.core.rebuild} EXTRACTED_SOURCE_ROOT NEW_EXTERNAL_OUTPUT. Original source and dependency notices are retained.\n`,
+      `Activate Emscripten ${plan.emsdk.version} (compiler ${plan.emsdk.compilerRevision}, emsdk ${plan.emsdk.revision}); run node ecs-recipes/${plan.core.rebuild} EXTRACTED_SOURCE_ROOT NEW_EXTERNAL_OUTPUT. Then run node REPACKAGE-NOTICES.mjs NEW_EXTERNAL_OUTPUT NEW_PACKAGE_FILE to reproduce the complete notice-bearing package. Original source and dependency notices are retained.\n`,
     );
-    run('tar', ['-czf', sourceArchive, '-C', source, '.'], output);
   }
+  await packageBuildbotSource(source, sourceArchive, id, {
+    packageBytes,
+    ...(plan.core.sanitizedSourceArchive ? { sanitizedArchive: `${player}.source.tar.gz` } : {}),
+  });
   if (verifyRebuild) {
     const extracted = join(output, 'source-rebuild'),
       rebuilt = join(output, 'rebuilt-player');
@@ -224,9 +246,18 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
       if (createHash('sha256').update(bytes).digest('hex') !== spec.sha256)
         throw new Error('Corresponding-source rebuild differs from built package');
     }
+    const rebuiltPackage = join(output, 'rebuilt-with-notices.ecsplayer');
+    run(
+      process.execPath,
+      [join(extracted, 'REPACKAGE-NOTICES.mjs'), rebuilt, rebuiltPackage],
+      output,
+    );
+    if (!(await readFile(rebuiltPackage)).equals(packageBytes))
+      throw new Error('Notice-bearing rebuild differs from built package');
   }
   const notices = `Manual source-build artifact. The build driver does not publish; an explicitly requested separate workflow job may publish a prerelease.\n${plan.core.licenses.join('\n')}\n\nComplete corresponding frontend/core source, dependency notices and rebuild recipes accompany the binary. No user content, saves, NAND or BIOS files are inputs. Virtual Jaguar archives are sanitized by its existing recipe before archiving.\n\nFactory/MEMFS startup was verified in the production opaque sandbox. Commercial content, synchronized saves and game behavior are not established by this build job. Distribution still requires review of every dependency's terms.\n\n${JSON.stringify(plan, null, 2)}\n`;
   await writeFile(join(artifacts, 'NOTICES.txt'), notices);
+  const recoveredNotices = await addRecoveredArtifactNotices(artifacts, id);
   await copyFile(join(player, 'plugin.json'), join(artifacts, 'plugin.json'));
   const pins = [];
   for (const file of [
@@ -235,6 +266,7 @@ export async function runBuildbot(id, destination, { verifyRebuild = false } = {
     'NOTICES.txt',
     'plugin.json',
     'smokes.json',
+    ...recoveredNotices.map(({ file }) => file),
   ]) {
     const bytes = await readFile(join(artifacts, file));
     pins.push({

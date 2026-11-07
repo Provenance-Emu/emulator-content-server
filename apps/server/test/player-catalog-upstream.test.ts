@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parseManifest } from '@ecs/plugins';
 import { playerCatalog } from '../src/player-catalog.js';
@@ -50,7 +51,7 @@ test('new source-built systems have one installable immutable package each', () 
     assert.deepEqual(entry.systems, [`com.provenance.${system}`]);
     assert.equal(
       entry.url,
-      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-${id}-2026.10.31.${id === 'atari800' ? 2 : 1}/${id}.ecsplayer`,
+      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/${id}.ecsplayer`,
     );
     assert.match(entry.sha256 ?? '', /^[a-f0-9]{64}$/);
     assert.ok((entry.downloadBytes ?? 0) > 0);
@@ -70,7 +71,7 @@ test('source-built Atari and Intellivision cores are installable from immutable 
     assert.deepEqual(entry.systems, [`com.provenance.${system}`]);
     assert.equal(
       entry.url,
-      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-${id}-2026.10.31.${id === 'atari800' ? 2 : 1}/${id}.ecsplayer`,
+      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/${id}.ecsplayer`,
     );
     assert.match(entry.sha256 ?? '', /^[a-f0-9]{64}$/);
     assert.ok((entry.downloadBytes ?? 0) > 0);
@@ -88,10 +89,25 @@ test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => 
   assert.equal(jaguar.available, true);
   assert.equal(
     jaguar.url,
-    'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-media.1/virtualjaguar.ecsplayer',
+    'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/virtualjaguar.ecsplayer',
   );
-  assert.equal(jaguar.sha256, 'b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de');
-  assert.equal(jaguar.downloadBytes, 4604920);
+  const receipt = JSON.parse(
+    readFileSync(
+      new URL(
+        '../../../../docs/operations/published-notice-reissue-2026-11-06.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  );
+  const profile = receipt.profiles.find((p: { id: string }) => p.id === jaguar.id);
+  assert.ok(profile);
+  assert.equal(jaguar.sha256, profile.package.sha256);
+  assert.equal(jaguar.downloadBytes, profile.package.sizeBytes);
+  assert.equal(
+    profile.originalPackage.sha256,
+    'b3c8dbd57a7691a2e7335e99f9c2afe120be5a2d229a6f3c0b1994e654e016de',
+  );
 });
 
 test('upstream player catalog entries have valid pinned web-player manifests', () => {
@@ -274,10 +290,25 @@ test('NeoCD stages basename uploads in the declared system subdirectory', () => 
   assert.deepEqual(entry?.upstream?.manifest.player?.web?.contentExtensions, ['chd']);
 });
 
-test('source-built ProSystem installs use the reproducible central buildbot release', () => {
+test('source-built ProSystem installs use the pinned notice-bearing buildbot release', () => {
   const entry = playerCatalog.find((core) => core.id === 'org.libretro.prosystem');
   assert.ok(entry);
-  assert.match(entry.url ?? '', /browser-core-prosystem-2026\.10\.31\.1\/prosystem\.ecsplayer$/);
-  assert.equal(entry.downloadBytes, 3618571);
-  assert.equal(entry.sha256, 'd27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55');
+  const receipt = JSON.parse(
+    readFileSync(
+      new URL(
+        '../../../../docs/operations/published-notice-reissue-2026-11-06.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  );
+  const profile = receipt.profiles.find((p: { id: string }) => p.id === entry.id);
+  assert.ok(profile);
+  assert.match(entry.url ?? '', /browser-core-notices-2026\.11\.06\.1\/prosystem\.ecsplayer$/);
+  assert.equal(entry.downloadBytes, profile.package.sizeBytes);
+  assert.equal(entry.sha256, profile.package.sha256);
+  assert.equal(
+    profile.originalPackage.sha256,
+    'd27dd1248abcda1598418b633f3e71f68fb11dcfb29757e7fb2eec48d0755d55',
+  );
 });

@@ -4,23 +4,23 @@ import type { TrustedPlayer } from './player-catalog.js';
 const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provenance']>>> = {
   'org.libretro.fceumm': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
-    infoSha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later with the tracked SAVE_FILES patch | FCEUmm GPL-2.0-or-later; retained source and SDK notices',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.4-cores.1/fceumm-source.tar.gz',
-        sha256: '690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff',
-        sizeBytes: 86189038,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/fceumm.source.tar.gz',
+        sha256: '6b026eaee0441bef61af8fec90291d8804736d2be3ced543f8426251ddd80f1c',
+        sizeBytes: 85306788,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
-        sha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
-        sizeBytes: 94911,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -38,23 +38,23 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.virtualjaguar': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
-    infoSha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | Virtual Jaguar GPL-3.0; sanitized source and retained dependency notices',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/v0.1.6-jaguar-cd.1/virtualjaguar-source.tar.gz',
-        sha256: '592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d',
-        sizeBytes: 90859298,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/virtualjaguar.source.tar.gz',
+        sha256: '52cceee6c95a57648aeb6a0916051453b7111b16ed1f28947fb92448cff5ca87',
+        sizeBytes: 89989463,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/e64001242b4dcc9057d9056be873c6d93ab03999/docs/operations/core-source-audit-2026-11-05.json',
-        sha256: 'e0a681fcedb072299e615b04dd9cc56b6d0a0a5654eb28df8378667b15f1de05',
-        sizeBytes: 94911,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -72,29 +72,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.prosystem': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | ProSystem GPL-2.0-or-later; preserve all upstream dependency notices',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/prosystem.source.tar.gz',
-        sha256: 'a615cf27233adf34285fd81fb778c348308e665f4c69338bc19e44b3574f0145',
-        sizeBytes: 84687336,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/prosystem.source.tar.gz',
+        sha256: '4c72510ebe30fb05fbbc6067f5f6b6992edc68cd61fcc6ecdc0db82317eda379',
+        sizeBytes: 83907189,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-prosystem-2026.10.31.1/NOTICES.txt',
-        sha256: '4c41bc8a055b55f946b483445567e7d3f5c8f4c9a057c9c7555bb1a78178cf42',
-        sizeBytes: 1605,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -106,29 +106,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.stella2014': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | Stella 2014 (Atari 2600): GPL-2.0-or-later; preserve all upstream dependency notices',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/stella2014.source.tar.gz',
-        sha256: '264d6fd075130db989a16a0d18cda8a6c737711cb6ec3d26be1edd374d5e9963',
-        sizeBytes: 85325890,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/stella2014.source.tar.gz',
+        sha256: '5179aaa790a2db333e22493f7d5cfe62219972aee3d502472da84cf323e8aa56',
+        sizeBytes: 84535573,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-stella2014-2026.10.31.1/NOTICES.txt',
-        sha256: '93a025aa08a4a14f460b694cf0a03b6ee7151506998ebb62faebdaf7ad9da2f9',
-        sizeBytes: 1917,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -140,29 +140,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.freeintv': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | FreeIntv (Intellivision): GPL-2.0-or-later; preserve all upstream dependency notices',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/freeintv.source.tar.gz',
-        sha256: 'f17e78502f78c10912c000ed39408e052d0359377c1f4685ed49fea6cfa3a30d',
-        sizeBytes: 110359373,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/freeintv.source.tar.gz',
+        sha256: '28a140acdcfb85053194b74019e0534b751745284311627c5de99b2028e61145',
+        sizeBytes: 109443106,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-freeintv-2026.10.31.1/NOTICES.txt',
-        sha256: '9c81b13123628a5e63dfb4cd4859d677837285fd0a1974832868f746c8761d15',
-        sizeBytes: 1924,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -174,29 +174,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.atari800': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | Atari800 (Atari 5200): GPL-2.0-or-later. Incorporated Caprice32 noncommercial terms. See component notice audit',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/atari800.source.tar.gz',
-        sha256: 'eddd87be440f3a3ed1c971a86fd1ef5f6ee21e582b67d7678972ded60e0bc436',
-        sizeBytes: 86503686,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/atari800.source.tar.gz',
+        sha256: 'ac3e8bcb7cf32b28b085a8e5e030fcbfdd55a4198d9fb4251ea883b20d6a10b9',
+        sizeBytes: 85719293,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-atari800-2026.10.31.2/NOTICES.txt',
-        sha256: '5e71750b8329a3005dbaa8ff7f48c5edb7f15e0459e1f93978ae06cdd4f87c0c',
-        sizeBytes: 2093,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -208,29 +208,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.pokemini': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | PokeMini (Pokémon Mini): GPL-3.0-or-later; includes original open-source FreeBIOS and its generating source',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/pokemini.source.tar.gz',
-        sha256: '7bdb562ac7c5cee8e4ece42e6653401e91bba5eed1741c6706e4c92ce8b2efee',
-        sizeBytes: 84766667,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/pokemini.source.tar.gz',
+        sha256: '01c033a132fd4afdfd5ac11e7aa5aad4a5e94c95a5e5dddc4409c86b350fbe56',
+        sizeBytes: 83989152,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-pokemini-2026.10.31.1/NOTICES.txt',
-        sha256: '770635309cf14315dad53b309bada9f5842845c0a7ae443149e1e48a1a240bef',
-        sizeBytes: 2048,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -242,29 +242,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.potator': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | Potator (Supervision): Unlicense. Incorporated M65C02 noncommercial distribution terms. See component notice audit',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/potator.source.tar.gz',
-        sha256: 'efbcdfdbec0a7035115ceef33a37a4c03c90f16b7e867dd63cd832b83c79d88b',
-        sizeBytes: 84570095,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/potator.source.tar.gz',
+        sha256: '193afd75e5b350f9ffcd6df50fc9eea8cb4ce3cdaf93ed744099322e09c50f3c',
+        sizeBytes: 83809341,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-potator-2026.10.31.1/NOTICES.txt',
-        sha256: '4737e99adefa422512631cdf851283b7f1b78eb55c9ee23426fcf9c1809b71cf',
-        sizeBytes: 1954,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -276,29 +276,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.sameduck': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | SameDuck (Mega Duck): MIT; preserve all upstream dependency notices',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/sameduck.source.tar.gz',
-        sha256: '778db81165c216fc023696d194b23dc6b569772bc71a6d7a44d358802619b014',
-        sizeBytes: 85613300,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/sameduck.source.tar.gz',
+        sha256: 'a025750464caff8643e045c4a9f0e034fbd3708c9f3ab5ed1cf570241575d642',
+        sizeBytes: 84838062,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-sameduck-2026.10.31.1/NOTICES.txt',
-        sha256: 'a78ad4f055cc5ad91fc92111832b1cf196b1dc7fa753379ce8e88e1188de26be',
-        sizeBytes: 1961,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',
@@ -310,29 +310,29 @@ const coreProvenance: Readonly<Record<string, NonNullable<TrustedPlayer['provena
   },
   'org.libretro.mednafen-pcfx': {
     sourceInfo:
-      'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-    infoSha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
+      'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+    infoSha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
     license:
       'RetroArch GPL-3.0-or-later | Beetle PC-FX (CHD): GPL-2.0-or-later; libchdr BSD-3-Clause and all dependency notices retained',
     sourceMapping: 'release-receipt',
     artifacts: [
       {
         kind: 'source',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/mednafen-pcfx.source.tar.gz',
-        sha256: '6851fb1c8ad64076917c48f7a972ed9c87c6087925ddb69396cfccf7dc0da20f',
-        sizeBytes: 85511927,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/mednafen-pcfx.source.tar.gz',
+        sha256: '0f18662d13af74146944cf82f17260777012e48c4fdf539152e78ea55f686d58',
+        sizeBytes: 84737183,
       },
       {
         kind: 'notices',
-        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-mednafen-pcfx-2026.10.31.1/NOTICES.txt',
-        sha256: '0cce439edadc2364381df0a9e847b6c860791a231be1a8dacc211e65cbbeafeb',
-        sizeBytes: 1993,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/recovered-notices.zip',
+        sha256: '81ef1c66d54c368ff8c5ce7abab3609bbd50733ca1d82f6ccaf75b38125575c7',
+        sizeBytes: 58915,
       },
       {
         kind: 'build',
-        url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/7fa5f66a46906055c9f22dcb1bd78aa542f847cd/docs/operations/custom-build-verification-2026-11-06.json',
-        sha256: 'e205aa630edad59b731a32cf396fe04cb2fb92ec82a0ac8b33de12c494998312',
-        sizeBytes: 46739,
+        url: 'https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/catalog.json',
+        sha256: '5363269c4f787764ccc1d5550488050a04ca537d77f454a8cbc564e6532e8bb5',
+        sizeBytes: 37342,
       },
       {
         kind: 'notices',

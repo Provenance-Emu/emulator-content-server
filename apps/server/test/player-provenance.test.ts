@@ -10,6 +10,17 @@ import {
 } from '../src/player-catalog-snapshot.js';
 import { upstreamFixture } from './player-cache-fixture.js';
 
+const noticeReissueBytes = readFileSync(
+  new URL('../../../../docs/operations/published-notice-reissue-2026-11-06.json', import.meta.url),
+);
+const noticeReissue = JSON.parse(noticeReissueBytes.toString('utf8'));
+const noticeReissueSha256 = createHash('sha256').update(noticeReissueBytes).digest('hex');
+function reissuedProfile(id: string) {
+  const profile = noticeReissue.profiles.find((row: { id: string }) => row.id === id);
+  assert.ok(profile);
+  return profile;
+}
+
 test('published source-built packages retain matching pinned source, notice and build receipts', () => {
   for (const id of [
     'prosystem',
@@ -29,7 +40,11 @@ test('published source-built packages retain matching pinned source, notice and 
     const artifacts = (entry.provenance.artifacts ?? []).filter((artifact) =>
       artifact.url.startsWith(`${release}/`),
     );
-    assert.deepEqual(artifacts.map((artifact) => artifact.kind).sort(), ['notices', 'source']);
+    assert.deepEqual(artifacts.map((artifact) => artifact.kind).sort(), [
+      'build',
+      'notices',
+      'source',
+    ]);
     for (const artifact of artifacts) {
       assert.match(artifact.sha256, /^[a-f0-9]{64}$/);
       assert.ok(artifact.sizeBytes > 0);
@@ -52,13 +67,13 @@ test('legacy packages retain reproduced source receipts while upstream mappings 
   assert.ok(fceumm?.provenance);
   assert.equal(
     fceumm.provenance.artifacts?.find((artifact) => artifact.kind === 'source')?.sha256,
-    '690b662a4d3466d7f8a626f752425c81629bb324d14cac10f67f48dba08f3fff',
+    reissuedProfile('org.libretro.fceumm').source.sha256,
   );
   assert.equal(jaguar?.provenance?.sourceMapping, 'release-receipt');
   assert.ok(jaguar?.provenance);
   assert.equal(
     jaguar.provenance.artifacts?.find((artifact) => artifact.kind === 'source')?.sha256,
-    '592cae4305c016eac93c0561ef1ba1913be9d5ab315df8fc52e7f187b79a7b0d',
+    reissuedProfile('org.libretro.virtualjaguar').source.sha256,
   );
   for (const entry of playerCatalog.filter((entry) => entry.upstream))
     assert.notEqual(entry.provenance?.sourceMapping, 'release-receipt');
@@ -147,14 +162,17 @@ test('retained legacy source mappings bind the exact audit bytes and package pin
     assert.ok(entry?.provenance && record);
     assert.equal(record.rebuild.state, 'matched');
     assert.equal(record.rebuild.scope, 'loader-and-wasm');
-    assert.equal(record.package.sha256, entry.sha256);
-    assert.equal(entry.provenance.infoSha256, sha256);
+    assert.equal(record.package.sha256, reissuedProfile(id).originalPackage.sha256);
+    assert.equal(entry.sha256, reissuedProfile(id).package.sha256);
+    assert.equal(reissuedProfile(id).originalBuildEvidence.sha256, sha256);
+    assert.equal(entry.provenance.infoSha256, noticeReissueSha256);
     const source = entry.provenance.artifacts?.find((a) => a.kind === 'source');
-    assert.deepEqual(source, { kind: 'source', ...record.source });
+    assert.deepEqual(record.source, reissuedProfile(id).originalSource);
+    assert.deepEqual(source, { kind: 'source', ...reissuedProfile(id).source });
     const build = entry.provenance.artifacts?.find((a) => a.kind === 'build');
-    assert.equal(build?.sha256, sha256);
-    assert.equal(build?.sizeBytes, bytes.length);
-    assert.match(build?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\//);
+    assert.equal(build?.sha256, noticeReissueSha256);
+    assert.equal(build?.sizeBytes, noticeReissueBytes.length);
+    assert.match(build?.url ?? '', /\/browser-core-notices-2026\.11\.06\.1\/catalog\.json$/);
   }
   const custom = playerCatalog.filter((entry) => entry.url && !entry.upstream);
   assert.equal(custom.length, audit.packages.length);
@@ -197,8 +215,16 @@ test('eight independently reconstructed packages bind immutable build and compil
     const entry = playerCatalog.find((e) => e.id === record.id);
     assert.ok(entry?.provenance);
     assert.equal(record.reconstructedPackage.matchesPublished, true);
-    assert.equal(record.reconstructedPackage.sha256, entry.sha256);
-    assert.equal(record.reconstructedPackage.sizeBytes, entry.downloadBytes);
+    assert.equal(
+      record.reconstructedPackage.sha256,
+      reissuedProfile(record.id).originalPackage.sha256,
+    );
+    assert.equal(entry.sha256, reissuedProfile(record.id).package.sha256);
+    assert.equal(
+      record.reconstructedPackage.sizeBytes,
+      reissuedProfile(record.id).originalPackage.sizeBytes,
+    );
+    assert.equal(entry.downloadBytes, reissuedProfile(record.id).package.sizeBytes);
     assert.equal(record.freshSourceExtraction, true);
     assert.equal(record.debugRelinkBytesMatch, true);
     assert.equal(record.unresolvedDependencyCount, 0);
@@ -211,14 +237,15 @@ test('eight independently reconstructed packages bind immutable build and compil
     );
     assert.deepEqual(
       entry.provenance.artifacts?.find((a) => a.kind === 'source'),
-      { kind: 'source', ...record.source },
+      { kind: 'source', ...reissuedProfile(record.id).source },
     );
     const build = entry.provenance.artifacts?.find((a) => a.kind === 'build');
-    assert.equal(build?.sha256, digest);
-    assert.equal(build?.sizeBytes, bytes.length);
+    assert.equal(reissuedProfile(record.id).originalBuildEvidence.sha256, digest);
+    assert.equal(build?.sha256, noticeReissueSha256);
+    assert.equal(build?.sizeBytes, noticeReissueBytes.length);
     assert.equal(entry.provenance.sourceInfo, build?.url);
-    assert.equal(entry.provenance.infoSha256, digest);
-    assert.match(build?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\/custom-build-verification/);
+    assert.equal(entry.provenance.infoSha256, noticeReissueSha256);
+    assert.match(build?.url ?? '', /\/browser-core-notices-2026\.11\.06\.1\/catalog\.json$/);
     const notices = entry.provenance.artifacts?.find(
       (a) => a.sha256 === proof.noticeInventory.sha256,
     );
@@ -254,4 +281,33 @@ test('eight independently reconstructed packages bind immutable build and compil
       );
   }
   assert.equal(proof.sdkNotices.length, 9);
+});
+
+test('published notice revisions bind both original verification and carried redistribution materials', () => {
+  assert.equal(noticeReissue.profiles.length, 10);
+  assert.equal(noticeReissue.verification.runtimePairsByteIdentical, 10);
+  for (const profile of noticeReissue.profiles) {
+    const entry = playerCatalog.find((e) => e.id === profile.id);
+    assert.ok(entry?.provenance);
+    assert.equal(entry.url, profile.package.url);
+    assert.equal(entry.sha256, profile.package.sha256);
+    assert.equal(entry.downloadBytes, profile.package.sizeBytes);
+    assert.equal(entry.provenance.infoSha256, noticeReissueSha256);
+    assert.equal(profile.originalResourcesPreserved, true);
+    assert.equal(profile.runtimeManifestPreservedExceptNoticeAssets, true);
+    assert.equal(profile.sourceVerification.standaloneReproductionMatchesWholePackage, true);
+    assert.equal(profile.sourceVerification.allOriginalMembersPreserved, true);
+    assert.equal(profile.sourceVerification.fullArchiveReread, true);
+    assert.equal(profile.sourceVerification.standalonePackageReproductionIncluded, true);
+    const files = profile.notices.map((n: { file: string }) => n.file);
+    assert.ok(files.includes('sha1-fpl.txt'));
+    assert.ok(files.includes('recovered-notice-evidence.json'));
+    assert.equal(files.includes('ijg-v4-README.txt'), profile.id === 'org.libretro.mednafen-pcfx');
+    assert.equal(
+      files.includes('ijg-modifications.txt'),
+      profile.id === 'org.libretro.mednafen-pcfx',
+    );
+    assert.equal(entry.provenance.artifacts?.filter((a) => a.kind === 'build').length, 1);
+    assert.ok((entry.provenance.artifacts?.length ?? 0) <= 16);
+  }
 });

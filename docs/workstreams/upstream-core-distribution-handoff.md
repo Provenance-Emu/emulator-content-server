@@ -154,3 +154,24 @@ boundaries and whitespace checks. Independent review verified the retained grant
 Git blobs, all 972 source-archive compiler inputs, 339 successful compile records,
 source archive hashes and direct runtime byte comparisons. The original SHA1
 grant uses a path-specific Git text attribute to preserve its CRLF bytes.
+
+## Recovered notices publication
+
+The [consolidated notice revision](../operations/published-notice-reissue-2026-11-06.md)
+reissues all ten custom packages and corresponding-source archives with recovered
+SHA1 materials. PCFX also carries the complete historical IJG README, attribution
+and modification documentation. The catalog pins the new package/source hashes
+and one aggregate release receipt, preserving the original verification chain.
+Each original runtime resource and manifest field was retained, with notice assets
+added. Every original source member passed a complete archive reread. The standalone
+recipe extracted from each revised source archive reproduced its entire package
+byte-for-byte. The release bundle preserves earlier notice sidecars and original
+catalog provenance.
+
+Future buildbot packages, ordinary and sanitized Jaguar source archives, and flat
+release assets receive these materials automatically. Source-rebuild verification
+now compares the complete notice-bearing package. Eighty focused package, notice,
+provenance and catalog tests passed, along with the server TypeScript build,
+changed-file Biome checks, secret/fixture scan, boundaries and whitespace checks.
+Review verified all twenty artifact pins and the retained original evidence.
+Independent SDK source reconstruction and final-code notice scope remain open.
