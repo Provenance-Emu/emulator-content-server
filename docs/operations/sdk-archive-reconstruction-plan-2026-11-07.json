@@ -1,0 +1,2789 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://codeload.github.com/emscripten-core/emscripten/tar.gz/19607820c447a13fd8d0b7680c56148427d6e1b8",
+    "sha256": "efb1f8655b3a2de7fa7ae543dab76547cd2dae8d3eabdd3f5203ba380953d652",
+    "sizeBytes": 28861088
+  },
+  "emsdkRevision": "93360d3670018769b424e4e8f1d3d9b26d32c977",
+  "compilerRevision": "19607820c447a13fd8d0b7680c56148427d6e1b8",
+  "sdkVersion": "3.1.46",
+  "archiveScope": "Eleven installed standard archives. Nine carry 335 member pins selected by ten-custom exact link replays. OpenAL and HTML5 archive pins additionally cover retained upstream link requests. SDK zlib port reconstruction remains a separate scope.",
+  "archives": [
+    {
+      "file": "libGL-webgl2.a",
+      "target": "libGL-webgl2",
+      "sha256": "8e470427bb906d63b526f8953b80fbe1a5a40069b687c5662b3e957f3192cb78",
+      "sizeBytes": 69090,
+      "selectedMembers": [
+        {
+          "id": "libGL-webgl2.a(gl.o)",
+          "archive": "libGL-webgl2.a",
+          "member": "gl.o",
+          "sha256": "b608cfdae1866454bfac15ec3a0da4f1b7ef06f913403362171b650b4180a218",
+          "sizeBytes": 3960,
+          "recipeSource": "system/lib/gl/gl.c"
+        },
+        {
+          "id": "libGL-webgl2.a(webgl1.o)",
+          "archive": "libGL-webgl2.a",
+          "member": "webgl1.o",
+          "sha256": "a82ed506717e28dc562eff7222cf49495df0c198cf7a552dd25a05db50eb55af",
+          "sizeBytes": 36690,
+          "recipeSource": "system/lib/gl/webgl1.c"
+        },
+        {
+          "id": "libGL-webgl2.a(webgl2.o)",
+          "archive": "libGL-webgl2.a",
+          "member": "webgl2.o",
+          "sha256": "2420f05d162b950f3fbd6e168f73a84201249f4bad6faa8f5741d7af867db7ca",
+          "sizeBytes": 26232,
+          "recipeSource": "system/lib/gl/webgl2.c"
+        }
+      ]
+    },
+    {
+      "file": "libal.a",
+      "target": "libal",
+      "sha256": "4bb159f2b2d5759a96f8f43fa7bba96ed913af4cdd24ad3119d5884a080a8d71",
+      "sizeBytes": 19862,
+      "selectedMembers": [],
+      "scope": "Additional archive requested by retained upstream reconstruction link commands."
+    },
+    {
+      "file": "libc++-noexcept.a",
+      "target": "libc++-noexcept",
+      "sha256": "7b10c93d89cab4d81a974c87e5bf6013235cbbfdd987b6e8d756bf764badd83f",
+      "sizeBytes": 7404918,
+      "selectedMembers": [
+        {
+          "id": "libc++-noexcept.a(condition_variable.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "condition_variable.o",
+          "sha256": "4f6128c218ca2036d82e9667c350d859bcc8910ee1d0dff7dc3003fe6956eeaf",
+          "sizeBytes": 53750,
+          "recipeSource": "system/lib/libcxx/src/condition_variable.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(condition_variable_destructor.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "condition_variable_destructor.o",
+          "sha256": "b7d82d9a8dc2882be85cbc92e389cbee092aa1563a3aea69ace53bb87298c6cf",
+          "sizeBytes": 5232,
+          "recipeSource": "system/lib/libcxx/src/condition_variable_destructor.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(exception.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "exception.o",
+          "sha256": "9cbedf493bcba2f75bd2d40f6c7d2b3053899a1c7c3a50897c6a87551894a1a2",
+          "sizeBytes": 10928,
+          "recipeSource": "system/lib/libcxx/src/exception.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(future.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "future.o",
+          "sha256": "3aa011d7ca1838ba04b56dbbfc5a53ece3199e2d3e0a4ab62f6b864d3f34251a",
+          "sizeBytes": 118498,
+          "recipeSource": "system/lib/libcxx/src/future.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(ios.instantiations.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "ios.instantiations.o",
+          "sha256": "a77cc274464cb1aeeabda1b9b55b2449595492faecb98cffc51ff721bcf4df2c",
+          "sizeBytes": 513958,
+          "recipeSource": "system/lib/libcxx/src/ios.instantiations.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(ios.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "ios.o",
+          "sha256": "ddea6e11084f9504023c1f970cfe0580235e8a54d86d6723920f3f9c1fd4cc02",
+          "sizeBytes": 147154,
+          "recipeSource": "system/lib/libcxx/src/ios.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(locale.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "locale.o",
+          "sha256": "782675d5d5dad6cd73747d48e559658fcbe0546afe100c66c6a1f4cb29cfb8ac",
+          "sizeBytes": 1557127,
+          "recipeSource": "system/lib/libcxx/src/locale.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(memory.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "memory.o",
+          "sha256": "7aac341b2a12382f15705fc137f61917b26ee54e675830452fab9d604ee8f449",
+          "sizeBytes": 33779,
+          "recipeSource": "system/lib/libcxx/src/memory.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(mutex.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "mutex.o",
+          "sha256": "9cb7c31aacb52040cce513c70cacc34a6af2f50c100aadc6699e4621113fb1ad",
+          "sizeBytes": 58130,
+          "recipeSource": "system/lib/libcxx/src/mutex.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(mutex_destructor.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "mutex_destructor.o",
+          "sha256": "89abdae8df324153b12e0bd65b316664f533ff057a963266c9a2a83519cb75fe",
+          "sizeBytes": 5124,
+          "recipeSource": "system/lib/libcxx/src/mutex_destructor.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(new.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "new.o",
+          "sha256": "76984905719ea6ca87cd355a9548181a1dd6a5dcc269b7968926c9f0a8c4e0dc",
+          "sizeBytes": 19294,
+          "recipeSource": "system/lib/libcxx/src/new.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(stdexcept.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "stdexcept.o",
+          "sha256": "8f88e371cdc63ae30b62aa34c5a28658a2fc9bb24a5964dcb162e7bb408d9069",
+          "sizeBytes": 70858,
+          "recipeSource": "system/lib/libcxx/src/stdexcept.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(string.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "string.o",
+          "sha256": "8f096dca2575a6291456180fe534911d6a9326f4ca251252651b49c72eae2cc5",
+          "sizeBytes": 459716,
+          "recipeSource": "system/lib/libcxx/src/string.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(system_error.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "system_error.o",
+          "sha256": "47a2c4df35e04bac2f7d510eba61b6565841526d163191a06a72703978a4d683",
+          "sizeBytes": 101976,
+          "recipeSource": "system/lib/libcxx/src/system_error.cpp"
+        },
+        {
+          "id": "libc++-noexcept.a(thread.o)",
+          "archive": "libc++-noexcept.a",
+          "member": "thread.o",
+          "sha256": "db8a2781b9b301cb8aa331aa6729164fd5eb5c3649153dce31232af6a438cc0e",
+          "sizeBytes": 249628,
+          "recipeSource": "system/lib/libcxx/src/thread.cpp"
+        }
+      ]
+    },
+    {
+      "file": "libc++abi-noexcept.a",
+      "target": "libc++abi-noexcept",
+      "sha256": "ad519890e6289272a16e6cb636b3ce82df5803ece0aed06f2a343aad814df016",
+      "sizeBytes": 929960,
+      "selectedMembers": [
+        {
+          "id": "libc++abi-noexcept.a(abort_message.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "abort_message.o",
+          "sha256": "9f316fc9099207f52243506b0505d8545555b99145412df58ef6e7d6ad2ef7e5",
+          "sizeBytes": 1243,
+          "recipeSource": "system/lib/libcxxabi/src/abort_message.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(cxa_default_handlers.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "cxa_default_handlers.o",
+          "sha256": "a887806f9a187015b93a24b89ce70632cc07151642b54778bc26a67da41fa4d6",
+          "sizeBytes": 15475,
+          "recipeSource": "system/lib/libcxxabi/src/cxa_default_handlers.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(cxa_handlers.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "cxa_handlers.o",
+          "sha256": "eea4466604f9891a21829084e53c191f14b57965ba5088ae06d45219c7ce0737",
+          "sizeBytes": 14964,
+          "recipeSource": "system/lib/libcxxabi/src/cxa_handlers.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(cxa_noexception.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "cxa_noexception.o",
+          "sha256": "57d1a4ac8b80440f767d8aa8380bb57e6fb520cfcdbe8e480605768bf1c3bbd3",
+          "sizeBytes": 9460,
+          "recipeSource": "system/lib/libcxxabi/src/cxa_noexception.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(cxa_virtual.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "cxa_virtual.o",
+          "sha256": "319b76c5709f88d1482316ad77a699be51c72686d263780b3044a353c3488354",
+          "sizeBytes": 1769,
+          "recipeSource": "system/lib/libcxxabi/src/cxa_virtual.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(private_typeinfo.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "private_typeinfo.o",
+          "sha256": "0c90f57f19c68a83c1440a3b9a37bfd83a9bed780b9bb2ff8a976b2b04b40d27",
+          "sizeBytes": 54079,
+          "recipeSource": "system/lib/libcxxabi/src/private_typeinfo.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(stdlib_exception.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "stdlib_exception.o",
+          "sha256": "cf7da86227f39eb5ec6a1f5537b5b1af8fa536250729a6b11140acc50c877f3b",
+          "sizeBytes": 10075,
+          "recipeSource": "system/lib/libcxxabi/src/stdlib_exception.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(stdlib_stdexcept.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "stdlib_stdexcept.o",
+          "sha256": "d042a46ace9283d20795a254e17c61f606c88a5309e32820af18532c6c98ed5d",
+          "sizeBytes": 22714,
+          "recipeSource": "system/lib/libcxxabi/src/stdlib_stdexcept.cpp"
+        },
+        {
+          "id": "libc++abi-noexcept.a(stdlib_typeinfo.o)",
+          "archive": "libc++abi-noexcept.a",
+          "member": "stdlib_typeinfo.o",
+          "sha256": "356ee59cc63d489203c6ac13436d1389e469f27e980a7c4feaaebb0ddf5b8a57",
+          "sizeBytes": 10075,
+          "recipeSource": "system/lib/libcxxabi/src/stdlib_typeinfo.cpp"
+        }
+      ]
+    },
+    {
+      "file": "libc.a",
+      "target": "libc",
+      "sha256": "886713e3f6520476f26441fcae2a3cb7b5e32abc06ca89f51540f2df84df37c7",
+      "sizeBytes": 3195430,
+      "selectedMembers": [
+        {
+          "id": "libc.a(__cos.o)",
+          "archive": "libc.a",
+          "member": "__cos.o",
+          "sha256": "e8393f022190931c66d5b5cc92ff067b5dd592a5073b1d66b84a3909a1d0614c",
+          "sizeBytes": 1743,
+          "recipeSource": "system/lib/libc/musl/src/math/__cos.c"
+        },
+        {
+          "id": "libc.a(__cosdf.o)",
+          "archive": "libc.a",
+          "member": "__cosdf.o",
+          "sha256": "ec481286ca84ad1baab9350611278679857fa92437cec632abba458e64a6c849",
+          "sizeBytes": 1518,
+          "recipeSource": "system/lib/libc/musl/src/math/__cosdf.c"
+        },
+        {
+          "id": "libc.a(__ctype_get_mb_cur_max.o)",
+          "archive": "libc.a",
+          "member": "__ctype_get_mb_cur_max.o",
+          "sha256": "1001b7422272a00770955d1084645172f233a056360184d83802d292c2a5f832",
+          "sizeBytes": 4323,
+          "recipeSource": "system/lib/libc/musl/src/ctype/__ctype_get_mb_cur_max.c"
+        },
+        {
+          "id": "libc.a(__ctype_tolower_loc.o)",
+          "archive": "libc.a",
+          "member": "__ctype_tolower_loc.o",
+          "sha256": "362844f63cf99bc6253a542b7d661edd3a82fb0699ce035cee9a9c674a0f658a",
+          "sizeBytes": 2913,
+          "recipeSource": "system/lib/libc/musl/src/ctype/__ctype_tolower_loc.c"
+        },
+        {
+          "id": "libc.a(__ctype_toupper_loc.o)",
+          "archive": "libc.a",
+          "member": "__ctype_toupper_loc.o",
+          "sha256": "51c7f7bb63c22e5e8ca43cc5918f11a3db7044b3c68522f45a9d41c2e9c451c7",
+          "sizeBytes": 2913,
+          "recipeSource": "system/lib/libc/musl/src/ctype/__ctype_toupper_loc.c"
+        },
+        {
+          "id": "libc.a(__environ.o)",
+          "archive": "libc.a",
+          "member": "__environ.o",
+          "sha256": "b0a94b188fa8404ae32dde25ebe2c497d4f452b7e9ec51d9302bd1aa46fd5af1",
+          "sizeBytes": 2609,
+          "recipeSource": "system/lib/libc/musl/src/env/__environ.c"
+        },
+        {
+          "id": "libc.a(__errno_location.o)",
+          "archive": "libc.a",
+          "member": "__errno_location.o",
+          "sha256": "384d5ce95ee957f50ad4d997ecc4aff22d6ffb378c9a445ca9f000a2539f7d90",
+          "sizeBytes": 1171,
+          "recipeSource": "system/lib/libc/musl/src/errno/__errno_location.c"
+        },
+        {
+          "id": "libc.a(__fdopen.o)",
+          "archive": "libc.a",
+          "member": "__fdopen.o",
+          "sha256": "98390673594437fbb356c41e3c41ae1b8a2d9563f106f4dd576d2c2d905ecccb",
+          "sizeBytes": 4689,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__fdopen.c"
+        },
+        {
+          "id": "libc.a(__fmodeflags.o)",
+          "archive": "libc.a",
+          "member": "__fmodeflags.o",
+          "sha256": "057c33431afdad59c914d90d52e509e07ca67c76500d3b27b387117ee132f443",
+          "sizeBytes": 1639,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__fmodeflags.c"
+        },
+        {
+          "id": "libc.a(__fpclassifyl.o)",
+          "archive": "libc.a",
+          "member": "__fpclassifyl.o",
+          "sha256": "be6fa03a956fb2ff799cc6d27dce4a55782d4aaa9526887fb5e649aacf0f9517",
+          "sizeBytes": 1779,
+          "recipeSource": "system/lib/libc/musl/src/math/__fpclassifyl.c"
+        },
+        {
+          "id": "libc.a(__lctrans.o)",
+          "archive": "libc.a",
+          "member": "__lctrans.o",
+          "sha256": "286f6a8dc2af70438f4deb19ebe72dece0e37b1d169252bf995ba54e559cea9a",
+          "sizeBytes": 4817,
+          "recipeSource": "system/lib/libc/musl/src/locale/__lctrans.c"
+        },
+        {
+          "id": "libc.a(__lockfile.o)",
+          "archive": "libc.a",
+          "member": "__lockfile.o",
+          "sha256": "2d22a834c0053f7096e8887030e4a853bb3d83d89cb80a043fd36c4dfa8559d4",
+          "sizeBytes": 2750,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__lockfile.c"
+        },
+        {
+          "id": "libc.a(__math_divzero.o)",
+          "archive": "libc.a",
+          "member": "__math_divzero.o",
+          "sha256": "ef059645dd4c859d37ee373b566c9029811357ff5f8b290631f2afec42d1f686",
+          "sizeBytes": 1541,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_divzero.c"
+        },
+        {
+          "id": "libc.a(__math_invalid.o)",
+          "archive": "libc.a",
+          "member": "__math_invalid.o",
+          "sha256": "198f5ff97af87012dcf1f663a26da12292ec3230e7cffd29d597f3f5f65c2224",
+          "sizeBytes": 992,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_invalid.c"
+        },
+        {
+          "id": "libc.a(__math_invalidf.o)",
+          "archive": "libc.a",
+          "member": "__math_invalidf.o",
+          "sha256": "a352dfb94c926a9794e15894470280f06ce20d9c20cde1b42fe5f96f50fe8a8c",
+          "sizeBytes": 995,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_invalidf.c"
+        },
+        {
+          "id": "libc.a(__math_oflow.o)",
+          "archive": "libc.a",
+          "member": "__math_oflow.o",
+          "sha256": "86fe7f371f1a363ca2ace28b8d4f82e097da6070f4d1e258975077a82f1c783f",
+          "sizeBytes": 1283,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_oflow.c"
+        },
+        {
+          "id": "libc.a(__math_oflowf.o)",
+          "archive": "libc.a",
+          "member": "__math_oflowf.o",
+          "sha256": "31480598950be2468a6f1b41b199b2eaca0885fe2c3a0859608f7ddc08556c95",
+          "sizeBytes": 1284,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_oflowf.c"
+        },
+        {
+          "id": "libc.a(__math_uflow.o)",
+          "archive": "libc.a",
+          "member": "__math_uflow.o",
+          "sha256": "c7b4ac621ba05f1733886fcc5284d910a6a44837a1fe6285272f7a4da662bf84",
+          "sizeBytes": 1283,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_uflow.c"
+        },
+        {
+          "id": "libc.a(__math_uflowf.o)",
+          "archive": "libc.a",
+          "member": "__math_uflowf.o",
+          "sha256": "aa44801ff1291099e2b306cb13a535f67762c731fe5a29d5270aaa057c314845",
+          "sizeBytes": 1284,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_uflowf.c"
+        },
+        {
+          "id": "libc.a(__math_xflow.o)",
+          "archive": "libc.a",
+          "member": "__math_xflow.o",
+          "sha256": "60dbe76d147a5d9e65ed8aa5630b27b5730d3d36850dc5a6ffd3cc3c076fcad1",
+          "sizeBytes": 1533,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_xflow.c"
+        },
+        {
+          "id": "libc.a(__math_xflowf.o)",
+          "archive": "libc.a",
+          "member": "__math_xflowf.o",
+          "sha256": "651adef9dbc262eca8c81328dd73f37fc7ce907738098de41cf1e73dd86415ac",
+          "sizeBytes": 1538,
+          "recipeSource": "system/lib/libc/musl/src/math/__math_xflowf.c"
+        },
+        {
+          "id": "libc.a(__mo_lookup.o)",
+          "archive": "libc.a",
+          "member": "__mo_lookup.o",
+          "sha256": "a22811f6c99aad0ca7d736a859faec6991bf034dd7d3f9276ed7e51245ba2b85",
+          "sizeBytes": 3425,
+          "recipeSource": "system/lib/libc/musl/src/locale/__mo_lookup.c"
+        },
+        {
+          "id": "libc.a(__overflow.o)",
+          "archive": "libc.a",
+          "member": "__overflow.o",
+          "sha256": "57f811e80bb167dba2c6cf9c3b0074ca4e8b0b55b4ea3fecbc08a16f9fa94af5",
+          "sizeBytes": 2860,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__overflow.c"
+        },
+        {
+          "id": "libc.a(__randname.o)",
+          "archive": "libc.a",
+          "member": "__randname.o",
+          "sha256": "741b7410165681f36fa4cf31f0ea82d255b04e0819f08c2de5e8c2d00cbb4682",
+          "sizeBytes": 5142,
+          "recipeSource": "system/lib/libc/musl/src/temp/__randname.c"
+        },
+        {
+          "id": "libc.a(__rem_pio2.o)",
+          "archive": "libc.a",
+          "member": "__rem_pio2.o",
+          "sha256": "bd8993252f4bfe42f71f7a7fab85b1148ef6907cf0c9a7bb26b642e44ff82cfc",
+          "sizeBytes": 5872,
+          "recipeSource": "system/lib/libc/musl/src/math/__rem_pio2.c"
+        },
+        {
+          "id": "libc.a(__rem_pio2_large.o)",
+          "archive": "libc.a",
+          "member": "__rem_pio2_large.o",
+          "sha256": "f7e76943cbf7b6f690315cae7fcfbee24a79ed4408281f406c243bc9025a1ca1",
+          "sizeBytes": 11104,
+          "recipeSource": "system/lib/libc/musl/src/math/__rem_pio2_large.c"
+        },
+        {
+          "id": "libc.a(__rem_pio2f.o)",
+          "archive": "libc.a",
+          "member": "__rem_pio2f.o",
+          "sha256": "f847516ad864b0733ab84e1614fa6c569be0dc1b9e4dc8aae5ce14545d1c7240",
+          "sizeBytes": 2989,
+          "recipeSource": "system/lib/libc/musl/src/math/__rem_pio2f.c"
+        },
+        {
+          "id": "libc.a(__sin.o)",
+          "archive": "libc.a",
+          "member": "__sin.o",
+          "sha256": "b99444cd7d57c87f0a25f8f9df4d428f62e2874c824ffe3f5af35e2ffe43db92",
+          "sizeBytes": 1833,
+          "recipeSource": "system/lib/libc/musl/src/math/__sin.c"
+        },
+        {
+          "id": "libc.a(__sindf.o)",
+          "archive": "libc.a",
+          "member": "__sindf.o",
+          "sha256": "95385573050593f77bcc8e003609fb0fdf585961ae55cfad917ae0dac234e261",
+          "sizeBytes": 1569,
+          "recipeSource": "system/lib/libc/musl/src/math/__sindf.c"
+        },
+        {
+          "id": "libc.a(__stdio_close.o)",
+          "archive": "libc.a",
+          "member": "__stdio_close.o",
+          "sha256": "2c94f2cea8c0bca227e299708dc0ca15d38ca578ae4fadde08064135d7108b57",
+          "sizeBytes": 2961,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__stdio_close.c"
+        },
+        {
+          "id": "libc.a(__stdio_exit.o)",
+          "archive": "libc.a",
+          "member": "__stdio_exit.o",
+          "sha256": "3488444a8d5654266ede85a7c7c6096bf4302dd1d10555801c83ebc46428115b",
+          "sizeBytes": 3662,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__stdio_exit.c"
+        },
+        {
+          "id": "libc.a(__stdio_read.o)",
+          "archive": "libc.a",
+          "member": "__stdio_read.o",
+          "sha256": "56252cf4053ed2bcb842bb7cf0d9125fa538c1568558f08737636b4438a0d51f",
+          "sizeBytes": 3970,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__stdio_read.c"
+        },
+        {
+          "id": "libc.a(__stdio_seek.o)",
+          "archive": "libc.a",
+          "member": "__stdio_seek.o",
+          "sha256": "226e6baf30a8eed2eb6d2722b2687b63e830502ecf0a4439eabafed2fa535dea",
+          "sizeBytes": 2561,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__stdio_seek.c"
+        },
+        {
+          "id": "libc.a(__stdio_write.o)",
+          "archive": "libc.a",
+          "member": "__stdio_write.o",
+          "sha256": "0d20906bf2a7f1cd09576a5769cd4e08060bfe84d2536b78683637c9a12e0f32",
+          "sizeBytes": 4510,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__stdio_write.c"
+        },
+        {
+          "id": "libc.a(__tan.o)",
+          "archive": "libc.a",
+          "member": "__tan.o",
+          "sha256": "9a6d9cf5d2c7ab92186d44b89ff2b3df3901f872fa0d801a74359e54ad4d7510",
+          "sizeBytes": 3002,
+          "recipeSource": "system/lib/libc/musl/src/math/__tan.c"
+        },
+        {
+          "id": "libc.a(__toread.o)",
+          "archive": "libc.a",
+          "member": "__toread.o",
+          "sha256": "31b004857e6b17748abf570efd112790e8de4bf3ecc84cd236f7b74d83de2454",
+          "sizeBytes": 2943,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__toread.c"
+        },
+        {
+          "id": "libc.a(__towrite.o)",
+          "archive": "libc.a",
+          "member": "__towrite.o",
+          "sha256": "8d96ddf32268aad8aa78e9edca3d273d47d328838d573cd7fea51179c3bc50bc",
+          "sizeBytes": 2833,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__towrite.c"
+        },
+        {
+          "id": "libc.a(__uflow.o)",
+          "archive": "libc.a",
+          "member": "__uflow.o",
+          "sha256": "8a5b7621e4a9aa4ce3b9c1fa9151e64a7ceeba931ed7395d0eae2be716d515e4",
+          "sizeBytes": 2617,
+          "recipeSource": "system/lib/libc/musl/src/stdio/__uflow.c"
+        },
+        {
+          "id": "libc.a(aligned_alloc.o)",
+          "archive": "libc.a",
+          "member": "aligned_alloc.o",
+          "sha256": "e6d05278194bada325ec8369218bc88aafeec9c19d113cf15c6825231eede730",
+          "sizeBytes": 1609,
+          "recipeSource": "system/lib/libc/compat/aligned_alloc.c"
+        },
+        {
+          "id": "libc.a(atan.o)",
+          "archive": "libc.a",
+          "member": "atan.o",
+          "sha256": "7ba6124a0af2b986d9cb9e3a7899bbfaf0215990b053b2d66b24f0f59c5fdb4d",
+          "sizeBytes": 3577,
+          "recipeSource": "system/lib/libc/musl/src/math/atan.c"
+        },
+        {
+          "id": "libc.a(atan2.o)",
+          "archive": "libc.a",
+          "member": "atan2.o",
+          "sha256": "937b65e46110e1caa39e9454f0959be54a345acbd3496c546d4944db1e9d3443",
+          "sizeBytes": 3744,
+          "recipeSource": "system/lib/libc/musl/src/math/atan2.c"
+        },
+        {
+          "id": "libc.a(atexit.o)",
+          "archive": "libc.a",
+          "member": "atexit.o",
+          "sha256": "c9fbcc8285076bb855049aa47697e3d17943640d4c03d198c9b460beb4d4bcb5",
+          "sizeBytes": 4467,
+          "recipeSource": "system/lib/libc/musl/src/exit/atexit.c"
+        },
+        {
+          "id": "libc.a(atof.o)",
+          "archive": "libc.a",
+          "member": "atof.o",
+          "sha256": "0fa68ae45f02797e852e6a868bf0f3de76f2d654114ba5eb4cecfdc3ab0dfe85",
+          "sizeBytes": 1211,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/atof.c"
+        },
+        {
+          "id": "libc.a(atoi.o)",
+          "archive": "libc.a",
+          "member": "atoi.o",
+          "sha256": "1d1c2f513876110ad824957fd56274e1961c1148e313ed26864db8043bd42c55",
+          "sizeBytes": 1674,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/atoi.c"
+        },
+        {
+          "id": "libc.a(btowc.o)",
+          "archive": "libc.a",
+          "member": "btowc.o",
+          "sha256": "bda1aba44b1a20f510702e607d5848057f4f2d7a682fdfbe0256d6c3b11bf0db",
+          "sizeBytes": 4439,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/btowc.c"
+        },
+        {
+          "id": "libc.a(c_locale.o)",
+          "archive": "libc.a",
+          "member": "c_locale.o",
+          "sha256": "ead075500d03097dc88e803569de125cea1391a2a2fce03c8fdb50b411348992",
+          "sizeBytes": 1867,
+          "recipeSource": "system/lib/libc/musl/src/locale/c_locale.c"
+        },
+        {
+          "id": "libc.a(chmod.o)",
+          "archive": "libc.a",
+          "member": "chmod.o",
+          "sha256": "bd541dd195bc981419e51d2c34fafc78e38fe12e59e1e3fca67823124a3402c5",
+          "sizeBytes": 1535,
+          "recipeSource": "system/lib/libc/musl/src/stat/chmod.c"
+        },
+        {
+          "id": "libc.a(clock_nanosleep.o)",
+          "archive": "libc.a",
+          "member": "clock_nanosleep.o",
+          "sha256": "ff2fe1c7e96d5a13797af1e80013d210a555bc164ac1fe9cede344485e280687",
+          "sizeBytes": 2337,
+          "recipeSource": "system/lib/libc/musl/src/time/clock_nanosleep.c"
+        },
+        {
+          "id": "libc.a(close.o)",
+          "archive": "libc.a",
+          "member": "close.o",
+          "sha256": "638d4cf038b85b8bd2efc6db363d0d30c01ffd7e8297c3d411cd971246f3c87a",
+          "sizeBytes": 2054,
+          "recipeSource": "system/lib/libc/musl/src/unistd/close.c"
+        },
+        {
+          "id": "libc.a(closedir.o)",
+          "archive": "libc.a",
+          "member": "closedir.o",
+          "sha256": "6c6f50663a07d24aba2f2121a69a95e04177c2471ca7d535f7d9d4688bb23d27",
+          "sizeBytes": 1844,
+          "recipeSource": "system/lib/libc/musl/src/dirent/closedir.c"
+        },
+        {
+          "id": "libc.a(copysignl.o)",
+          "archive": "libc.a",
+          "member": "copysignl.o",
+          "sha256": "b7ef6f0e9c65b59a3c889ab9b7cbd5a26e0b7a9f7c5a5122b8d013d1a5e677a9",
+          "sizeBytes": 1627,
+          "recipeSource": "system/lib/libc/musl/src/math/copysignl.c"
+        },
+        {
+          "id": "libc.a(cos.o)",
+          "archive": "libc.a",
+          "member": "cos.o",
+          "sha256": "aebc87dd4a1d6e50261196205568e2da975700c33c9b2cb366e29517588a2385",
+          "sizeBytes": 2149,
+          "recipeSource": "system/lib/libc/musl/src/math/cos.c"
+        },
+        {
+          "id": "libc.a(cosf.o)",
+          "archive": "libc.a",
+          "member": "cosf.o",
+          "sha256": "71b2be510f0a5b954fea10d8f5775fb44568f38a30e6b5def0257969c0144914",
+          "sizeBytes": 2821,
+          "recipeSource": "system/lib/libc/musl/src/math/cosf.c"
+        },
+        {
+          "id": "libc.a(difftime.o)",
+          "archive": "libc.a",
+          "member": "difftime.o",
+          "sha256": "eacce699db9bfa1b2043cf4003c1662c04237102fed996f3d30108e88dafc326",
+          "sizeBytes": 1089,
+          "recipeSource": "system/lib/libc/musl/src/time/difftime.c"
+        },
+        {
+          "id": "libc.a(emscripten_get_heap_size.o)",
+          "archive": "libc.a",
+          "member": "emscripten_get_heap_size.o",
+          "sha256": "4ce1d013cac5d0d79e699dadb7ed7328b2c77c44c03a128932dde11cc6db4791",
+          "sizeBytes": 1045,
+          "recipeSource": "system/lib/libc/emscripten_get_heap_size.c"
+        },
+        {
+          "id": "libc.a(emscripten_memcpy.o)",
+          "archive": "libc.a",
+          "member": "emscripten_memcpy.o",
+          "sha256": "144c57648894e3d1d81961254d9e2294e28ed9f2257c81f61e704c9cc85a58cf",
+          "sizeBytes": 3279,
+          "recipeSource": "system/lib/libc/emscripten_memcpy.c"
+        },
+        {
+          "id": "libc.a(emscripten_memmove.o)",
+          "archive": "libc.a",
+          "member": "emscripten_memmove.o",
+          "sha256": "58642bc5ef9174121af96ddeca5112709e6a9aed69863733258363a7e3bd911d",
+          "sizeBytes": 2586,
+          "recipeSource": "system/lib/libc/emscripten_memmove.c"
+        },
+        {
+          "id": "libc.a(emscripten_memset.o)",
+          "archive": "libc.a",
+          "member": "emscripten_memset.o",
+          "sha256": "9d26dfd2e55204e13d325fc57c1cb543e9ca1c61ed8166e2959bc886e838e96d",
+          "sizeBytes": 2638,
+          "recipeSource": "system/lib/libc/emscripten_memset.c"
+        },
+        {
+          "id": "libc.a(emscripten_time.o)",
+          "archive": "libc.a",
+          "member": "emscripten_time.o",
+          "sha256": "9b0243d3fe1aa829fc88061040841a5bac4415c56d1476eba650a5fc182ba3f9",
+          "sizeBytes": 5715,
+          "recipeSource": "system/lib/libc/emscripten_time.c"
+        },
+        {
+          "id": "libc.a(exp.o)",
+          "archive": "libc.a",
+          "member": "exp.o",
+          "sha256": "1f56348592c96626f8996f13b9dad8adc9891293542c7c143d32fe824b12b181",
+          "sizeBytes": 5212,
+          "recipeSource": "system/lib/libc/musl/src/math/exp.c"
+        },
+        {
+          "id": "libc.a(exp2.o)",
+          "archive": "libc.a",
+          "member": "exp2.o",
+          "sha256": "ced15340da87e99cb163255d6778ed363f03b1e199399ea59c5ab844f7394394",
+          "sizeBytes": 5081,
+          "recipeSource": "system/lib/libc/musl/src/math/exp2.c"
+        },
+        {
+          "id": "libc.a(exp2f.o)",
+          "archive": "libc.a",
+          "member": "exp2f.o",
+          "sha256": "460e4920953f9b217a66f8ef14537d737448a20dc5cd6b18df23e9843d4b68a4",
+          "sizeBytes": 3015,
+          "recipeSource": "system/lib/libc/musl/src/math/exp2f.c"
+        },
+        {
+          "id": "libc.a(exp2f_data.o)",
+          "archive": "libc.a",
+          "member": "exp2f_data.o",
+          "sha256": "748962b49bbc6b7e9a89250d77ef11e3fa26832e5364628af370dd65eff9bc40",
+          "sizeBytes": 1620,
+          "recipeSource": "system/lib/libc/musl/src/math/exp2f_data.c"
+        },
+        {
+          "id": "libc.a(exp_data.o)",
+          "archive": "libc.a",
+          "member": "exp_data.o",
+          "sha256": "04d8ba4a850a59fa01261336f70e020d6a528ef1e4f15568aa7ac455cad56235",
+          "sizeBytes": 3486,
+          "recipeSource": "system/lib/libc/musl/src/math/exp_data.c"
+        },
+        {
+          "id": "libc.a(expf.o)",
+          "archive": "libc.a",
+          "member": "expf.o",
+          "sha256": "e9dc624147374a0593d6dc78fadc90755cb48740377f8befe2941913f773938f",
+          "sizeBytes": 3050,
+          "recipeSource": "system/lib/libc/musl/src/math/expf.c"
+        },
+        {
+          "id": "libc.a(expm1.o)",
+          "archive": "libc.a",
+          "member": "expm1.o",
+          "sha256": "3a3608f0c12dacd94f0c4f6a1b6c5b64fdb3ac3c0587be06a93eb5312fd4a661",
+          "sizeBytes": 4725,
+          "recipeSource": "system/lib/libc/musl/src/math/expm1.c"
+        },
+        {
+          "id": "libc.a(fabs.o)",
+          "archive": "libc.a",
+          "member": "fabs.o",
+          "sha256": "18de3e52b10bdff097d3432e67c4c22aeb244bf09497c7251905cbf9ed43a055",
+          "sizeBytes": 942,
+          "recipeSource": "system/lib/libc/musl/src/math/fabs.c"
+        },
+        {
+          "id": "libc.a(fabsl.o)",
+          "archive": "libc.a",
+          "member": "fabsl.o",
+          "sha256": "2c7ea88fd653cc20998d7b5e8c2394a358d5044452f55ea517fc8b022994888a",
+          "sizeBytes": 1515,
+          "recipeSource": "system/lib/libc/musl/src/math/fabsl.c"
+        },
+        {
+          "id": "libc.a(fclose.o)",
+          "archive": "libc.a",
+          "member": "fclose.o",
+          "sha256": "c53932f3b1a350c198534c5f81b8b773aadd3dd15127dd1c34a7358ac9f7bba7",
+          "sizeBytes": 3760,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fclose.c"
+        },
+        {
+          "id": "libc.a(fcntl.o)",
+          "archive": "libc.a",
+          "member": "fcntl.o",
+          "sha256": "f7de3a9f8e7ac0bf0173655f83dc135e221f8bd62a3ebac26866de2c824bd66e",
+          "sizeBytes": 3456,
+          "recipeSource": "system/lib/libc/musl/src/fcntl/fcntl.c"
+        },
+        {
+          "id": "libc.a(feof.o)",
+          "archive": "libc.a",
+          "member": "feof.o",
+          "sha256": "21597fe53dc04d22592bfc16ec720c19a213df937789eea11051e022a89abc5b",
+          "sizeBytes": 2834,
+          "recipeSource": "system/lib/libc/musl/src/stdio/feof.c"
+        },
+        {
+          "id": "libc.a(ferror.o)",
+          "archive": "libc.a",
+          "member": "ferror.o",
+          "sha256": "6296aefbbd3911e118afefa7ab13cc94eb5e66372ed9e5856781f089cfd6521a",
+          "sizeBytes": 2848,
+          "recipeSource": "system/lib/libc/musl/src/stdio/ferror.c"
+        },
+        {
+          "id": "libc.a(fflush.o)",
+          "archive": "libc.a",
+          "member": "fflush.o",
+          "sha256": "65a25d38823358fcd3310a5228fa7b54924b5a4596c5173811dffb17a2177901",
+          "sizeBytes": 3982,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fflush.c"
+        },
+        {
+          "id": "libc.a(fgetc.o)",
+          "archive": "libc.a",
+          "member": "fgetc.o",
+          "sha256": "3a434fce71b87b513544ed41c64949b192fac41accc39cd5860cd651c93e7be0",
+          "sizeBytes": 7270,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fgetc.c"
+        },
+        {
+          "id": "libc.a(fgets.o)",
+          "archive": "libc.a",
+          "member": "fgets.o",
+          "sha256": "73517e96f911277546bbb42b62a918a3995bb52c078111e2bcd28cf09cad48c3",
+          "sizeBytes": 4218,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fgets.c"
+        },
+        {
+          "id": "libc.a(fileno.o)",
+          "archive": "libc.a",
+          "member": "fileno.o",
+          "sha256": "21023954c62b6e5603a37a675ecc4382d51c242bf73ded9105e3b4a9d9c4d7e7",
+          "sizeBytes": 2988,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fileno.c"
+        },
+        {
+          "id": "libc.a(floatscan.o)",
+          "archive": "libc.a",
+          "member": "floatscan.o",
+          "sha256": "e1cfc86eb4242e080bcaa5c60f39df96d0101380cfdbae2140ee12a4f59e5e55",
+          "sizeBytes": 23843,
+          "recipeSource": "system/lib/libc/musl/src/internal/floatscan.c"
+        },
+        {
+          "id": "libc.a(floor.o)",
+          "archive": "libc.a",
+          "member": "floor.o",
+          "sha256": "7b43bc5a6d895198090ce212feb780172d987769ae52e1778112014804b69e89",
+          "sizeBytes": 948,
+          "recipeSource": "system/lib/libc/musl/src/math/floor.c"
+        },
+        {
+          "id": "libc.a(fmaxf.o)",
+          "archive": "libc.a",
+          "member": "fmaxf.o",
+          "sha256": "71a83ee4f9297ee7c79067d03e2167d56848261f733e89cb524fae99d02633b3",
+          "sizeBytes": 1625,
+          "recipeSource": "system/lib/libc/musl/src/math/fmaxf.c"
+        },
+        {
+          "id": "libc.a(fminf.o)",
+          "archive": "libc.a",
+          "member": "fminf.o",
+          "sha256": "b68b863876fa6f0827fa001d84556cda49641fc4458e8cd9a3ff166eeae494e5",
+          "sizeBytes": 1625,
+          "recipeSource": "system/lib/libc/musl/src/math/fminf.c"
+        },
+        {
+          "id": "libc.a(fmod.o)",
+          "archive": "libc.a",
+          "member": "fmod.o",
+          "sha256": "28918ca068524feb88ec8e6e7b27c2742d819adbf6ea67af015e27e64e3f09e8",
+          "sizeBytes": 3742,
+          "recipeSource": "system/lib/libc/musl/src/math/fmod.c"
+        },
+        {
+          "id": "libc.a(fmodl.o)",
+          "archive": "libc.a",
+          "member": "fmodl.o",
+          "sha256": "8ff6f34228cfd96444f2f736fe2238fc6e69ea656b77fa54a85cb4b362c583c9",
+          "sizeBytes": 4159,
+          "recipeSource": "system/lib/libc/musl/src/math/fmodl.c"
+        },
+        {
+          "id": "libc.a(fopen.o)",
+          "archive": "libc.a",
+          "member": "fopen.o",
+          "sha256": "81f919dfadeaea7f949b089bf279e9f2b24feb518286eacf9a9527f69971d0fd",
+          "sizeBytes": 4047,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fopen.c"
+        },
+        {
+          "id": "libc.a(fprintf.o)",
+          "archive": "libc.a",
+          "member": "fprintf.o",
+          "sha256": "ce4e9a1d3477e99d224b4633d511838a6175b2ccedb8313f5a1ae12679a0c959",
+          "sizeBytes": 4040,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fprintf.c"
+        },
+        {
+          "id": "libc.a(fputc.o)",
+          "archive": "libc.a",
+          "member": "fputc.o",
+          "sha256": "f7210c067dd0e21d5608a682a1094f26fa1dacae716a9cdedca05fd0df641f6c",
+          "sizeBytes": 7362,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fputc.c"
+        },
+        {
+          "id": "libc.a(fputs.o)",
+          "archive": "libc.a",
+          "member": "fputs.o",
+          "sha256": "58fb79090883fdd64695e866c16736e0b5a6c18451d0d3cebd75a74ec183ea9a",
+          "sizeBytes": 2815,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fputs.c"
+        },
+        {
+          "id": "libc.a(fputwc.o)",
+          "archive": "libc.a",
+          "member": "fputwc.o",
+          "sha256": "5dcb30f6bb35f88d58f149d84740fb0547f0a5f906ccc00871a447cbca13946b",
+          "sizeBytes": 7309,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fputwc.c"
+        },
+        {
+          "id": "libc.a(fread.o)",
+          "archive": "libc.a",
+          "member": "fread.o",
+          "sha256": "6a8991267e16449882cb879ee359dd516cddeab37df6ad601b82e1e2fa626de6",
+          "sizeBytes": 3796,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fread.c"
+        },
+        {
+          "id": "libc.a(freelocale.o)",
+          "archive": "libc.a",
+          "member": "freelocale.o",
+          "sha256": "3ed1292617019a73c070668f89c8a30faeb551fa581a50d5d187ac8ece2e0fe4",
+          "sizeBytes": 1941,
+          "recipeSource": "system/lib/libc/musl/src/locale/freelocale.c"
+        },
+        {
+          "id": "libc.a(frexp.o)",
+          "archive": "libc.a",
+          "member": "frexp.o",
+          "sha256": "12ffb5e0668b8ad203bfdfc82447102c306a6ea49a6121384abf572649a0f105",
+          "sizeBytes": 1718,
+          "recipeSource": "system/lib/libc/musl/src/math/frexp.c"
+        },
+        {
+          "id": "libc.a(fseek.o)",
+          "archive": "libc.a",
+          "member": "fseek.o",
+          "sha256": "831296ca302b6bc9188f2cbe04246d7d749bf6332db5a33094c4b7d04e18b26f",
+          "sizeBytes": 3969,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fseek.c"
+        },
+        {
+          "id": "libc.a(fstat.o)",
+          "archive": "libc.a",
+          "member": "fstat.o",
+          "sha256": "f8412ceac06ee74829b3d1e80a74cefc5a8f899095f319580145edd6b9470c28",
+          "sizeBytes": 2570,
+          "recipeSource": "system/lib/libc/musl/src/stat/fstat.c"
+        },
+        {
+          "id": "libc.a(fstatat.o)",
+          "archive": "libc.a",
+          "member": "fstatat.o",
+          "sha256": "3ef7080f97614e3b6bddd4e23d324c990f4639d55e7652021fb66e17770be359",
+          "sizeBytes": 3184,
+          "recipeSource": "system/lib/libc/musl/src/stat/fstatat.c"
+        },
+        {
+          "id": "libc.a(ftell.o)",
+          "archive": "libc.a",
+          "member": "ftell.o",
+          "sha256": "78a95d4545150318ed9f863bf9181d920f8108b25094029a91534bb37995fad2",
+          "sizeBytes": 3907,
+          "recipeSource": "system/lib/libc/musl/src/stdio/ftell.c"
+        },
+        {
+          "id": "libc.a(ftruncate.o)",
+          "archive": "libc.a",
+          "member": "ftruncate.o",
+          "sha256": "de2a58b5db893a7b8c2c50558c2d5784a4d8d7a8613e3af3c6561845f3c8de01",
+          "sizeBytes": 1472,
+          "recipeSource": "system/lib/libc/musl/src/unistd/ftruncate.c"
+        },
+        {
+          "id": "libc.a(fwide.o)",
+          "archive": "libc.a",
+          "member": "fwide.o",
+          "sha256": "f90d73899de9fcbebf18122fd89eb08ed53feceacd7f73c644de5ac04bd869ea",
+          "sizeBytes": 5887,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fwide.c"
+        },
+        {
+          "id": "libc.a(fwrite.o)",
+          "archive": "libc.a",
+          "member": "fwrite.o",
+          "sha256": "63aa4d1370f6365da3299474bff308a3a5a67aff7da54e858736ada9b0c90e00",
+          "sizeBytes": 4354,
+          "recipeSource": "system/lib/libc/musl/src/stdio/fwrite.c"
+        },
+        {
+          "id": "libc.a(getcwd.o)",
+          "archive": "libc.a",
+          "member": "getcwd.o",
+          "sha256": "b4ce24c83e0ea2476e32f8dca0cdcdae83c3f1edce0cf8f0f5f94d8468b0aa22",
+          "sizeBytes": 2417,
+          "recipeSource": "system/lib/libc/musl/src/unistd/getcwd.c"
+        },
+        {
+          "id": "libc.a(getenv.o)",
+          "archive": "libc.a",
+          "member": "getenv.o",
+          "sha256": "eb3882e0212d995a64b26a89538ace476f94ba78729fb360b660811a12f04ff2",
+          "sizeBytes": 1932,
+          "recipeSource": "system/lib/libc/musl/src/env/getenv.c"
+        },
+        {
+          "id": "libc.a(gethostname.o)",
+          "archive": "libc.a",
+          "member": "gethostname.o",
+          "sha256": "b9cbc37f11ef990024941ad53bf05b6f3f98e87f2031d56b3a18ee59f47ee6e2",
+          "sizeBytes": 2057,
+          "recipeSource": "system/lib/libc/musl/src/unistd/gethostname.c"
+        },
+        {
+          "id": "libc.a(getpid.o)",
+          "archive": "libc.a",
+          "member": "getpid.o",
+          "sha256": "3c80476ddace4929ec869357898359fd79bef2738dcd09384a1ba8b8579afe73",
+          "sizeBytes": 1157,
+          "recipeSource": "system/lib/libc/musl/src/unistd/getpid.c"
+        },
+        {
+          "id": "libc.a(gmtime.o)",
+          "archive": "libc.a",
+          "member": "gmtime.o",
+          "sha256": "2aa28b8ad57bc9cdfa6b89b2070c05cf7e67fddb3d8d5ce2e8e8e025960ef14f",
+          "sizeBytes": 1873,
+          "recipeSource": "system/lib/libc/musl/src/time/gmtime.c"
+        },
+        {
+          "id": "libc.a(htonl.o)",
+          "archive": "libc.a",
+          "member": "htonl.o",
+          "sha256": "5aefc687e057a3f355a300602a75ddfd2b58cb162adff1c4f2d63d7599790110",
+          "sizeBytes": 1546,
+          "recipeSource": "system/lib/libc/musl/src/network/htonl.c"
+        },
+        {
+          "id": "libc.a(htons.o)",
+          "archive": "libc.a",
+          "member": "htons.o",
+          "sha256": "b0f133f3831fab0a975a848e11ff959414ed5fae6f5a44f3d61e39c013d6f517",
+          "sizeBytes": 1536,
+          "recipeSource": "system/lib/libc/musl/src/network/htons.c"
+        },
+        {
+          "id": "libc.a(inet_ntoa.o)",
+          "archive": "libc.a",
+          "member": "inet_ntoa.o",
+          "sha256": "d7ab3627f75ebd9c743a9a71663742cec833f1414db909aeec391fb92c145239",
+          "sizeBytes": 2168,
+          "recipeSource": "system/lib/libc/musl/src/network/inet_ntoa.c"
+        },
+        {
+          "id": "libc.a(inet_pton.o)",
+          "archive": "libc.a",
+          "member": "inet_pton.o",
+          "sha256": "a48b1cb2cf9c71ee0c20d85a04f5118b8598a39118ba96574e6697a118d268c2",
+          "sizeBytes": 4921,
+          "recipeSource": "system/lib/libc/musl/src/network/inet_pton.c"
+        },
+        {
+          "id": "libc.a(internal.o)",
+          "archive": "libc.a",
+          "member": "internal.o",
+          "sha256": "cc3dfccfe860375bba61dd3aa6fddc7080c927f79584c6c4d12acc8b2249625d",
+          "sizeBytes": 1200,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/internal.c"
+        },
+        {
+          "id": "libc.a(intscan.o)",
+          "archive": "libc.a",
+          "member": "intscan.o",
+          "sha256": "c8cbc65260398878ca530b96e00aaeac461d503bd121f774eee554b03d251d00",
+          "sizeBytes": 7075,
+          "recipeSource": "system/lib/libc/musl/src/internal/intscan.c"
+        },
+        {
+          "id": "libc.a(isalpha.o)",
+          "archive": "libc.a",
+          "member": "isalpha.o",
+          "sha256": "80e54ef63b9e57bebffd6afd846e82eb45eb44c8e78dc1b0c10fbaa33684ff9f",
+          "sizeBytes": 1474,
+          "recipeSource": "system/lib/libc/musl/src/ctype/isalpha.c"
+        },
+        {
+          "id": "libc.a(isblank.o)",
+          "archive": "libc.a",
+          "member": "isblank.o",
+          "sha256": "caac17575c5415547fe69239a9aecfa544e5eebeb8f7bc94ceafb0989f7baa44",
+          "sizeBytes": 1444,
+          "recipeSource": "system/lib/libc/musl/src/ctype/isblank.c"
+        },
+        {
+          "id": "libc.a(isdigit.o)",
+          "archive": "libc.a",
+          "member": "isdigit.o",
+          "sha256": "21565a706308244fe0e93d65bc2d9ddb8bb838f2fd600685b4df86f018865f50",
+          "sizeBytes": 1467,
+          "recipeSource": "system/lib/libc/musl/src/ctype/isdigit.c"
+        },
+        {
+          "id": "libc.a(isgraph.o)",
+          "archive": "libc.a",
+          "member": "isgraph.o",
+          "sha256": "07b5720267eff80aaf3ef9afcb542e441a576cfd33bbba935731f0c0a9da60f2",
+          "sizeBytes": 1468,
+          "recipeSource": "system/lib/libc/musl/src/ctype/isgraph.c"
+        },
+        {
+          "id": "libc.a(islower.o)",
+          "archive": "libc.a",
+          "member": "islower.o",
+          "sha256": "e59df76422beba8e23d3c2b474a20eaf4e5c2dcf60a06e714f51b2fc16cbdc6d",
+          "sizeBytes": 1468,
+          "recipeSource": "system/lib/libc/musl/src/ctype/islower.c"
+        },
+        {
+          "id": "libc.a(isspace.o)",
+          "archive": "libc.a",
+          "member": "isspace.o",
+          "sha256": "db0801b377809bb1a7d3021c0c0d209c6845d9fcb5c27e016f6bbb04998c8b7b",
+          "sizeBytes": 1473,
+          "recipeSource": "system/lib/libc/musl/src/ctype/isspace.c"
+        },
+        {
+          "id": "libc.a(isupper.o)",
+          "archive": "libc.a",
+          "member": "isupper.o",
+          "sha256": "a7aacd7675e55ef741e8c392174f7cb45b55702649ef762fb3c2bc0431e0dba6",
+          "sizeBytes": 1468,
+          "recipeSource": "system/lib/libc/musl/src/ctype/isupper.c"
+        },
+        {
+          "id": "libc.a(iswalpha.o)",
+          "archive": "libc.a",
+          "member": "iswalpha.o",
+          "sha256": "9013305592e427aa971e5141c08e805b8e6756232e027dcf65ac38544a6a0946",
+          "sizeBytes": 5718,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswalpha.c"
+        },
+        {
+          "id": "libc.a(iswblank.o)",
+          "archive": "libc.a",
+          "member": "iswblank.o",
+          "sha256": "90219917261a7b2e08c4e7ce1eda53e4ba50e017a7aad37b5500119c568e2ca7",
+          "sizeBytes": 1609,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswblank.c"
+        },
+        {
+          "id": "libc.a(iswcntrl.o)",
+          "archive": "libc.a",
+          "member": "iswcntrl.o",
+          "sha256": "4bd6397e264579c3cd99c642cd46f6ce5a84d07b48ce2d2e779bf77ecdccd096",
+          "sizeBytes": 1542,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswcntrl.c"
+        },
+        {
+          "id": "libc.a(iswdigit.o)",
+          "archive": "libc.a",
+          "member": "iswdigit.o",
+          "sha256": "9aa2fad2b4de6f6d2cfb7629823dffcb96228e4f510f8300a61d26bac884051c",
+          "sizeBytes": 1514,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswdigit.c"
+        },
+        {
+          "id": "libc.a(iswlower.o)",
+          "archive": "libc.a",
+          "member": "iswlower.o",
+          "sha256": "42017b6eca8956b16b8c394ec202ca96cfe593224d1c075e367bb9fcf7d60280",
+          "sizeBytes": 1618,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswlower.c"
+        },
+        {
+          "id": "libc.a(iswprint.o)",
+          "archive": "libc.a",
+          "member": "iswprint.o",
+          "sha256": "a655c26b36c99e130b1f34c3aafa16279e88cbedc170549e9b7db82771bc08e6",
+          "sizeBytes": 1646,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswprint.c"
+        },
+        {
+          "id": "libc.a(iswpunct.o)",
+          "archive": "libc.a",
+          "member": "iswpunct.o",
+          "sha256": "eeaa89dcce79be23fd9d938fff4583b73648a75119778c1baf8f7acb0ac4edcd",
+          "sizeBytes": 5808,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswpunct.c"
+        },
+        {
+          "id": "libc.a(iswspace.o)",
+          "archive": "libc.a",
+          "member": "iswspace.o",
+          "sha256": "48e5a96f3c0ebf4cce1dda06ba132237d8641d6bdf68b23b54ff8341afd2df00",
+          "sizeBytes": 2022,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswspace.c"
+        },
+        {
+          "id": "libc.a(iswupper.o)",
+          "archive": "libc.a",
+          "member": "iswupper.o",
+          "sha256": "3cee0cb0f15cdfc29d2593fc347fa222762c6448c61a3532949a3454576bbfe0",
+          "sizeBytes": 1618,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswupper.c"
+        },
+        {
+          "id": "libc.a(iswxdigit.o)",
+          "archive": "libc.a",
+          "member": "iswxdigit.o",
+          "sha256": "dcb3e58b6abb4c23f0e5c75e64bd513c056ba25e583982a37d6a9e753d2279a1",
+          "sizeBytes": 1537,
+          "recipeSource": "system/lib/libc/musl/src/ctype/iswxdigit.c"
+        },
+        {
+          "id": "libc.a(isxdigit.o)",
+          "archive": "libc.a",
+          "member": "isxdigit.o",
+          "sha256": "c3475721b0fc1386cd9312fbe0767823737d8edf3da261247d8328000a22a6c8",
+          "sizeBytes": 1620,
+          "recipeSource": "system/lib/libc/musl/src/ctype/isxdigit.c"
+        },
+        {
+          "id": "libc.a(ldexp.o)",
+          "archive": "libc.a",
+          "member": "ldexp.o",
+          "sha256": "3f93ae2371dd01928abdd574c1c5cccda08c375d834da5753f9689b20b736255",
+          "sizeBytes": 1150,
+          "recipeSource": "system/lib/libc/musl/src/math/ldexp.c"
+        },
+        {
+          "id": "libc.a(libc.o)",
+          "archive": "libc.a",
+          "member": "libc.o",
+          "sha256": "5de6c016e17a71354e4d5f746b6fe6e7f81520d94e92d7b14226e4343b8af7ce",
+          "sizeBytes": 1872,
+          "recipeSource": "system/lib/libc/musl/src/internal/libc.c"
+        },
+        {
+          "id": "libc.a(library_pthread_stub.o)",
+          "archive": "libc.a",
+          "member": "library_pthread_stub.o",
+          "sha256": "bbb5f359b089a01dfa1cd236b40d185fd744be18c44b4071c07c53ab38fcc253",
+          "sizeBytes": 21622,
+          "recipeSource": "system/lib/pthread/library_pthread_stub.c"
+        },
+        {
+          "id": "libc.a(locale_map.o)",
+          "archive": "libc.a",
+          "member": "locale_map.o",
+          "sha256": "c80ce75813507d6a2b9bcc47ac9424b568e21fee167a218e5e045895bb5e4903",
+          "sizeBytes": 4941,
+          "recipeSource": "system/lib/libc/musl/src/locale/locale_map.c"
+        },
+        {
+          "id": "libc.a(localeconv.o)",
+          "archive": "libc.a",
+          "member": "localeconv.o",
+          "sha256": "2f7328e5ab54c419c7dd29d7af55bc6ed7bb768d1b0b4f1543facc62874bd42e",
+          "sizeBytes": 2304,
+          "recipeSource": "system/lib/libc/musl/src/locale/localeconv.c"
+        },
+        {
+          "id": "libc.a(localtime.o)",
+          "archive": "libc.a",
+          "member": "localtime.o",
+          "sha256": "30bf885138339ac90b6e483fcff5f98b1a68c55357d7f0a0bbe9bcba760aa920",
+          "sizeBytes": 1897,
+          "recipeSource": "system/lib/libc/musl/src/time/localtime.c"
+        },
+        {
+          "id": "libc.a(log.o)",
+          "archive": "libc.a",
+          "member": "log.o",
+          "sha256": "ac5b309cb8fdb08530ec4664973494bdf647dfd849821a95c935fc0acc4731b1",
+          "sizeBytes": 4833,
+          "recipeSource": "system/lib/libc/musl/src/math/log.c"
+        },
+        {
+          "id": "libc.a(log10.o)",
+          "archive": "libc.a",
+          "member": "log10.o",
+          "sha256": "61f2b19d9eafe349713ae9c8db3225805c03ce0a2444e0773c725970c18932fa",
+          "sizeBytes": 3717,
+          "recipeSource": "system/lib/libc/musl/src/math/log10.c"
+        },
+        {
+          "id": "libc.a(log_data.o)",
+          "archive": "libc.a",
+          "member": "log_data.o",
+          "sha256": "749507e7701852c0b660f8ef9298c508ace2d09e9e2e912fd5b4642cc5b00b41",
+          "sizeBytes": 5515,
+          "recipeSource": "system/lib/libc/musl/src/math/log_data.c"
+        },
+        {
+          "id": "libc.a(lroundf.o)",
+          "archive": "libc.a",
+          "member": "lroundf.o",
+          "sha256": "104cacc9546caefba61e8df6aa06a6f5e3ce5945ba3ac955d140541d6a448a4c",
+          "sizeBytes": 1208,
+          "recipeSource": "system/lib/libc/musl/src/math/lroundf.c"
+        },
+        {
+          "id": "libc.a(lseek.o)",
+          "archive": "libc.a",
+          "member": "lseek.o",
+          "sha256": "dffddecc283bf91c9a36c534a75c3476b3b66cd18867944cf521c456e9486887",
+          "sizeBytes": 2065,
+          "recipeSource": "system/lib/libc/musl/src/unistd/lseek.c"
+        },
+        {
+          "id": "libc.a(lstat.o)",
+          "archive": "libc.a",
+          "member": "lstat.o",
+          "sha256": "384deb5ee06d36440720d619df2e4f363f6a5c3f8d810d3017813be338f00cfb",
+          "sizeBytes": 2204,
+          "recipeSource": "system/lib/libc/musl/src/stat/lstat.c"
+        },
+        {
+          "id": "libc.a(mbrlen.o)",
+          "archive": "libc.a",
+          "member": "mbrlen.o",
+          "sha256": "fb22888cb08e25b33cb2008733811a2513089416ba705b94a99326f7e3c0e0f9",
+          "sizeBytes": 1747,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/mbrlen.c"
+        },
+        {
+          "id": "libc.a(mbrtowc.o)",
+          "archive": "libc.a",
+          "member": "mbrtowc.o",
+          "sha256": "cda25963fd30fc92b61c88ec2f6b7de87f5662eed6d25ef8da55c2c0dca6e186",
+          "sizeBytes": 6193,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/mbrtowc.c"
+        },
+        {
+          "id": "libc.a(mbsinit.o)",
+          "archive": "libc.a",
+          "member": "mbsinit.o",
+          "sha256": "a8c1f515fd681799e74ff1797bab6cc138fa264c8197a7aac267d36e661ddeb3",
+          "sizeBytes": 1234,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/mbsinit.c"
+        },
+        {
+          "id": "libc.a(mbsnrtowcs.o)",
+          "archive": "libc.a",
+          "member": "mbsnrtowcs.o",
+          "sha256": "f5b38e75e5e7b37326802b3a8f534818e1d837656d088d1c241e2054f8b6b10e",
+          "sizeBytes": 3146,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/mbsnrtowcs.c"
+        },
+        {
+          "id": "libc.a(mbsrtowcs.o)",
+          "archive": "libc.a",
+          "member": "mbsrtowcs.o",
+          "sha256": "f7bba31fc092382b32b922f2dca2f79dd0e72e804ad746611f71745ef860fb59",
+          "sizeBytes": 8326,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/mbsrtowcs.c"
+        },
+        {
+          "id": "libc.a(mbtowc.o)",
+          "archive": "libc.a",
+          "member": "mbtowc.o",
+          "sha256": "aadce1f62fb79c891be22e76e3ab16e4361870987276630c704e4d11e25cf5c9",
+          "sizeBytes": 5700,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/mbtowc.c"
+        },
+        {
+          "id": "libc.a(memchr.o)",
+          "archive": "libc.a",
+          "member": "memchr.o",
+          "sha256": "a35dee5fb9f4a9246bbf619923fd97a96217c0d0769f61386814fe2b405a254a",
+          "sizeBytes": 2039,
+          "recipeSource": "system/lib/libc/musl/src/string/memchr.c"
+        },
+        {
+          "id": "libc.a(memcmp.o)",
+          "archive": "libc.a",
+          "member": "memcmp.o",
+          "sha256": "91a3fc4058e9ee2a48df93d5b002ce914ef50c99c94f4830cc2a27e9ee4cccd1",
+          "sizeBytes": 1840,
+          "recipeSource": "system/lib/libc/musl/src/string/memcmp.c"
+        },
+        {
+          "id": "libc.a(memrchr.o)",
+          "archive": "libc.a",
+          "member": "memrchr.o",
+          "sha256": "dc26f9e346e5d861de94197e969d8800baa45f32c51e023a100dbbd0d38305b4",
+          "sizeBytes": 1451,
+          "recipeSource": "system/lib/libc/musl/src/string/memrchr.c"
+        },
+        {
+          "id": "libc.a(mkdir.o)",
+          "archive": "libc.a",
+          "member": "mkdir.o",
+          "sha256": "2731537df97583bcda9d7814089c6165cbf9b68a8a27a243951d3dd4881674db",
+          "sizeBytes": 1555,
+          "recipeSource": "system/lib/libc/musl/src/stat/mkdir.c"
+        },
+        {
+          "id": "libc.a(mkostemps.o)",
+          "archive": "libc.a",
+          "member": "mkostemps.o",
+          "sha256": "928be37de1df9127b5d1a5da08ce0786d98d290c68e3772d0331df746b86f2fe",
+          "sizeBytes": 2861,
+          "recipeSource": "system/lib/libc/musl/src/temp/mkostemps.c"
+        },
+        {
+          "id": "libc.a(mkstemp.o)",
+          "archive": "libc.a",
+          "member": "mkstemp.o",
+          "sha256": "fa821206b5e1563f824db25f8171500be8fb9bd34096c28ef3dabe8f5d5fa416",
+          "sizeBytes": 1187,
+          "recipeSource": "system/lib/libc/musl/src/temp/mkstemp.c"
+        },
+        {
+          "id": "libc.a(mktime.o)",
+          "archive": "libc.a",
+          "member": "mktime.o",
+          "sha256": "f86168880fba6c05ea7db935aef6d5d2d0b953909bde3d1d7b45ec3c3be8e72b",
+          "sizeBytes": 3231,
+          "recipeSource": "system/lib/libc/mktime.c"
+        },
+        {
+          "id": "libc.a(modf.o)",
+          "archive": "libc.a",
+          "member": "modf.o",
+          "sha256": "e4e21f1da31d383fba88be97c1791219e486673d9ab6ad8f41aa36e14228e4bf",
+          "sizeBytes": 1840,
+          "recipeSource": "system/lib/libc/musl/src/math/modf.c"
+        },
+        {
+          "id": "libc.a(mprotect.o)",
+          "archive": "libc.a",
+          "member": "mprotect.o",
+          "sha256": "9fc3ac3462f2767a49cca08a89fac118cac9e8e5db5b23045ea4b21f14ab5772",
+          "sizeBytes": 1802,
+          "recipeSource": "system/lib/libc/musl/src/mman/mprotect.c"
+        },
+        {
+          "id": "libc.a(nanosleep.o)",
+          "archive": "libc.a",
+          "member": "nanosleep.o",
+          "sha256": "8fee57f4fc49531fa433910d2570bfbc760df6a8ac1c09f0f81e9349959b6a3a",
+          "sizeBytes": 1671,
+          "recipeSource": "system/lib/libc/musl/src/time/nanosleep.c"
+        },
+        {
+          "id": "libc.a(newlocale.o)",
+          "archive": "libc.a",
+          "member": "newlocale.o",
+          "sha256": "37ec86aa9887bc746f9230c667d4014d5e6d9e2676c7080baa33c43835447866",
+          "sizeBytes": 4706,
+          "recipeSource": "system/lib/libc/musl/src/locale/newlocale.c"
+        },
+        {
+          "id": "libc.a(ntohl.o)",
+          "archive": "libc.a",
+          "member": "ntohl.o",
+          "sha256": "fd7dbb619958871c56704ddf3d623b0d1e348c8975608cdea9faefedb97feac3",
+          "sizeBytes": 1546,
+          "recipeSource": "system/lib/libc/musl/src/network/ntohl.c"
+        },
+        {
+          "id": "libc.a(ntohs.o)",
+          "archive": "libc.a",
+          "member": "ntohs.o",
+          "sha256": "9ce33ad5851fc9a7b0540fdbbed5b746bb13f8d90346bc00ec2e60cb1bd60ecf",
+          "sizeBytes": 1536,
+          "recipeSource": "system/lib/libc/musl/src/network/ntohs.c"
+        },
+        {
+          "id": "libc.a(ofl.o)",
+          "archive": "libc.a",
+          "member": "ofl.o",
+          "sha256": "c532008eb33162569a19d909d04d6d0790f7ec248566d9e1ab9de6f8da676cc3",
+          "sizeBytes": 3126,
+          "recipeSource": "system/lib/libc/musl/src/stdio/ofl.c"
+        },
+        {
+          "id": "libc.a(ofl_add.o)",
+          "archive": "libc.a",
+          "member": "ofl_add.o",
+          "sha256": "53d7d095800c926208a06132fab51833d04a50dfba6fc6925ec0fdc9b9b23d01",
+          "sizeBytes": 2690,
+          "recipeSource": "system/lib/libc/musl/src/stdio/ofl_add.c"
+        },
+        {
+          "id": "libc.a(open.o)",
+          "archive": "libc.a",
+          "member": "open.o",
+          "sha256": "7b86de0172077a013284a1566189b3463113efed4774073bba3329b2e6db7b52",
+          "sizeBytes": 2044,
+          "recipeSource": "system/lib/libc/musl/src/fcntl/open.c"
+        },
+        {
+          "id": "libc.a(opendir.o)",
+          "archive": "libc.a",
+          "member": "opendir.o",
+          "sha256": "c0af511dda08d0fb09a828bfac841b6a3f1e0f4b2a6f5ce647f9df47af49d08c",
+          "sizeBytes": 2527,
+          "recipeSource": "system/lib/libc/musl/src/dirent/opendir.c"
+        },
+        {
+          "id": "libc.a(perror.o)",
+          "archive": "libc.a",
+          "member": "perror.o",
+          "sha256": "c8802b8befcd2d803480f0ead6e17ae220be092ff938620931c9e35b4843b806",
+          "sizeBytes": 3852,
+          "recipeSource": "system/lib/libc/musl/src/stdio/perror.c"
+        },
+        {
+          "id": "libc.a(poll.o)",
+          "archive": "libc.a",
+          "member": "poll.o",
+          "sha256": "7a8d0da0f15b4f3bc32c69c606a510bc5fe4c7d0cd069c53c230c45581ba3741",
+          "sizeBytes": 1664,
+          "recipeSource": "system/lib/libc/musl/src/select/poll.c"
+        },
+        {
+          "id": "libc.a(posix_fadvise.o)",
+          "archive": "libc.a",
+          "member": "posix_fadvise.o",
+          "sha256": "3cc37980929f374f22b3be0b28cade53ac17cadd333f8a60a9ff31c903bc39d9",
+          "sizeBytes": 1379,
+          "recipeSource": "system/lib/libc/musl/src/fcntl/posix_fadvise.c"
+        },
+        {
+          "id": "libc.a(pow.o)",
+          "archive": "libc.a",
+          "member": "pow.o",
+          "sha256": "ec4165147fe6d4f08ef4e6f0b742b558f7a1e130c0ba3f87e7641e2f085cb8bb",
+          "sizeBytes": 12043,
+          "recipeSource": "system/lib/libc/musl/src/math/pow.c"
+        },
+        {
+          "id": "libc.a(pow_data.o)",
+          "archive": "libc.a",
+          "member": "pow_data.o",
+          "sha256": "1f7c77c5e6b93870a6c77c16fe8c73565f755950639e82e09d0af2c03507c6c7",
+          "sizeBytes": 5372,
+          "recipeSource": "system/lib/libc/musl/src/math/pow_data.c"
+        },
+        {
+          "id": "libc.a(powf.o)",
+          "archive": "libc.a",
+          "member": "powf.o",
+          "sha256": "cc68ab90288a610da0501964897e6a96978001b235455ae70caffc285330c597",
+          "sizeBytes": 6774,
+          "recipeSource": "system/lib/libc/musl/src/math/powf.c"
+        },
+        {
+          "id": "libc.a(powf_data.o)",
+          "archive": "libc.a",
+          "member": "powf_data.o",
+          "sha256": "4743eec3f4024be357896f0b4f97cedb07fa854c775b81b1aa45eaab10d40e88",
+          "sizeBytes": 1432,
+          "recipeSource": "system/lib/libc/musl/src/math/powf_data.c"
+        },
+        {
+          "id": "libc.a(printf.o)",
+          "archive": "libc.a",
+          "member": "printf.o",
+          "sha256": "c08da5db6b28d2077adb4047de0031849e619710c30006cdaee61bd163b7c983",
+          "sizeBytes": 3895,
+          "recipeSource": "system/lib/libc/musl/src/stdio/printf.c"
+        },
+        {
+          "id": "libc.a(pthread_self.o)",
+          "archive": "libc.a",
+          "member": "pthread_self.o",
+          "sha256": "46e642d7b6683d54fe4d76c7b39561d1cbff59a2c61ffbfb3b9f91f7bd3a66ff",
+          "sizeBytes": 4229,
+          "recipeSource": "system/lib/libc/musl/src/thread/pthread_self.c"
+        },
+        {
+          "id": "libc.a(pthread_self_stub.o)",
+          "archive": "libc.a",
+          "member": "pthread_self_stub.o",
+          "sha256": "62f848ce091dd2e3a8ac701d97a3027b355a9b9326e77cbe1d364909454baeb3",
+          "sizeBytes": 5017,
+          "recipeSource": "system/lib/pthread/pthread_self_stub.c"
+        },
+        {
+          "id": "libc.a(putchar.o)",
+          "archive": "libc.a",
+          "member": "putchar.o",
+          "sha256": "bba3223ec0cd8c08d87ed8ad03afd35a7a06c2f7933eefd27124a390835411af",
+          "sizeBytes": 7516,
+          "recipeSource": "system/lib/libc/musl/src/stdio/putchar.c"
+        },
+        {
+          "id": "libc.a(puts.o)",
+          "archive": "libc.a",
+          "member": "puts.o",
+          "sha256": "769cf41f8b767d2f18fe0a3c9a25d8fc14293dd9a5fde5a57d8b83dcedddf315",
+          "sizeBytes": 3149,
+          "recipeSource": "system/lib/libc/musl/src/stdio/puts.c"
+        },
+        {
+          "id": "libc.a(qsort.o)",
+          "archive": "libc.a",
+          "member": "qsort.o",
+          "sha256": "2538e57e1dae5689731b4870396db883ca7ada369403bd5e71710fee150a6ba8",
+          "sizeBytes": 9282,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/qsort.c"
+        },
+        {
+          "id": "libc.a(qsort_nr.o)",
+          "archive": "libc.a",
+          "member": "qsort_nr.o",
+          "sha256": "d53ca3b30e4d60905786371f3a064b84c4f37c97d11bd7d113f3843f38419c28",
+          "sizeBytes": 1817,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/qsort_nr.c"
+        },
+        {
+          "id": "libc.a(rand.o)",
+          "archive": "libc.a",
+          "member": "rand.o",
+          "sha256": "4680b1a19cffa273d346f96d62ab736b67bde5dd564da4a7423489998055d008",
+          "sizeBytes": 1496,
+          "recipeSource": "system/lib/libc/musl/src/prng/rand.c"
+        },
+        {
+          "id": "libc.a(read.o)",
+          "archive": "libc.a",
+          "member": "read.o",
+          "sha256": "63256b24f955b3ed59d33456157266b57563f750b2db2b92acd1b76ea994401a",
+          "sizeBytes": 2260,
+          "recipeSource": "system/lib/libc/musl/src/unistd/read.c"
+        },
+        {
+          "id": "libc.a(readdir.o)",
+          "archive": "libc.a",
+          "member": "readdir.o",
+          "sha256": "b6888df809c70fb7a47610ecc65a5422afb40f1ebafe378af2b426afbd45221c",
+          "sizeBytes": 2625,
+          "recipeSource": "system/lib/libc/musl/src/dirent/readdir.c"
+        },
+        {
+          "id": "libc.a(readlink.o)",
+          "archive": "libc.a",
+          "member": "readlink.o",
+          "sha256": "8501dd7abc43f019cd115dc69de11c42a3bf158a3644eae8aff8061c9fee6dbc",
+          "sizeBytes": 2065,
+          "recipeSource": "system/lib/libc/musl/src/unistd/readlink.c"
+        },
+        {
+          "id": "libc.a(realpath.o)",
+          "archive": "libc.a",
+          "member": "realpath.o",
+          "sha256": "04d0f44d4847b2b5bc5e0c375fb43431affb0511c57d43a65af4fd8cabacce01",
+          "sizeBytes": 6575,
+          "recipeSource": "system/lib/libc/musl/src/misc/realpath.c"
+        },
+        {
+          "id": "libc.a(remove.o)",
+          "archive": "libc.a",
+          "member": "remove.o",
+          "sha256": "2820417a4885dc648a4e445a8011138d89cf09e10eb100a2c33625269bf9f832",
+          "sizeBytes": 1709,
+          "recipeSource": "system/lib/libc/musl/src/stdio/remove.c"
+        },
+        {
+          "id": "libc.a(rename.o)",
+          "archive": "libc.a",
+          "member": "rename.o",
+          "sha256": "32c2c2803151e636c92f0beb44004b205a1647dab659de7c1d873b96eb68d5ea",
+          "sizeBytes": 1520,
+          "recipeSource": "system/lib/libc/musl/src/stdio/rename.c"
+        },
+        {
+          "id": "libc.a(rewind.o)",
+          "archive": "libc.a",
+          "member": "rewind.o",
+          "sha256": "2ce8dadaa1cd01904d4f59c61ad126b0eb74656206b2c2d86cf12d5532423908",
+          "sizeBytes": 2794,
+          "recipeSource": "system/lib/libc/musl/src/stdio/rewind.c"
+        },
+        {
+          "id": "libc.a(rmdir.o)",
+          "archive": "libc.a",
+          "member": "rmdir.o",
+          "sha256": "5e472d9073d770e540c5f48e40f3378c90e3a029d1aaa7044337af8524142dfc",
+          "sizeBytes": 1449,
+          "recipeSource": "system/lib/libc/musl/src/unistd/rmdir.c"
+        },
+        {
+          "id": "libc.a(roundf.o)",
+          "archive": "libc.a",
+          "member": "roundf.o",
+          "sha256": "692a20ec12826c09c92b93fd0045b2a3f3bd9f4ce8e15e3293554c9ba3c56800",
+          "sizeBytes": 1795,
+          "recipeSource": "system/lib/libc/musl/src/math/roundf.c"
+        },
+        {
+          "id": "libc.a(sbrk.o)",
+          "archive": "libc.a",
+          "member": "sbrk.o",
+          "sha256": "ee7c7e0b601a4790a1fcfced32fa8f34d9f314dca3fb78cb34a3f79ebede0ad3",
+          "sizeBytes": 2939,
+          "recipeSource": "system/lib/libc/sbrk.c"
+        },
+        {
+          "id": "libc.a(scalbn.o)",
+          "archive": "libc.a",
+          "member": "scalbn.o",
+          "sha256": "5f516bd2f04c69b81005f4d4545a00bf9e3a8ec5016292e563b0ed861d66f763",
+          "sizeBytes": 1755,
+          "recipeSource": "system/lib/libc/musl/src/math/scalbn.c"
+        },
+        {
+          "id": "libc.a(scalbnl.o)",
+          "archive": "libc.a",
+          "member": "scalbnl.o",
+          "sha256": "7f18f3cc3d5c9bc4f56a11efdb8af7954dbe7ec889cd91b966ae6a46474c221b",
+          "sizeBytes": 2283,
+          "recipeSource": "system/lib/libc/musl/src/math/scalbnl.c"
+        },
+        {
+          "id": "libc.a(select.o)",
+          "archive": "libc.a",
+          "member": "select.o",
+          "sha256": "813c6041b16d9cc918cc825cb67f945c89495296d8e49c2f7e3bcef06662054c",
+          "sizeBytes": 2504,
+          "recipeSource": "system/lib/libc/musl/src/select/select.c"
+        },
+        {
+          "id": "libc.a(setlocale.o)",
+          "archive": "libc.a",
+          "member": "setlocale.o",
+          "sha256": "7308fc47f3bc75c538f05eaa61ea5ce00d54c766078fe8526de91aef17d26d4e",
+          "sizeBytes": 4808,
+          "recipeSource": "system/lib/libc/musl/src/locale/setlocale.c"
+        },
+        {
+          "id": "libc.a(setvbuf.o)",
+          "archive": "libc.a",
+          "member": "setvbuf.o",
+          "sha256": "29c3ef15d23bef0b99da58218e467153886952d713453202dfb2f38cbe865019",
+          "sizeBytes": 2733,
+          "recipeSource": "system/lib/libc/musl/src/stdio/setvbuf.c"
+        },
+        {
+          "id": "libc.a(shgetc.o)",
+          "archive": "libc.a",
+          "member": "shgetc.o",
+          "sha256": "25bb3e7ed5229b58569f0ccbbf5c870eeba931956771ef9e5313e4810eeaa41f",
+          "sizeBytes": 3371,
+          "recipeSource": "system/lib/libc/musl/src/internal/shgetc.c"
+        },
+        {
+          "id": "libc.a(sigaction.o)",
+          "archive": "libc.a",
+          "member": "sigaction.o",
+          "sha256": "d91d862db0d8b2d9b3bf2991fe804d7713cc27599b42c3f203c3284839dda051",
+          "sizeBytes": 12609,
+          "recipeSource": "system/lib/libc/sigaction.c"
+        },
+        {
+          "id": "libc.a(signal.o)",
+          "archive": "libc.a",
+          "member": "signal.o",
+          "sha256": "a5dd72fdec7d8cc9b5cbcdde467612904e450b68d95ee1b2271393b6b1ea959f",
+          "sizeBytes": 3550,
+          "recipeSource": "system/lib/libc/musl/src/signal/signal.c"
+        },
+        {
+          "id": "libc.a(sin.o)",
+          "archive": "libc.a",
+          "member": "sin.o",
+          "sha256": "fe2801826ad6da4e9ddd4f01704c7a023be4767d752b642dbf8102320412d5df",
+          "sizeBytes": 2161,
+          "recipeSource": "system/lib/libc/musl/src/math/sin.c"
+        },
+        {
+          "id": "libc.a(sinf.o)",
+          "archive": "libc.a",
+          "member": "sinf.o",
+          "sha256": "44890ede0a71f08775e4d22e19896d6720be3353fb361d1ef3ffead0ff910359",
+          "sizeBytes": 2845,
+          "recipeSource": "system/lib/libc/musl/src/math/sinf.c"
+        },
+        {
+          "id": "libc.a(snprintf.o)",
+          "archive": "libc.a",
+          "member": "snprintf.o",
+          "sha256": "63ae951ef921dbd6dbd657bfb800c6dd316d18095bc624931254d550e04e7890",
+          "sizeBytes": 1812,
+          "recipeSource": "system/lib/libc/musl/src/stdio/snprintf.c"
+        },
+        {
+          "id": "libc.a(sprintf.o)",
+          "archive": "libc.a",
+          "member": "sprintf.o",
+          "sha256": "94cfaa4f33e5f071e5edf9c1d46dbe63f0bfdedbfcd8486d1d448d5700c6a322",
+          "sizeBytes": 2841,
+          "recipeSource": "system/lib/libc/musl/src/stdio/sprintf.c"
+        },
+        {
+          "id": "libc.a(sscanf.o)",
+          "archive": "libc.a",
+          "member": "sscanf.o",
+          "sha256": "1ae922959412dffb407348bdc890fc4498e645ea35189c18eac687d5e20561cd",
+          "sizeBytes": 1734,
+          "recipeSource": "system/lib/libc/musl/src/stdio/sscanf.c"
+        },
+        {
+          "id": "libc.a(stat.o)",
+          "archive": "libc.a",
+          "member": "stat.o",
+          "sha256": "06e8e8f1ce437f68b9fde7a7d902403afccb793b968e72ccb3526dee151b0773",
+          "sizeBytes": 2194,
+          "recipeSource": "system/lib/libc/musl/src/stat/stat.c"
+        },
+        {
+          "id": "libc.a(stderr.o)",
+          "archive": "libc.a",
+          "member": "stderr.o",
+          "sha256": "822263e75c765f6b215b91e399dd8a282a56d70cdd7449b1d8bb4f09ebac5951",
+          "sizeBytes": 2830,
+          "recipeSource": "system/lib/libc/musl/src/stdio/stderr.c"
+        },
+        {
+          "id": "libc.a(stdin.o)",
+          "archive": "libc.a",
+          "member": "stdin.o",
+          "sha256": "68f7aeac999fe25a830ecd66434725d1ee475f1ad8d264772d0d10132594b550",
+          "sizeBytes": 3850,
+          "recipeSource": "system/lib/libc/musl/src/stdio/stdin.c"
+        },
+        {
+          "id": "libc.a(stdout.o)",
+          "archive": "libc.a",
+          "member": "stdout.o",
+          "sha256": "bf7526cfdf5ed96b2351f3342d03c7a9122afbcc6e0b77fa47955987b1c5db47",
+          "sizeBytes": 4360,
+          "recipeSource": "system/lib/libc/musl/src/stdio/stdout.c"
+        },
+        {
+          "id": "libc.a(stpcpy.o)",
+          "archive": "libc.a",
+          "member": "stpcpy.o",
+          "sha256": "cb7885cad13d459b12b3ac8ac16d3ac217ac503315d500e14b7d56c5cb7cb619",
+          "sizeBytes": 1922,
+          "recipeSource": "system/lib/libc/musl/src/string/stpcpy.c"
+        },
+        {
+          "id": "libc.a(stpncpy.o)",
+          "archive": "libc.a",
+          "member": "stpncpy.o",
+          "sha256": "23ab45a0e7c36a3449a50cc00b883c3eab5ba0874835f05955d8766fc456e6bf",
+          "sizeBytes": 2421,
+          "recipeSource": "system/lib/libc/musl/src/string/stpncpy.c"
+        },
+        {
+          "id": "libc.a(strcasecmp.o)",
+          "archive": "libc.a",
+          "member": "strcasecmp.o",
+          "sha256": "2953d4b5b5aa68d0a89d086150ca87610c9bf39e73eec3f734d2d48f0b1c59d8",
+          "sizeBytes": 2306,
+          "recipeSource": "system/lib/libc/musl/src/string/strcasecmp.c"
+        },
+        {
+          "id": "libc.a(strcat.o)",
+          "archive": "libc.a",
+          "member": "strcat.o",
+          "sha256": "34fa95c2c00bab162a371b0bdd94803e24dd4048da8945db3b126f39819e5c4d",
+          "sizeBytes": 1406,
+          "recipeSource": "system/lib/libc/musl/src/string/strcat.c"
+        },
+        {
+          "id": "libc.a(strchr.o)",
+          "archive": "libc.a",
+          "member": "strchr.o",
+          "sha256": "a283d4d205f3447aaae4ed0f35040d93baefd65946f575ee6b01eec4c6dcc82f",
+          "sizeBytes": 1366,
+          "recipeSource": "system/lib/libc/musl/src/string/strchr.c"
+        },
+        {
+          "id": "libc.a(strchrnul.o)",
+          "archive": "libc.a",
+          "member": "strchrnul.o",
+          "sha256": "dbcc37e68f70407f13f8455bee2726620a06abce0a9a03d335a4cdba1b7b8c16",
+          "sizeBytes": 2197,
+          "recipeSource": "system/lib/libc/musl/src/string/strchrnul.c"
+        },
+        {
+          "id": "libc.a(strcmp.o)",
+          "archive": "libc.a",
+          "member": "strcmp.o",
+          "sha256": "f41ba196d09e96ce8337ffd326ffefc3513c7ff5ae5da0beaf4bc5282b2e78d2",
+          "sizeBytes": 1257,
+          "recipeSource": "system/lib/libc/musl/src/string/strcmp.c"
+        },
+        {
+          "id": "libc.a(strcoll.o)",
+          "archive": "libc.a",
+          "member": "strcoll.o",
+          "sha256": "f56a83bfaa9f7128c68d7d1ef75654a07cff632d6d1c811cf98e5be5c54ceb4a",
+          "sizeBytes": 4919,
+          "recipeSource": "system/lib/libc/musl/src/locale/strcoll.c"
+        },
+        {
+          "id": "libc.a(strcpy.o)",
+          "archive": "libc.a",
+          "member": "strcpy.o",
+          "sha256": "b2c3e1a58733e5a142e81b7f899183f02252c04d886f73aff2ade25d6cf611b1",
+          "sizeBytes": 1206,
+          "recipeSource": "system/lib/libc/musl/src/string/strcpy.c"
+        },
+        {
+          "id": "libc.a(strcspn.o)",
+          "archive": "libc.a",
+          "member": "strcspn.o",
+          "sha256": "f38a60adbc99ec1802c3899c87b6ce9b616bc2689a221bc0c75b82dd24d84c3e",
+          "sizeBytes": 2084,
+          "recipeSource": "system/lib/libc/musl/src/string/strcspn.c"
+        },
+        {
+          "id": "libc.a(strdup.o)",
+          "archive": "libc.a",
+          "member": "strdup.o",
+          "sha256": "4df80160379855161c36d4183419a5fc436355a5597bf4d3b343fbd3c2a8ad0c",
+          "sizeBytes": 1673,
+          "recipeSource": "system/lib/libc/musl/src/string/strdup.c"
+        },
+        {
+          "id": "libc.a(strerror.o)",
+          "archive": "libc.a",
+          "member": "strerror.o",
+          "sha256": "419687bb1d9c6cbb1d55379db60539d0eecff16f402d0733b8063a077b9d7f97",
+          "sizeBytes": 10554,
+          "recipeSource": "system/lib/libc/musl/src/errno/strerror.c"
+        },
+        {
+          "id": "libc.a(strerror_r.o)",
+          "archive": "libc.a",
+          "member": "strerror_r.o",
+          "sha256": "74a7c57ed2bb6474943cb7a2253114f2098d5f9831addee6f6ca646b9473a220",
+          "sizeBytes": 2061,
+          "recipeSource": "system/lib/libc/musl/src/string/strerror_r.c"
+        },
+        {
+          "id": "libc.a(strlen.o)",
+          "archive": "libc.a",
+          "member": "strlen.o",
+          "sha256": "a87f93fe259fa574af22494f0eb58152a80bf13591f61cb52a8041d03659bc90",
+          "sizeBytes": 1624,
+          "recipeSource": "system/lib/libc/musl/src/string/strlen.c"
+        },
+        {
+          "id": "libc.a(strncasecmp.o)",
+          "archive": "libc.a",
+          "member": "strncasecmp.o",
+          "sha256": "5a9af72a623edfa8f9ee95c634742407e6a127422703dbc286f0fb822e42f050",
+          "sizeBytes": 2512,
+          "recipeSource": "system/lib/libc/musl/src/string/strncasecmp.c"
+        },
+        {
+          "id": "libc.a(strncat.o)",
+          "archive": "libc.a",
+          "member": "strncat.o",
+          "sha256": "58aafae5c9b4eb06a804cd0cea2c42e68b63146035218e6b650e3f72e5ef8ada",
+          "sizeBytes": 1661,
+          "recipeSource": "system/lib/libc/musl/src/string/strncat.c"
+        },
+        {
+          "id": "libc.a(strncmp.o)",
+          "archive": "libc.a",
+          "member": "strncmp.o",
+          "sha256": "704618d4e42aeab0ce2eb012c0a3db491f37d3257b69c0717d413385e20dd303",
+          "sizeBytes": 1618,
+          "recipeSource": "system/lib/libc/musl/src/string/strncmp.c"
+        },
+        {
+          "id": "libc.a(strncpy.o)",
+          "archive": "libc.a",
+          "member": "strncpy.o",
+          "sha256": "3884ac9ace972b1bb5ff80f2b7e7f7becd330d0450c1b880acb12ef3105f0d4f",
+          "sizeBytes": 1344,
+          "recipeSource": "system/lib/libc/musl/src/string/strncpy.c"
+        },
+        {
+          "id": "libc.a(strnlen.o)",
+          "archive": "libc.a",
+          "member": "strnlen.o",
+          "sha256": "59776a06769c7be08904392afb1aa0082a5b247a303a47083a00f0e394e6b8ff",
+          "sizeBytes": 1460,
+          "recipeSource": "system/lib/libc/musl/src/string/strnlen.c"
+        },
+        {
+          "id": "libc.a(strpbrk.o)",
+          "archive": "libc.a",
+          "member": "strpbrk.o",
+          "sha256": "9e16cb73be725ab9dcd60d7dd043b6c74fd66a63194433e6beec3acb460a7b87",
+          "sizeBytes": 1415,
+          "recipeSource": "system/lib/libc/musl/src/string/strpbrk.c"
+        },
+        {
+          "id": "libc.a(strrchr.o)",
+          "archive": "libc.a",
+          "member": "strrchr.o",
+          "sha256": "9ef4c838a00fca35788753de7fce093ddceb3fa54bac9a7d6392a148455eb567",
+          "sizeBytes": 1486,
+          "recipeSource": "system/lib/libc/musl/src/string/strrchr.c"
+        },
+        {
+          "id": "libc.a(strspn.o)",
+          "archive": "libc.a",
+          "member": "strspn.o",
+          "sha256": "22aab454669d64fa86feb05053452c4291578f094b9f366f0c1f440580cebb22",
+          "sizeBytes": 1878,
+          "recipeSource": "system/lib/libc/musl/src/string/strspn.c"
+        },
+        {
+          "id": "libc.a(strstr.o)",
+          "archive": "libc.a",
+          "member": "strstr.o",
+          "sha256": "bad0d57026523b287a2e36e0f48eedd079f8c33683cafc0fa8b97ea8e49961e8",
+          "sizeBytes": 7206,
+          "recipeSource": "system/lib/libc/musl/src/string/strstr.c"
+        },
+        {
+          "id": "libc.a(strtod.o)",
+          "archive": "libc.a",
+          "member": "strtod.o",
+          "sha256": "60d321d6880122bc5ccae0997e8a8d715a7110337954d7e89acd9a3bbc2c8662",
+          "sizeBytes": 4101,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/strtod.c"
+        },
+        {
+          "id": "libc.a(strtod_l.o)",
+          "archive": "libc.a",
+          "member": "strtod_l.o",
+          "sha256": "8cb9efa89ab3d7892ffb588b4bfb549751dd7131a08d7bcb6650ee0ab99707cd",
+          "sizeBytes": 2198,
+          "recipeSource": "system/lib/libc/musl/src/locale/strtod_l.c"
+        },
+        {
+          "id": "libc.a(strtok.o)",
+          "archive": "libc.a",
+          "member": "strtok.o",
+          "sha256": "61c91044f22ad10292325890b645df55081e02b27741faa8eeaf003d43f4c2ee",
+          "sizeBytes": 1824,
+          "recipeSource": "system/lib/libc/musl/src/string/strtok.c"
+        },
+        {
+          "id": "libc.a(strtok_r.o)",
+          "archive": "libc.a",
+          "member": "strtok_r.o",
+          "sha256": "81dae8cc89cc34f5ddb3b9601738fcc035c6ce74f7b74152db515db293999f54",
+          "sizeBytes": 1760,
+          "recipeSource": "system/lib/libc/musl/src/string/strtok_r.c"
+        },
+        {
+          "id": "libc.a(strtol.o)",
+          "archive": "libc.a",
+          "member": "strtol.o",
+          "sha256": "79a14884331cbc874a82725f4a1e5ef8e97d75d9a4482cb5e6f9b662d759f5db",
+          "sizeBytes": 5094,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/strtol.c"
+        },
+        {
+          "id": "libc.a(strxfrm.o)",
+          "archive": "libc.a",
+          "member": "strxfrm.o",
+          "sha256": "5ee7915e6acf0c73ffac69550f675cfad698b12a2fb83fd8d4e7f8c4fc569601",
+          "sizeBytes": 5251,
+          "recipeSource": "system/lib/libc/musl/src/locale/strxfrm.c"
+        },
+        {
+          "id": "libc.a(swprintf.o)",
+          "archive": "libc.a",
+          "member": "swprintf.o",
+          "sha256": "62158a74972ce3538da2e9353f1af6f7fac27445b5875270342bcfbf99b2568e",
+          "sizeBytes": 1752,
+          "recipeSource": "system/lib/libc/musl/src/stdio/swprintf.c"
+        },
+        {
+          "id": "libc.a(syscall_ret.o)",
+          "archive": "libc.a",
+          "member": "syscall_ret.o",
+          "sha256": "f6589aca047d856336fea2b8d645a2cd3e972747adb72d18f897e4e4442401dc",
+          "sizeBytes": 1306,
+          "recipeSource": "system/lib/libc/musl/src/internal/syscall_ret.c"
+        },
+        {
+          "id": "libc.a(sysconf.o)",
+          "archive": "libc.a",
+          "member": "sysconf.o",
+          "sha256": "be12d603af8e22909699fe678a75341df012857c6350344c22cf2f9ca505dffe",
+          "sizeBytes": 2653,
+          "recipeSource": "system/lib/libc/musl/src/conf/sysconf.c"
+        },
+        {
+          "id": "libc.a(tan.o)",
+          "archive": "libc.a",
+          "member": "tan.o",
+          "sha256": "056e78c8974e75cd6c6356ed6fa294c8bb22773f72890c5e21c31492b87fd7f2",
+          "sizeBytes": 1892,
+          "recipeSource": "system/lib/libc/musl/src/math/tan.c"
+        },
+        {
+          "id": "libc.a(tanh.o)",
+          "archive": "libc.a",
+          "member": "tanh.o",
+          "sha256": "27b78b2a03fcc1dabd8e1a4e575e76f72cfdc9d1303a043c64005a8559603549",
+          "sizeBytes": 2231,
+          "recipeSource": "system/lib/libc/musl/src/math/tanh.c"
+        },
+        {
+          "id": "libc.a(tmpfile.o)",
+          "archive": "libc.a",
+          "member": "tmpfile.o",
+          "sha256": "b9fa7f78d8c7f4bad739b5457b1aee6670c63f791133c8e0397103b450f0b656",
+          "sizeBytes": 4050,
+          "recipeSource": "system/lib/libc/musl/src/stdio/tmpfile.c"
+        },
+        {
+          "id": "libc.a(tolower.o)",
+          "archive": "libc.a",
+          "member": "tolower.o",
+          "sha256": "64489727b234217d2b20a65285a9cb5f4378d78c6241d55ca7243bda5b922861",
+          "sizeBytes": 1574,
+          "recipeSource": "system/lib/libc/musl/src/ctype/tolower.c"
+        },
+        {
+          "id": "libc.a(toupper.o)",
+          "archive": "libc.a",
+          "member": "toupper.o",
+          "sha256": "38d6a5e616a306a3edda9e4b5db483bb563a4894b1749f219a9b9e968685000a",
+          "sizeBytes": 1575,
+          "recipeSource": "system/lib/libc/musl/src/ctype/toupper.c"
+        },
+        {
+          "id": "libc.a(towctrans.o)",
+          "archive": "libc.a",
+          "member": "towctrans.o",
+          "sha256": "49e5ebf342cd097fbf638be13d2f3cb7344398d58441b0ce5899557c6f011478",
+          "sizeBytes": 9011,
+          "recipeSource": "system/lib/libc/musl/src/ctype/towctrans.c"
+        },
+        {
+          "id": "libc.a(tzset.o)",
+          "archive": "libc.a",
+          "member": "tzset.o",
+          "sha256": "776294448fd1667a5c9f75c1ef1bd61868db76756c6d7a34f71ff0895b436402",
+          "sizeBytes": 2148,
+          "recipeSource": "system/lib/libc/tzset.c"
+        },
+        {
+          "id": "libc.a(uname.o)",
+          "archive": "libc.a",
+          "member": "uname.o",
+          "sha256": "6deccd661ec337a097b69632e5bd457bae792709d53e71f1f1a562185ae94806",
+          "sizeBytes": 1774,
+          "recipeSource": "system/lib/libc/musl/src/misc/uname.c"
+        },
+        {
+          "id": "libc.a(ungetc.o)",
+          "archive": "libc.a",
+          "member": "ungetc.o",
+          "sha256": "05bfc56f680982a82d9ee24b7bf080c689db26995762fc62bd0469b6cbf8294a",
+          "sizeBytes": 2961,
+          "recipeSource": "system/lib/libc/musl/src/stdio/ungetc.c"
+        },
+        {
+          "id": "libc.a(unlink.o)",
+          "archive": "libc.a",
+          "member": "unlink.o",
+          "sha256": "e26630fac8e834de592904d43b514d69fb5af6e29dd39a2b65352df80672fa28",
+          "sizeBytes": 1483,
+          "recipeSource": "system/lib/libc/musl/src/unistd/unlink.c"
+        },
+        {
+          "id": "libc.a(uselocale.o)",
+          "archive": "libc.a",
+          "member": "uselocale.o",
+          "sha256": "c840290395ba37f380109385d888bf252ca9e32a0fb89818a26bda942db80ce3",
+          "sizeBytes": 4653,
+          "recipeSource": "system/lib/libc/musl/src/locale/uselocale.c"
+        },
+        {
+          "id": "libc.a(usleep.o)",
+          "archive": "libc.a",
+          "member": "usleep.o",
+          "sha256": "2fcaeee7737f59044514e2f851594667142bc413f7d86ac0041dec1ba672c9ca",
+          "sizeBytes": 1566,
+          "recipeSource": "system/lib/libc/musl/src/unistd/usleep.c"
+        },
+        {
+          "id": "libc.a(vasprintf.o)",
+          "archive": "libc.a",
+          "member": "vasprintf.o",
+          "sha256": "59ce4af07ed23dbe4aaad3cc65263f6af18b96365b9791680c60762c540ba87a",
+          "sizeBytes": 2037,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vasprintf.c"
+        },
+        {
+          "id": "libc.a(vfprintf.o)",
+          "archive": "libc.a",
+          "member": "vfprintf.o",
+          "sha256": "fffbc70e3882d9248cb8b89127f5a1d5bdb8511e6e51c21f4986c3a6bc142fe6",
+          "sizeBytes": 31799,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vfprintf.c"
+        },
+        {
+          "id": "libc.a(vfscanf.o)",
+          "archive": "libc.a",
+          "member": "vfscanf.o",
+          "sha256": "7588b0becdd1a82a13ea635b60e243762c984b3811fb7424ce8a354e48d99573",
+          "sizeBytes": 13088,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vfscanf.c"
+        },
+        {
+          "id": "libc.a(vfwprintf.o)",
+          "archive": "libc.a",
+          "member": "vfwprintf.o",
+          "sha256": "f230699d359267f7ff018570691508ab5ad1b2510806c785e04730ef1ddfc6ff",
+          "sizeBytes": 15958,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vfwprintf.c"
+        },
+        {
+          "id": "libc.a(vsnprintf.o)",
+          "archive": "libc.a",
+          "member": "vsnprintf.o",
+          "sha256": "d2e5b566a9251b12d2d9de7573cf283a91e975fa6ec96b570731b37b60438fc8",
+          "sizeBytes": 6691,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vsnprintf.c"
+        },
+        {
+          "id": "libc.a(vsprintf.o)",
+          "archive": "libc.a",
+          "member": "vsprintf.o",
+          "sha256": "eb7c135fe558c918cca0e257576a548e10e8c538f8e1de2dc280ed673ddb5bfb",
+          "sizeBytes": 2225,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vsprintf.c"
+        },
+        {
+          "id": "libc.a(vsscanf.o)",
+          "archive": "libc.a",
+          "member": "vsscanf.o",
+          "sha256": "b0405b5cc20f790b331e58929b48008004310c541d3705b36791f4990112601b",
+          "sizeBytes": 3973,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vsscanf.c"
+        },
+        {
+          "id": "libc.a(vswprintf.o)",
+          "archive": "libc.a",
+          "member": "vswprintf.o",
+          "sha256": "f9d8acb7f801f6d8a6dd01f7063aba2c054d656718677683d9897007540d839b",
+          "sizeBytes": 4911,
+          "recipeSource": "system/lib/libc/musl/src/stdio/vswprintf.c"
+        },
+        {
+          "id": "libc.a(wasi-helpers.o)",
+          "archive": "libc.a",
+          "member": "wasi-helpers.o",
+          "sha256": "6349740ca6a51c2beca762ddce4ac823c7c350ae9be9c2da5e1e307e0770a714",
+          "sizeBytes": 2650,
+          "recipeSource": "system/lib/libc/wasi-helpers.c"
+        },
+        {
+          "id": "libc.a(wcrtomb.o)",
+          "archive": "libc.a",
+          "member": "wcrtomb.o",
+          "sha256": "140982af4eb54badd5e9f2a14ff16d31f5ab552e081a65560defeed13618bde6",
+          "sizeBytes": 5378,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/wcrtomb.c"
+        },
+        {
+          "id": "libc.a(wcschr.o)",
+          "archive": "libc.a",
+          "member": "wcschr.o",
+          "sha256": "33bf7d774bea858354e8c284fbb66bd53fc1db8176a776c6aa5750983b2c051c",
+          "sizeBytes": 1505,
+          "recipeSource": "system/lib/libc/musl/src/string/wcschr.c"
+        },
+        {
+          "id": "libc.a(wcscmp.o)",
+          "archive": "libc.a",
+          "member": "wcscmp.o",
+          "sha256": "6e501c6bd7d9ff0041cf6328f0f3941a6036eb1a5c73b62c105a53f53de1c90e",
+          "sizeBytes": 1301,
+          "recipeSource": "system/lib/libc/musl/src/string/wcscmp.c"
+        },
+        {
+          "id": "libc.a(wcscoll.o)",
+          "archive": "libc.a",
+          "member": "wcscoll.o",
+          "sha256": "8e521aeb3881ce836c16f0517d2a233eb91a9d280e559b2b6952415dadee3e35",
+          "sizeBytes": 4988,
+          "recipeSource": "system/lib/libc/musl/src/locale/wcscoll.c"
+        },
+        {
+          "id": "libc.a(wcslen.o)",
+          "archive": "libc.a",
+          "member": "wcslen.o",
+          "sha256": "a93b045cbb2af375fc8b08f8d3f903b35f637730367a670637ae4552491f53bd",
+          "sizeBytes": 1271,
+          "recipeSource": "system/lib/libc/musl/src/string/wcslen.c"
+        },
+        {
+          "id": "libc.a(wcsnlen.o)",
+          "archive": "libc.a",
+          "member": "wcsnlen.o",
+          "sha256": "b0f1cdbd31aadd7686040e19ca37b3d54430c8c70fe5bbc8adf464e26fd03207",
+          "sizeBytes": 1512,
+          "recipeSource": "system/lib/libc/musl/src/string/wcsnlen.c"
+        },
+        {
+          "id": "libc.a(wcsnrtombs.o)",
+          "archive": "libc.a",
+          "member": "wcsnrtombs.o",
+          "sha256": "9912503b27c05de8bf96c6b8f7a074fa9a7e4e99c0bc809983a323307b252c9c",
+          "sizeBytes": 2727,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/wcsnrtombs.c"
+        },
+        {
+          "id": "libc.a(wcstod.o)",
+          "archive": "libc.a",
+          "member": "wcstod.o",
+          "sha256": "cf70431abacfe9f312fab4005ab75914485ecd70e5ae270db1ca95290b7e4dbc",
+          "sizeBytes": 5693,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/wcstod.c"
+        },
+        {
+          "id": "libc.a(wcstol.o)",
+          "archive": "libc.a",
+          "member": "wcstol.o",
+          "sha256": "816d68c68f9b553ade28959cc36e98a57686de2f0e947b18e57044e14a29b698",
+          "sizeBytes": 6248,
+          "recipeSource": "system/lib/libc/musl/src/stdlib/wcstol.c"
+        },
+        {
+          "id": "libc.a(wcsxfrm.o)",
+          "archive": "libc.a",
+          "member": "wcsxfrm.o",
+          "sha256": "309bcd0de4775413a9ab508ffb425a966cb8d2cd10b83c3d7657e464a8a5d2ad",
+          "sizeBytes": 5496,
+          "recipeSource": "system/lib/libc/musl/src/locale/wcsxfrm.c"
+        },
+        {
+          "id": "libc.a(wctob.o)",
+          "archive": "libc.a",
+          "member": "wctob.o",
+          "sha256": "3e39a666d557b278212ce539178111d35df720a7885edb531e8c1549f268fd51",
+          "sizeBytes": 4414,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/wctob.c"
+        },
+        {
+          "id": "libc.a(wctomb.o)",
+          "archive": "libc.a",
+          "member": "wctomb.o",
+          "sha256": "ce5607578a285497fea2c238ed741f2299dc5e9f397705366c551b0be8977534",
+          "sizeBytes": 1575,
+          "recipeSource": "system/lib/libc/musl/src/multibyte/wctomb.c"
+        },
+        {
+          "id": "libc.a(wmemchr.o)",
+          "archive": "libc.a",
+          "member": "wmemchr.o",
+          "sha256": "dcb83bdc2c09c0c1989807d5d2e4f769d6a997246cfe9ac642f7a4eee4ffb8fb",
+          "sizeBytes": 1361,
+          "recipeSource": "system/lib/libc/musl/src/string/wmemchr.c"
+        },
+        {
+          "id": "libc.a(wmemcmp.o)",
+          "archive": "libc.a",
+          "member": "wmemcmp.o",
+          "sha256": "64381e735d4f9363bc961c925ace614539fa73927fe8888e12c9f56986355874",
+          "sizeBytes": 1432,
+          "recipeSource": "system/lib/libc/musl/src/string/wmemcmp.c"
+        },
+        {
+          "id": "libc.a(wmemcpy.o)",
+          "archive": "libc.a",
+          "member": "wmemcpy.o",
+          "sha256": "fe013ac4d2e13a46df8b3cc27006393579748af97073cbe59e306474e39af45c",
+          "sizeBytes": 1451,
+          "recipeSource": "system/lib/libc/musl/src/string/wmemcpy.c"
+        },
+        {
+          "id": "libc.a(write.o)",
+          "archive": "libc.a",
+          "member": "write.o",
+          "sha256": "a638db9deeb153ddd1d2c657a48b284885eab0f4f073806a2efdc6e96b95d9ad",
+          "sizeBytes": 2278,
+          "recipeSource": "system/lib/libc/musl/src/unistd/write.c"
+        }
+      ]
+    },
+    {
+      "file": "libcompiler_rt.a",
+      "target": "libcompiler_rt",
+      "sha256": "5ff5394531bb134865d082a4b830c7fdf5c5293aaba800958449d1a2608d45c8",
+      "sizeBytes": 504350,
+      "selectedMembers": [
+        {
+          "id": "libcompiler_rt.a(addtf3.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "addtf3.o",
+          "sha256": "4c20525aef91297d226240b4625a99676a3977f9dbfd124c662f389e90516d8e",
+          "sizeBytes": 7165,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/addtf3.c"
+        },
+        {
+          "id": "libcompiler_rt.a(ashlti3.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "ashlti3.o",
+          "sha256": "108ad51b80960475a211ed28fcca9af17f27f9632fad2bbc97808c5b5479a353",
+          "sizeBytes": 1928,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/ashlti3.c"
+        },
+        {
+          "id": "libcompiler_rt.a(comparetf2.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "comparetf2.o",
+          "sha256": "c62afb882f49dc7f14d6fabb208cb1f16bf169fe880a3f1a1738540a7aaf718f",
+          "sizeBytes": 4459,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/comparetf2.c"
+        },
+        {
+          "id": "libcompiler_rt.a(divtf3.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "divtf3.o",
+          "sha256": "8a63c17fa40cdefe8290f1391c313865a399633704fd78851ec093ff6612c756",
+          "sizeBytes": 13226,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/divtf3.c"
+        },
+        {
+          "id": "libcompiler_rt.a(emscripten_exception_builtins.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "emscripten_exception_builtins.o",
+          "sha256": "7c9664e9f5420e7a2049376de8ba29fed5ebfdd8abaf24723645431d6d361351",
+          "sizeBytes": 1462,
+          "recipeSource": "system/lib/compiler-rt/emscripten_exception_builtins.c"
+        },
+        {
+          "id": "libcompiler_rt.a(emscripten_setjmp.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "emscripten_setjmp.o",
+          "sha256": "60a444625742042874a658b6c1ab4161b8c57cd6e90b0f6dc68e63749c630c06",
+          "sizeBytes": 3497,
+          "recipeSource": "system/lib/compiler-rt/emscripten_setjmp.c"
+        },
+        {
+          "id": "libcompiler_rt.a(emscripten_tempret.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "emscripten_tempret.o",
+          "sha256": "eb34b8a7d11bf47b31e5e06b8d78ad6bb2b1c2802657fb767507cdf212725027",
+          "sizeBytes": 226,
+          "recipeSource": "system/lib/compiler-rt/emscripten_tempret.s"
+        },
+        {
+          "id": "libcompiler_rt.a(extenddftf2.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "extenddftf2.o",
+          "sha256": "9f5bdbe25537273dcbcba22b5ca9454dca23f117d0f17998358abc35312aa7de",
+          "sizeBytes": 3524,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/extenddftf2.c"
+        },
+        {
+          "id": "libcompiler_rt.a(extendsftf2.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "extendsftf2.o",
+          "sha256": "f181de54e17573c67931733e913292df3f20af51902d4bf8c324a306eeb003b8",
+          "sizeBytes": 3353,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/extendsftf2.c"
+        },
+        {
+          "id": "libcompiler_rt.a(floatsitf.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "floatsitf.o",
+          "sha256": "c86416f70f0634a0b7e1ccbbd9bd748781b38b65b2f5aaed1fd0d8a4d3483477",
+          "sizeBytes": 1979,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/floatsitf.c"
+        },
+        {
+          "id": "libcompiler_rt.a(floatunsitf.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "floatunsitf.o",
+          "sha256": "d21ca3fe297f22d49a98d213716e51184f2ba35ce8da76ec90220ed8f0206108",
+          "sizeBytes": 1834,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/floatunsitf.c"
+        },
+        {
+          "id": "libcompiler_rt.a(fp_mode.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "fp_mode.o",
+          "sha256": "8f01d0cd61f97bb891a9eae0a148a5ce3847c4546617c4e9043d9a274fa4b86a",
+          "sizeBytes": 1364,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/fp_mode.c"
+        },
+        {
+          "id": "libcompiler_rt.a(lshrti3.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "lshrti3.o",
+          "sha256": "0250950894503159e0c2fdf68773d335a922d2486933aa6a84f9350498f1003b",
+          "sizeBytes": 1910,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/lshrti3.c"
+        },
+        {
+          "id": "libcompiler_rt.a(multf3.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "multf3.o",
+          "sha256": "5c31f708c53953ef44acc15854ae5ae6bd569114b316b1f11d0511cd801ee5c1",
+          "sizeBytes": 8878,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/multf3.c"
+        },
+        {
+          "id": "libcompiler_rt.a(multi3.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "multi3.o",
+          "sha256": "4b646f7a0a733edd1c1e73df3310d4af68f4ce94b9b8737f6625556aec9c9159",
+          "sizeBytes": 2414,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/multi3.c"
+        },
+        {
+          "id": "libcompiler_rt.a(stack_ops.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "stack_ops.o",
+          "sha256": "03bfd97849c5784097faa4c828fb94a0388585d15aa98a92e5e3727211fc43ef",
+          "sizeBytes": 289,
+          "recipeSource": "system/lib/compiler-rt/stack_ops.S"
+        },
+        {
+          "id": "libcompiler_rt.a(subtf3.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "subtf3.o",
+          "sha256": "392511f3ef66b5cf8cffeee49b264e9e98daa96e3341690567217e0bb89be556",
+          "sizeBytes": 1315,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/subtf3.c"
+        },
+        {
+          "id": "libcompiler_rt.a(trunctfdf2.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "trunctfdf2.o",
+          "sha256": "a93e91d7f1c60c14e383ea745351bb701a23f0d8bcc0f9064c638b91d5da8c04",
+          "sizeBytes": 4855,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/trunctfdf2.c"
+        },
+        {
+          "id": "libcompiler_rt.a(trunctfsf2.o)",
+          "archive": "libcompiler_rt.a",
+          "member": "trunctfsf2.o",
+          "sha256": "5708502ff28fa54b68465d44a3cfb7ace22b5c62f031375c2d9c87ba7d6c8ed6",
+          "sizeBytes": 4782,
+          "recipeSource": "system/lib/compiler-rt/lib/builtins/trunctfsf2.c"
+        }
+      ]
+    },
+    {
+      "file": "libdlmalloc.a",
+      "target": "libdlmalloc",
+      "sha256": "2602bbff09cba435fa2fd6761a41af6205762886c252def551c8ddad73ed32b8",
+      "sizeBytes": 69162,
+      "selectedMembers": [
+        {
+          "id": "libdlmalloc.a(dlmalloc.o)",
+          "archive": "libdlmalloc.a",
+          "member": "dlmalloc.o",
+          "sha256": "062d84e7c623e61d421d34b56f5c212586ce7b1d2989438458d2bbe641f22517",
+          "sizeBytes": 68519,
+          "recipeSource": "system/lib/dlmalloc.c"
+        }
+      ]
+    },
+    {
+      "file": "libfetch.a",
+      "target": "libfetch",
+      "sha256": "31632b5eadb3f151032551db937ea929c1c53ed4fd05a189a6ebc8b29a655deb",
+      "sizeBytes": 12934,
+      "selectedMembers": [
+        {
+          "id": "libfetch.a(emscripten_fetch.o)",
+          "archive": "libfetch.a",
+          "member": "emscripten_fetch.o",
+          "sha256": "f3cbbecc81ac83bb3744dd614b0c65e022c77d7c3258f11dfabad5ceba75fe0d",
+          "sizeBytes": 12344,
+          "recipeSource": "system/lib/fetch/emscripten_fetch.c"
+        }
+      ]
+    },
+    {
+      "file": "libhtml5.a",
+      "target": "libhtml5",
+      "sha256": "839836c936b1554181a1abfb12d05d127e09414c0edfd7c9d11931b93610bcf9",
+      "sizeBytes": 42794,
+      "selectedMembers": [],
+      "scope": "Additional archive requested by retained upstream reconstruction link commands."
+    },
+    {
+      "file": "libsockets.a",
+      "target": "libsockets",
+      "sha256": "76b53aafb0cd2d412e94b7f84a9c4dbe1f6b0e10ace1dc5054921888c33f516d",
+      "sizeBytes": 43226,
+      "selectedMembers": [
+        {
+          "id": "libsockets.a(accept.o)",
+          "archive": "libsockets.a",
+          "member": "accept.o",
+          "sha256": "18edeea6e3f00ec0ef3a7e3e369cb6999eda09fc7178f160db959017a33ed378",
+          "sizeBytes": 1918,
+          "recipeSource": "system/lib/libc/musl/src/network/accept.c"
+        },
+        {
+          "id": "libsockets.a(bind.o)",
+          "archive": "libsockets.a",
+          "member": "bind.o",
+          "sha256": "aec1070fe62b62e3df3be92bbfc411d9f7dcab7413a47db8f12d81b5ca1f1de9",
+          "sizeBytes": 1984,
+          "recipeSource": "system/lib/libc/musl/src/network/bind.c"
+        },
+        {
+          "id": "libsockets.a(connect.o)",
+          "archive": "libsockets.a",
+          "member": "connect.o",
+          "sha256": "d35f5f55cd7c3b2fef9b72eb1b72c5b9be4d739ac6eb863b18fc473d55c3e566",
+          "sizeBytes": 2002,
+          "recipeSource": "system/lib/libc/musl/src/network/connect.c"
+        },
+        {
+          "id": "libsockets.a(freeaddrinfo.o)",
+          "archive": "libsockets.a",
+          "member": "freeaddrinfo.o",
+          "sha256": "c9fb3acaf78ace67466a4eadce0b1855677934c59efb74c932b7ef3bb1fc3817",
+          "sizeBytes": 1920,
+          "recipeSource": "system/lib/libc/musl/src/network/freeaddrinfo.c"
+        },
+        {
+          "id": "libsockets.a(getsockname.o)",
+          "archive": "libsockets.a",
+          "member": "getsockname.o",
+          "sha256": "6f05d0c59bee707b9618b8524e07180f84f93a167eec3fdbac810c5d8966d7c8",
+          "sizeBytes": 1946,
+          "recipeSource": "system/lib/libc/musl/src/network/getsockname.c"
+        },
+        {
+          "id": "libsockets.a(getsockopt.o)",
+          "archive": "libsockets.a",
+          "member": "getsockopt.o",
+          "sha256": "0a7b528b27c9eabab8bb460c04c48e5bcd1aca79ed5168cb03a0c453998b64fb",
+          "sizeBytes": 2091,
+          "recipeSource": "system/lib/libc/musl/src/network/getsockopt.c"
+        },
+        {
+          "id": "libsockets.a(in6addr_any.o)",
+          "archive": "libsockets.a",
+          "member": "in6addr_any.o",
+          "sha256": "13eb7c3d42cdc93ad501f6322dad30f8a1a09120204f535321a70345bca4161a",
+          "sizeBytes": 1376,
+          "recipeSource": "system/lib/libc/musl/src/network/in6addr_any.c"
+        },
+        {
+          "id": "libsockets.a(listen.o)",
+          "archive": "libsockets.a",
+          "member": "listen.o",
+          "sha256": "a63ca0c2df1e7660f778df580fff15268eeed5fed203a9cce199df88e887863c",
+          "sizeBytes": 1415,
+          "recipeSource": "system/lib/libc/musl/src/network/listen.c"
+        },
+        {
+          "id": "libsockets.a(recv.o)",
+          "archive": "libsockets.a",
+          "member": "recv.o",
+          "sha256": "4ab452bf2ccfd79f21865bb8d0823901bdddc1fc99291b84ca2552aa6779db5b",
+          "sizeBytes": 1758,
+          "recipeSource": "system/lib/libc/musl/src/network/recv.c"
+        },
+        {
+          "id": "libsockets.a(recvfrom.o)",
+          "archive": "libsockets.a",
+          "member": "recvfrom.o",
+          "sha256": "e3f15a6c6a5b508d5056d37a807262f9de71edd5cde8312627e31b694abe5ca4",
+          "sizeBytes": 2128,
+          "recipeSource": "system/lib/libc/musl/src/network/recvfrom.c"
+        },
+        {
+          "id": "libsockets.a(send.o)",
+          "archive": "libsockets.a",
+          "member": "send.o",
+          "sha256": "c6ae625f72c7d8fdc7665d0850ca2b34424d07a0f542da408e58a4b6155b313d",
+          "sizeBytes": 1744,
+          "recipeSource": "system/lib/libc/musl/src/network/send.c"
+        },
+        {
+          "id": "libsockets.a(sendto.o)",
+          "archive": "libsockets.a",
+          "member": "sendto.o",
+          "sha256": "f28bae4b11576a631d3ded7545c3312667425f40f6a1428fee0ed910269e3f53",
+          "sizeBytes": 2106,
+          "recipeSource": "system/lib/libc/musl/src/network/sendto.c"
+        },
+        {
+          "id": "libsockets.a(setsockopt.o)",
+          "archive": "libsockets.a",
+          "member": "setsockopt.o",
+          "sha256": "36065c3b0817e1f04e474667b36335b2c84ad608c65e473789bc12d6a479ed31",
+          "sizeBytes": 2123,
+          "recipeSource": "system/lib/libc/musl/src/network/setsockopt.c"
+        },
+        {
+          "id": "libsockets.a(socket.o)",
+          "archive": "libsockets.a",
+          "member": "socket.o",
+          "sha256": "301911a34c12dcb043452382e865592613736591f4ff9b9fc6b2a46853c3a614",
+          "sizeBytes": 1987,
+          "recipeSource": "system/lib/libc/musl/src/network/socket.c"
+        }
+      ]
+    },
+    {
+      "file": "libstubs.a",
+      "target": "libstubs",
+      "sha256": "0cb2f7fe5dfefeaac850abedb667c059ca4daa96f7d1c922552714846ec0b119",
+      "sizeBytes": 25080,
+      "selectedMembers": [
+        {
+          "id": "libstubs.a(emscripten_syscall_stubs.o)",
+          "archive": "libstubs.a",
+          "member": "emscripten_syscall_stubs.o",
+          "sha256": "c5a7e9cf0ba29a32cf1264489f9a1964fc9b114a48f243e117a29e2179ba2c4e",
+          "sizeBytes": 11965,
+          "recipeSource": "system/lib/libc/emscripten_syscall_stubs.c"
+        }
+      ]
+    }
+  ],
+  "hostFileSystem": {
+    "caseSensitive": false,
+    "evidence": "Retained libc.a has _exit.o and _exit__1.o. Pinned SDK Library.build_objects lowercases basenames and resolves collisions only on a case-insensitive filesystem.",
+    "recipeUrl": "https://github.com/emscripten-core/emscripten/blob/19607820c447a13fd8d0b7680c56148427d6e1b8/tools/system_libs.py#L486-L500",
+    "recipeSha256": "0c2aa90dc2d70c54dba8e33f9ba08f4c906af55c97c8544024ba487758a70f76",
+    "adapterScope": "Select the pinned recipe case-insensitive object naming branch on Linux. Source and compiler flags are retained."
+  }
+}

@@ -4,6 +4,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import shutil
@@ -35,6 +36,37 @@ def retain_input(path, root):
     }
 
 
+def raw_assembly_inputs(command):
+    if "-c" not in command:
+        return None
+    language = None
+    if "-x" in command:
+        language = command[command.index("-x") + 1]
+    raw = language == "assembler" or (
+        language is None and any(argument.endswith(".s") for argument in command[1:])
+    )
+    if not raw:
+        return None
+    output = None
+    if "-o" in command:
+        output = (Path.cwd() / command[command.index("-o") + 1]).resolve()
+    sources = [
+        Path(argument).resolve()
+        for argument in command[1:]
+        if not argument.startswith("-")
+        and Path(argument).is_file()
+        and Path(argument).resolve() != output
+    ]
+    if not sources:
+        raise RuntimeError("Raw assembly has no explicit source input")
+    for source in sources:
+        if re.search(r"\.(?:include|incbin)\b", source.read_text(), re.IGNORECASE):
+            raise RuntimeError(
+                "Raw assembly include directives require dependency capture"
+            )
+    return sources
+
+
 def capture(arguments):
     root = Path(os.environ["ECS_COMPILE_CAPTURE"]).resolve()
     for directory in (root, root / "commands", root / "inputs"):
@@ -42,8 +74,6 @@ def capture(arguments):
     identifier = uuid.uuid4().hex
     dependency = root / (".dependencies-" + identifier + ".d")
     command = list(arguments)
-    if "-c" in command:
-        command.extend(["-MD", "-MF", str(dependency)])
     compiler = shutil.which(command[0]) or command[0]
     record = {
         "cwd": os.getcwd(),
@@ -55,6 +85,9 @@ def capture(arguments):
         "inputFiles": [],
     }
     try:
+        assembly = raw_assembly_inputs(command)
+        if "-c" in command and assembly is None:
+            command.extend(["-MD", "-MF", str(dependency)])
         result = subprocess.run(command)
         record["exitCode"] = result.returncode
         record["wrapperExitCode"] = result.returncode
@@ -69,7 +102,10 @@ def capture(arguments):
                     "sha256": digest,
                     "sizeBytes": output.stat().st_size,
                 }
-        if dependency.exists():
+        if assembly is not None:
+            record["dependencyCapture"] = "explicit-raw-assembly-without-includes"
+            record["inputFiles"] = [retain_input(path, root) for path in assembly]
+        elif dependency.exists():
             data = dependency.read_bytes()
             record["dependencyOutput"] = {
                 "sha256": hashlib.sha256(data).hexdigest(),

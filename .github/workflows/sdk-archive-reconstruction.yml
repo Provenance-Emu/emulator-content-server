@@ -1,0 +1,54 @@
+name: Reconstruct pinned SDK system archives
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-archive-reconstruction-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  linux-sdk-archives:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      EMCC_CORES: '2'
+      BINARYEN_CORES: '2'
+      EMCC_USE_NINJA: '0'
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check archive comparison and download validation
+        run: python3 scripts/browser-core/reconstruct-sdk-archives.py --self-test
+      - name: Install the pinned native SDK tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          git -C "$RUNNER_TEMP/emsdk" checkout --detach 93360d3670018769b424e4e8f1d3d9b26d32c977
+          "$RUNNER_TEMP/emsdk/emsdk" install 3.1.46
+          "$RUNNER_TEMP/emsdk/emsdk" activate 3.1.46
+      - name: Check capture and rebuild the planned archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          python3 scripts/browser-core/reconstruct-sdk-archives.py --self-test --sdk "$RUNNER_TEMP/emsdk"
+          python3 scripts/browser-core/reconstruct-sdk-archives.py \
+            --sdk "$RUNNER_TEMP/emsdk" \
+            --output "$RUNNER_TEMP/sdk-archive-reconstruction"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sdk-archives-linux-diagnostic-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/sdk-archive-reconstruction/evidence/*.log
+            ${{ runner.temp }}/sdk-archive-reconstruction/evidence/*.json
+            ${{ runner.temp }}/sdk-archive-reconstruction/evidence/capture/manifest.json
+            ${{ runner.temp }}/sdk-archive-reconstruction/evidence/capture/commands/*.json
+            ${{ runner.temp }}/sdk-archive-reconstruction/evidence/capture/inputs/*
+          if-no-files-found: warn
+          retention-days: 14

@@ -61,6 +61,7 @@ jobs:
           path: |
             ${{ runner.temp }}/${{ inputs.core || 'vitaquake2' }}-diagnostic/evidence/*.log
             ${{ runner.temp }}/${{ inputs.core || 'vitaquake2' }}-diagnostic/evidence/receipt.json
+            ${{ runner.temp }}/${{ inputs.core || 'vitaquake2' }}-diagnostic/evidence/runtime-comparison.json
             ${{ runner.temp }}/${{ inputs.core || 'vitaquake2' }}-diagnostic/evidence/capture/manifest.json
             ${{ runner.temp }}/${{ inputs.core || 'vitaquake2' }}-diagnostic/evidence/capture/commands/*.json
             ${{ runner.temp }}/${{ inputs.core || 'vitaquake2' }}-diagnostic/evidence/capture/inputs/*

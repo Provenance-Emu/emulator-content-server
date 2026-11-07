@@ -481,6 +481,36 @@ def reconstruct(sdk, output, core_name="vitaquake2"):
             compare_resource(frontend / p["file"], originals / p["file"], p)
             for p in profile["resources"]
         ]
+        collector = REPOSITORY / "scripts/browser-core/compare-upstream-wasm.py"
+        comparison = evidence / "runtime-comparison.json"
+        try:
+            run(
+                [
+                    sys.executable,
+                    str(collector),
+                    "--original-wasm",
+                    str(originals / f"{core_name}_libretro.wasm"),
+                    "--built-wasm",
+                    str(frontend / f"{core_name}_libretro.wasm"),
+                    "--original-js",
+                    str(originals / f"{core_name}_libretro.js"),
+                    "--built-js",
+                    str(frontend / f"{core_name}_libretro.js"),
+                    "--output",
+                    str(comparison),
+                ],
+                output,
+            )
+            report["runtimeComparison"] = {
+                "file": comparison.name,
+                **file_pin(comparison),
+                "collector": {
+                    "file": str(collector.relative_to(REPOSITORY)),
+                    **file_pin(collector),
+                },
+            }
+        except RuntimeError as error:
+            report["runtimeComparisonError"] = str(error)
         exact = len(report["resources"]) == 2 and all(
             p["originalMatchesCatalogPin"]
             and p["hashAndSizeMatch"]
