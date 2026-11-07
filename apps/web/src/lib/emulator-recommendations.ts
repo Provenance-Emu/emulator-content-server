@@ -3,6 +3,8 @@ import type { PlayerCatalogEntry, PlayerManagement } from '@ecs/client';
 // Ordered preferences for the catalog's ordinary single-player configurations.
 // Each core is included only when it adds coverage beyond enabled installations.
 const preferredCoreIds = [
+  'org.libretro.fceumm',
+  'org.libretro.virtualjaguar',
   'org.libretro.nestopia',
   'org.libretro.snes9x',
   'org.libretro.mgba',
@@ -33,7 +35,6 @@ const preferredCoreIds = [
   'org.libretro.opera',
   'org.libretro.vecx',
   'org.libretro.vice-x64sc',
-  'org.libretro.fceumm',
   'org.libretro.quicknes',
   'org.libretro.snes9x2010',
   'org.libretro.vba-next',

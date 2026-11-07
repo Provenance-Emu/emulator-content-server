@@ -41,6 +41,20 @@ export function canonicalServerOrigin(value: string): string {
   }
 }
 
+/** Accept the computer name people see on their network as well as a full URL. */
+export function connectionAddress(value: string): string {
+  const text = value.trim();
+  try {
+    const explicit = /^[a-z][a-z0-9+.-]*:\/\//i.test(text);
+    const url = new URL(explicit ? text : `http://${text}`);
+    if (!explicit && !url.port) url.port = '8473';
+    if (url.pathname === '/ui/' || url.pathname === '/ui') url.pathname = '/';
+    return canonicalServerOrigin(url.href);
+  } catch {
+    throw new Error('Enter the computer’s name or the address of its library.');
+  }
+}
+
 function environment(options: DesktopEnvironment) {
   return { ...options, storage: options.storage ?? localStorage, events: options.events ?? window };
 }

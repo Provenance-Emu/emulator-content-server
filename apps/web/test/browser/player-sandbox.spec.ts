@@ -275,3 +275,42 @@ test('preview bridge ignores stable incomplete bytes until the native writer fin
   expect(result.elapsed).toBeGreaterThanOrEqual(150);
   expect(result.size).toBe(68);
 });
+
+test('ZIP game reaches Start and runs through the normal player screen', async ({
+  page,
+  fixture,
+}) => {
+  const { Uint8ArrayReader, Uint8ArrayWriter, ZipWriter } = await import(
+    '@zip.js/zip.js/index-native.js'
+  );
+  const writer = new ZipWriter(new Uint8ArrayWriter(), { useWebWorkers: false });
+  await writer.add('game.gba', new Uint8ArrayReader(new Uint8Array([7, 8, 9])));
+  const bytes = await writer.close();
+  const item = await fixture.client.createItem({
+    libraryId: fixture.library.id,
+    title: 'Generated ZIP game',
+    systemIdentifier: 'com.provenance.gba',
+    md5: null,
+    crc: null,
+  });
+  const asset = await fixture.client.upload({
+    libraryId: fixture.library.id,
+    itemId: item.id,
+    kind: 'rom',
+    displayName: 'game.zip',
+    relativePath: 'game.zip',
+    baseRevision: item.revision,
+    body: bytes,
+  });
+  await page.addInitScript(
+    ({ origin, session }) =>
+      localStorage.setItem(`ecs.session:${encodeURIComponent(origin)}`, JSON.stringify(session)),
+    { origin: fixture.origin, session: fixture.session },
+  );
+  await page.goto(`${fixture.origin}/play/?item=${item.id}&asset=${asset.id}`);
+  await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Back to game', exact: true })).toBeVisible();
+  await expect(page.getByText('WASM tick: 8', { exact: true })).toBeAttached();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});

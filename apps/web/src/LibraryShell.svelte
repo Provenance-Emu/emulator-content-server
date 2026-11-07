@@ -12,6 +12,8 @@
   import LibraryEditor from './LibraryEditor.svelte';
   import Login from './Login.svelte';
   import LibraryBrowser from './LibraryBrowser.svelte';
+  import SetupGuide from './SetupGuide.svelte';
+  import { readSetupProgress, type SetupMode } from './lib/setup-progress';
   import SettingsShell from './SettingsShell.svelte';
   import ServerUpdatePrompt from './ServerUpdatePrompt.svelte';
   import Modal from './components/Modal.svelte';
@@ -20,12 +22,23 @@
     folderSelection,
     setupCode,
     revealSetupCode,
-  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void> } = $props();
+    setupGuide, onsetupclose, onchoosecomputer,
+  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void } = $props();
   const application = untrack(() => createApplication(context));
   const updates = untrack(() => createServerUpdates(context.client));
   const updateAccess = $derived($application.owner && $application.hasSession ? $application.authEpoch : null);
   $effect(() => {
     if (updateAccess !== null) return updates.start();
+  });
+  let guide = $state<SetupMode | null>(untrack(() => setupGuide ?? null));
+  let checkedSetup = false;
+  $effect(() => {
+    if (!checkedSetup && $application.settled && $application.reachable && $application.capabilities) {
+      checkedSetup = true;
+      const saved = readSetupProgress(context.origin);
+      if ($application.capabilities.bootstrapped === false) guide = 'host';
+      else if (!guide && saved && !saved.done && !saved.paused) guide = saved.mode;
+    }
   });
   let scope = $state<LibraryScope | null>(null);
   let rootId = $state('');
@@ -169,6 +182,16 @@
 </script>
 
 <a class="skip-link" href="#main-content">Skip to content</a>
+{#if guide && $application.settled && $application.reachable && $application.capabilities}
+  <SetupGuide {context} appState={$application} folderContext={actionContext($application.authEpoch)} mode={guide}
+    {setupCode} {revealSetupCode} {onchoosecomputer}
+    onsignin={(session, expectedEpoch) => { void application.adoptSession(session, expectedEpoch); }}
+    onchange={async () => { await application.revalidate(); playerEpoch++; }}
+    onrejected={status => rejectOwnerSummary(status, $application.authEpoch)}
+    onclose={(id) => { guide = null; onsetupclose?.(); if (id) choose({ libraryId: id }); }}
+    onsettings={section => { guide = null; onsetupclose?.(); openSettings({ section }); }}
+  />
+{:else}
 <div class="application-shell" class:settings-active={settings}>
   <header class="mobile-header">
     {#if $application.signedIn}
@@ -208,6 +231,8 @@
         </div>
         {#if settings}<SettingsShell
             {updates}
+            onsignin={() => { signingIn = true; drawer = false; }}
+            onsetup={() => { guide = $application.owner ? 'host' : 'join'; }}
             serverLabel={context.label}
             onplayerschange={async () => { await application.revalidate(); playerEpoch++; }}
             client={context.client}
@@ -261,6 +286,7 @@
         </p>{/if}
     </main>{/if}
 </div>
+{/if}
 {#snippet navigation()}
   <nav aria-label="Library navigation">
     <div class="server-identity">
@@ -287,6 +313,7 @@
       >
         Unassigned folders
       </button>{/if}
+    <button type="button" onclick={() => { guide = $application.owner ? 'host' : 'join'; drawer = false; }}>Setup guide</button>
     <div class="nav-account">
       <button
         type="button"

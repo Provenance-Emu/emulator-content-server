@@ -68,9 +68,8 @@ pub fn install(home: &std::path::Path) -> Result<String, String> {
         return Err("Local setup is available on Apple Silicon Macs.".into());
     }
     if service::execute(Action::Status)? != "absent" {
-        return Err(
-            "A local service is already installed. Start it or use the local connection.".into(),
-        );
+        service::execute(Action::Start)?;
+        return Ok(String::new());
     }
     // A default-port listener may already belong to an independently managed process.
     if std::net::TcpListener::bind(("127.0.0.1", 8473)).is_err() {

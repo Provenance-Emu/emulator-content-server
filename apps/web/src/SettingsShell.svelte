@@ -19,7 +19,7 @@
   let {
     client, appState, updates, onback, onview, onrejected, context,
     serverLabel = 'Emulation Server',
-    onrename, onplayerschange,
+    onrename, onplayerschange, onsignin = () => {}, onsetup,
     selected = $bindable<SettingsSection>('libraries'),
     libraryId = $bindable(''),
     onselect = () => {},
@@ -35,6 +35,8 @@
     context: FolderContext;
     onrename: (library: Library) => void;
     onplayerschange?: () => void | Promise<void>;
+    onsignin?: () => void;
+    onsetup?: () => void;
     selected?: SettingsSection;
     libraryId?: string;
     onselect?: () => void;
@@ -59,6 +61,7 @@
 <div class="settings-shell compact-controls">
   <aside class="settings-sidebar">
     <button class="settings-back" type="button" onclick={onback}>Back to library</button>
+    {#if onsetup}<button type="button" class="settings-back" onclick={onsetup}>Setup guide</button>{/if}
     <p class="settings-server-identity eyebrow">{serverLabel}</p>
     <p class="settings-heading">Settings</p>
     <label class="settings-section-picker">
@@ -82,7 +85,11 @@
     </nav>
   </aside>
   <div class="settings-content">
-    {#if appState.owner && active === 'libraries'}<SettingsLibraries
+    {#if appState.owner && !appState.hasSession && ['emulators', 'plugins'].includes(active)}
+      <h1>{active === 'plugins' ? 'Plugins' : 'Emulators'}</h1>
+      <p>Sign in with your owner account to install or manage {active === 'plugins' ? 'library helpers' : 'emulators'}.</p>
+      <button type="button" class="primary" onclick={onsignin}>Sign in to continue</button>
+    {:else if appState.owner && active === 'libraries'}<SettingsLibraries
       {client} libraries={appState.libraries} invalidation={appState.invalidation}
       {onview} {onrejected} {context} {onrename}
       bind:libraryId onlibrarychange={onlibrarychange}

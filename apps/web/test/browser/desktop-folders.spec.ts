@@ -5,6 +5,8 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixture';
 
 async function withDesktop(page: Page, run: (origin: string) => Promise<void>) {
+  // Existing adapter checks exercise the returning-user connection flow.
+  await page.addInitScript(() => localStorage.setItem('ecs.tray.setup.skipped', '1'));
   const root = resolve('../tray/dist');
   const server = createServer(async (request, response) => {
     const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
