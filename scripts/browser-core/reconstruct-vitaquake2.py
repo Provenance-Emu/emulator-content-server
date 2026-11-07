@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fresh Linux reconstruction of the dated VitaQuake2 pair, retaining evidence."""
+"""Fresh Linux reconstruction of a selected dated runtime pair, retaining evidence."""
 
 import argparse
 import datetime
@@ -35,6 +35,27 @@ SOURCE_ARCHIVES = {
 }
 
 
+CORE_RECIPES = {
+    "vitaquake2": {
+        "source": SOURCE_ARCHIVES["core"],
+        "directory": ".",
+        "memoryBytes": 402653184,
+    },
+    "fbneo": {
+        "source": {
+            "revision": "9d82650bb9591966987a4c36ae8a1409ce0d5d68",
+            "repository": "libretro/fbneo",
+            "sha256": (
+                "671498c5a0cbcfac28a69427800a7f679" "ad68002da705bbf5e8d5a5ab7ef33ba"
+            ),
+            "sizeBytes": 27498805,
+        },
+        "directory": "src/burner/libretro",
+        "memoryBytes": 134217728,
+    },
+}
+
+
 def file_pin(path):
     digest = hashlib.sha256()
     with path.open("rb") as source:
@@ -58,9 +79,40 @@ def compare_resource(built, original, expected):
     }
 
 
-def self_test():
+def capture_summary(capture, wrapper):
+    commands = [
+        {"file": str(path.relative_to(capture)), **file_pin(path)}
+        for path in sorted((capture / "commands").glob("*.json"))
+    ]
+    inputs = []
+    for path in sorted((capture / "inputs").glob("*")):
+        pin = file_pin(path)
+        if path.name != pin["sha256"]:
+            raise RuntimeError("Compiler input snapshot differs from its content hash")
+        inputs.append({"file": str(path.relative_to(capture)), **pin})
+    manifest = capture / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {"schemaVersion": 1, "commands": commands, "inputs": inputs}, indent=2
+        )
+        + "\n"
+    )
+    return {
+        "path": "capture",
+        "wrapper": {"file": str(wrapper.relative_to(REPOSITORY)), **file_pin(wrapper)},
+        "manifest": {"file": "capture/manifest.json", **file_pin(manifest)},
+        "commandRecords": len(commands),
+        "uniqueInputSnapshots": len(inputs),
+        "snapshotBytes": sum(item["sizeBytes"] for item in inputs),
+    }
+
+
+def self_test(sdk=None):
+    from contextlib import redirect_stdout
+    import io
     import tempfile
     import unittest
+    from unittest.mock import patch
 
     class ComparisonTests(unittest.TestCase):
         def test_actual_bytes_and_catalog_pins_must_both_match(self):
@@ -82,6 +134,102 @@ def self_test():
                 self.assertTrue(changed_original["directByteEquality"])
                 self.assertFalse(changed_original["originalMatchesCatalogPin"])
 
+        @unittest.skipUnless(sdk, "Provide --sdk to exercise activated SDK startup")
+        def test_fresh_workspace_runs_sdk_before_downloading(self):
+            for core in ("vitaquake2", "fbneo"):
+                with self.subTest(
+                    core=core
+                ), tempfile.TemporaryDirectory() as directory:
+                    output = Path(directory) / "diagnostic"
+                    stop = "Preflight stops before downloading"
+                    with patch(
+                        "urllib.request.urlopen", side_effect=RuntimeError(stop)
+                    ) as network:
+                        with redirect_stdout(io.StringIO()):
+                            self.assertFalse(reconstruct(sdk, output, core))
+                    report = json.loads((output / "evidence/receipt.json").read_text())
+                    self.assertEqual(report["id"], "org.libretro." + core)
+                    self.assertEqual(report["error"], stop)
+                    self.assertEqual(network.call_count, 1)
+                    self.assertIn(COMPILER_IDENTITY, report["compilerVersion"])
+                    self.assertTrue((output / "compiler-temporary").is_dir())
+                    self.assertTrue(report["commands"])
+                    self.assertTrue(all(c["exitCode"] == 0 for c in report["commands"]))
+
+        @unittest.skipUnless(sdk, "Provide --sdk to exercise compiler input capture")
+        def test_capture_retains_used_source_and_header_bytes(self):
+            with tempfile.TemporaryDirectory(prefix="ecs capture ") as directory:
+                root = Path(directory).resolve()
+                source = root / "fixture.c"
+                header = root / "x.h"
+                source.write_text('#include "x.h"\nint x= VALUE;\n//\n')
+                header.write_text("#include <stdint.h>\n#define VALUE 7\n")
+                capture = root / "capture"
+                environment = dict(os.environ)
+                environment.update(
+                    EM_COMPILER_WRAPPER=str(
+                        REPOSITORY / "scripts/browser-core/capture-upstream-compiler.py"
+                    ),
+                    ECS_COMPILE_CAPTURE=str(capture),
+                )
+                self.assertEqual(source.stat().st_size, 32)
+                products = [root / "fixture-1.o", root / "fixture-2.o"]
+                processes = [
+                    subprocess.Popen(
+                        ["emcc", "-c", str(source), "-o", str(product)],
+                        env=environment,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
+                    for product in products
+                ]
+                for process in processes:
+                    _, errors = process.communicate()
+                    self.assertEqual(process.returncode, 0, errors.decode())
+                commands = [
+                    json.loads(path.read_text())
+                    for path in (capture / "commands").glob("*.json")
+                ]
+                compiled = [command for command in commands if "-c" in command["args"]]
+                self.assertEqual(len(compiled), 2)
+                for command in compiled:
+                    product = Path(command["outputObject"]["path"])
+                    self.assertIn(product, products)
+                    self.assertEqual(
+                        {
+                            key: command["outputObject"][key]
+                            for key in ("sha256", "sizeBytes")
+                        },
+                        file_pin(product),
+                    )
+                inputs = compiled[0]["inputFiles"]
+                by_path = {item["path"]: item for item in inputs}
+                for path in (source, header):
+                    item = by_path[str(path.resolve())]
+                    self.assertEqual(
+                        {key: item[key] for key in ("sha256", "sizeBytes")},
+                        file_pin(path),
+                    )
+                    self.assertEqual(
+                        (capture / item["retainedSnapshotPath"]).read_bytes(),
+                        path.read_bytes(),
+                    )
+                self.assertTrue(
+                    any(
+                        item["path"].startswith(str(sdk / "upstream"))
+                        for item in inputs
+                    )
+                )
+                snapshots = list((capture / "inputs").iterdir())
+                self.assertEqual(
+                    {path.name for path in snapshots},
+                    {item["sha256"] for item in inputs},
+                )
+                for product in products:
+                    self.assertNotIn(
+                        file_pin(product)["sha256"], {path.name for path in snapshots}
+                    )
+
     return (
         unittest.TextTestRunner()
         .run(unittest.defaultTestLoader.loadTestsFromTestCase(ComparisonTests))
@@ -89,7 +237,9 @@ def self_test():
     )
 
 
-def reconstruct(sdk, output):
+def reconstruct(sdk, output, core_name="vitaquake2"):
+    recipe = CORE_RECIPES[core_name]
+    sources = {**SOURCE_ARCHIVES, "core": recipe["source"]}
     output.mkdir()  # Exclusive workspace preserves any previous diagnostic attempt.
     evidence = output / "evidence"
     evidence.mkdir()
@@ -97,22 +247,33 @@ def reconstruct(sdk, output):
     report = {
         "schemaVersion": 1,
         "observedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "id": "org.libretro.vitaquake2",
+        "id": "org.libretro." + core_name,
         "status": "build-failed",
         "sourceMapping": "unverified",
         "host": {"platform": platform.platform(), "python": sys.version},
-        "scope": "Fresh core and frontend compilation on Linux using SDK 3.1.46. Both outputs must match catalog pins and the exact dated archive bytes.",
+        "scope": (
+            "Fresh core and frontend compilation on Linux using SDK 3.1.46. "
+            "Both outputs must match catalog pins and the exact dated archive bytes."
+        ),
         "commands": [],
         "inputs": [],
         "tools": [],
         "resources": [],
         "limitations": [
-            "The SDK is the pinned prebuilt distribution. Independent SDK source reconstruction remains open.",
-            "An exact pair establishes this source/input recipe. Historical CI job/container identity and final-code notice scope remain separate.",
+            "The SDK is the pinned prebuilt distribution. "
+            "Independent SDK source reconstruction remains open.",
+            "An exact pair establishes this source/input recipe. "
+            "Historical CI job/container identity and final-code notice scope "
+            "remain separate.",
         ],
     }
     environment = dict(os.environ)
+    capture = evidence / "capture"
+    capture.mkdir()
+    wrapper = REPOSITORY / "scripts/browser-core/capture-upstream-compiler.py"
     environment.update(
+        EM_COMPILER_WRAPPER=str(wrapper),
+        ECS_COMPILE_CAPTURE=str(capture),
         SOURCE_DATE_EPOCH="1793318400",
         EMCC_CORES="2",
         BINARYEN_CORES="2",
@@ -128,6 +289,8 @@ def reconstruct(sdk, output):
             "BINARYEN_CORES",
             "LC_ALL",
             "EMCC_DEBUG",
+            "EM_COMPILER_WRAPPER",
+            "ECS_COMPILE_CAPTURE",
         )
     }
 
@@ -182,10 +345,8 @@ def reconstruct(sdk, output):
         profile = next(p for p in mapping["profiles"] if p["id"] == report["id"])
         candidate = next(p for p in resolution["profiles"] if p["id"] == report["id"])
         if (
-            candidate["candidates"][0]["coreCommit"]
-            != SOURCE_ARCHIVES["core"]["revision"]
-            or profile["frontendRevision"]["commit"]
-            != SOURCE_ARCHIVES["frontend"]["revision"]
+            candidate["candidates"][0]["coreCommit"] != sources["core"]["revision"]
+            or profile["frontendRevision"]["commit"] != sources["frontend"]["revision"]
         ):
             raise RuntimeError("Dated source evidence differs from diagnostic pins")
         report["mappingEvidence"] = [
@@ -200,6 +361,8 @@ def reconstruct(sdk, output):
             raise RuntimeError("Pinned emsdk checkout required")
         report["sdkRevision"] = SDK_REVISION
         sdk_tools = {
+            "clang": sdk / "upstream/bin/clang",
+            "clang++": sdk / "upstream/bin/clang++",
             "wasm-ld": sdk / "upstream/bin/wasm-ld",
             "wasm-opt": sdk / "upstream/bin/wasm-opt",
             "node": sdk / "node/16.20.0_64bit/bin/node",
@@ -208,6 +371,8 @@ def reconstruct(sdk, output):
             "emcc",
             "em++",
             "emar",
+            "clang",
+            "clang++",
             "wasm-ld",
             "wasm-opt",
             "node",
@@ -242,7 +407,7 @@ def reconstruct(sdk, output):
             )
             if member != "retroarch/" + resource["file"]:
                 raise RuntimeError("Unexpected original archive member")
-            # Stream just the selected member. Other emulator resources remain compressed.
+            # Stream the selected member into its original-resource file.
             log = evidence / f"extract-{resource['file']}.log"
             command = ["7z", "x", "-so", str(archive), member]
             with (originals / resource["file"]).open("xb") as target, log.open(
@@ -265,7 +430,7 @@ def reconstruct(sdk, output):
                 {"archiveMember": member, **file_pin(originals / resource["file"])}
             )
 
-        for role, pin in SOURCE_ARCHIVES.items():
+        for role, pin in sources.items():
             source_archive = output / f"{role}.tar.gz"
             url = f"https://codeload.github.com/{pin['repository']}/tar.gz/{pin['revision']}"
             download(url, source_archive, pin)
@@ -278,7 +443,7 @@ def reconstruct(sdk, output):
                     if member.name:
                         source.extract(member, directory, filter="data")
 
-        core = output / "core"
+        core = output / "core" / recipe["directory"]
         frontend = output / "frontend"
         run(
             [
@@ -286,12 +451,12 @@ def reconstruct(sdk, output):
                 "make",
                 "-j2",
                 "platform=emscripten",
-                "MEMORY=402653184",
-                'GIT_VERSION=" 4b333fe"',
+                f"MEMORY={recipe['memoryBytes']}",
+                f'GIT_VERSION=" {sources["core"]["revision"][:7]}"',
             ],
             core,
         )
-        library = core / "vitaquake2_libretro_emscripten.bc"
+        library = core / f"{core_name}_libretro_emscripten.bc"
         report["coreStaticLibrary"] = file_pin(library)
         shutil.copyfile(library, frontend / "libretro_emscripten.bc")
         run(
@@ -301,9 +466,9 @@ def reconstruct(sdk, output):
                 "-j2",
                 "-f",
                 "Makefile.emscripten",
-                "LIBRETRO=vitaquake2",
-                "MEMORY=402653184",
-                "GIT_VERSION=6ebf66b",
+                f"LIBRETRO={core_name}",
+                f"MEMORY={recipe['memoryBytes']}",
+                "GIT_VERSION=" + sources["frontend"]["revision"][:7],
             ],
             frontend,
         )
@@ -323,6 +488,11 @@ def reconstruct(sdk, output):
     except Exception as error:
         report["error"] = str(error)
     finally:
+        try:
+            report["compilerInputCapture"] = capture_summary(capture, wrapper)
+        except Exception as error:
+            report["status"] = "build-failed"
+            report["error"] = "Compiler input evidence incomplete. " + str(error)
         (evidence / "receipt.json").write_text(json.dumps(report, indent=2) + "\n")
     print(
         json.dumps(
@@ -334,14 +504,20 @@ def reconstruct(sdk, output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--core", choices=CORE_RECIPES, default="vitaquake2")
     parser.add_argument("--sdk", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--self-test", action="store_true")
     arguments = parser.parse_args()
     if arguments.self_test:
-        sys.exit(0 if self_test() else 1)
+        sdk = arguments.sdk.resolve() if arguments.sdk else None
+        sys.exit(0 if self_test(sdk) else 1)
     if not arguments.sdk or not arguments.output:
         parser.error("--sdk and --output are required")
     sys.exit(
-        0 if reconstruct(arguments.sdk.resolve(), arguments.output.resolve()) else 1
+        0
+        if reconstruct(
+            arguments.sdk.resolve(), arguments.output.resolve(), arguments.core
+        )
+        else 1
     )
