@@ -93,6 +93,7 @@ def reconstruct(sdk, output):
     output.mkdir()  # Exclusive workspace preserves any previous diagnostic attempt.
     evidence = output / "evidence"
     evidence.mkdir()
+    (output / "compiler-temporary").mkdir()
     report = {
         "schemaVersion": 1,
         "observedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
