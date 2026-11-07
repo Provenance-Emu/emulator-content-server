@@ -123,6 +123,12 @@ test('desktop native adapter cancels without fallback, registers once, and recov
         choice;
     }, quickFolder);
     await addServerFolder();
+    const quickPicker = page.getByRole('dialog', { name: 'Add server folder', exact: true });
+    await expect(quickPicker.getByRole('checkbox', { name: /automatically watch/i })).toBeChecked();
+    await expect(
+      quickPicker.getByRole('checkbox', { name: /automatically organize/i }),
+    ).toBeChecked();
+    await quickPicker.getByRole('button', { name: 'Add folder', exact: true }).click();
     await expect(
       page
         .getByRole('combobox', { name: /^Library folder/ })
@@ -195,6 +201,10 @@ test('desktop native adapter cancels without fallback, registers once, and recov
         folder;
     }, folder);
     await add.click();
+    await page
+      .getByRole('dialog', { name: 'Add library folder', exact: true })
+      .getByRole('button', { name: 'Add folder', exact: true })
+      .click();
     await expect(
       page.getByRole('button', { name: 'View files in Desktop folder', exact: true }),
     ).toBeVisible();
@@ -314,6 +324,7 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
         await page.getByRole('button', { name: 'Add library', exact: true }).click();
         const editor = page.getByRole('dialog', { name: 'Create library', exact: true });
         await editor.getByRole('button', { name: 'Select server folder', exact: true }).click();
+        await editor.getByRole('button', { name: 'Select folder', exact: true }).click();
         await expect(editor.getByText(folder, { exact: true })).toBeVisible();
       } else {
         await page.getByRole('button', { name: 'Settings', exact: true }).click();

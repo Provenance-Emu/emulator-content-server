@@ -268,6 +268,8 @@ export interface ContentRootDraft {
   path: string;
   label: string;
   libraryId?: string | null;
+  watch?: boolean;
+  organize?: boolean;
 }
 
 export interface ContentRootScan {
@@ -329,6 +331,11 @@ export interface SourceOrganizationPolicy {
 export interface SourceOrganizationPolicyDraft {
   enabled: boolean;
   planId?: string;
+}
+
+export interface FolderOrganizationPreview {
+  planId: string;
+  examples: Record<string, unknown>[];
 }
 
 export interface AutomaticOrganizationOutcome {
@@ -885,6 +892,10 @@ export interface WorkflowHost {
   enrolled: boolean;
   revokedAt: string | null;
   createdAt: string;
+}
+
+export interface WorkflowHostResponse {
+  host: WorkflowHost;
 }
 
 export interface WorkflowLease {

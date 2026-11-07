@@ -73,6 +73,7 @@ export type {
   DeviceTokenList,
   FolderEntry,
   FolderListing,
+  FolderOrganizationPreview,
   FolderPlace,
   FolderWatchPolicy,
   FolderWatchPolicyDraft,

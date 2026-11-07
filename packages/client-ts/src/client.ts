@@ -36,6 +36,7 @@ import type {
   DeviceTokenDraft,
   DeviceTokenList,
   FolderListing,
+  FolderOrganizationPreview,
   FolderWatchPolicy,
   FolderWatchPolicyDraft,
   GuestGrantCreated,
@@ -1084,6 +1085,16 @@ export class ContentClient {
     draft: SourceOrganizationPolicyDraft,
   ): Promise<SourceOrganizationPolicy> {
     return this.putJson(`/api/v1/roots/${encodeURIComponent(rootId)}/organization-policy`, draft);
+  }
+
+  previewFolderOrganization(
+    rootId: string,
+    draft: SourceOrganizationDraft,
+  ): Promise<FolderOrganizationPreview> {
+    return this.post(
+      `/api/v1/roots/${encodeURIComponent(rootId)}/organization-policy/preview`,
+      draft,
+    );
   }
 
   previewSourceOrganization(

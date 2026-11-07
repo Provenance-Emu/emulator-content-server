@@ -14,7 +14,7 @@ export interface MatchingState {
   loading: boolean;
   failure: string | null;
   artwork: Record<string, string>;
-  previewing: string | null;
+  artworkFailures: Record<string, string>;
   saved: SourceMatchSelections | null;
   savedArtwork: string | null;
   savedArtworkByRole: Record<string, string>;
@@ -40,7 +40,7 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
     loading: false,
     failure: null,
     artwork: {},
-    previewing: null,
+    artworkFailures: {},
     saved: null,
     savedArtwork: null,
     savedArtworkByRole: {},
@@ -54,6 +54,9 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
   let epoch = 0;
   let request: AbortController | null = null;
   const lifetime = new AbortController();
+  const artworkRequests = new Map<string, Promise<void>>();
+  let artworkLanes = [Promise.resolve(), Promise.resolve()];
+  let nextArtworkLane = 0;
   let lastOptions: MatchingOptions = {};
   const live = (run: number) => !disposed && !denied && epoch === run;
   function update(patch: Partial<MatchingState>) {
@@ -62,7 +65,10 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
   }
   function clearResults() {
     for (const url of Object.values(current.artwork)) URL.revokeObjectURL(url);
-    update({ result: null, artwork: {}, previewing: null, failure: null });
+    artworkRequests.clear();
+    artworkLanes = [Promise.resolve(), Promise.resolve()];
+    nextArtworkLane = 0;
+    update({ result: null, artwork: {}, artworkFailures: {}, failure: null });
   }
   function clearSaved() {
     for (const url of new Set([current.savedArtwork, ...Object.values(current.savedArtworkByRole)]))
@@ -82,7 +88,6 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       savedLoading: false,
       savedLoadFailed: false,
       saving: null,
-      previewing: null,
     });
   }
   function failure(error: unknown) {
@@ -139,6 +144,8 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
         : undefined;
     if (uncertain || outcome?.status === 'moved') {
       update({ suggestionsStale: true });
+      request?.abort();
+      request = new AbortController();
       try {
         const result = await client.sourceMatches(sourceId, lastOptions, lifetime.signal);
         if (!live(run)) return;
@@ -281,20 +288,43 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       }
     },
     async preview(id) {
-      if (disposed || denied || current.loading || current.previewing || current.artwork[id])
-        return;
+      if (disposed || denied || current.suggestionsStale || current.artwork[id]) return;
       const result = current.result;
-      if (!result?.candidates.some((c) => c.id === id && c.kind === 'artwork')) return;
+      if (
+        !result?.candidates.some(
+          (c) => c.id === id && c.kind === 'artwork' && c.metadata.imageKind !== 'pdf',
+        )
+      )
+        return;
+      const pending = artworkRequests.get(id);
+      if (pending) return pending;
       const run = epoch;
-      update({ previewing: id, failure: null });
-      try {
-        const blob = await client.matchingArtwork(sourceId, result.requestId, id, request?.signal);
-        if (live(run)) update({ artwork: { ...current.artwork, [id]: URL.createObjectURL(blob) } });
-      } catch (error) {
-        if (live(run)) failure(error);
-      } finally {
-        if (live(run)) update({ previewing: null });
-      }
+      const signal = request?.signal ?? lifetime.signal;
+      const active = () => live(run) && !signal.aborted && current.result === result;
+      const lane = nextArtworkLane++ % artworkLanes.length;
+      const task =
+        artworkLanes[lane]?.then(async () => {
+          if (!active()) return;
+          try {
+            const blob = await client.matchingArtwork(sourceId, result.requestId, id, signal);
+            if (active())
+              update({ artwork: { ...current.artwork, [id]: URL.createObjectURL(blob) } });
+          } catch (error) {
+            if (!active()) return;
+            if (
+              error instanceof ContentError &&
+              ([401, 403].includes(error.status) ||
+                (error.status === 404 && !error.problem?.type.endsWith('artwork-unavailable')))
+            ) {
+              failure(error);
+            } else {
+              update({ artworkFailures: { ...current.artworkFailures, [id]: explain(error) } });
+            }
+          }
+        }) ?? Promise.resolve();
+      artworkLanes[lane] = task;
+      artworkRequests.set(id, task);
+      return task;
     },
     async previewSaved(role) {
       if (disposed || denied || current.savedArtworkByRole[role]) return;

@@ -33,7 +33,7 @@ export function openApiFile(): string {
 
 export function loadOpenApi(): OpenApiDocument {
   const document = parse(readFileSync(openApiFile(), 'utf8')) as OpenApiDocument;
-  if (document.openapi !== '3.1.0') throw new Error('OpenAPI document must be 3.1.0');
+  if (document.openapi !== '3.1.2') throw new Error('OpenAPI document must be 3.1.2');
   return document;
 }
 

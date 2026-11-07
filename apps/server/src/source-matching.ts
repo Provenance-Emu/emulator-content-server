@@ -135,6 +135,7 @@ export function registerSourceMatching(
   const inflight = new Map<string, Promise<Awaited<ReturnType<typeof executeMatch>>>>();
   const abort = new AbortController();
   let active = 0;
+  let activeArtworkPreviews = 0;
   let listing: Promise<MatchingPluginDescription[]> | null = null;
   let pluginList: { expires: number; plugins: MatchingPluginDescription[] } | null = null;
   app.addHook('preClose', async () => {
@@ -455,14 +456,16 @@ export function registerSourceMatching(
     _request: FastifyRequest,
     reply: FastifyReply | null,
     jobSignal?: AbortSignal,
+    preview = false,
   ) {
-    if (active >= 2)
+    if ((preview ? activeArtworkPreviews : active) >= 2)
       throw new DomainError(
         'matching-busy',
         429,
         'Two matching jobs are already running. Try again shortly.',
       );
-    active++;
+    if (preview) activeArtworkPreviews++;
+    else active++;
     const cancelled = new AbortController();
     const disconnect = () => {
       if (reply && !reply.raw.writableEnded) cancelled.abort();
@@ -578,7 +581,8 @@ export function registerSourceMatching(
         throw new DomainError('unsupported-patch', 415, 'Patch file is invalid or changed');
       return { bytes, contentType, fileName, originKind };
     } finally {
-      active--;
+      if (preview) activeArtworkPreviews--;
+      else active--;
       reply?.raw.removeListener('close', disconnect);
     }
   }
@@ -597,7 +601,15 @@ export function registerSourceMatching(
       );
       if (selected.candidate.kind !== 'artwork')
         throw new DomainError('not-found', 404, 'Artwork not found');
-      const content = await resource(selected.candidate, params.sourceId, actor, request, reply);
+      const content = await resource(
+        selected.candidate,
+        params.sourceId,
+        actor,
+        request,
+        reply,
+        undefined,
+        true,
+      );
       reply.header('cache-control', 'private, no-store');
       reply.header('x-content-type-options', 'nosniff');
       if (content.contentType === 'application/pdf')

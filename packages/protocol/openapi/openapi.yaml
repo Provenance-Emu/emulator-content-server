@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.1.2
 info:
   title: Emulator Content Server API
   version: 1.0.0
@@ -337,18 +337,37 @@ paths:
   /api/v1/auth/bootstrap:
     post:
       operationId: bootstrap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BootstrapRequest' }
       responses:
         '201':
           description: Owner created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
   /api/v1/auth/login:
     post:
       operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
       responses:
         '200':
           description: Session created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        '401': { description: Username or password is incorrect. }
+        '429': { description: Too many attempts. }
   /api/v1/auth/logout:
     post:
       operationId: logout
+      security: [{ bearerAuth: [] }]
       responses:
         '204':
           description: Session revoked.
@@ -375,6 +394,8 @@ paths:
         '201':
           description: User created.
   /api/v1/users/{userId}:
+    parameters:
+      - { name: userId, in: path, required: true, schema: { type: string } }
     patch:
       operationId: setPassword
       responses:
@@ -383,6 +404,7 @@ paths:
   /api/v1/browse:
     get:
       operationId: browseLibrary
+      security: [{ bearerAuth: [] }, {}]
       description: Bounded authorized collection. Exactly one of libraryId or unassigned=true is required. Unknown systems use systemId=unknown. Authorization and category filtering precede paging. Cursors bind normalized query and actor; changed or vanished anchors require refresh.
       parameters:
         - { name: libraryId, in: query, schema: { type: string } }
@@ -408,6 +430,7 @@ paths:
   /api/v1/browse-libraries:
     get:
       operationId: browseLibraries
+      security: [{ bearerAuth: [] }, {}]
       description: Libraries discoverable through membership or live readable item grants. canCreateItems reflects current create policy.
       responses:
         '200':
@@ -484,6 +507,8 @@ paths:
         '201':
           description: Library created.
   /api/v1/libraries/{libraryId}/members:
+    parameters:
+      - { name: libraryId, in: path, required: true, schema: { type: string } }
     get:
       operationId: listLibraryMembers
       responses:
@@ -493,6 +518,9 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LibraryMemberList' }
   /api/v1/libraries/{libraryId}/members/{userId}:
+    parameters:
+      - { name: libraryId, in: path, required: true, schema: { type: string } }
+      - { name: userId, in: path, required: true, schema: { type: string } }
     put:
       operationId: putMember
       responses:
@@ -506,20 +534,34 @@ paths:
   /api/v1/items:
     get:
       operationId: listItems
+      security: [{ bearerAuth: [] }, {}]
+      parameters:
+        - { name: libraryId, in: query, required: true, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string }, description: Opaque cursor from the previous page. }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
       responses:
         '200':
           description: Item page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItemList' }
     post:
       operationId: createItem
       responses:
         '201':
           description: Item created.
   /api/v1/items/{itemId}:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getItem
+      security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
           description: Item.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Item' }
     patch:
       operationId: patchItem
       responses:
@@ -531,12 +573,21 @@ paths:
         '204':
           description: Item deleted.
   /api/v1/items/{itemId}/manifest:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getManifest
+      security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
           description: File manifest.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Manifest' }
   /api/v1/items/{itemId}/access/{userId}:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
+      - { name: userId, in: path, required: true, schema: { type: string } }
     put:
       operationId: putItemAccess
       responses:
@@ -554,18 +605,24 @@ paths:
         '201':
           description: Upload session created.
   /api/v1/uploads/{uploadId}/content:
+    parameters:
+      - { name: uploadId, in: path, required: true, schema: { type: string } }
     put:
       operationId: uploadContent
       responses:
         '204':
           description: Bytes accepted.
   /api/v1/uploads/{uploadId}/complete:
+    parameters:
+      - { name: uploadId, in: path, required: true, schema: { type: string } }
     post:
       operationId: completeUpload
       responses:
         '201':
           description: Asset committed.
   /api/v1/uploads/{uploadId}:
+    parameters:
+      - { name: uploadId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getUpload
       responses:
@@ -581,6 +638,8 @@ paths:
         '204':
           description: Upload aborted.
   /api/v1/files/{assetId}:
+    parameters:
+      - { name: assetId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getFileMetadata
       responses:
@@ -592,25 +651,38 @@ paths:
         '204':
           description: Asset deleted.
   /api/v1/files/{assetId}/adopt:
+    parameters:
+      - { name: assetId, in: path, required: true, schema: { type: string } }
     post:
       operationId: adoptFile
       responses:
         '200':
           description: The chosen save is now the live file at its path. The bytes it replaced stay beside it.
   /api/v1/files/{assetId}/content:
+    parameters:
+      - { name: assetId, in: path, required: true, schema: { type: string } }
+      - { $ref: '#/components/parameters/Range' }
+      - { $ref: '#/components/parameters/IfRange' }
+      - { $ref: '#/components/parameters/IfNoneMatch' }
     get:
       operationId: getFileContent
+      security: [{ bearerAuth: [] }, {}]
       responses:
-        '200':
-          description: Full representation.
-        '206':
-          description: Single byte range.
+        '200': { $ref: '#/components/responses/Content' }
+        '206': { $ref: '#/components/responses/PartialContent' }
+        '304': { description: Representation unchanged. }
+        '416': { $ref: '#/components/responses/UnsatisfiableRange' }
     head:
       operationId: headFileContent
+      security: [{ bearerAuth: [] }, {}]
       responses:
-        '200':
-          description: Representation headers.
+        '200': { $ref: '#/components/responses/ContentHeaders' }
+        '206': { $ref: '#/components/responses/PartialContentHeaders' }
+        '304': { description: Representation unchanged. }
+        '416': { $ref: '#/components/responses/UnsatisfiableRange' }
   /api/v1/files/{assetId}/entries:
+    parameters:
+      - { name: assetId, in: path, required: true, schema: { type: string } }
     get:
       operationId: listVirtualEntries
       responses:
@@ -621,6 +693,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/VirtualEntryList'
   /api/v1/files/{assetId}/entries/{entryId}/content:
+    parameters:
+      - { name: assetId, in: path, required: true, schema: { type: string } }
+      - { name: entryId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getVirtualEntryContent
       responses:
@@ -727,6 +802,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/StorageWriteTarget'
   /api/v1/storage-locations/{locationId}:
+    parameters:
+      - { name: locationId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: deleteStorageLocation
       description: Owner only. Forgets an unused location without deleting files. The active target or a location holding catalog blobs returns 409.
@@ -759,12 +836,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/ContentRoot'
   /api/v1/roots/{rootId}:
+    parameters:
+      - { name: rootId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: deleteContentRoot
       responses:
         '204':
           description: Content root forgotten.
   /api/v1/roots/{rootId}/scan:
+    parameters:
+      - { name: rootId, in: path, required: true, schema: { type: string } }
     post:
       operationId: scanContentRoot
       responses:
@@ -777,6 +858,7 @@ paths:
   /api/v1/sources:
     get:
       operationId: listSourceFiles
+      security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
           description: Files found in content roots. Filesystem paths are not included.
@@ -794,6 +876,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MatchingPluginList' }
   /api/v1/roots/{rootId}/watching-policy:
+    parameters:
+      - { name: rootId, in: path, required: true, schema: { type: string } }
     get:
       operationId: folderWatchPolicy
       responses:
@@ -816,6 +900,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/FolderWatchPolicy' }
   /api/v1/roots/{rootId}/organization-policy:
+    parameters:
+      - { name: rootId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceOrganizationPolicy
       responses:
@@ -833,13 +919,33 @@ paths:
             schema: { $ref: '#/components/schemas/SourceOrganizationPolicyDraft' }
       responses:
         '200':
-          description: Owner explicitly enables future successful ROM, metadata and artwork match saves using a current organization preview bound to this source folder. Enabling does not process existing files. Disable at any time with enabled false. Policy fails closed if either folder changes library or path. Copy retains one verified owned copy and synchronizes later saved snapshots; move retains source identity. Unsupported files, stale sources and collisions leave saved matches intact and return an automatic organization warning.
+          description: Owner explicitly enables organization for future successful ROM, metadata and artwork match saves using a current folder or source preview. Enabling does not process existing files. Disable at any time with enabled false. Policy fails closed if either folder changes library or path. Copy retains one verified owned copy and synchronizes later saved snapshots; move retains source identity. Unsupported files, stale sources and collisions leave saved matches intact and return an automatic organization warning.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SourceOrganizationPolicy' }
         '409':
           description: Preview expired or changed. Create a new preview before enabling.
+  /api/v1/roots/{rootId}/organization-policy/preview:
+    parameters:
+      - { name: rootId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: previewFolderOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SourceOrganizationDraft' }
+      responses:
+        '200':
+          description: Owner-only preview of a future folder policy, with up to five example paths based on indexed cartridge ROMs. The owner-bound plan expires after ten minutes. Files are checked individually when a match triggers organization.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderOrganizationPreview' }
+        '409':
+          description: The selected folders or action do not support automatic organization.
   /api/v1/sources/{sourceId}/organization/preview:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
     post:
       operationId: previewSourceOrganization
       requestBody:
@@ -856,6 +962,8 @@ paths:
         '409':
           description: Unsupported source, changed source, destination collision or cross-volume move. Preview again after resolving the conflict.
   /api/v1/sources/{sourceId}/organization/apply:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
     post:
       operationId: applySourceOrganization
       requestBody:
@@ -872,6 +980,8 @@ paths:
         '409':
           description: Preview expired, consumed, or changed. No new paths are accepted. Preview again.
   /api/v1/sources/{sourceId}/matches:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
     post:
       operationId: findSourceMatches
       requestBody:
@@ -886,6 +996,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SourceMatches' }
   /api/v1/sources/{sourceId}/matches/selections:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceMatchSelections
       parameters:
@@ -914,6 +1026,9 @@ paths:
         '409':
           description: Revision conflict or source/companion changed since lookup.
   /api/v1/sources/{sourceId}/matches/selections/{kind}:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+      - { name: kind, in: path, required: true, schema: { type: string } }
     delete:
       operationId: removeSourceMatch
       parameters:
@@ -931,6 +1046,9 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SourceMatchSelections' }
   /api/v1/sources/{sourceId}/matches/selections/{kind}/content:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+      - { name: kind, in: path, required: true, schema: { type: string } }
     get:
       operationId: selectedMatchContent
       parameters:
@@ -942,6 +1060,10 @@ paths:
             application/octet-stream:
               schema: { type: string, format: binary }
   /api/v1/sources/{sourceId}/matches/{requestId}/artwork/{candidateId}:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+      - { name: requestId, in: path, required: true, schema: { type: string } }
+      - { name: candidateId, in: path, required: true, schema: { type: string } }
     get:
       operationId: matchingArtwork
       responses:
@@ -955,8 +1077,11 @@ paths:
             image/webp:
               schema: { type: string, format: binary }
   /api/v1/sources/{sourceId}/group:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceGroup
+      security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
           description: Cached members of one disc group, authorized individually.
@@ -964,8 +1089,11 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SourceGroup' }
   /api/v1/sources/{sourceId}/bundle:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceBundle
+      security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
           description: Streaming ZIP64 archive of a complete, current disc group. Original relative layout is preserved. No ranges.
@@ -975,22 +1103,46 @@ paths:
         '409':
           description: Incomplete or changed disc group; rescan before retrying.
   /api/v1/sources/{sourceId}/content:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+      - { $ref: '#/components/parameters/Range' }
+      - { $ref: '#/components/parameters/IfRange' }
+      - { $ref: '#/components/parameters/IfNoneMatch' }
     get:
       operationId: readSourceContent
+      description: Reads original bytes from a local source without importing it.
+      security: [{ bearerAuth: [] }, {}]
       responses:
-        '200':
-          description: Bytes of a local source file. Nothing is copied into the blob store.
+        '200': { $ref: '#/components/responses/Content' }
+        '206': { $ref: '#/components/responses/PartialContent' }
+        '304': { description: Representation unchanged. }
+        '409': { description: Source file is an evicted placeholder. }
+        '416': { $ref: '#/components/responses/UnsatisfiableRange' }
+        '503': { description: Source storage is offline. }
     head:
       operationId: statSourceContent
+      security: [{ bearerAuth: [] }, {}]
       responses:
-        '200':
-          description: Size of a local source file.
+        '200': { $ref: '#/components/responses/ContentHeaders' }
+        '206': { $ref: '#/components/responses/PartialContentHeaders' }
+        '304': { description: Representation unchanged. }
+        '409': { description: Source file is an evicted placeholder. }
+        '416': { $ref: '#/components/responses/UnsatisfiableRange' }
+        '503': { description: Source storage is offline. }
   /api/v1/changes:
     get:
       operationId: listChanges
+      security: [{ bearerAuth: [] }, {}]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string }, description: Exclusive decimal cursor. Start at 0 and use nextCursor verbatim. }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: excludeOwnDevice, in: query, schema: { type: string, enum: ['1'] }, description: Omit changes from the authenticated device. }
       responses:
         '200':
           description: Change feed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeList' }
   /api/v1/guest-grants:
     get:
       operationId: listGuestGrants
@@ -1003,6 +1155,8 @@ paths:
         '201':
           description: Guest grant created. The token is returned once.
   /api/v1/guest-grants/{grantId}:
+    parameters:
+      - { name: grantId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: revokeGuestGrant
       responses:
@@ -1023,6 +1177,8 @@ paths:
         '201':
           description: Device token created.
   /api/v1/device-tokens/{tokenId}:
+    parameters:
+      - { name: tokenId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: revokeDeviceToken
       responses:
@@ -1336,6 +1492,67 @@ paths:
       requestBody: {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": false, "required": [], "properties": {}}}}}
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Session, device or guest token. Some reads also allow tokenless access under the server's network policy.
+  parameters:
+    Range:
+      name: Range
+      in: header
+      description: Single byte range, such as bytes=0-65535.
+      schema: { type: string }
+    IfRange:
+      name: If-Range
+      in: header
+      description: Strong ETag from the previous response. A mismatch returns the whole file with status 200.
+      schema: { type: string }
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      description: Return status 304 if this validator matches.
+      schema: { type: string }
+  headers:
+    ETag:
+      schema: { type: string }
+    ContentLength:
+      schema: { type: integer, format: int64 }
+    ContentRange:
+      schema: { type: string }
+  responses:
+    Content:
+      description: Complete file.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+        Content-Length: { $ref: '#/components/headers/ContentLength' }
+      content:
+        application/octet-stream:
+          schema: { type: string, format: binary }
+    PartialContent:
+      description: Requested range of bytes.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+        Content-Length: { $ref: '#/components/headers/ContentLength' }
+        Content-Range: { $ref: '#/components/headers/ContentRange' }
+      content:
+        application/octet-stream:
+          schema: { type: string, format: binary }
+    ContentHeaders:
+      description: File length and validator.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+        Content-Length: { $ref: '#/components/headers/ContentLength' }
+    PartialContentHeaders:
+      description: Headers for the selected byte range.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+        Content-Length: { $ref: '#/components/headers/ContentLength' }
+        Content-Range: { $ref: '#/components/headers/ContentRange' }
+    UnsatisfiableRange:
+      description: Range is outside the file. Content-Range reports the current total size.
+      headers:
+        Content-Range: { $ref: '#/components/headers/ContentRange' }
   schemas:
     ServerUpdateSettings:
       type: object
@@ -1687,6 +1904,8 @@ components:
         path: { type: string }
         label: { type: string }
         libraryId: { type: [string, 'null'] }
+        watch: { type: boolean, description: Explicitly enable automatic watching for the new folder. }
+        organize: { type: boolean, description: Explicitly enable in-place organization of eligible cartridge ROMs on future match saves. }
     ContentRootScan:
       type: object
       required: [rootId, medium, online, count]
@@ -1762,7 +1981,21 @@ components:
       required: [enabled]
       properties:
         enabled: { type: boolean }
-        planId: { type: string, description: Required when enabling. A current owner-bound organization preview for a source in this folder. }
+        planId: { type: string, description: Required when enabling. A current owner-bound folder or source organization preview. }
+    FolderOrganizationPreview:
+      type: object
+      required: [planId, examples]
+      properties:
+        planId: { type: string }
+        examples:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [sourceRelativePath, targetRelativePath]
+            properties:
+              sourceRelativePath: { type: string }
+              targetRelativePath: { type: string }
     AutomaticOrganizationOutcome:
       type: object
       required: [status]
@@ -2471,6 +2704,11 @@ components:
         enrolled: {"type": "boolean"}
         revokedAt: {"type": ["string","null"]}
         createdAt: {"type": "string"}
+    WorkflowHostResponse:
+      type: object
+      required: [host]
+      properties:
+        host: { $ref: '#/components/schemas/WorkflowHost' }
     WorkflowLease:
       type: object
       additionalProperties: false

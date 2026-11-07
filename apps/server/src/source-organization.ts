@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { lstat, realpath } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import { type Actor, DomainError, type SourceFileRecord } from '@ecs/domain';
 import { PROVENANCE_SYSTEMS } from '@ecs/protocol';
@@ -29,6 +30,71 @@ interface SavedPlan {
   snapshot: string;
   expiresAt: number;
   operation: OrganizationPlan;
+}
+type Mode = OrganizationPlan['mode'];
+interface FolderPlan {
+  ownerId: string;
+  rootId: string;
+  targetRootId: string;
+  mode: Mode;
+  snapshot: string;
+  expiresAt: number;
+}
+
+export async function organizationFolderIdentity(path: string) {
+  const medium = await probeRoot(path);
+  if (medium.medium === 'icloud' || medium.medium === 'network') {
+    throw new DomainError(
+      'organization-unsupported',
+      409,
+      'Automatic organization requires local disk folders. Turn off automatic organization to add a cloud or network folder.',
+    );
+  }
+  const info = await lstat(path, { bigint: true }).catch(() => null);
+  if (!medium.online || !info?.isDirectory() || (await realpath(path).catch(() => null)) !== path)
+    throw new DomainError('organization-conflict', 409, 'The folder is unavailable or changed');
+  return { device: String(info.dev), identity: `${info.dev}:${info.ino}:${info.birthtimeNs}` };
+}
+
+function destination(source: SourceFileRecord): string {
+  const system =
+    PROVENANCE_SYSTEMS.find((entry) => entry.identifier === source.systemId)?.name ??
+    source.systemId ??
+    'Unknown System';
+  const extension = extname(source.relativePath);
+  const fileName =
+    portableSegment(
+      basename(source.relativePath, extension),
+      120 - Buffer.byteLength(extension, 'utf8'),
+    ) + extension;
+  return [
+    portableSegment(system),
+    portableSegment(source.title ?? basename(source.displayName, extname(source.displayName))),
+    fileName,
+  ].join('/');
+}
+
+function standaloneRom(source: SourceFileRecord): boolean {
+  return (
+    source.kind === 'rom' &&
+    RAW_ROM.test(source.displayName) &&
+    !source.groupAnchor &&
+    !source.groupError &&
+    !source.groupMembers?.length
+  );
+}
+
+function organizationDraft(input: unknown) {
+  const body = jsonObject(input);
+  if (Object.keys(body).some((key) => !['mode', 'targetRootId'].includes(key)))
+    throw new DomainError('invalid-body', 400, 'Only mode and targetRootId are accepted');
+  const mode = requiredString(body, 'mode');
+  if (mode !== 'copy' && mode !== 'move')
+    throw new DomainError('invalid-body', 400, 'Choose Copy or Move');
+  return { mode, targetRootId: requiredString(body, 'targetRootId') } satisfies {
+    mode: Mode;
+    targetRootId: string;
+  };
 }
 function stale(): never {
   throw new DomainError(
@@ -74,16 +140,13 @@ export async function runAutomaticOrganization(
 export function registerSourceOrganization(app: FastifyInstance, context: ServerContext): void {
   const { catalog } = context;
   const plans = new Map<string, SavedPlan>();
+  const folderPlans = new Map<string, FolderPlan>();
   const busy = new Set<string>();
   const snapshot = (source: SourceFileRecord) =>
     JSON.stringify({ source, matches: catalog.sourceMatches(source.id) });
   const eligible = (source: SourceFileRecord) => {
     if (
-      source.kind !== 'rom' ||
-      !RAW_ROM.test(source.displayName) ||
-      source.groupAnchor ||
-      source.groupError ||
-      source.groupMembers?.length ||
+      !standaloneRom(source) ||
       catalog
         .listSources(source.rootId)
         .some(
@@ -133,24 +196,7 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
       const original = catalog.getSource(sourceId);
       if (!original) stale();
       const before = snapshot(original);
-      const system =
-        PROVENANCE_SYSTEMS.find((entry) => entry.identifier === original.systemId)?.name ??
-        original.systemId ??
-        'Unknown System';
-      // Preserve the extension and original filename; only folder names use matches.
-      const extension = extname(original.relativePath);
-      const fileName =
-        portableSegment(
-          basename(original.relativePath, extension),
-          120 - Buffer.byteLength(extension, 'utf8'),
-        ) + extension;
-      const targetRelativePath = [
-        portableSegment(system),
-        portableSegment(
-          original.title ?? basename(original.displayName, extname(original.displayName)),
-        ),
-        fileName,
-      ].join('/');
+      const targetRelativePath = destination(original);
       const operation = await previewOrganization(
         local.root.path,
         original.relativePath,
@@ -320,13 +366,8 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
   app.post('/api/v1/sources/:sourceId/organization/preview', async (request) => {
     const actor = requireOwner(request, 'Only an owner can organize original files');
     const sourceId = (request.params as { sourceId: string }).sourceId;
-    const body = jsonObject(request.body);
-    if (Object.keys(body).some((key) => !['mode', 'targetRootId'].includes(key)))
-      throw new DomainError('invalid-body', 400, 'Only mode and targetRootId are accepted');
-    const mode = requiredString(body, 'mode');
-    if (mode !== 'copy' && mode !== 'move')
-      throw new DomainError('invalid-body', 400, 'Choose Copy or Move');
-    return prepare(actor, sourceId, mode, requiredString(body, 'targetRootId'));
+    const { mode, targetRootId } = organizationDraft(request.body);
+    return prepare(actor, sourceId, mode, targetRootId);
   });
   app.post('/api/v1/sources/:sourceId/organization/apply', async (request) => {
     const actor = requireOwner(request, 'Only an owner can organize original files');
@@ -349,6 +390,59 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
         : {}),
     };
   }
+  async function folderPreview(rootId: string, targetRootId: string, mode: Mode) {
+    const root = catalog.getContentRoot(rootId);
+    const target = catalog.getContentRoot(targetRootId);
+    if (!root || !target) throw new DomainError('not-found', 404, 'Folder not found');
+    if (root.libraryId !== target.libraryId)
+      throw new DomainError('organization-conflict', 409, 'Choose a folder in the same library');
+    const from = await organizationFolderIdentity(root.path);
+    const to = rootId === targetRootId ? from : await organizationFolderIdentity(target.path);
+    if (mode === 'move' && from.device !== to.device)
+      throw new DomainError(
+        'organization-conflict',
+        409,
+        'Moving between volumes is not supported; use Copy instead',
+      );
+
+    const sources = catalog.listSources(rootId);
+    const companions = new Set(sources.flatMap((source) => source.groupMembers ?? []));
+    const examples: { sourceRelativePath: string; targetRelativePath: string }[] = [];
+    for (const source of sources) {
+      if (
+        source.availability !== 'local' ||
+        !standaloneRom(source) ||
+        companions.has(source.relativePath)
+      )
+        continue;
+      const targetRelativePath = destination(source);
+      if (rootId === targetRootId && targetRelativePath === source.relativePath) continue;
+      examples.push({ sourceRelativePath: source.relativePath, targetRelativePath });
+      if (examples.length === 5) break;
+    }
+    return { root, target, examples, snapshot: JSON.stringify([root, target, from, to, examples]) };
+  }
+  app.post('/api/v1/roots/:rootId/organization-policy/preview', async (request, reply) => {
+    const actor = requireOwner(request, 'Only an owner can manage automatic organization');
+    const { rootId } = request.params as { rootId: string };
+    const { mode, targetRootId } = organizationDraft(request.body);
+    const { snapshot, examples } = await folderPreview(rootId, targetRootId, mode);
+    const now = Date.now();
+    for (const [id, plan] of folderPlans) if (plan.expiresAt <= now) folderPlans.delete(id);
+    const oldest = folderPlans.keys().next().value;
+    if (folderPlans.size >= 128 && oldest) folderPlans.delete(oldest);
+    const planId = randomUUID();
+    folderPlans.set(planId, {
+      ownerId: actor.userId,
+      rootId,
+      targetRootId,
+      mode,
+      snapshot,
+      expiresAt: now + TTL,
+    });
+    reply.header('cache-control', 'private, no-store');
+    return { planId, examples };
+  });
   app.get('/api/v1/roots/:rootId/organization-policy', async (request, reply) => {
     requireOwner(request, 'Only an owner can manage automatic organization');
     const rootId = (request.params as { rootId: string }).rootId;
@@ -373,6 +467,43 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
       return policyView(rootId);
     }
     const planId = requiredString(body, 'planId');
+    const folderPlan = folderPlans.get(planId);
+    if (folderPlan) {
+      if (
+        folderPlan.ownerId !== actor.userId ||
+        folderPlan.rootId !== rootId ||
+        folderPlan.expiresAt <= Date.now()
+      )
+        stale();
+      const release = reserveContentRoots(catalog, [rootId, folderPlan.targetRootId]);
+      try {
+        const { root, target, snapshot } = await folderPreview(
+          rootId,
+          folderPlan.targetRootId,
+          folderPlan.mode,
+        );
+        if (
+          snapshot !== folderPlan.snapshot ||
+          folderPlans.get(planId) !== folderPlan ||
+          folderPlan.expiresAt <= Date.now()
+        )
+          stale();
+        catalog.setSourceOrganizationPolicy({
+          sourceRootId: rootId,
+          libraryId: root.libraryId,
+          targetRootId: target.id,
+          sourceRootPath: root.path,
+          targetRootPath: target.path,
+          mode: folderPlan.mode,
+          enabledBy: actor.userId,
+          enabledAt: new Date().toISOString(),
+        });
+        folderPlans.delete(planId);
+        return policyView(rootId);
+      } finally {
+        release();
+      }
+    }
     const plan = plans.get(planId);
     if (!plan || plan.ownerId !== actor.userId || plan.expiresAt <= Date.now()) stale();
     const source = catalog.getSource(plan.sourceId);
@@ -493,22 +624,7 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
     }
     eligible(source);
     // A later match in a same-root move should not attempt to overwrite itself.
-    const system =
-      PROVENANCE_SYSTEMS.find((entry) => entry.identifier === source.systemId)?.name ??
-      source.systemId ??
-      'Unknown System';
-    const extension = extname(source.relativePath);
-    const fileName =
-      portableSegment(
-        basename(source.relativePath, extension),
-        120 - Buffer.byteLength(extension, 'utf8'),
-      ) + extension;
-    const destination = [
-      portableSegment(system),
-      portableSegment(source.title ?? basename(source.displayName, extname(source.displayName))),
-      fileName,
-    ].join('/');
-    if (source.rootId === target.id && source.relativePath === destination)
+    if (source.rootId === target.id && source.relativePath === destination(source))
       return { status: 'skipped', sourceId };
     const preview = await prepare(actor, sourceId, policy.mode, target.id);
     stillEnabled();

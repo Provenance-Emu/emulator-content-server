@@ -79,7 +79,7 @@ import { accessView } from './local-access.js';
 import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
 import { registerSourceMatching } from './source-matching.js';
-import { registerSourceOrganization } from './source-organization.js';
+import { organizationFolderIdentity, registerSourceOrganization } from './source-organization.js';
 import { registerWorkflowApprovals } from './workflow-approvals.js';
 import { registerWorkflowEvidence } from './workflow-evidence.js';
 import { registerWorkflowRoutes } from './workflow-routes.js';
@@ -98,7 +98,11 @@ const UI_CONTENT_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-export function registerRoutes(app: FastifyInstance, context: ServerContext): void {
+export function registerRoutes(
+  app: FastifyInstance,
+  context: ServerContext,
+  onWatchedFolderAdded: (rootId: string) => void,
+): void {
   const { catalog } = context;
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
@@ -1010,6 +1014,10 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
     const actor = requireOwner(request, 'Only the server owner can save a content root');
     const body = jsonObject(request.body);
     const label = requiredString(body, 'label');
+    const { watch, organize } = body;
+    if ([watch, organize].some((value) => value !== undefined && typeof value !== 'boolean')) {
+      throw new DomainError('invalid-body', 400, 'Watch and organize must be booleans');
+    }
     const libraryId = optionalString(body, 'libraryId') ?? null;
     if (libraryId !== null && !catalog.getLibrary(libraryId)) {
       throw new DomainError('not-found', 404, 'Library not found');
@@ -1025,8 +1033,17 @@ export function registerRoutes(app: FastifyInstance, context: ServerContext): vo
           throw new DomainError('conflict', 409, 'That folder overlaps a storage location');
         }
       }
-      return catalog.createContentRoot({ path, label, libraryId, actorId: actor.userId });
+      if (organize === true) await organizationFolderIdentity(path);
+      return catalog.createContentRoot({
+        path,
+        label,
+        libraryId,
+        actorId: actor.userId,
+        watch: watch === true,
+        organize: organize === true,
+      });
     });
+    if (watch === true) onWatchedFolderAdded(root.id);
     reply.code(201);
     return root;
   });

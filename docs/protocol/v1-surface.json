@@ -103,6 +103,7 @@
     "POST /api/v1/plugins/defaults",
     "POST /api/v1/plugins/doctor",
     "POST /api/v1/roots",
+    "POST /api/v1/roots/:rootId/organization-policy/preview",
     "POST /api/v1/roots/:rootId/scan",
     "POST /api/v1/server/updates",
     "POST /api/v1/sources/:sourceId/matches",
@@ -657,7 +658,9 @@
       "properties": [
         "label",
         "libraryId",
-        "path"
+        "organize",
+        "path",
+        "watch"
       ],
       "required": [
         "label",
@@ -774,6 +777,16 @@
       ],
       "required": [
         "enabled"
+      ]
+    },
+    "FolderOrganizationPreview": {
+      "properties": [
+        "examples",
+        "planId"
+      ],
+      "required": [
+        "examples",
+        "planId"
       ]
     },
     "AutomaticOrganizationOutcome": {
@@ -1827,6 +1840,14 @@
         "name",
         "ownerId",
         "revokedAt"
+      ]
+    },
+    "WorkflowHostResponse": {
+      "properties": [
+        "host"
+      ],
+      "required": [
+        "host"
       ]
     },
     "WorkflowLease": {

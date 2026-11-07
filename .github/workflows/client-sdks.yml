@@ -1,0 +1,53 @@
+name: Client SDK sources
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/protocol/openapi/openapi.yaml
+      - .github/workflows/client-sdks.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-sdks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    env:
+      GENERATOR_VERSION: 7.27.0
+      GENERATOR_SHA256: db9c4b738727698748746144394cb7ee96512fe50166555baaeeca9311ee1dba
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download pinned OpenAPI Generator
+        run: |
+          jar="$RUNNER_TEMP/openapi-generator.jar"
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/$GENERATOR_VERSION/openapi-generator-cli-$GENERATOR_VERSION.jar" \
+            --output "$jar"
+          printf '%s  %s\n' "$GENERATOR_SHA256" "$jar" | sha256sum --check
+      - name: Validate the contract and generate source SDKs
+        run: |
+          mkdir -p dist/client-sdks
+          cp packages/protocol/openapi/openapi.yaml dist/client-sdks/openapi.yaml
+          jar="$RUNNER_TEMP/openapi-generator.jar"
+          spec=dist/client-sdks/openapi.yaml
+          java -jar "$jar" validate -i "$spec"
+          for target in typescript-fetch python swift6 objc csharp c cpp-qt-client kotlin java; do
+            java -jar "$jar" generate -i "$spec" -g "$target" -o "dist/client-sdks/$target" \
+              --additional-properties hideGenerationTimestamp=true,disallowAdditionalPropertiesIfNotPresent=false
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ecs-client-sources-${{ github.sha }}
+          path: dist/client-sdks/
+          if-no-files-found: error
+          retention-days: 30

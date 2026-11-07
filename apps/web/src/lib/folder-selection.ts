@@ -7,6 +7,7 @@ export interface FolderSelection {
   origin: string;
   contextKey: string;
   verificationId?: string;
+  automation?: { watch: boolean; organize: boolean };
 }
 
 export interface FolderSelectionAdapter {

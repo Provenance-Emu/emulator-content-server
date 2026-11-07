@@ -14,6 +14,7 @@ import {
 } from '@ecs/storage';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { registerApiDocs } from './api-docs.js';
 import { stopLibraryJobs } from './library-jobs.js';
 import { PlayerManager, registerPlayerManagement } from './player-manager.js';
 import { type PluginManagementBridge, registerPluginManagement } from './plugin-management.js';
@@ -315,7 +316,8 @@ export async function buildApp(
   });
   registerFolderWatchRoutes(app, context, folderWatcher);
   registerWebDav(app, context);
-  registerRoutes(app, context);
+  registerApiDocs(app);
+  registerRoutes(app, context, (rootId) => folderWatcher.reconcile(rootId));
   registerPluginManagement(app, context, pluginManagement);
   registerPlayerManagement(app, context);
   registerPlayerIsolation(app, context);

@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import { onDestroy, untrack } from 'svelte';
   import { createLibraryEditor } from './lib/library-editor';
-  import { chooseFolder, type FolderContext } from './lib/folder-selection';
+  import { chooseFolder, type FolderContext, type FolderSelection } from './lib/folder-selection';
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
   import FolderPicker from './FolderPicker.svelte';
   import Modal from './components/Modal.svelte';
@@ -13,6 +13,7 @@
   } = $props();
   const editor = untrack(() => createLibraryEditor(client, context, library));
   let picking = $state(false);
+  let preselected = $state<FolderSelection | null>(null);
   let pickerBusy = $state(false);
   let choosing = $state(false);
   let failure = $state<string | null>(null);
@@ -26,7 +27,7 @@
     if (!context.folderSelection) { picking = true; return; }
     if (choosing) return;
     choosing = true;
-    try { const selected = await chooseFolder(context, 'library-folder'); if (selected && !disposed) await editor.stageFolder(selected); }
+    try { const selected = await chooseFolder(context, 'library-folder'); if (selected && !disposed) { preselected = selected; picking = true; } }
     catch (error) { if (!disposed) failure = explain(error); }
     finally { if (!disposed) choosing = false; }
   }
@@ -59,13 +60,15 @@
   {#if !library}<p class="dim">Give your collection a name, such as “My games” or “Family favorites”. Create it now and add games next. If your games are already on the server computer, you can optionally select that folder here; the files stay where they are.</p>
     <ul>{#each $editor.folders as folder, index (folder.selection.path)}<li>
       <span class="path">{folder.selection.path}</span>
+      {#if folder.selection.automation}<small class="dim"> · Watching {folder.selection.automation.watch ? 'on' : 'off'} · Organization {folder.selection.automation.organize ? 'on' : 'off'}</small>{/if}
       {#if folder.scanned}<span> Scanned</span>{:else if folder.rootId}<span> Folder saved</span>{/if}
       {#if folder.failure}<p class="problem" role="alert">{folder.failure}</p>{/if}
+      {#if folder.organizationUnsupported}<button type="button" disabled={$editor.busy} onclick={() => editor.turnOffFolderOrganization(index)}>Turn off automatic organization for this folder</button>{/if}
       {#if !$editor.libraryId}<button type="button" disabled={$editor.busy} aria-label={`Remove staged folder ${folder.selection.path}`} onclick={() => editor.removeStagedFolder(index)}>Remove</button>{/if}
     </li>{/each}</ul>
     {#if !$editor.libraryId && !$editor.reconciliationRequired}<button type="button" disabled={$editor.busy || choosing} onclick={() => void choose()}>Select server folder</button>{/if}
   {/if}
-  {#if picking}<FolderPicker {client} contextKey={context.key} origin={context.origin} title="Select server folder" submitLabel="Select folder" onsubmit={(selection) => editor.stageFolder(selection)} onbusy={(busy) => (pickerBusy = busy)} oncancel={() => (picking = false)} />{/if}
+  {#if picking}<FolderPicker {client} contextKey={context.key} origin={context.origin} title="Select server folder" submitLabel="Select folder" libraryFolder {preselected} onsubmit={(selection) => editor.stageFolder(selection)} onbusy={(busy) => (pickerBusy = busy)} oncancel={() => { picking = false; preselected = null; }} />{/if}
   {#if $editor.reconciliationRequired}<p role="alert">The library may have been created. Refresh and select the existing library before continuing. No library will be selected by name.</p>
     <button type="button" disabled={$editor.busy || refreshing} onclick={() => void refreshExisting()}>Refresh existing libraries</button>
     <label>Existing library<select bind:value={selected} disabled={$editor.busy}><option value="">Choose the library that was created</option>{#each existing as item (item.id)}<option value={item.id}>{item.name} ({item.id})</option>{/each}</select></label>

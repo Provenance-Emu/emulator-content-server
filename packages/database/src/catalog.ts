@@ -956,6 +956,8 @@ export class CatalogDatabase {
     label: string;
     libraryId: string | null;
     actorId: string;
+    watch?: boolean;
+    organize?: boolean;
   }): ContentRootRecord {
     const createdAt = nowIso();
     const id = randomUUID();
@@ -982,6 +984,19 @@ export class CatalogDatabase {
         path: input.path,
         label: input.label,
       });
+      if (input.watch) this.setFolderWatchPolicy(id, input.actorId);
+      if (input.organize) {
+        this.writeSourceOrganizationPolicy({
+          sourceRootId: id,
+          targetRootId: id,
+          libraryId: input.libraryId,
+          sourceRootPath: input.path,
+          targetRootPath: input.path,
+          mode: 'move',
+          enabledBy: input.actorId,
+          enabledAt: createdAt,
+        });
+      }
     });
     return {
       id,
@@ -1543,48 +1558,50 @@ export class CatalogDatabase {
   }
 
   setSourceOrganizationPolicy(policy: SourceOrganizationPolicy): void {
-    this.transaction(() => {
-      const source = this.getContentRoot(policy.sourceRootId);
-      const target = this.getContentRoot(policy.targetRootId);
-      if (
-        !source ||
-        !target ||
-        source.libraryId !== policy.libraryId ||
-        target.libraryId !== policy.libraryId ||
-        source.path !== policy.sourceRootPath ||
-        target.path !== policy.targetRootPath
-      )
-        throw new DomainError('conflict', 409, 'Organization policy folders changed');
-      // Disabled policies keep ownership, but a new destination must not inherit
-      // the previous destination's mapping when the policy row no longer exists.
-      this.db
-        .prepare(`DELETE FROM source_organization_copies WHERE source_root_id=?
+    this.transaction(() => this.writeSourceOrganizationPolicy(policy));
+  }
+
+  private writeSourceOrganizationPolicy(policy: SourceOrganizationPolicy): void {
+    const source = this.getContentRoot(policy.sourceRootId);
+    const target = this.getContentRoot(policy.targetRootId);
+    if (
+      !source ||
+      !target ||
+      source.libraryId !== policy.libraryId ||
+      target.libraryId !== policy.libraryId ||
+      source.path !== policy.sourceRootPath ||
+      target.path !== policy.targetRootPath
+    )
+      throw new DomainError('conflict', 409, 'Organization policy folders changed');
+    // Disabled policies keep ownership, but a new destination must not inherit
+    // the previous destination's mapping when the policy row no longer exists.
+    this.db
+      .prepare(`DELETE FROM source_organization_copies WHERE source_root_id=?
         AND (? != 'copy' OR copy_source_id NOT IN (SELECT id FROM source_files WHERE root_id=?))`)
-        .run(policy.sourceRootId, policy.mode, policy.targetRootId);
-      this.db
-        .prepare(`INSERT INTO source_organization_policies
+      .run(policy.sourceRootId, policy.mode, policy.targetRootId);
+    this.db
+      .prepare(`INSERT INTO source_organization_policies
         (source_root_id,library_id,target_root_id,source_root_path,target_root_path,mode,enabled_by,enabled_at)
         VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(source_root_id) DO UPDATE SET
         library_id=excluded.library_id,target_root_id=excluded.target_root_id,source_root_path=excluded.source_root_path,
         target_root_path=excluded.target_root_path,mode=excluded.mode,enabled_by=excluded.enabled_by,enabled_at=excluded.enabled_at`)
-        .run(
-          policy.sourceRootId,
-          policy.libraryId,
-          policy.targetRootId,
-          policy.sourceRootPath,
-          policy.targetRootPath,
-          policy.mode,
-          policy.enabledBy,
-          policy.enabledAt,
-        );
-      this.insertAudit(
-        policy.enabledBy,
-        'enable-source-organization',
-        'content-root',
+      .run(
         policy.sourceRootId,
-        { mode: policy.mode, targetRootId: policy.targetRootId },
+        policy.libraryId,
+        policy.targetRootId,
+        policy.sourceRootPath,
+        policy.targetRootPath,
+        policy.mode,
+        policy.enabledBy,
+        policy.enabledAt,
       );
-    });
+    this.insertAudit(
+      policy.enabledBy,
+      'enable-source-organization',
+      'content-root',
+      policy.sourceRootId,
+      { mode: policy.mode, targetRootId: policy.targetRootId },
+    );
   }
 
   clearSourceOrganizationPolicy(sourceRootId: string): void {

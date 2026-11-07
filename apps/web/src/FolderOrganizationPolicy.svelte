@@ -1,27 +1,127 @@
 <script lang="ts">
-  import type { ContentClient, ContentRoot, SourceOrganizationPolicy } from '@ecs/client';
+  import type { ContentClient, ContentRoot, FolderOrganizationPreview, SourceOrganizationPolicy } from '@ecs/client';
   import { onMount, onDestroy } from 'svelte';
   import { explain } from './lib/problems';
-  let {client,root,onrejected}:{client:ContentClient;root:ContentRoot;onrejected?:(status:401|403)=>void}=$props();
-  let policy=$state<SourceOrganizationPolicy|null>(null);
-  let busy=$state(true);
-  let failure=$state<string|null>(null);
-  let disposed=false;
-  onDestroy(()=>{disposed=true;});
-  function reject(error:unknown){
-    if(disposed)return;
-    failure=explain(error);
-    const status=(error as {status?:number})?.status;
-    if(status===401||status===403){policy=null;onrejected?.(status);}
+
+  let { client, root, onrejected }: {
+    client: ContentClient; root: ContentRoot; onrejected?: (status: 401 | 403) => void;
+  } = $props();
+  let policy = $state<SourceOrganizationPolicy | null>(null);
+  let roots = $state<ContentRoot[]>([]);
+  let mode = $state<'move' | 'copy'>('move');
+  let targetRootId = $state('');
+  let preview = $state<FolderOrganizationPreview | null>(null);
+  let busy = $state(false);
+  let failure = $state<string | null>(null);
+  let disposed = false;
+  const targetLabel = $derived(roots.find((folder) => folder.id === targetRootId)?.label ?? root.label);
+  onDestroy(() => { disposed = true; });
+
+  async function run(action: () => Promise<void>) {
+    if (busy || disposed) return;
+    busy = true;
+    failure = null;
+    try {
+      await action();
+    } catch (error) {
+      if (disposed) return;
+      failure = explain(error);
+      const status = (error as { status?: number })?.status;
+      if (status === 401 || status === 403) {
+        policy = null;
+        preview = null;
+        onrejected?.(status);
+      }
+    } finally {
+      if (!disposed) busy = false;
+    }
   }
-  async function load(){busy=true;failure=null;try{const value=await client.sourceOrganizationPolicy(root.id);if(!disposed)policy=value;}catch(error){reject(error);}finally{if(!disposed)busy=false;}}
-  async function disable(){busy=true;failure=null;try{const value=await client.setSourceOrganizationPolicy(root.id,{enabled:false});if(!disposed)policy=value;}catch(error){reject(error);}finally{if(!disposed)busy=false;}}
-  onMount(()=>{void load();});
+
+  function load() {
+    return run(async () => {
+      const [current, registered] = await Promise.all([
+        client.sourceOrganizationPolicy(root.id),
+        client.roots(),
+      ]);
+      if (disposed) return;
+      policy = current;
+      roots = registered.items.filter((folder) => folder.libraryId === root.libraryId);
+      mode = current.mode === 'copy' ? 'copy' : 'move';
+      targetRootId = current.targetRootId ?? root.id;
+    });
+  }
+
+  function prepare() {
+    return run(async () => {
+      const result = await client.previewFolderOrganization(root.id, { mode, targetRootId });
+      if (!disposed) preview = result;
+    });
+  }
+
+  function setEnabled(enabled: boolean) {
+    return run(async () => {
+      const planId = preview?.planId;
+      if (enabled && !planId) return;
+      preview = null;
+      const result = await client.setSourceOrganizationPolicy(root.id, { enabled, ...(enabled ? { planId } : {}) });
+      if (!disposed) policy = result;
+    });
+  }
+
+  onMount(() => { void load(); });
 </script>
-<p>{root.label}</p>
-{#if busy}<p role="status">Updating organization settings…</p>{:else if policy?.enabled}
-  <p role="status">Automatic {policy.mode==='move'?'Move':'Copy'} is enabled for future saved matches in this folder.</p>
-  <button type="button" onclick={()=>void disable()}>Turn off automatic organization</button>
-{:else if policy}<p role="status">Automatic organization is off for this folder.</p>{/if}
-<p class="dim">To enable or change automatic organization, open a game in this folder and preview its destination. Existing files are not processed in bulk.</p>
-{#if failure}<p role="alert" class="problem">{failure}</p><button type="button" disabled={busy} onclick={()=>void load()}>Retry organization settings</button>{/if}
+
+<p><strong>{root.label}</strong></p>
+<p class="dim">When you save a system, metadata, or artwork match, eligible cartridge ROMs can be arranged under <code>System / Game title / Original filename</code>. Existing files stay in place until a match triggers the rule. Archives and disc sets are excluded, and existing destinations are protected from overwrites.</p>
+{#if policy}
+  {#if policy.enabled}
+    <p role="status">Automatic {policy.mode} to {roots.find((folder) => folder.id === policy?.targetRootId)?.label ?? 'the selected folder'} is on.</p>
+    <button type="button" disabled={busy} onclick={() => void setEnabled(false)}>Turn off automatic organization</button>
+  {:else}
+    <p role="status">Automatic organization is off for this folder.</p>
+  {/if}
+
+  {#if preview}
+    <h3>Organization preview</h3>
+    <p>{mode === 'move' ? 'Move originals' : 'Keep originals and create copies'} in <strong>{targetLabel}</strong> when a match is saved.</p>
+    {#if preview.examples.length}
+      <p class="dim">Examples based on the titles and systems currently indexed. Saving a new match can change the destination.</p>
+      <ul class="organization-examples">
+        {#each preview.examples as example (example.sourceRelativePath)}
+          <li><code>{example.sourceRelativePath}</code> → <code>{example.targetRelativePath}</code></li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="dim">There are no eligible files to show from the current index. Example destination <code>NES / Example game / example.nes</code>.</p>
+    {/if}
+    <div class="actions">
+      <button class="primary" type="button" disabled={busy} onclick={() => void setEnabled(true)}>{policy.enabled ? 'Save automatic organization' : 'Enable automatic organization'}</button>
+      <button type="button" disabled={busy} onclick={() => { preview = null; }}>Change options</button>
+    </div>
+  {:else}
+    <label>Action
+      <select bind:value={mode} disabled={busy}>
+        <option value="move">Move the original</option>
+        <option value="copy">Copy and keep the original</option>
+      </select>
+    </label>
+    <label>Destination folder
+      <select bind:value={targetRootId} disabled={busy}>
+        {#each roots as folder (folder.id)}
+          <option value={folder.id}>{folder.label}{folder.id === root.id ? ' (this folder)' : ''}</option>
+        {/each}
+      </select>
+    </label>
+    <button type="button" disabled={busy || !targetRootId} onclick={() => void prepare()}>Preview automatic organization</button>
+  {/if}
+{/if}
+{#if busy}<p role="status">Updating organization settings…</p>{/if}
+{#if failure}
+  <p role="alert" class="problem">{failure}</p>
+  {#if !policy}<button type="button" disabled={busy} onclick={() => void load()}>Retry organization settings</button>{/if}
+{/if}
+
+<style>
+  label { margin-block: var(--space-3); }
+  .organization-examples { padding-inline-start: var(--space-5); overflow-wrap: anywhere; }
+</style>

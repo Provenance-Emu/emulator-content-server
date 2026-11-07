@@ -19,7 +19,8 @@
     "@ecs/webdav": "workspace:*",
     "@fastify/rate-limit": "10.3.0",
     "@fastify/static": "^10.1.6",
-    "fastify": "5.12.6"
+    "fastify": "5.12.6",
+    "swagger-ui-dist": "5.34.1"
   },
   "devDependencies": {
     "@ecs/client": "workspace:*"

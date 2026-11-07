@@ -71,7 +71,7 @@
 {#if owner}
 <section class="organization" aria-label="Organize original file">
   <h2>Organize files</h2>
-  <p class="dim">Optionally arrange one cartridge ROM into System / Matched title / Original filename. Preview a file before applying a change or enabling automatic organization for its source folder. Archives and disc sets are not supported. Automatic organization starts off.</p>
+  <p class="dim">Optionally arrange one cartridge ROM into System / Matched title / Original filename. Preview a file before applying a change or enabling automatic organization for its source folder. This applies to standalone cartridge ROMs.</p>
   {#if policy?.enabled}
     <p role="status">Automatic {policy.mode==='move'?'Move':'Copy'} is enabled for this source folder. Future saved metadata, artwork or system matches organize eligible cartridge ROMs into {roots.find(root=>root.id===policy?.targetRootId)?.label??'the confirmed destination folder'}. Move waits for suggested local metadata and artwork choices to be saved. Existing files are not processed in bulk.</p>
     <button type="button" disabled={policyBusy||busy} onclick={()=>void setAutomatic(false)}>{policyBusy?'Turning off…':'Turn off automatic organization'}</button>

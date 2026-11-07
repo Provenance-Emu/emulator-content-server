@@ -145,6 +145,7 @@ export function createLibraryFolders(
               path: selection.path.trim(),
               label: selection.suggestedName.trim() || folderName(selection.path),
               libraryId: scope.libraryId,
+              ...selection.automation,
             });
           } catch (error) {
             if (!(error instanceof ContentError) || error.status !== 409) throw error;

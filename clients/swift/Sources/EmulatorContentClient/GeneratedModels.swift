@@ -534,11 +534,15 @@ public struct ContentRootDraft: Codable, Equatable, Sendable {
     public var path: String
     public var label: String
     public var libraryId: String?
+    public var watch: Bool?
+    public var organize: Bool?
 
-    public init(path: String, label: String, libraryId: String? = nil) {
+    public init(path: String, label: String, libraryId: String? = nil, watch: Bool? = nil, organize: Bool? = nil) {
         self.path = path
         self.label = label
         self.libraryId = libraryId
+        self.watch = watch
+        self.organize = organize
     }
 }
 
@@ -661,6 +665,16 @@ public struct SourceOrganizationPolicyDraft: Codable, Equatable, Sendable {
     public init(enabled: Bool, planId: String? = nil) {
         self.enabled = enabled
         self.planId = planId
+    }
+}
+
+public struct FolderOrganizationPreview: Codable, Equatable, Sendable {
+    public var planId: String
+    public var examples: [[String: String]]
+
+    public init(planId: String, examples: [[String: String]]) {
+        self.planId = planId
+        self.examples = examples
     }
 }
 
@@ -1773,6 +1787,14 @@ public struct WorkflowHost: Codable, Equatable, Sendable {
         self.enrolled = enrolled
         self.revokedAt = revokedAt
         self.createdAt = createdAt
+    }
+}
+
+public struct WorkflowHostResponse: Codable, Equatable, Sendable {
+    public var host: WorkflowHost
+
+    public init(host: WorkflowHost) {
+        self.host = host
     }
 }
 
