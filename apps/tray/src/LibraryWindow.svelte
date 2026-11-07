@@ -4,11 +4,11 @@
   import { get } from 'svelte/store';
   import { connectionAddress } from './lib/application';
   import type { SetupMode } from '../../web/src/lib/setup-progress.js';
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import { folderAdapterFor, managedProfile, nativeFolders, type ManagedEndpoint } from './lib/folders';
   import type { DesktopContext, DesktopSelection } from './lib/application';
   import { DEFAULT_ORIGIN } from './lib/watch.svelte';
-  import { openExternal } from './lib/windows';
+  import { openExternal, showLibrary } from './lib/windows';
   let { selection }: { selection: DesktopSelection } = $props();
   const profiles = untrack(() => selection.profiles);
   function skippedGuide() { try { return localStorage.getItem('ecs.tray.setup.skipped') === '1'; } catch { return false; } }
@@ -128,6 +128,13 @@
     });
   });
   $effect(() => { typed = $selection?.origin ?? ''; });
+  onMount(() => {
+    if (welcome && '__TAURI_INTERNALS__' in window) {
+      void showLibrary().catch(() => {
+        if (!disposed) failure = 'Choose Open library from the menu bar to continue setup.';
+      });
+    }
+  });
   onDestroy(() => { disposed = true; verificationGeneration++; selection.dispose(); });
 </script>
 <header class="desktop-server" class:desktop-connect={!$selection || welcome}>

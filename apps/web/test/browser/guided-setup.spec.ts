@@ -143,11 +143,20 @@ test('first Mac setup guides account, existing default library, folder, emulator
   await page.addInitScript(
     ({ code, games }) => {
       Object.defineProperty(navigator, 'platform', { value: 'MacIntel' });
-      const state = { installed: false, installs: 0 };
+      const state = { installed: false, installs: 0, shown: false, focused: false };
       Object.assign(window, {
         __guideNative: state,
         __TAURI_INTERNALS__: {
           async invoke(command: string) {
+            if (command === 'plugin:window|get_all_windows') return ['status', 'library'];
+            if (command === 'plugin:window|show') {
+              state.shown = true;
+              return;
+            }
+            if (command === 'plugin:window|set_focus') {
+              state.focused = true;
+              return;
+            }
             if (command === 'managed_endpoint')
               return state.installed
                 ? {
@@ -175,6 +184,15 @@ test('first Mac setup guides account, existing default library, folder, emulator
     await expect(
       page.getByRole('heading', { name: 'Let’s set up your game library', exact: true }),
     ).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as unknown as { __guideNative: { shown: boolean; focused: boolean } })
+              .__guideNative,
+        ),
+      )
+      .toMatchObject({ shown: true, focused: true });
     await page.getByRole('button', { name: 'Set up this computer', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Your account', exact: true })).toBeVisible();
     await expect(page.getByLabel('Setup code', { exact: true })).toHaveCount(0);
