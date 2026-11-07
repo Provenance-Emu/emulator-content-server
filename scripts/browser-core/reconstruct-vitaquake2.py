@@ -40,6 +40,7 @@ CORE_RECIPES = {
         "source": SOURCE_ARCHIVES["core"],
         "directory": ".",
         "memoryBytes": 402653184,
+        "makeArguments": [f'GIT_VERSION=" {SOURCE_ARCHIVES["core"]["revision"][:7]}"'],
     },
     "fbneo": {
         "source": {
@@ -52,6 +53,10 @@ CORE_RECIPES = {
         },
         "directory": "src/burner/libretro",
         "memoryBytes": 134217728,
+        # Makefile.common adds "GIT" and derives YYMMDD from git history.
+        # The pinned commit is dated 2026-10-29. Tarballs omit that history.
+        # https://github.com/libretro/FBNeo/blob/9d82650bb9591966987a4c36ae8a1409ce0d5d68/src/burner/libretro/Makefile.common#L389-L392
+        "makeArguments": ["GIT_VERSION=9d82650", "GIT_DATE=261029"],
     },
 }
 
@@ -452,8 +457,8 @@ def reconstruct(sdk, output, core_name="vitaquake2"):
                 "-j2",
                 "platform=emscripten",
                 f"MEMORY={recipe['memoryBytes']}",
-                f'GIT_VERSION=" {sources["core"]["revision"][:7]}"',
-            ],
+            ]
+            + recipe["makeArguments"],
             core,
         )
         library = core / f"{core_name}_libretro_emscripten.bc"
