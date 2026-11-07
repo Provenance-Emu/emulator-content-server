@@ -17,8 +17,20 @@ export type EmulatorManagementClient = Pick<
   | 'configurePlayer'
   | 'removePlayer'
 >;
+export interface EmulatorBatchItem {
+  id: string;
+  name: string;
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
+  detail: string | null;
+}
+export interface EmulatorBatch {
+  operation: 'install' | 'remove';
+  items: EmulatorBatchItem[];
+  stopped: boolean;
+}
 interface EmulatorSettingsState {
   listing: PlayerManagement | null;
+  batch: EmulatorBatch | null;
   busy: boolean;
   activity: string | null;
   failure: string | null;
@@ -35,6 +47,7 @@ export function createEmulatorSettings(
 ) {
   let current: EmulatorSettingsState = {
     listing: null,
+    batch: null,
     busy: false,
     activity: null,
     failure: null,
@@ -45,6 +58,7 @@ export function createEmulatorSettings(
   const store = writable(current);
   let disposed = false;
   let catalogNeedsRefresh = false;
+  let stopRequested = false;
   const canChange = () =>
     !disposed && !current.busy && !!current.listing && !current.denied && !current.needsRefresh;
   function update(patch: Partial<EmulatorSettingsState>) {
@@ -106,7 +120,7 @@ export function createEmulatorSettings(
     message: string,
   ) {
     if (!canChange()) return false;
-    update({ busy: true, activity, failure: null, message: null });
+    update({ busy: true, activity, failure: null, message: null, batch: null });
     let saved = false;
     try {
       const listing = await action();
@@ -124,11 +138,135 @@ export function createEmulatorSettings(
       update({ busy: false, activity: null });
     }
   }
+  async function batch(operation: 'install' | 'remove', ids: string[]) {
+    const listing = current.listing;
+    if (!canChange() || !listing) return false;
+    const items: EmulatorBatchItem[] = [...new Set(ids)].map((id) => {
+      const installed = listing.items.find((item) => item.profile.id === id);
+      const entry = listing.available.find((entry) => entry.id === id);
+      const eligible =
+        operation === 'install'
+          ? entry?.available && !installed
+          : installed?.source === 'managed' && installed.removable;
+      return {
+        id,
+        name: operation === 'install' ? (entry?.name ?? id) : (installed?.profile.name ?? id),
+        status: eligible ? 'pending' : 'skipped',
+        detail: eligible ? null : 'No longer eligible for this action.',
+      };
+    });
+    if (!items.some((item) => item.status === 'pending')) return false;
+    stopRequested = false;
+    update({
+      batch: { operation, items, stopped: false },
+      busy: true,
+      activity: 'Starting emulator batch…',
+      failure: null,
+      message: null,
+    });
+    let saved = false;
+    let fatal = false;
+    const publish = () => {
+      const completed = items.filter(
+        (item) => item.status !== 'pending' && item.status !== 'running',
+      ).length;
+      update({
+        batch: { operation, items: items.map((item) => ({ ...item })), stopped: stopRequested },
+        activity: `${operation === 'install' ? 'Installing' : 'Removing'} emulators — ${completed} of ${items.length} complete`,
+      });
+    };
+    async function worker() {
+      while (!disposed && !stopRequested) {
+        const item = items.find((item) => item.status === 'pending');
+        if (!item) return;
+        item.status = 'running';
+        publish();
+        try {
+          // Concurrent mutation responses are snapshots. Reconcile after every worker settles.
+          if (operation === 'install') await client.installPlayer(item.id);
+          else await client.removePlayer(item.id);
+          if (disposed) return;
+          item.status = 'succeeded';
+          saved = true;
+          if (!current.denied) catalogNeedsRefresh = true;
+        } catch (error) {
+          if (disposed) return;
+          item.status = 'failed';
+          item.detail = explain(error);
+          const mustStop =
+            isUnauthorized(error) ||
+            isForbidden(error) ||
+            !(error instanceof ContentError) ||
+            error.status === 404 ||
+            error.status === 408 ||
+            error.status >= 500;
+          if (
+            mustStop &&
+            (!fatal || ((isUnauthorized(error) || isForbidden(error)) && !current.denied))
+          ) {
+            fatal = true;
+            stopRequested = true;
+            fail(error, false, true);
+          }
+        }
+        publish();
+      }
+    }
+    try {
+      await Promise.all(Array.from({ length: 3 }, () => worker()));
+      if (disposed) return false;
+      for (const item of items) {
+        if (item.status === 'pending') {
+          item.status = 'skipped';
+          item.detail = 'Stopped before this request started.';
+        }
+      }
+      publish();
+      if (!current.denied) {
+        try {
+          const reconciled = await client.playerManagement();
+          if (disposed) return false;
+          update({ listing: reconciled });
+          await notifyCatalog();
+        } catch (error) {
+          fail(error, saved, false);
+        }
+      }
+      if (!current.denied && !current.needsRefresh) {
+        const succeeded = items.filter((item) => item.status === 'succeeded').length;
+        const failed = items.filter((item) => item.status === 'failed').length;
+        const skipped = items.filter((item) => item.status === 'skipped').length;
+        update({
+          message: `${succeeded} ${operation === 'install' ? 'installed' : 'removed'}, ${failed} failed, ${skipped} skipped.${operation === 'remove' ? ' Your games remain in the library.' : ' Changes apply the next time a game starts.'}`,
+        });
+      }
+      return saved && !disposed;
+    } finally {
+      update({ busy: false, activity: null });
+    }
+  }
   return {
     subscribe: store.subscribe,
+    installMany(ids: string[]) {
+      return batch('install', ids);
+    },
+    removeMany(ids: string[]) {
+      return batch('remove', ids);
+    },
+    stopBatch() {
+      if (!current.busy || !current.batch) return;
+      stopRequested = true;
+      update({ batch: { ...current.batch, stopped: true } });
+    },
     async load() {
       if (disposed || current.busy) return false;
-      update({ busy: true, activity: 'Reading emulators…', failure: null, message: null });
+      update({
+        busy: true,
+        activity: 'Reading emulators…',
+        failure: null,
+        message: null,
+        batch: null,
+      });
       try {
         const listing = await client.playerManagement();
         if (disposed) return false;
@@ -224,10 +362,12 @@ export function createEmulatorSettings(
     },
     dispose() {
       disposed = true;
+      stopRequested = true;
       catalogNeedsRefresh = false;
       current = {
         ...current,
         listing: null,
+        batch: null,
         busy: false,
         activity: null,
         failure: null,

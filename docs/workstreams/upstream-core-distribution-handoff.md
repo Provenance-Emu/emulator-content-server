@@ -175,3 +175,28 @@ provenance and catalog tests passed, along with the server TypeScript build,
 changed-file Biome checks, secret/fixture scan, boundaries and whitespace checks.
 Review verified all twenty artifact pins and the retained original evidence.
 Independent SDK source reconstruction and final-code notice scope remain open.
+
+## Bulk emulator management
+
+The emulator settings page now supports selected installs and removals, a curated
+recommended set, per-item progress and stopping queued requests. The recommended
+button starts installation directly. An optional review exposes the editable set
+and download estimate. Enabled installations contribute existing system coverage,
+and the recommendation policy selects ordinary known catalog profiles. Catalog
+and package installation retain the active tab. Removal confirmations identify
+installed system files as part of the removal.
+
+The client runs up to three requests and reconciles one authoritative management
+view after workers settle. Authentication and uncertain-write failures stop queued
+requests and preserve the existing refresh safeguards. The server reserves three
+preparation slots through serialized activation. The cache coalesces matching
+snapshot/player requests and serializes retention writes. Regression tests cover
+parallel network activity, bounded prepared packages, failure release, settings,
+same-ID races and offline retention after a batch.
+
+Twenty-nine focused server/cache tests and twenty-seven web unit tests passed.
+Svelte checking and the web build passed. A muted headless Chromium flow verified
+recommended installation, partial failure, stable navigation and bulk removal.
+The broader local phone and authorization browser cases encountered fixture-setup
+timeouts under host load. The desktop scenario reached its final state before its
+overall deadline. Browser pages and fixture servers were cleaned up.

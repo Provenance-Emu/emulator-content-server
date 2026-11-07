@@ -27,7 +27,8 @@ export class PlayerManager {
   private managed = new Set<string>();
   private settings: Settings = { disabled: [], defaultId: null };
   private tail: Promise<unknown> = Promise.resolve();
-  private catalogTail: Promise<unknown> = Promise.resolve();
+  private catalogPreparations = 0;
+  private catalogWaiters: (() => void)[] = [];
   private root: string;
   private stateFile: string;
   private catalog: readonly TrustedPlayer[];
@@ -381,15 +382,20 @@ export class PlayerManager {
         throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
       if (this.all.has(id)) throw new DomainError('conflict', 409, 'Emulator is already installed');
     });
-    // Bound catalog preparation through activation, so downloaded packages cannot
-    // accumulate behind slow mutations. Network work never holds the mutation queue.
-    const result = this.catalogTail.then(async () => {
+    // Reserve at most three packages through activation, including disk waits.
+    // Downloads overlap while publication retains the existing mutation ordering.
+    if (this.catalogPreparations < 3) this.catalogPreparations++;
+    else await new Promise<void>((resolve) => this.catalogWaiters.push(resolve));
+    try {
       const bytes = await this.packageCache.download(this.catalogSnapshot, id);
       // Recheck conflicts against current state before atomically activating.
-      return this.serial(() => this.installBytes(bytes));
-    });
-    this.catalogTail = result.catch(() => {});
-    return result;
+      return await this.serial(() => this.installBytes(bytes));
+    } finally {
+      // Hand the reserved slot directly to the next waiter so new arrivals cannot steal it.
+      const next = this.catalogWaiters.shift();
+      if (next) next();
+      else this.catalogPreparations--;
+    }
   }
 }
 

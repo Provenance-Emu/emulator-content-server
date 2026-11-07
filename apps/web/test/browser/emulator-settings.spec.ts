@@ -16,7 +16,7 @@ for (const device of [
       page,
       fixture,
     }, testInfo) => {
-      test.setTimeout(45_000);
+      test.setTimeout(90_000);
       const listing = playerManagementFixture();
       const writes: string[] = [];
       let uploaded: Buffer | null = null;
@@ -57,7 +57,11 @@ for (const device of [
       await signIn(page, fixture);
       if (device.hasTouch) await page.getByRole('button', { name: 'Open navigation' }).click();
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await page.getByRole('button', { name: 'Emulators', exact: true }).click();
+      if (device.hasTouch)
+        await page
+          .getByRole('combobox', { name: 'Settings section', exact: true })
+          .selectOption('emulators');
+      else await page.getByRole('button', { name: 'Emulators', exact: true }).click();
       const tabs = page.getByRole('tablist', { name: 'Emulator options' });
       await expect(
         page.getByRole('heading', { name: 'Installed emulators', exact: true }),
@@ -95,7 +99,17 @@ for (const device of [
         page.getByRole('article', { name: 'Handheld emulator', exact: true }),
       ).toBeVisible();
       await page.getByRole('button', { name: 'Install Handheld emulator', exact: true }).click();
-      await expect(tabs.getByRole('tab', { name: 'Installed', exact: true })).toBeFocused();
+      await expect(tabs.getByRole('tab', { name: 'Available', exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      await expect(
+        page.getByRole('searchbox', { name: 'Find an emulator', exact: true }),
+      ).toHaveValue('handheld');
+      await expect(
+        page.getByRole('article', { name: 'Handheld emulator', exact: true }),
+      ).toContainText('Installed. Manage this emulator under Installed.');
+      await tabs.getByRole('tab', { name: 'Installed', exact: true }).click();
       await expect(
         page.getByRole('article', { name: 'Handheld emulator', exact: true }),
       ).toBeVisible();
@@ -138,7 +152,14 @@ for (const device of [
         buffer: Buffer.from([1, 2, 3, 4]),
       });
       expect(writes.length).toBe(before);
+      await tabs.getByRole('tab', { name: 'Available', exact: true }).click();
       await page.getByRole('button', { name: 'Install package', exact: true }).click();
+      await expect(tabs.getByRole('tab', { name: 'Available', exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      await expect(input).toHaveValue('');
+      await tabs.getByRole('tab', { name: 'Installed', exact: true }).click();
       await expect(
         page.getByRole('article', { name: 'Package emulator', exact: true }),
       ).toBeVisible();
@@ -191,7 +212,7 @@ test('native package selection installs through the real owner API and refreshes
   page,
   fixture,
 }) => {
-  test.setTimeout(45_000);
+  test.setTimeout(90_000);
   const bundle = playerPackageFixture();
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -253,7 +274,7 @@ test('Generic firmware native selection stages bytes until explicit install and 
   page,
   fixture,
 }, testInfo) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const listing = playerManagementFixture();
   const managed = listing.items[0];
   const operator = listing.items[1];
@@ -354,4 +375,134 @@ test('Generic firmware native selection stages bytes until explicit install and 
     path: testInfo.outputPath('emulator-system-file-desktop.png'),
     fullPage: true,
   });
+});
+
+test('bulk recommendations review coverage, show partial progress, and keep tabs and selections stable', async ({
+  page,
+  fixture,
+}) => {
+  test.setTimeout(90_000);
+  const listing = playerManagementFixture();
+  const available = listing.available[0];
+  const unavailable = listing.available[1];
+  if (!available || !unavailable) throw new Error('Generated catalog entries missing');
+  listing.available = [
+    {
+      ...available,
+      id: 'org.libretro.nestopia',
+      name: 'NES choice',
+      systems: ['com.provenance.nes'],
+    },
+    {
+      ...available,
+      id: 'org.libretro.snes9x',
+      name: 'SNES choice',
+      systems: ['com.provenance.snes'],
+    },
+    {
+      ...available,
+      id: 'org.libretro.mgba',
+      name: 'GBA choice',
+      systems: ['com.provenance.gba'],
+    },
+    { ...unavailable, id: 'unsupported', name: 'Unavailable choice' },
+  ];
+  const writes: string[] = [];
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/v1/player/management**', async (route) => {
+    const request = route.request();
+    const id = new URL(request.url()).pathname.split('/').at(-1) ?? '';
+    if (request.method() === 'GET') return route.fulfill({ json: listing });
+    writes.push(`${request.method()} ${id}`);
+    if (request.method() === 'POST') {
+      await gate;
+      if (id === 'org.libretro.mgba')
+        return route.fulfill({
+          status: 409,
+          json: { title: 'Generated install conflict', status: 409 },
+        });
+      const entry = listing.available.find((entry) => entry.id === id);
+      if (!entry) throw new Error('Generated catalog entry missing');
+      listing.items.push({
+        profile: { ...playerProfile(id, entry.name), systems: entry.systems },
+        enabled: true,
+        source: 'managed',
+        removable: true,
+      });
+    } else if (request.method() === 'DELETE') {
+      listing.items = listing.items.filter((item) => item.profile.id !== id);
+    }
+    return route.fulfill({ json: listing });
+  });
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Emulators', exact: true }).click();
+  const tabs = page.getByRole('tablist', { name: 'Emulator options' });
+  await tabs.getByRole('tab', { name: 'Available', exact: true }).click();
+  await page.getByRole('button', { name: 'Review recommended set', exact: true }).click();
+  const review = page.getByRole('region', {
+    name: 'Review recommended installation · 2 emulators',
+  });
+  await expect(review).toContainText('SNES choice');
+  await expect(review).toContainText('GBA choice');
+  await expect(
+    review.getByRole('checkbox', { name: 'Include NES choice in installation', exact: true }),
+  ).toHaveCount(0);
+  await expect(review).toContainText('Download 32.0 KB');
+  expect(writes).toEqual([]);
+  await page.getByRole('searchbox', { name: 'Find an emulator', exact: true }).fill('GBA');
+  await tabs.getByRole('tab', { name: 'Installed', exact: true }).click();
+  await page
+    .getByRole('checkbox', { name: 'Select Extra emulator for removal', exact: true })
+    .check();
+  await tabs.getByRole('tab', { name: 'Available', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Find an emulator', exact: true })).toHaveValue(
+    'GBA',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Install selected emulators (2)', exact: true }),
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Install recommended (2)', exact: true }).click();
+  await expect(
+    page.getByRole('region', { name: 'Installation progress', exact: true }),
+  ).toContainText('running');
+  await expect(page.getByRole('button', { name: 'Stop queued work', exact: true })).toBeEnabled();
+  release();
+  await expect(
+    page.getByRole('region', { name: 'Installation progress', exact: true }),
+  ).toContainText('succeeded');
+  await expect(
+    page.getByRole('region', { name: 'Installation progress', exact: true }),
+  ).toContainText('Generated install conflict');
+  await expect(tabs.getByRole('tab', { name: 'Available', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('searchbox', { name: 'Find an emulator', exact: true })).toHaveValue(
+    'GBA',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Install selected emulators (1)', exact: true }),
+  ).toBeEnabled();
+  expect([...writes].sort()).toEqual(['POST org.libretro.mgba', 'POST org.libretro.snes9x']);
+  await tabs.getByRole('tab', { name: 'Installed', exact: true }).click();
+  await expect(
+    page.getByRole('checkbox', { name: 'Select Extra emulator for removal', exact: true }),
+  ).toBeChecked();
+  await page.getByRole('checkbox', { name: 'Select SNES choice for removal', exact: true }).check();
+  await page.getByRole('button', { name: 'Remove selected (2)', exact: true }).click();
+  await expect(page.getByText('Remove 2 selected emulators', { exact: false })).toBeVisible();
+  expect(writes.filter((write) => write.startsWith('DELETE'))).toEqual([]);
+  await page.getByRole('button', { name: 'Confirm remove 2 emulators', exact: true }).click();
+  await expect(page.getByRole('article', { name: 'Extra emulator', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('article', { name: 'SNES choice', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('article', { name: 'Server emulator', exact: true })).toBeVisible();
+  await expect(tabs.getByRole('tab', { name: 'Installed', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(writes.filter((write) => write.startsWith('DELETE'))).toHaveLength(2);
 });

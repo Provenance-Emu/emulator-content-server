@@ -17,7 +17,8 @@ const MAX_CACHE_FILES = 2048;
 
 /** Optional retention: cache failures never make verified online software unavailable. */
 export class PlayerPackageCache {
-  private tail: Promise<unknown> = Promise.resolve();
+  private inFlight = new Map<string, Promise<Buffer>>();
+  private retentionTail: Promise<void> = Promise.resolve();
 
   constructor(
     private directory: string,
@@ -28,8 +29,11 @@ export class PlayerPackageCache {
   }
 
   download(snapshot: PlayerCatalogSnapshot, id: string): Promise<Buffer> {
-    const result = this.tail.then(() => this.downloadEntry(snapshot, id));
-    this.tail = result.catch(() => {});
+    const key = `${snapshot.id}:${id}`;
+    const existing = this.inFlight.get(key);
+    if (existing) return existing;
+    const result = this.downloadEntry(snapshot, id).finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, result);
     return result;
   }
 
@@ -63,7 +67,13 @@ export class PlayerPackageCache {
     return bytes;
   }
 
-  private async retain(snapshot: PlayerCatalogSnapshot, file: string, bytes: Buffer) {
+  private retain(snapshot: PlayerCatalogSnapshot, file: string, bytes: Buffer) {
+    const result = this.retentionTail.then(() => this.retainEntry(snapshot, file, bytes));
+    this.retentionTail = result.catch(() => {});
+    return result;
+  }
+
+  private async retainEntry(snapshot: PlayerCatalogSnapshot, file: string, bytes: Buffer) {
     const receipt = Buffer.from(catalogJson(snapshot));
     if (receipt.length > MAX_CATALOG_BYTES || !(await this.ready())) return;
     const lock = join(this.directory, '.write-lock');

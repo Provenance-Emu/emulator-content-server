@@ -349,3 +349,219 @@ test('system-file authorization failures clear management details and notify the
   assert.deepEqual(rejected, [403]);
   assert.equal(get(settings).listing, null);
 });
+
+function batchFixture() {
+  const f = fixture();
+  const available = f.saved.available[0];
+  assert.ok(available);
+  f.saved.available = Array.from({ length: 6 }, (_, index) => ({
+    ...available,
+    id: `core-${index}`,
+    name: `Core ${index}`,
+  }));
+  return f;
+}
+
+test('bulk installs use three workers, ignore stale mutation snapshots and reconcile once', async () => {
+  const f = batchFixture();
+  const finishes = new Map<string, () => void>();
+  const originalInstall = f.client.installPlayer;
+  let active = 0;
+  let maximum = 0;
+  f.client.installPlayer = async (id) => {
+    active++;
+    maximum = Math.max(maximum, active);
+    await new Promise<void>((resolve) => finishes.set(id, resolve));
+    await originalInstall(id);
+    active--;
+    return playerManagementFixture();
+  };
+  let changes = 0;
+  const settings = createEmulatorSettings(f.client, () => {
+    changes++;
+  });
+  await settings.load();
+  const pending = settings.installMany([
+    'core-0',
+    'core-0',
+    'missing',
+    ...f.saved.available.slice(1).map((entry) => entry.id),
+  ]);
+  assert.equal(finishes.size, 3);
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'running').length, 3);
+  finishes.get('core-2')?.();
+  await new Promise((resolve) => setImmediate(resolve));
+  finishes.get('core-3')?.();
+  await new Promise((resolve) => setImmediate(resolve));
+  finishes.get('core-4')?.();
+  await new Promise((resolve) => setImmediate(resolve));
+  finishes.get('core-5')?.();
+  finishes.get('core-1')?.();
+  finishes.get('core-0')?.();
+  assert.equal(await pending, true);
+  assert.equal(maximum, 3);
+  assert.equal(get(settings).listing?.items.length, 9);
+  assert.equal(get(settings).listing?.defaultProfileId, 'managed');
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'succeeded').length, 6);
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'skipped').length, 1);
+  assert.equal(changes, 1);
+  assert.equal(f.calls.filter((call) => call === 'read').length, 2);
+});
+
+test('bulk item rejection is isolated and removal skips operator and missing entries', async () => {
+  const f = batchFixture();
+  const install = f.client.installPlayer;
+  f.client.installPlayer = async (id) => {
+    if (id === 'core-1')
+      throw new ContentError(409, {
+        type: 'urn:ecs:conflict',
+        title: 'Generated conflict',
+        status: 409,
+      });
+    return install(id);
+  };
+  const settings = createEmulatorSettings(f.client);
+  await settings.load();
+  await settings.installMany(f.saved.available.map((entry) => entry.id));
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'failed').length, 1);
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'succeeded').length, 5);
+  assert.match(get(settings).batch?.items[1]?.detail ?? '', /Generated conflict/);
+  await settings.removeMany(['managed', 'operator', 'missing', 'disabled', 'managed']);
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'succeeded').length, 2);
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'skipped').length, 2);
+  assert.equal(f.calls.includes('remove:operator'), false);
+});
+
+for (const status of [401, 403, 404, 500] as const) {
+  test(`bulk ${status} stops queued writes and preserves rejection or refresh requirements`, async () => {
+    const f = batchFixture();
+    const writes: string[] = [];
+    const finishes: Array<() => void> = [];
+    f.client.installPlayer = async (id) => {
+      writes.push(id);
+      if (id === 'core-0') throw new ContentError(status, null);
+      await new Promise<void>((resolve) => {
+        finishes.push(resolve);
+      });
+      return structuredClone(f.saved);
+    };
+    const rejected: number[] = [];
+    const settings = createEmulatorSettings(
+      f.client,
+      () => {},
+      (status) => rejected.push(status),
+    );
+    await settings.load();
+    const pending = settings.installMany(f.saved.available.map((entry) => entry.id));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(writes.length, 3);
+    finishes.forEach((finish) => {
+      finish();
+    });
+    await pending;
+    assert.equal(get(settings).batch?.items.filter((item) => item.status === 'skipped').length, 3);
+    assert.equal(get(settings).denied, status === 401 || status === 403);
+    assert.equal(get(settings).needsRefresh, status === 404 || status === 500);
+    assert.deepEqual(rejected, status === 401 || status === 403 ? [status] : []);
+  });
+}
+
+test('disposing a batch suppresses queued writes, reconciliation and callbacks', async () => {
+  const f = batchFixture();
+  const finishes: Array<() => void> = [];
+  let writes = 0;
+  let changes = 0;
+  f.client.installPlayer = async () => {
+    writes++;
+    await new Promise<void>((resolve) => finishes.push(resolve));
+    return structuredClone(f.saved);
+  };
+  const settings = createEmulatorSettings(f.client, () => {
+    changes++;
+  });
+  await settings.load();
+  const pending = settings.installMany(f.saved.available.map((entry) => entry.id));
+  settings.dispose();
+  finishes.forEach((finish) => {
+    finish();
+  });
+  assert.equal(await pending, false);
+  assert.equal(writes, 3);
+  assert.equal(changes, 0);
+  assert.deepEqual(f.calls, ['read']);
+});
+
+test('stopping queued work waits for active requests and performs one reconciliation', async () => {
+  const f = batchFixture();
+  const finishes: Array<() => void> = [];
+  const install = f.client.installPlayer;
+  f.client.installPlayer = async (id) => {
+    await new Promise<void>((resolve) => finishes.push(resolve));
+    return install(id);
+  };
+  let changes = 0;
+  const settings = createEmulatorSettings(f.client, () => {
+    changes++;
+  });
+  await settings.load();
+  const pending = settings.installMany(f.saved.available.map((entry) => entry.id));
+  settings.stopBatch();
+  assert.equal(get(settings).busy, true);
+  finishes.forEach((finish) => {
+    finish();
+  });
+  await pending;
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'skipped').length, 3);
+  assert.equal(get(settings).batch?.items.filter((item) => item.status === 'succeeded').length, 3);
+  assert.equal(changes, 1);
+  assert.equal(f.calls.filter((call) => call === 'read').length, 2);
+});
+
+test('authorization rejection takes precedence over an earlier uncertain batch failure', async () => {
+  const f = batchFixture();
+  const finishes = new Map<string, () => void>();
+  f.client.installPlayer = async (id) => {
+    await new Promise<void>((resolve) => finishes.set(id, resolve));
+    throw new ContentError(id === 'core-0' ? 500 : 403, null);
+  };
+  const rejected: number[] = [];
+  let changes = 0;
+  const settings = createEmulatorSettings(
+    f.client,
+    () => {
+      changes++;
+    },
+    (status) => rejected.push(status),
+  );
+  await settings.load();
+  const pending = settings.installMany(f.saved.available.map((entry) => entry.id));
+  finishes.get('core-0')?.();
+  await new Promise((resolve) => setImmediate(resolve));
+  finishes.get('core-1')?.();
+  finishes.get('core-2')?.();
+  await pending;
+  assert.equal(get(settings).denied, true);
+  assert.equal(get(settings).listing, null);
+  assert.equal(get(settings).needsRefresh, false);
+  assert.deepEqual(rejected, [403]);
+  assert.equal(changes, 0);
+  assert.deepEqual(f.calls, ['read']);
+});
+
+test('a failed batch catalog callback requires refresh without retrying any installs', async () => {
+  const f = batchFixture();
+  let changes = 0;
+  const settings = createEmulatorSettings(f.client, () => {
+    changes++;
+    if (changes === 1) throw new Error('Generated catalog offline');
+  });
+  await settings.load();
+  await settings.installMany(['core-0', 'core-1']);
+  assert.equal(get(settings).needsRefresh, true);
+  assert.match(get(settings).failure ?? '', /saved.*catalog.*refreshed/i);
+  assert.equal(await settings.installMany(['core-2']), false);
+  await settings.load();
+  assert.equal(changes, 2);
+  assert.equal(get(settings).needsRefresh, false);
+  assert.equal(f.calls.filter((call) => call.startsWith('install:')).length, 2);
+});
