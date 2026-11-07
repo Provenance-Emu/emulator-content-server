@@ -11,7 +11,7 @@ import {
 import { upstreamFixture } from './player-cache-fixture.js';
 
 const noticeReissueBytes = readFileSync(
-  new URL('../../../../docs/operations/published-notice-reissue-2026-11-06.json', import.meta.url),
+  new URL('../../../../docs/operations/published-notice-reissue-2026-11-07.json', import.meta.url),
 );
 const noticeReissue = JSON.parse(noticeReissueBytes.toString('utf8'));
 const noticeReissueSha256 = createHash('sha256').update(noticeReissueBytes).digest('hex');
@@ -36,9 +36,8 @@ test('published source-built packages retain matching pinned source, notice and 
     assert.ok(entry?.provenance);
     assert.equal(entry.provenance.sourceMapping, 'release-receipt');
     assert.ok(entry.provenance.license);
-    const release = entry.url?.slice(0, entry.url.lastIndexOf('/'));
     const artifacts = (entry.provenance.artifacts ?? []).filter((artifact) =>
-      artifact.url.startsWith(`${release}/`),
+      artifact.url.includes('/releases/download/'),
     );
     assert.deepEqual(artifacts.map((artifact) => artifact.kind).sort(), [
       'build',
@@ -49,10 +48,11 @@ test('published source-built packages retain matching pinned source, notice and 
       assert.match(artifact.sha256, /^[a-f0-9]{64}$/);
       assert.ok(artifact.sizeBytes > 0);
       assert.equal(new URL(artifact.url).origin, 'https://github.com');
-      assert.equal(
-        artifact.url.slice(0, artifact.url.lastIndexOf('/')),
-        entry.url?.slice(0, entry.url.lastIndexOf('/')),
-      );
+      if (artifact.kind === 'source')
+        assert.equal(
+          artifact.url.slice(0, artifact.url.lastIndexOf('/')),
+          entry.url?.slice(0, entry.url.lastIndexOf('/')),
+        );
     }
     const build = entry.provenance.artifacts?.find((artifact) => artifact.kind === 'build');
     assert.equal(build?.url, entry.provenance.sourceInfo);
@@ -172,7 +172,7 @@ test('retained legacy source mappings bind the exact audit bytes and package pin
     const build = entry.provenance.artifacts?.find((a) => a.kind === 'build');
     assert.equal(build?.sha256, noticeReissueSha256);
     assert.equal(build?.sizeBytes, noticeReissueBytes.length);
-    assert.match(build?.url ?? '', /\/browser-core-notices-2026\.11\.06\.1\/catalog\.json$/);
+    assert.match(build?.url ?? '', /\/browser-core-notices-2026\.11\.07\.1\/catalog\.json$/);
   }
   const custom = playerCatalog.filter((entry) => entry.url && !entry.upstream);
   assert.equal(custom.length, audit.packages.length);
@@ -245,7 +245,7 @@ test('eight independently reconstructed packages bind immutable build and compil
     assert.equal(build?.sizeBytes, noticeReissueBytes.length);
     assert.equal(entry.provenance.sourceInfo, build?.url);
     assert.equal(entry.provenance.infoSha256, noticeReissueSha256);
-    assert.match(build?.url ?? '', /\/browser-core-notices-2026\.11\.06\.1\/catalog\.json$/);
+    assert.match(build?.url ?? '', /\/browser-core-notices-2026\.11\.07\.1\/catalog\.json$/);
     const notices = entry.provenance.artifacts?.find(
       (a) => a.sha256 === proof.noticeInventory.sha256,
     );
@@ -286,6 +286,17 @@ test('eight independently reconstructed packages bind immutable build and compil
 test('published notice revisions bind both original verification and carried redistribution materials', () => {
   assert.equal(noticeReissue.profiles.length, 10);
   assert.equal(noticeReissue.verification.runtimePairsByteIdentical, 10);
+  assert.equal(noticeReissue.verification.freshRuntimePairComparisons, 2);
+  assert.equal(noticeReissue.verification.freshSourceArchivesCompletelyReread, 2);
+  assert.equal(noticeReissue.verification.inheritedUnchangedProfiles, 8);
+  const componentBytes = readFileSync(
+    new URL('../../../../docs/operations/notice-closure-2026-11-07.json', import.meta.url),
+  );
+  assert.equal(
+    noticeReissue.method.componentNoticeEvidence.sha256,
+    createHash('sha256').update(componentBytes).digest('hex'),
+  );
+  assert.equal(noticeReissue.method.componentNoticeEvidence.sizeBytes, componentBytes.length);
   for (const profile of noticeReissue.profiles) {
     const entry = playerCatalog.find((e) => e.id === profile.id);
     assert.ok(entry?.provenance);
@@ -300,6 +311,20 @@ test('published notice revisions bind both original verification and carried red
     assert.equal(profile.sourceVerification.fullArchiveReread, true);
     assert.equal(profile.sourceVerification.standalonePackageReproductionIncluded, true);
     const files = profile.notices.map((n: { file: string }) => n.file);
+    const fresh = ['org.libretro.atari800', 'org.libretro.potator'].includes(profile.id);
+    assert.equal(
+      profile.verificationOrigin,
+      fresh
+        ? 'fresh-two-profile-notice-reissue'
+        : 'inherited-byte-identical-November-6-publication',
+    );
+    assert.equal(files.includes('atari800-caprice32.txt'), profile.id === 'org.libretro.atari800');
+    for (const name of [
+      'potator-m6502-source.txt',
+      'potator-m6502-header.txt',
+      'potator-m6502-tables.txt',
+    ])
+      assert.equal(files.includes(name), profile.id === 'org.libretro.potator');
     assert.ok(files.includes('sha1-fpl.txt'));
     assert.ok(files.includes('recovered-notice-evidence.json'));
     assert.equal(files.includes('ijg-v4-README.txt'), profile.id === 'org.libretro.mednafen-pcfx');

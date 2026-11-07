@@ -1,0 +1,18 @@
+/** M65C02: portable 65C02 emulator **************************/
+/**                                                         **/
+/**                         M65C02.c                        **/
+/**                                                         **/
+/** This file contains implementation for 65C02 CPU. Don't  **/
+/** forget to provide Rd6502(), Wr6502(), Loop6502(), and   **/
+/** possibly Op6502() functions to accomodate the emulated  **/
+/** machine's architecture.                                 **/
+/**                                                         **/
+/** Copyright (C) Marat Fayzullin 1996-2002                 **/
+/**               Alex Krasivsky  1996                      **/
+/**               Steve Nickolas  2002                      **/
+/**   Portions by Holger Picker   2002                      **/
+/**   ADC and SBC instructions provided by Scott Hemphill   **/
+/**     You are not allowed to distribute this software     **/
+/**     commercially. Please, notify me, if you make any    **/
+/**     changes to this file.                               **/
+/*************************************************************/

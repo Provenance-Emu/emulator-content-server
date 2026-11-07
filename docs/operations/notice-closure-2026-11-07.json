@@ -1,0 +1,3113 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-07",
+  "scope": "Retained component notice and final-code attribution closure. Evidence remains bounded by explicit per-component findings; no legal certification.",
+  "materials": [
+    {
+      "componentId": "atari800-caprice",
+      "coreId": "atari800",
+      "file": "atari800-caprice32.txt",
+      "sha256": "17059517cb27a20b0531d9ebe97875a814d025ec29e00c4e2d9ab3dd5b132a7d",
+      "sizeBytes": 2157,
+      "source": {
+        "repository": "libretro/libretro-atari800",
+        "revision": "4e7fbc73765c1a9670c7506616046ad1d4ccda51",
+        "path": "libretro/retro_utils.c",
+        "url": "https://raw.githubusercontent.com/libretro/libretro-atari800/4e7fbc73765c1a9670c7506616046ad1d4ccda51/libretro/retro_utils.c",
+        "sha256": "2ad8e62eaea85fc3f90e456a2abfc31f7193bcd0f7fc1ff4d161faffee7566d8",
+        "span": {
+          "startByte": 0,
+          "endByte": 2157,
+          "sha256": "17059517cb27a20b0531d9ebe97875a814d025ec29e00c4e2d9ab3dd5b132a7d"
+        }
+      }
+    },
+    {
+      "componentId": "potator-m6502",
+      "coreId": "potator",
+      "file": "potator-m6502-source.txt",
+      "sha256": "18ac6f8fb9a21f74a8dd939319eefd04cd133ce1a03c012ae88c322229400204",
+      "sizeBytes": 1151,
+      "source": {
+        "repository": "libretro/potator",
+        "revision": "227c5f6f3ce74d32e9002ce24c1420288559a860",
+        "path": "common/m6502/m6502.c",
+        "url": "https://raw.githubusercontent.com/libretro/potator/227c5f6f3ce74d32e9002ce24c1420288559a860/common/m6502/m6502.c",
+        "sha256": "eb3988b33d6e3cb71b4e40d7593d374fd8cfc3bd08f932ec05b0b6eb8ceb7df9",
+        "span": {
+          "startByte": 0,
+          "endByte": 1151,
+          "sha256": "18ac6f8fb9a21f74a8dd939319eefd04cd133ce1a03c012ae88c322229400204"
+        }
+      }
+    },
+    {
+      "componentId": "potator-m6502",
+      "coreId": "potator",
+      "file": "potator-m6502-header.txt",
+      "sha256": "2341ea4066f6678e72f8b7cdb04675722086d9a9476a1e1902ae69abecd2554d",
+      "sizeBytes": 831,
+      "source": {
+        "repository": "libretro/potator",
+        "revision": "227c5f6f3ce74d32e9002ce24c1420288559a860",
+        "path": "common/m6502/m6502.h",
+        "url": "https://raw.githubusercontent.com/libretro/potator/227c5f6f3ce74d32e9002ce24c1420288559a860/common/m6502/m6502.h",
+        "sha256": "52907f4542201a6a51f597434cb198cfa82a5f999dab7446a53005d39860a26d",
+        "span": {
+          "startByte": 0,
+          "endByte": 831,
+          "sha256": "2341ea4066f6678e72f8b7cdb04675722086d9a9476a1e1902ae69abecd2554d"
+        }
+      }
+    },
+    {
+      "componentId": "potator-m6502",
+      "coreId": "potator",
+      "file": "potator-m6502-tables.txt",
+      "sha256": "0243d67a26ec838397facd90f693d05f5ebb828aec5a62e0aa7b1cd2fa4aaa7d",
+      "sizeBytes": 895,
+      "source": {
+        "repository": "libretro/potator",
+        "revision": "227c5f6f3ce74d32e9002ce24c1420288559a860",
+        "path": "common/m6502/tables.h",
+        "url": "https://raw.githubusercontent.com/libretro/potator/227c5f6f3ce74d32e9002ce24c1420288559a860/common/m6502/tables.h",
+        "sha256": "69011e1d99b568bc90ddff970a71ad9badc1b11252cf0f1b366489432155d5f1",
+        "span": {
+          "startByte": 0,
+          "endByte": 895,
+          "sha256": "0243d67a26ec838397facd90f693d05f5ebb828aec5a62e0aa7b1cd2fa4aaa7d"
+        }
+      }
+    }
+  ],
+  "method": {
+    "sourceBuildsRun": 0,
+    "runtimeLaunches": 0,
+    "maxConcurrentPostlinkProbes": 1,
+    "binaryenCores": 2,
+    "binaryenVersion": "116 (version_114-116-g16a599385)",
+    "binaryenSourceRevision": "16a59938563c93d8459bf36679c83497aeba7cc7",
+    "indexNameRule": {
+      "url": "https://github.com/WebAssembly/binaryen/blob/16a59938563c93d8459bf36679c83497aeba7cc7/src/wasm/wasm-binary.cpp#L2543",
+      "retainedFile": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/binaryen-wasm-binary.cpp",
+        "sizeBytes": 240448,
+        "sha256": "01b1bdb645af6c52f50068556ee328446afd3bdaf66fae2738a54307e85ad99f",
+        "nonCustomSectionsSha256": null
+      },
+      "rule": "readFunctions assigns Name::fromInt(i) using the zero-based defined-function ordinal. Later nameless-input -g probes retain that input ordinal even after output reordering."
+    },
+    "postlinkProof": "First -O3 pass retains linker names with -g. Later probes read each ORIGINAL nameless retained input and emit generated index names, avoiding name-dependent optimizer ordering. Sidecars transfer prior-stage names by checked input ordinal. Every complete non-custom section is compared byte-for-byte at each checkpoint and final; added-name diagnostic files are never counted as exact whole runtime rebuilds.",
+    "negativeEvidenceLimit": "A missing final symbol cannot exclude inlined code, folded code or static data. Compiler header inclusion is not evidence that header implementation survives.",
+    "discardedProbe": "The initial propagated-name metadce experiment reordered types/functions and failed section identity. It is excluded from successful evidence; raw outputs remain external."
+  },
+  "postlinkAttribution": [
+    {
+      "build": "org.libretro.atari800",
+      "publishedRuntime": {
+        "file": "core.wasm",
+        "sha256": "d4d51191330314f14f3b4f87b2022c959420df8d338d704c09bbc0e64dd33a9b",
+        "sizeBytes": 3810280
+      },
+      "receipt": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/atari800/receipt.json",
+        "sizeBytes": 15783,
+        "sha256": "530608fc32f09e32270f013f4a99a02274de2550aa29ec8d1c02cd47f52bd132",
+        "nonCustomSectionsSha256": null
+      },
+      "allStageNonCustomSectionsMatch": true,
+      "codeDataTablesElementsCompared": true,
+      "finalFunctionInventory": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/atari800/exact-stage-2-functions.json",
+        "sizeBytes": 1322996,
+        "sha256": "b77359fe8bdbf6e3037cfcf8a265626b3dba82fa4c3b3538941d399393375592",
+        "nonCustomSectionsSha256": null
+      },
+      "componentLinkage": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/atari800/narrow-component-linkage.json",
+        "sizeBytes": 932544,
+        "sha256": "c56a3337d51fa0a2a2e490420da5b366b685f7ab4c6552fdccc49665f3b74037",
+        "nonCustomSectionsSha256": null
+      }
+    },
+    {
+      "build": "org.libretro.potator",
+      "publishedRuntime": {
+        "file": "core.wasm",
+        "sha256": "03f563505459af18dbbdbf55b590e0029f03c279130c57b201ca2afcb5359fd2",
+        "sizeBytes": 3314934
+      },
+      "receipt": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/potator/receipt.json",
+        "sizeBytes": 15765,
+        "sha256": "7b49b8ffe753ff17ed36c1299e4ccb71f4444e3487a58cebf558f2ff0e3f1eab",
+        "nonCustomSectionsSha256": null
+      },
+      "allStageNonCustomSectionsMatch": true,
+      "codeDataTablesElementsCompared": true,
+      "finalFunctionInventory": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/potator/exact-stage-2-functions.json",
+        "sizeBytes": 1215398,
+        "sha256": "4478d68dfe46340f61ba69c27d7dc61964f3c85bf24d8a14a368ba4ce5e25d4c",
+        "nonCustomSectionsSha256": null
+      },
+      "componentLinkage": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/potator/narrow-component-linkage.json",
+        "sizeBytes": 680540,
+        "sha256": "2340d77bd15c8dd41fe5f4d25b97b42786da4064e1eff64cfa83767a06a9a355",
+        "nonCustomSectionsSha256": null
+      }
+    },
+    {
+      "build": "org.libretro.mednafen-pcfx",
+      "publishedRuntime": {
+        "file": "core.wasm",
+        "sha256": "1d2b7aef7b3bf7a3fe3d8c752fdfe933fe73e143f8e8716e237190823e133d57",
+        "sizeBytes": 3870125
+      },
+      "receipt": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/mednafen-pcfx/receipt.json",
+        "sizeBytes": 15873,
+        "sha256": "dcfe15034412d85934c47073bc40499799272ad3c83dd8d818db61838f1acfd7",
+        "nonCustomSectionsSha256": null
+      },
+      "allStageNonCustomSectionsMatch": true,
+      "codeDataTablesElementsCompared": true,
+      "finalFunctionInventory": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/mednafen-pcfx/exact-stage-2-functions.json",
+        "sizeBytes": 1360251,
+        "sha256": "f37379cd081bf8d7a6dd45912adfd2dad4573ac1d3aee0e6cc17ce8ef09e2951",
+        "nonCustomSectionsSha256": null
+      },
+      "componentLinkage": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/mednafen-pcfx/narrow-component-linkage.json",
+        "sizeBytes": 976503,
+        "sha256": "b7f1c1e2fd330bedf640be99d5c3375d80800cec26c3e2a6365c4c92a15214a4",
+        "nonCustomSectionsSha256": null
+      }
+    }
+  ],
+  "positiveNarrowComponentEvidence": [
+    {
+      "componentId": "frontend-xxhash",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "BSD-2-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/deps/xxHash/xxhash.h"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/input/bsv/uint32s_index.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/input/bsv/uint32s_index.o",
+            "sizeBytes": 14841,
+            "sha256": "3b7ed6d0f034106749e81a2c8bcd1b53e58bb9651622d986f5709f5d81d5897b",
+            "nonCustomSectionsSha256": "b2da0eccd9cc10439388e41e203fae2d5016598781d51d8d24d3e228fcae564b"
+          },
+          "linkerOwner": "obj-emscripten/input/bsv/uint32s_index.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1955475,
+            "bodyOffset": 1955477,
+            "size": 1092,
+            "sha256": "4a540a7cb689116737e5202d1f68adbb86033590f3eb0110e9ae9d257f24c566",
+            "definedFunctionOrdinal": 2227,
+            "diagnosticName": "2227",
+            "linkerName": "XXH_INLINE_XXH32"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-snes-ntsc",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/gfx/video_filters/blargg_ntsc_snes.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+            "sizeBytes": 15579,
+            "sha256": "1b366df7851191a673232872729bb8b5cda24d0506b9739accc45db5892514c1",
+            "nonCustomSectionsSha256": "692dfd17f9128c9389d10e86a9127853183af6cb53e2f78554b05d8e0f8bb8b3"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2363782,
+            "bodyOffset": 2363784,
+            "size": 6764,
+            "sha256": "e7b049ad2c77a73e103fccc0570ae6697424114947c476120bd2828735532622",
+            "definedFunctionOrdinal": 2783,
+            "diagnosticName": "2783",
+            "linkerName": "blargg_ntsc_snes_generic_create"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/gfx/video_filters/blargg_ntsc_snes.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+            "sizeBytes": 15579,
+            "sha256": "1b366df7851191a673232872729bb8b5cda24d0506b9739accc45db5892514c1",
+            "nonCustomSectionsSha256": "692dfd17f9128c9389d10e86a9127853183af6cb53e2f78554b05d8e0f8bb8b3"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2363744,
+            "bodyOffset": 2363745,
+            "size": 37,
+            "sha256": "11f37652346f44d4b09e687b0944f02f51062711b6b3a407a403bc32fa0d3ac8",
+            "definedFunctionOrdinal": 2782,
+            "diagnosticName": "2782",
+            "linkerName": "blargg_ntsc_snes_generic_destroy"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-nebuleon-scaler",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/upscale_1_66x_fast.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/gfx/video_filters/upscale_1_66x_fast.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+            "sizeBytes": 2700,
+            "sha256": "8b295e4a0be06b8669da1728299b0f8a0c5e9f8ba0e854764d8581290b6b9061",
+            "nonCustomSectionsSha256": "9583a78d8565f72f41edfd6492e43e4fda7efc2ac42026fe54f6617a830c36e1"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2344763,
+            "bodyOffset": 2344764,
+            "size": 28,
+            "sha256": "e963cf0992940de1cd3dba46c20fd346f03ff0684ea32b8791db71fca0076543",
+            "definedFunctionOrdinal": 2725,
+            "diagnosticName": "2725",
+            "linkerName": "upscale_1_66x_fast_generic_output"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/upscale_1_66x_fast.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/gfx/video_filters/upscale_1_66x_fast.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+            "sizeBytes": 2700,
+            "sha256": "8b295e4a0be06b8669da1728299b0f8a0c5e9f8ba0e854764d8581290b6b9061",
+            "nonCustomSectionsSha256": "9583a78d8565f72f41edfd6492e43e4fda7efc2ac42026fe54f6617a830c36e1"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2344685,
+            "bodyOffset": 2344686,
+            "size": 77,
+            "sha256": "819a8afc64a32bc7cc77a7659e4bd56b37ed655b80b518ddfbbf17a868c2a6a8",
+            "definedFunctionOrdinal": 2724,
+            "diagnosticName": "2724",
+            "linkerName": "upscale_1_66x_fast_generic_packets"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-hyllian-2xbr",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND GPL-2.0-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/2xbr.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/gfx/video_filters/2xbr.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/gfx/video_filters/2xbr.o",
+            "sizeBytes": 13792,
+            "sha256": "1959fd1b57fbc97b3dcd50f4a28adc188afb2d0d87f7f016e1281be2e7a7f66a",
+            "nonCustomSectionsSha256": "51990f4aae55f681bdddf5abe5ca4364a594eeedc5107aa5e77b7744ef33001a"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/2xbr.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2385103,
+            "bodyOffset": 2385105,
+            "size": 727,
+            "sha256": "1d8eee53b96fb7cf9e8ec0b1088da2eae1dc479cdfaad9f24093b51d23f4570c",
+            "definedFunctionOrdinal": 2800,
+            "diagnosticName": "2800",
+            "linkerName": "twoxbr_generic_create"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/2xbr.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/gfx/video_filters/2xbr.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/gfx/video_filters/2xbr.o",
+            "sizeBytes": 13792,
+            "sha256": "1959fd1b57fbc97b3dcd50f4a28adc188afb2d0d87f7f016e1281be2e7a7f66a",
+            "nonCustomSectionsSha256": "51990f4aae55f681bdddf5abe5ca4364a594eeedc5107aa5e77b7744ef33001a"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/2xbr.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2385074,
+            "bodyOffset": 2385075,
+            "size": 28,
+            "sha256": "9d9ee292594ea486ab4fb118ca4f05240c8dbcd8a5936f6d861b5ca870886f8c",
+            "definedFunctionOrdinal": 2799,
+            "diagnosticName": "2799",
+            "linkerName": "twoxbr_generic_destroy"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-modtracker",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/mod/rmodtracker.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/mod/rmodtracker.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/mod/rmodtracker.o",
+            "sizeBytes": 68043,
+            "sha256": "1eff76a7f4cda55b54a16cc22f2cbe36bd5bde5c7db8e35ad8befcc0e248675d",
+            "nonCustomSectionsSha256": "ed1c1c026be0456ff703365ce157185205f3351207de80906f0503521bb2dcf5"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/mod/rmodtracker.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1634632,
+            "bodyOffset": 1634635,
+            "size": 27937,
+            "sha256": "75eaff59514b4fb329fa102e010c45f52698f62392226edb37b4b2691796917f",
+            "definedFunctionOrdinal": 1925,
+            "diagnosticName": "1925",
+            "linkerName": "rmodtracker_open_memory_rate"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/mod/rmodtracker.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/mod/rmodtracker.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/mod/rmodtracker.o",
+            "sizeBytes": 68043,
+            "sha256": "1eff76a7f4cda55b54a16cc22f2cbe36bd5bde5c7db8e35ad8befcc0e248675d",
+            "nonCustomSectionsSha256": "ed1c1c026be0456ff703365ce157185205f3351207de80906f0503521bb2dcf5"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/mod/rmodtracker.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 777810,
+            "bodyOffset": 777812,
+            "size": 712,
+            "sha256": "141d55db4a02f576277e4d3a9545ec07741a4a1f22a9c83d59e4149622568de2",
+            "definedFunctionOrdinal": 1000,
+            "diagnosticName": "1000",
+            "linkerName": "replay_set_sequence_pos"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-rar",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "MIT AND BSD-2-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_archive.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/rar/rrar_archive.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_archive.o",
+            "sizeBytes": 39219,
+            "sha256": "0adf3c11230fc23f4398aa02e78920f84ed33e61a891f5df713089bfa9097ee1",
+            "nonCustomSectionsSha256": "628d07bd79f01543ebf003cf1f1b1333a4da1b047fb9d61e0b82fcf7e7767305"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_archive.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1096089,
+            "bodyOffset": 1096090,
+            "size": 36,
+            "sha256": "8269d100d7edb2e1add9c8be3c7759662deb5d27a8ae055336dd94e0f25d5388",
+            "definedFunctionOrdinal": 1329,
+            "diagnosticName": "1329",
+            "linkerName": "rrar_archive_close"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_archive.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/rar/rrar_archive.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_archive.o",
+            "sizeBytes": 39219,
+            "sha256": "0adf3c11230fc23f4398aa02e78920f84ed33e61a891f5df713089bfa9097ee1",
+            "nonCustomSectionsSha256": "628d07bd79f01543ebf003cf1f1b1333a4da1b047fb9d61e0b82fcf7e7767305"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_archive.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1719628,
+            "bodyOffset": 1719630,
+            "size": 452,
+            "sha256": "9fe93e158030f001b45dce55ab7613b8156d408e86039d0fe7a895eac51c5b45",
+            "definedFunctionOrdinal": 1944,
+            "diagnosticName": "1944",
+            "linkerName": "rrar_archive_extract"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-base64",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "Zlib",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/encodings/encoding_base64.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/encodings/encoding_base64.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/encodings/encoding_base64.o",
+            "sizeBytes": 1820,
+            "sha256": "305d55b74b7accb993674a1128fe71a8e78d55712b95180d559c0859b29841e9",
+            "nonCustomSectionsSha256": "6111811b4e8258a7615fac2520d946f56a3be48d538c4ffecbe9577663b8f55d"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/encodings/encoding_base64.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1467093,
+            "bodyOffset": 1467095,
+            "size": 453,
+            "sha256": "55261d19d68b631d450e400a65ea1ab55d813b3db15788dafcce9b214007207a",
+            "definedFunctionOrdinal": 1857,
+            "diagnosticName": "1857",
+            "linkerName": "base64"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-md5",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-OR-BSD-fallback",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-sha1",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": null,
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-pdjson",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/json/rjson.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/json/rjson.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/json/rjson.o",
+            "sizeBytes": 25396,
+            "sha256": "184a7424a929c052a8a4fbdf2b79299627f65818049f94bfe0b057a6b6c67230",
+            "nonCustomSectionsSha256": "0f4e419447eb27583e289232e8a00fc498319d8c7d47434d09d00bbaf929a1e7"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/json/rjson.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 341941,
+            "bodyOffset": 341943,
+            "size": 7852,
+            "sha256": "a5e2105e346e8688e581341265f723847519048a3135134515f0c147a0cdcebf",
+            "definedFunctionOrdinal": 476,
+            "diagnosticName": "476",
+            "linkerName": "rjson_next"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/json/rjson.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/json/rjson.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/json/rjson.o",
+            "sizeBytes": 25396,
+            "sha256": "184a7424a929c052a8a4fbdf2b79299627f65818049f94bfe0b057a6b6c67230",
+            "nonCustomSectionsSha256": "0f4e419447eb27583e289232e8a00fc498319d8c7d47434d09d00bbaf929a1e7"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/json/rjson.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1479257,
+            "bodyOffset": 1479258,
+            "size": 120,
+            "sha256": "03ae1208778595559489ae9f70021393a940e683624558eda208a025f2ccf127",
+            "definedFunctionOrdinal": 1879,
+            "diagnosticName": "1879",
+            "linkerName": "_rjson_io_input"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "atari800-ntsc",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "atari800-ide",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "MIT",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/atari800/atari800/src/ide.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/atari800/src/ide.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/atari800/src/ide.o",
+            "sizeBytes": 15006,
+            "sha256": "f612a0385afe7917360862f9b5b9a8dde92f5ac789d0a2d5d0e6c6a53ef871b2",
+            "nonCustomSectionsSha256": "e8e069e969674272d2a5cb6095673d4f762b7e9ad8f26bb13213e683f061f9dc"
+          },
+          "linkerOwner": "libretro_emscripten.a(ide.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 2161087,
+            "bodyOffset": 2161088,
+            "size": 85,
+            "sha256": "12032f9bd028209ccf4f1365a92c6663bc1a72e070056a4c8c329dcd892934dd",
+            "definedFunctionOrdinal": 2496,
+            "diagnosticName": "2496",
+            "linkerName": "ide_transfer_stop"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/atari800/atari800/src/ide.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/atari800/src/ide.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/atari800/src/ide.o",
+            "sizeBytes": 15006,
+            "sha256": "f612a0385afe7917360862f9b5b9a8dde92f5ac789d0a2d5d0e6c6a53ef871b2",
+            "nonCustomSectionsSha256": "e8e069e969674272d2a5cb6095673d4f762b7e9ad8f26bb13213e683f061f9dc"
+          },
+          "linkerOwner": "libretro_emscripten.a(ide.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 982242,
+            "bodyOffset": 982244,
+            "size": 455,
+            "sha256": "2a4f216f5059149fb4acfe1375fe6eed942afeaa8a65b8321cf42eea21fca833",
+            "definedFunctionOrdinal": 1219,
+            "diagnosticName": "1219",
+            "linkerName": "ide_sector_read"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "atari800-altirra",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "FSFAP",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "atari800-zlib",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "Zlib",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/atari800/deps/zlib/adler32.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/deps/zlib/adler32.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/deps/zlib/adler32.o",
+            "sizeBytes": 1249,
+            "sha256": "026fa3ea2ba56042eb2adfa8d201962d1aa4731e5d8b4d8e30b1534b800a9188",
+            "nonCustomSectionsSha256": "1ffd28f3842ce44d910391484d632cfa9ef7186b0847629060ef162b157ca3ef"
+          },
+          "linkerOwner": "libretro_emscripten.a(adler32.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 335839,
+            "bodyOffset": 335841,
+            "size": 954,
+            "sha256": "0a72ebcda80768027f2f5f3affbc775ac2ac92a957362f74736541a02afbf9cb",
+            "definedFunctionOrdinal": 461,
+            "diagnosticName": "461",
+            "linkerName": "adler32"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/atari800/deps/zlib/deflate.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/deps/zlib/deflate.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/deps/zlib/deflate.o",
+            "sizeBytes": 18315,
+            "sha256": "c66cdbf7fa594d09711ecf1dc173ba5f4679f4c0bfd8fa780fb671c04a8a538f",
+            "nonCustomSectionsSha256": "56ab8d1ecc60aa586849186edfae8094eae6b8502638971e184baba040250e65"
+          },
+          "linkerOwner": "libretro_emscripten.a(deflate.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1355200,
+            "bodyOffset": 1355202,
+            "size": 252,
+            "sha256": "89952184501afe1ced4f2f845b42cb85a5858cceb1fce7101d95b1f1c79e7972",
+            "definedFunctionOrdinal": 1706,
+            "diagnosticName": "1706",
+            "linkerName": "deflateEnd"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/atari800/deps/zlib/deflate.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/deps/zlib/deflate.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/atari800/deps/zlib/deflate.o",
+            "sizeBytes": 18315,
+            "sha256": "c66cdbf7fa594d09711ecf1dc173ba5f4679f4c0bfd8fa780fb671c04a8a538f",
+            "nonCustomSectionsSha256": "56ab8d1ecc60aa586849186edfae8094eae6b8502638971e184baba040250e65"
+          },
+          "linkerOwner": "libretro_emscripten.a(deflate.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1354759,
+            "bodyOffset": 1354761,
+            "size": 439,
+            "sha256": "f6188310771346bb9f619ec7ea133f44cbc61286203b351f75d0a74d2114fedf",
+            "definedFunctionOrdinal": 1705,
+            "diagnosticName": "1705",
+            "linkerName": "deflateReset"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "atari800-zlib-compat",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "Zlib",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "atari800-caprice",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "LicenseRef-Caprice32-Noncommercial",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "atari800-pokey",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "LGPL-2.0-only",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-bcdec",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "MIT AND (MIT OR Unlicense)",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/dds/rdds.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/dds/rdds.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/dds/rdds.o",
+            "sizeBytes": 48783,
+            "sha256": "b663cf0e1082608195402038eca39a6b0fba7cdef662f3c99c5fe4bc413457e2",
+            "nonCustomSectionsSha256": "247c848ca49650798c3ff84875b84c56f95a4b0a7b255b794851119b292f082e"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/dds/rdds.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1595758,
+            "bodyOffset": 1595760,
+            "size": 487,
+            "sha256": "45d16d596b0fcf7013080f416c2b526bd88166428be4b16671ba0b3ef5decfdf",
+            "definedFunctionOrdinal": 1906,
+            "diagnosticName": "1906",
+            "linkerName": "rdds_parse_header"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/dds/rdds.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/dds/rdds.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/dds/rdds.o",
+            "sizeBytes": 48783,
+            "sha256": "b663cf0e1082608195402038eca39a6b0fba7cdef662f3c99c5fe4bc413457e2",
+            "nonCustomSectionsSha256": "247c848ca49650798c3ff84875b84c56f95a4b0a7b255b794851119b292f082e"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/dds/rdds.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1583386,
+            "bodyOffset": 1583388,
+            "size": 12370,
+            "sha256": "b3fc238272ac89d6d3c89e7be681dd6460a66a26ca316768ad18d119654f4bcb",
+            "definedFunctionOrdinal": 1905,
+            "diagnosticName": "1905",
+            "linkerName": "rdds_bcdec_bc6h_float"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-ppmd",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_ppmd7.o",
+            "sizeBytes": 11015,
+            "sha256": "472cfb2708baead0b314f48e96ba022e2195abb84e14add01e8ec7a9ffc95704",
+            "nonCustomSectionsSha256": "f9916ded992d63207c0d9b8f9416d3bb6d2cd7d20e0bfd0f411d129bf0db730c"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_ppmd7.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 395016,
+            "bodyOffset": 395018,
+            "size": 3107,
+            "sha256": "bdd4201dcaa4c5ad4a9de9ecc0aa16265217f84e5132cd2d80aa6449679a4ac9",
+            "definedFunctionOrdinal": 533,
+            "diagnosticName": "533",
+            "linkerName": "rrar_ppmd7_decode_symbol"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/atari800/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_ppmd7.o",
+            "sizeBytes": 11015,
+            "sha256": "472cfb2708baead0b314f48e96ba022e2195abb84e14add01e8ec7a9ffc95704",
+            "nonCustomSectionsSha256": "f9916ded992d63207c0d9b8f9416d3bb6d2cd7d20e0bfd0f411d129bf0db730c"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_ppmd7.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1095152,
+            "bodyOffset": 1095154,
+            "size": 935,
+            "sha256": "121c9a2302a730f82224df72a9c3964df8656f8b1a444fc7458ecbfa03acf991",
+            "definedFunctionOrdinal": 1328,
+            "diagnosticName": "1328",
+            "linkerName": "ppmd_rescale"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-bitwise",
+      "build": "org.libretro.atari800",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-xxhash",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "BSD-2-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/deps/xxHash/xxhash.h"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/input/bsv/uint32s_index.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/input/bsv/uint32s_index.o",
+            "sizeBytes": 14841,
+            "sha256": "3b7ed6d0f034106749e81a2c8bcd1b53e58bb9651622d986f5709f5d81d5897b",
+            "nonCustomSectionsSha256": "b2da0eccd9cc10439388e41e203fae2d5016598781d51d8d24d3e228fcae564b"
+          },
+          "linkerOwner": "obj-emscripten/input/bsv/uint32s_index.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1707500,
+            "bodyOffset": 1707502,
+            "size": 1092,
+            "sha256": "4a540a7cb689116737e5202d1f68adbb86033590f3eb0110e9ae9d257f24c566",
+            "definedFunctionOrdinal": 1944,
+            "diagnosticName": "1944",
+            "linkerName": "XXH_INLINE_XXH32"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-snes-ntsc",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/gfx/video_filters/blargg_ntsc_snes.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+            "sizeBytes": 15579,
+            "sha256": "1b366df7851191a673232872729bb8b5cda24d0506b9739accc45db5892514c1",
+            "nonCustomSectionsSha256": "692dfd17f9128c9389d10e86a9127853183af6cb53e2f78554b05d8e0f8bb8b3"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2026758,
+            "bodyOffset": 2026760,
+            "size": 6764,
+            "sha256": "4d747b5e5e021a0a0bfc6feebf37927076ba1d7bf954f64396da81822f13b5a1",
+            "definedFunctionOrdinal": 2367,
+            "diagnosticName": "2367",
+            "linkerName": "blargg_ntsc_snes_generic_create"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/gfx/video_filters/blargg_ntsc_snes.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+            "sizeBytes": 15579,
+            "sha256": "1b366df7851191a673232872729bb8b5cda24d0506b9739accc45db5892514c1",
+            "nonCustomSectionsSha256": "692dfd17f9128c9389d10e86a9127853183af6cb53e2f78554b05d8e0f8bb8b3"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2026720,
+            "bodyOffset": 2026721,
+            "size": 37,
+            "sha256": "90e01bf3880fe1ca6795c27c2b21769bee740d14077214dad37fc6228cfd0e11",
+            "definedFunctionOrdinal": 2366,
+            "diagnosticName": "2366",
+            "linkerName": "blargg_ntsc_snes_generic_destroy"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-nebuleon-scaler",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/upscale_1_66x_fast.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/gfx/video_filters/upscale_1_66x_fast.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+            "sizeBytes": 2700,
+            "sha256": "8b295e4a0be06b8669da1728299b0f8a0c5e9f8ba0e854764d8581290b6b9061",
+            "nonCustomSectionsSha256": "9583a78d8565f72f41edfd6492e43e4fda7efc2ac42026fe54f6617a830c36e1"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2007739,
+            "bodyOffset": 2007740,
+            "size": 28,
+            "sha256": "e963cf0992940de1cd3dba46c20fd346f03ff0684ea32b8791db71fca0076543",
+            "definedFunctionOrdinal": 2309,
+            "diagnosticName": "2309",
+            "linkerName": "upscale_1_66x_fast_generic_output"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/upscale_1_66x_fast.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/gfx/video_filters/upscale_1_66x_fast.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+            "sizeBytes": 2700,
+            "sha256": "8b295e4a0be06b8669da1728299b0f8a0c5e9f8ba0e854764d8581290b6b9061",
+            "nonCustomSectionsSha256": "9583a78d8565f72f41edfd6492e43e4fda7efc2ac42026fe54f6617a830c36e1"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2007661,
+            "bodyOffset": 2007662,
+            "size": 77,
+            "sha256": "819a8afc64a32bc7cc77a7659e4bd56b37ed655b80b518ddfbbf17a868c2a6a8",
+            "definedFunctionOrdinal": 2308,
+            "diagnosticName": "2308",
+            "linkerName": "upscale_1_66x_fast_generic_packets"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-hyllian-2xbr",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND GPL-2.0-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/2xbr.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/gfx/video_filters/2xbr.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/gfx/video_filters/2xbr.o",
+            "sizeBytes": 13792,
+            "sha256": "1959fd1b57fbc97b3dcd50f4a28adc188afb2d0d87f7f016e1281be2e7a7f66a",
+            "nonCustomSectionsSha256": "51990f4aae55f681bdddf5abe5ca4364a594eeedc5107aa5e77b7744ef33001a"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/2xbr.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2048079,
+            "bodyOffset": 2048081,
+            "size": 727,
+            "sha256": "1870e6680e4d28b5be49a151c108d5b1a964e49a2922f01838d121c5f6eeec67",
+            "definedFunctionOrdinal": 2384,
+            "diagnosticName": "2384",
+            "linkerName": "twoxbr_generic_create"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/2xbr.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/gfx/video_filters/2xbr.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/gfx/video_filters/2xbr.o",
+            "sizeBytes": 13792,
+            "sha256": "1959fd1b57fbc97b3dcd50f4a28adc188afb2d0d87f7f016e1281be2e7a7f66a",
+            "nonCustomSectionsSha256": "51990f4aae55f681bdddf5abe5ca4364a594eeedc5107aa5e77b7744ef33001a"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/2xbr.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2048050,
+            "bodyOffset": 2048051,
+            "size": 28,
+            "sha256": "90aa20a6e4f72fcfbbecd1d5a6bdcaf7e0900a31de6a14d6da37302e58130914",
+            "definedFunctionOrdinal": 2383,
+            "diagnosticName": "2383",
+            "linkerName": "twoxbr_generic_destroy"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-modtracker",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/mod/rmodtracker.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/mod/rmodtracker.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/mod/rmodtracker.o",
+            "sizeBytes": 68043,
+            "sha256": "1eff76a7f4cda55b54a16cc22f2cbe36bd5bde5c7db8e35ad8befcc0e248675d",
+            "nonCustomSectionsSha256": "ed1c1c026be0456ff703365ce157185205f3351207de80906f0503521bb2dcf5"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/mod/rmodtracker.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1386961,
+            "bodyOffset": 1386964,
+            "size": 27937,
+            "sha256": "d83c797c01faadd3ccbcb476438f5bafdb1957cf630b4224f7ae6c94302e4789",
+            "definedFunctionOrdinal": 1643,
+            "diagnosticName": "1643",
+            "linkerName": "rmodtracker_open_memory_rate"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/mod/rmodtracker.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/mod/rmodtracker.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/mod/rmodtracker.o",
+            "sizeBytes": 68043,
+            "sha256": "1eff76a7f4cda55b54a16cc22f2cbe36bd5bde5c7db8e35ad8befcc0e248675d",
+            "nonCustomSectionsSha256": "ed1c1c026be0456ff703365ce157185205f3351207de80906f0503521bb2dcf5"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/mod/rmodtracker.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 633987,
+            "bodyOffset": 633989,
+            "size": 712,
+            "sha256": "41a8f67785cb7305742fe042ea3b041ceda6bb86f73ad7bb94ad70a07564109a",
+            "definedFunctionOrdinal": 845,
+            "diagnosticName": "845",
+            "linkerName": "replay_set_sequence_pos"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-rar",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "MIT AND BSD-2-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_archive.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/rar/rrar_archive.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_archive.o",
+            "sizeBytes": 39219,
+            "sha256": "0adf3c11230fc23f4398aa02e78920f84ed33e61a891f5df713089bfa9097ee1",
+            "nonCustomSectionsSha256": "628d07bd79f01543ebf003cf1f1b1333a4da1b047fb9d61e0b82fcf7e7767305"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_archive.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 921894,
+            "bodyOffset": 921895,
+            "size": 36,
+            "sha256": "e37d0b0e10e43ecf9c42ed7325f57d497e5ea1ae27e80f7af8fd4f6de42f44ab",
+            "definedFunctionOrdinal": 1120,
+            "diagnosticName": "1120",
+            "linkerName": "rrar_archive_close"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_archive.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/rar/rrar_archive.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_archive.o",
+            "sizeBytes": 39219,
+            "sha256": "0adf3c11230fc23f4398aa02e78920f84ed33e61a891f5df713089bfa9097ee1",
+            "nonCustomSectionsSha256": "628d07bd79f01543ebf003cf1f1b1333a4da1b047fb9d61e0b82fcf7e7767305"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_archive.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1471931,
+            "bodyOffset": 1471933,
+            "size": 452,
+            "sha256": "98a049a77ba96ca1fccb33727bfd80b441f2d6186decdf066df999a72d0622d6",
+            "definedFunctionOrdinal": 1661,
+            "diagnosticName": "1661",
+            "linkerName": "rrar_archive_extract"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-base64",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "Zlib",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/encodings/encoding_base64.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/encodings/encoding_base64.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/encodings/encoding_base64.o",
+            "sizeBytes": 1820,
+            "sha256": "305d55b74b7accb993674a1128fe71a8e78d55712b95180d559c0859b29841e9",
+            "nonCustomSectionsSha256": "6111811b4e8258a7615fac2520d946f56a3be48d538c4ffecbe9577663b8f55d"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/encodings/encoding_base64.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1219241,
+            "bodyOffset": 1219243,
+            "size": 453,
+            "sha256": "ccaa7d84a41ca5cfa4b5fc0864d977874e7c7e080bd439028550b55adbcd7cfd",
+            "definedFunctionOrdinal": 1573,
+            "diagnosticName": "1573",
+            "linkerName": "base64"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-md5",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-OR-BSD-fallback",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-sha1",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": null,
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-pdjson",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/json/rjson.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/json/rjson.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/json/rjson.o",
+            "sizeBytes": 25396,
+            "sha256": "184a7424a929c052a8a4fbdf2b79299627f65818049f94bfe0b057a6b6c67230",
+            "nonCustomSectionsSha256": "0f4e419447eb27583e289232e8a00fc498319d8c7d47434d09d00bbaf929a1e7"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/json/rjson.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 262079,
+            "bodyOffset": 262081,
+            "size": 7852,
+            "sha256": "cc81def3126d776e44e847130ef727a044b880b1a71bf9039c33f8f7f611ed3d",
+            "definedFunctionOrdinal": 398,
+            "diagnosticName": "398",
+            "linkerName": "rjson_next"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/json/rjson.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/json/rjson.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/json/rjson.o",
+            "sizeBytes": 25396,
+            "sha256": "184a7424a929c052a8a4fbdf2b79299627f65818049f94bfe0b057a6b6c67230",
+            "nonCustomSectionsSha256": "0f4e419447eb27583e289232e8a00fc498319d8c7d47434d09d00bbaf929a1e7"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/json/rjson.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1231560,
+            "bodyOffset": 1231561,
+            "size": 120,
+            "sha256": "b69f8fa793224fca7e1b1d23d0169c64905f901a34dc7bc1b78d5a594db016ab",
+            "definedFunctionOrdinal": 1596,
+            "diagnosticName": "1596",
+            "linkerName": "_rjson_io_input"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "potator-m6502",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "LicenseRef-M65C02-Noncommercial",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/potator/common/m6502/m6502.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/potator/common/m6502/m6502.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/potator/common/m6502/m6502.o",
+            "sizeBytes": 22033,
+            "sha256": "6259eab86c9619ce121d0eb1e31818fdebf5f1c0cee68f197544381320e20ca2",
+            "nonCustomSectionsSha256": "d5a5041f26b4ac74d39f9c1d02f9977a097e59a4d18ab4b16ae78559d36bb8bd"
+          },
+          "linkerOwner": "libretro_emscripten.a(m6502.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1167965,
+            "bodyOffset": 1167966,
+            "size": 92,
+            "sha256": "2a87959000141ed09bc826dacc3023672fd3d7e412ab1a2b9c5608814afd335f",
+            "definedFunctionOrdinal": 1496,
+            "diagnosticName": "1496",
+            "linkerName": "Reset6502"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/potator/common/m6502/m6502.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/potator/common/m6502/m6502.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/potator/common/m6502/m6502.o",
+            "sizeBytes": 22033,
+            "sha256": "6259eab86c9619ce121d0eb1e31818fdebf5f1c0cee68f197544381320e20ca2",
+            "nonCustomSectionsSha256": "d5a5041f26b4ac74d39f9c1d02f9977a097e59a4d18ab4b16ae78559d36bb8bd"
+          },
+          "linkerOwner": "libretro_emscripten.a(m6502.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1167706,
+            "bodyOffset": 1167708,
+            "size": 257,
+            "sha256": "ae4e0ac3aba23813a8de7d39415517eb44a640e35e8f64f66437801582cf863b",
+            "definedFunctionOrdinal": 1495,
+            "diagnosticName": "1495",
+            "linkerName": "Int6502"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-bcdec",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "MIT AND (MIT OR Unlicense)",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/dds/rdds.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/dds/rdds.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/dds/rdds.o",
+            "sizeBytes": 48783,
+            "sha256": "b663cf0e1082608195402038eca39a6b0fba7cdef662f3c99c5fe4bc413457e2",
+            "nonCustomSectionsSha256": "247c848ca49650798c3ff84875b84c56f95a4b0a7b255b794851119b292f082e"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/dds/rdds.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1348061,
+            "bodyOffset": 1348063,
+            "size": 487,
+            "sha256": "5e4e654848c71affabcdc6f4ef1b1a51823266e9e2f4d7fb07edc5b12731fcac",
+            "definedFunctionOrdinal": 1623,
+            "diagnosticName": "1623",
+            "linkerName": "rdds_parse_header"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/dds/rdds.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/dds/rdds.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/dds/rdds.o",
+            "sizeBytes": 48783,
+            "sha256": "b663cf0e1082608195402038eca39a6b0fba7cdef662f3c99c5fe4bc413457e2",
+            "nonCustomSectionsSha256": "247c848ca49650798c3ff84875b84c56f95a4b0a7b255b794851119b292f082e"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/dds/rdds.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1335689,
+            "bodyOffset": 1335691,
+            "size": 12370,
+            "sha256": "8beeb2c1d323b14f1d6bfe3818fa97607a334661df92a66d4bb259397e2cd2d2",
+            "definedFunctionOrdinal": 1622,
+            "diagnosticName": "1622",
+            "linkerName": "rdds_bcdec_bc6h_float"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-ppmd",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_ppmd7.o",
+            "sizeBytes": 11015,
+            "sha256": "472cfb2708baead0b314f48e96ba022e2195abb84e14add01e8ec7a9ffc95704",
+            "nonCustomSectionsSha256": "f9916ded992d63207c0d9b8f9416d3bb6d2cd7d20e0bfd0f411d129bf0db730c"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_ppmd7.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 305001,
+            "bodyOffset": 305003,
+            "size": 3107,
+            "sha256": "39d4300041f168484953ba78875735b16fe029e77031081b8ea4c97c9336c2c6",
+            "definedFunctionOrdinal": 446,
+            "diagnosticName": "446",
+            "linkerName": "rrar_ppmd7_decode_symbol"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/potator/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_ppmd7.o",
+            "sizeBytes": 11015,
+            "sha256": "472cfb2708baead0b314f48e96ba022e2195abb84e14add01e8ec7a9ffc95704",
+            "nonCustomSectionsSha256": "f9916ded992d63207c0d9b8f9416d3bb6d2cd7d20e0bfd0f411d129bf0db730c"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_ppmd7.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 920957,
+            "bodyOffset": 920959,
+            "size": 935,
+            "sha256": "5e0fd43a71ca359264efad45527f45e45d2560b7635338cb19df049b7b377947",
+            "definedFunctionOrdinal": 1119,
+            "diagnosticName": "1119",
+            "linkerName": "ppmd_rescale"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-bitwise",
+      "build": "org.libretro.potator",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-xxhash",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "BSD-2-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/deps/xxHash/xxhash.h"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/input/bsv/uint32s_index.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/input/bsv/uint32s_index.o",
+            "sizeBytes": 14841,
+            "sha256": "3b7ed6d0f034106749e81a2c8bcd1b53e58bb9651622d986f5709f5d81d5897b",
+            "nonCustomSectionsSha256": "b2da0eccd9cc10439388e41e203fae2d5016598781d51d8d24d3e228fcae564b"
+          },
+          "linkerOwner": "obj-emscripten/input/bsv/uint32s_index.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2062422,
+            "bodyOffset": 2062424,
+            "size": 1092,
+            "sha256": "4a540a7cb689116737e5202d1f68adbb86033590f3eb0110e9ae9d257f24c566",
+            "definedFunctionOrdinal": 2250,
+            "diagnosticName": "2250",
+            "linkerName": "XXH_INLINE_XXH32"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-snes-ntsc",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/gfx/video_filters/blargg_ntsc_snes.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+            "sizeBytes": 15579,
+            "sha256": "1b366df7851191a673232872729bb8b5cda24d0506b9739accc45db5892514c1",
+            "nonCustomSectionsSha256": "692dfd17f9128c9389d10e86a9127853183af6cb53e2f78554b05d8e0f8bb8b3"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2459347,
+            "bodyOffset": 2459349,
+            "size": 6764,
+            "sha256": "4ef937bd88e2f11e277fa0f5ef4230c75c6c022a1091dc666b7444f0bf2f619a",
+            "definedFunctionOrdinal": 2845,
+            "diagnosticName": "2845",
+            "linkerName": "blargg_ntsc_snes_generic_create"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/snes_ntsc/snes_ntsc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/gfx/video_filters/blargg_ntsc_snes.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+            "sizeBytes": 15579,
+            "sha256": "1b366df7851191a673232872729bb8b5cda24d0506b9739accc45db5892514c1",
+            "nonCustomSectionsSha256": "692dfd17f9128c9389d10e86a9127853183af6cb53e2f78554b05d8e0f8bb8b3"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/blargg_ntsc_snes.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2459309,
+            "bodyOffset": 2459310,
+            "size": 37,
+            "sha256": "de683c2732e7cb59f279f2b749076974a7fe3c6975f0a01ce4e33a9fcc99e6f6",
+            "definedFunctionOrdinal": 2844,
+            "diagnosticName": "2844",
+            "linkerName": "blargg_ntsc_snes_generic_destroy"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-nebuleon-scaler",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/upscale_1_66x_fast.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/gfx/video_filters/upscale_1_66x_fast.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+            "sizeBytes": 2700,
+            "sha256": "8b295e4a0be06b8669da1728299b0f8a0c5e9f8ba0e854764d8581290b6b9061",
+            "nonCustomSectionsSha256": "9583a78d8565f72f41edfd6492e43e4fda7efc2ac42026fe54f6617a830c36e1"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2440328,
+            "bodyOffset": 2440329,
+            "size": 28,
+            "sha256": "e963cf0992940de1cd3dba46c20fd346f03ff0684ea32b8791db71fca0076543",
+            "definedFunctionOrdinal": 2787,
+            "diagnosticName": "2787",
+            "linkerName": "upscale_1_66x_fast_generic_output"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/upscale_1_66x_fast.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/gfx/video_filters/upscale_1_66x_fast.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+            "sizeBytes": 2700,
+            "sha256": "8b295e4a0be06b8669da1728299b0f8a0c5e9f8ba0e854764d8581290b6b9061",
+            "nonCustomSectionsSha256": "9583a78d8565f72f41edfd6492e43e4fda7efc2ac42026fe54f6617a830c36e1"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/upscale_1_66x_fast.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2440250,
+            "bodyOffset": 2440251,
+            "size": 77,
+            "sha256": "819a8afc64a32bc7cc77a7659e4bd56b37ed655b80b518ddfbbf17a868c2a6a8",
+            "definedFunctionOrdinal": 2786,
+            "diagnosticName": "2786",
+            "linkerName": "upscale_1_66x_fast_generic_packets"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-hyllian-2xbr",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND GPL-2.0-or-later",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/2xbr.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/gfx/video_filters/2xbr.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/gfx/video_filters/2xbr.o",
+            "sizeBytes": 13792,
+            "sha256": "1959fd1b57fbc97b3dcd50f4a28adc188afb2d0d87f7f016e1281be2e7a7f66a",
+            "nonCustomSectionsSha256": "51990f4aae55f681bdddf5abe5ca4364a594eeedc5107aa5e77b7744ef33001a"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/2xbr.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2480668,
+            "bodyOffset": 2480670,
+            "size": 727,
+            "sha256": "04bee7367cb1cfdfd47a9c36cc52b054ee09e9d78309e986cf68cb0e38a01fd8",
+            "definedFunctionOrdinal": 2862,
+            "diagnosticName": "2862",
+            "linkerName": "twoxbr_generic_create"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/gfx/video_filters/2xbr.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/gfx/video_filters/2xbr.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/gfx/video_filters/2xbr.o",
+            "sizeBytes": 13792,
+            "sha256": "1959fd1b57fbc97b3dcd50f4a28adc188afb2d0d87f7f016e1281be2e7a7f66a",
+            "nonCustomSectionsSha256": "51990f4aae55f681bdddf5abe5ca4364a594eeedc5107aa5e77b7744ef33001a"
+          },
+          "linkerOwner": "obj-emscripten/gfx/video_filters/2xbr.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 2480639,
+            "bodyOffset": 2480640,
+            "size": 28,
+            "sha256": "4e60e1c37a4cc03d9031423f84e4e7432ec279e80deca766ce722dbb49deaa01",
+            "definedFunctionOrdinal": 2861,
+            "diagnosticName": "2861",
+            "linkerName": "twoxbr_generic_destroy"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-modtracker",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/mod/rmodtracker.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/mod/rmodtracker.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/mod/rmodtracker.o",
+            "sizeBytes": 68043,
+            "sha256": "1eff76a7f4cda55b54a16cc22f2cbe36bd5bde5c7db8e35ad8befcc0e248675d",
+            "nonCustomSectionsSha256": "ed1c1c026be0456ff703365ce157185205f3351207de80906f0503521bb2dcf5"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/mod/rmodtracker.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1741370,
+            "bodyOffset": 1741373,
+            "size": 27937,
+            "sha256": "fb0845ba16e31689318c668f6735932bfd8f1fc45fbd62e0741563acca151796",
+            "definedFunctionOrdinal": 1948,
+            "diagnosticName": "1948",
+            "linkerName": "rmodtracker_open_memory_rate"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/mod/rmodtracker.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/mod/rmodtracker.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/mod/rmodtracker.o",
+            "sizeBytes": 68043,
+            "sha256": "1eff76a7f4cda55b54a16cc22f2cbe36bd5bde5c7db8e35ad8befcc0e248675d",
+            "nonCustomSectionsSha256": "ed1c1c026be0456ff703365ce157185205f3351207de80906f0503521bb2dcf5"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/mod/rmodtracker.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 744744,
+            "bodyOffset": 744746,
+            "size": 712,
+            "sha256": "29f6ebb7992efee84be5c618e88a5c60a64feba20e96f30b8c08973094c82fd8",
+            "definedFunctionOrdinal": 969,
+            "diagnosticName": "969",
+            "linkerName": "replay_set_sequence_pos"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-rar",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "MIT AND BSD-2-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_archive.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/rar/rrar_archive.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_archive.o",
+            "sizeBytes": 39219,
+            "sha256": "0adf3c11230fc23f4398aa02e78920f84ed33e61a891f5df713089bfa9097ee1",
+            "nonCustomSectionsSha256": "628d07bd79f01543ebf003cf1f1b1333a4da1b047fb9d61e0b82fcf7e7767305"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_archive.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1067017,
+            "bodyOffset": 1067018,
+            "size": 36,
+            "sha256": "b1320e2e2b2fb191eaf6232e277af35ed67bf35b8e89fd8f813b6e8050b546bc",
+            "definedFunctionOrdinal": 1303,
+            "diagnosticName": "1303",
+            "linkerName": "rrar_archive_close"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_archive.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/rar/rrar_archive.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_archive.o",
+            "sizeBytes": 39219,
+            "sha256": "0adf3c11230fc23f4398aa02e78920f84ed33e61a891f5df713089bfa9097ee1",
+            "nonCustomSectionsSha256": "628d07bd79f01543ebf003cf1f1b1333a4da1b047fb9d61e0b82fcf7e7767305"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_archive.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1826366,
+            "bodyOffset": 1826368,
+            "size": 452,
+            "sha256": "c6b28b4595e599849d8d432fdaedd3514a12e4ae6ef886cbee362bf64571922e",
+            "definedFunctionOrdinal": 1967,
+            "diagnosticName": "1967",
+            "linkerName": "rrar_archive_extract"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-base64",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "Zlib",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/encodings/encoding_base64.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/encodings/encoding_base64.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/encodings/encoding_base64.o",
+            "sizeBytes": 1820,
+            "sha256": "305d55b74b7accb993674a1128fe71a8e78d55712b95180d559c0859b29841e9",
+            "nonCustomSectionsSha256": "6111811b4e8258a7615fac2520d946f56a3be48d538c4ffecbe9577663b8f55d"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/encodings/encoding_base64.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1573831,
+            "bodyOffset": 1573833,
+            "size": 453,
+            "sha256": "e9b4d848d790d95dc3f0d39d082b34dbf32d993fe8fa02e7e22fd46b8c0e5ff8",
+            "definedFunctionOrdinal": 1880,
+            "diagnosticName": "1880",
+            "linkerName": "base64"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-md5",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-OR-BSD-fallback",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-sha1",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": null,
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-pdjson",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/json/rjson.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/json/rjson.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/json/rjson.o",
+            "sizeBytes": 25396,
+            "sha256": "184a7424a929c052a8a4fbdf2b79299627f65818049f94bfe0b057a6b6c67230",
+            "nonCustomSectionsSha256": "0f4e419447eb27583e289232e8a00fc498319d8c7d47434d09d00bbaf929a1e7"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/json/rjson.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 311908,
+            "bodyOffset": 311910,
+            "size": 7852,
+            "sha256": "1496f4e637dada80391f07f1d1b7ba9922949917c12f7446b31e04d9c1a14b73",
+            "definedFunctionOrdinal": 435,
+            "diagnosticName": "435",
+            "linkerName": "rjson_next"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/json/rjson.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/json/rjson.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/json/rjson.o",
+            "sizeBytes": 25396,
+            "sha256": "184a7424a929c052a8a4fbdf2b79299627f65818049f94bfe0b057a6b6c67230",
+            "nonCustomSectionsSha256": "0f4e419447eb27583e289232e8a00fc498319d8c7d47434d09d00bbaf929a1e7"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/json/rjson.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1585995,
+            "bodyOffset": 1585996,
+            "size": 120,
+            "sha256": "ff478368f6f266d28c3b88793c8e063001ebaa4909cd71205b1b5de3cd3cf4b2",
+            "definedFunctionOrdinal": 1902,
+            "diagnosticName": "1902",
+            "linkerName": "_rjson_io_input"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-libchdr",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/libchdr/src/libchdr_bitstream.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_bitstream.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_bitstream.o",
+            "sizeBytes": 1027,
+            "sha256": "1d3180fa1919d595e32c88125bdedf9d06b21b676adeb0a31001b2f6a2142f77",
+            "nonCustomSectionsSha256": "68d11a43bdfc4341b4532fbd26c0cdb0ee0286828eb2fdd91c6db14fbb2f2883"
+          },
+          "linkerOwner": "libretro_emscripten.a(libchdr_bitstream.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1445628,
+            "bodyOffset": 1445629,
+            "size": 39,
+            "sha256": "0ef381f750244ce47e6b7a016035674d9240a75b5412322e724ea686b2e353ad",
+            "definedFunctionOrdinal": 1739,
+            "diagnosticName": "1739",
+            "linkerName": "create_bitstream"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/libchdr/src/libchdr_bitstream.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_bitstream.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_bitstream.o",
+            "sizeBytes": 1027,
+            "sha256": "1d3180fa1919d595e32c88125bdedf9d06b21b676adeb0a31001b2f6a2142f77",
+            "nonCustomSectionsSha256": "68d11a43bdfc4341b4532fbd26c0cdb0ee0286828eb2fdd91c6db14fbb2f2883"
+          },
+          "linkerOwner": "libretro_emscripten.a(libchdr_bitstream.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1445488,
+            "bodyOffset": 1445490,
+            "size": 138,
+            "sha256": "eeeb6e0ead4aa49a9f540e7270f38b0446b0385335c7b48f522a2c09981fa9d5",
+            "definedFunctionOrdinal": 1738,
+            "diagnosticName": "1738",
+            "linkerName": "bitstream_peek"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/libchdr/src/libchdr_cdrom.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_cdrom.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_cdrom.o",
+            "sizeBytes": 11017,
+            "sha256": "2ae328c33f41b246cb1c5842b2d082aecd068d5fde9730b8fde5e2306c9bbcc5",
+            "nonCustomSectionsSha256": "048276158e9d44fcd22c7844de467c1eab470108ff6a1b8ef0065a834f9cff2a"
+          },
+          "linkerOwner": "libretro_emscripten.a(libchdr_cdrom.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 957959,
+            "bodyOffset": 957961,
+            "size": 463,
+            "sha256": "237e00df8a7613e1cdd4444da6f88dee02bd5242a9fae8096703a87a22bfb33b",
+            "definedFunctionOrdinal": 1202,
+            "diagnosticName": "1202",
+            "linkerName": "ecc_generate"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-dr-flac",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "Unlicense OR MIT-0",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/libchdr/include/dr_libs/dr_flac.h"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_flac.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_flac.o",
+            "sizeBytes": 59302,
+            "sha256": "79b2667ab789e7c0ecb167c2d029e7a44fef8a6d0c9e2d9082b00af60ea6d303",
+            "nonCustomSectionsSha256": "7608698aa459969bce83e957247e07e8538b9b5109be319233a664c3fd746aa6"
+          },
+          "linkerOwner": "libretro_emscripten.a(libchdr_flac.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1424052,
+            "bodyOffset": 1424054,
+            "size": 504,
+            "sha256": "894b46e4a02c187dee9f985e245b62c8a279cb6552717199a563d503696c4303",
+            "definedFunctionOrdinal": 1726,
+            "diagnosticName": "1726",
+            "linkerName": "drflac_ogg__read_page_header_after_capture_pattern"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/libchdr/include/dr_libs/dr_flac.h"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_flac.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/libchdr/src/libchdr_flac.o",
+            "sizeBytes": 59302,
+            "sha256": "79b2667ab789e7c0ecb167c2d029e7a44fef8a6d0c9e2d9082b00af60ea6d303",
+            "nonCustomSectionsSha256": "7608698aa459969bce83e957247e07e8538b9b5109be319233a664c3fd746aa6"
+          },
+          "linkerOwner": "libretro_emscripten.a(libchdr_flac.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 950960,
+            "bodyOffset": 950962,
+            "size": 272,
+            "sha256": "761b9ae014e4dbe556cafac584065496f54242e828db37bde875c35a3da2c41b",
+            "definedFunctionOrdinal": 1198,
+            "diagnosticName": "1198",
+            "linkerName": "drflac_ogg__read_page_header"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-lzma",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/lzma-19.00/src/LzmaEnc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/lzma-19.00/src/LzmaEnc.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/lzma-19.00/src/LzmaEnc.o",
+            "sizeBytes": 9679,
+            "sha256": "f66188640d2415965e7351cd90decf8297c8d26a11c0f63f93b0a7aab5df5cf0",
+            "nonCustomSectionsSha256": "26cd4a8169b00f94abff0f90f543da8591dbbb2cae400b6d865a4162d008b55c"
+          },
+          "linkerOwner": "libretro_emscripten.a(LzmaEnc.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 958424,
+            "bodyOffset": 958426,
+            "size": 972,
+            "sha256": "28c4c9ab386e26e3012015583cb8cdf5587923c231673de25ad6b67c0d984e94",
+            "definedFunctionOrdinal": 1203,
+            "diagnosticName": "1203",
+            "linkerName": "LzmaEncProps_Normalize"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/lzma-19.00/src/LzmaEnc.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/lzma-19.00/src/LzmaEnc.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/lzma-19.00/src/LzmaEnc.o",
+            "sizeBytes": 9679,
+            "sha256": "f66188640d2415965e7351cd90decf8297c8d26a11c0f63f93b0a7aab5df5cf0",
+            "nonCustomSectionsSha256": "26cd4a8169b00f94abff0f90f543da8591dbbb2cae400b6d865a4162d008b55c"
+          },
+          "linkerOwner": "libretro_emscripten.a(LzmaEnc.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1445344,
+            "bodyOffset": 1445346,
+            "size": 142,
+            "sha256": "cf5c0154f2f73ffa0e132e52b0e56852b81a395609d68cd89ab5017ed512f48c",
+            "definedFunctionOrdinal": 1737,
+            "diagnosticName": "1737",
+            "linkerName": "LzmaEnc_Destroy"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/lzma-19.00/src/LzmaDec.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/lzma-19.00/src/LzmaDec.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/lzma-19.00/src/LzmaDec.o",
+            "sizeBytes": 13801,
+            "sha256": "5940728c09a01575a7a9d271b446205f60f64c715c58f05f9e086ba8782ff1ae",
+            "nonCustomSectionsSha256": "933b4d6152dfb132d55befef643dcd2b4cbdf3ae89b5ee10180cf2dae8a81db9"
+          },
+          "linkerOwner": "libretro_emscripten.a(LzmaDec.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1443374,
+            "bodyOffset": 1443376,
+            "size": 1968,
+            "sha256": "23ffadaa21a927fee691c44ec040f02bb2ee1e8df3d498e128626cfca36a9396",
+            "definedFunctionOrdinal": 1736,
+            "diagnosticName": "1736",
+            "linkerName": "LzmaDec_TryDummy"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-zstd",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "BSD-3-Clause OR GPL-2.0-only",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/zstd/lib/common/entropy_common.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zstd/lib/common/entropy_common.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zstd/lib/common/entropy_common.o",
+            "sizeBytes": 2391,
+            "sha256": "c026b218564c8c9815bb23158f100a9ca8e6e78d540897599484f8411fb9c16e",
+            "nonCustomSectionsSha256": "29fd63b1506e15e2df90ee645e517b0ee7e772d6d0f5f47b9084cb1424b897a5"
+          },
+          "linkerOwner": "libretro_emscripten.a(entropy_common.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 949580,
+            "bodyOffset": 949582,
+            "size": 694,
+            "sha256": "135402befd2321bff5c1a0c5e0210552c6e265149ee996b83be6fdd718c281b4",
+            "definedFunctionOrdinal": 1194,
+            "diagnosticName": "1194",
+            "linkerName": "FSE_readNCount_body_default"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/zstd/lib/common/entropy_common.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zstd/lib/common/entropy_common.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zstd/lib/common/entropy_common.o",
+            "sizeBytes": 2391,
+            "sha256": "c026b218564c8c9815bb23158f100a9ca8e6e78d540897599484f8411fb9c16e",
+            "nonCustomSectionsSha256": "29fd63b1506e15e2df90ee645e517b0ee7e772d6d0f5f47b9084cb1424b897a5"
+          },
+          "linkerOwner": "libretro_emscripten.a(entropy_common.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 686262,
+            "bodyOffset": 686263,
+            "size": 15,
+            "sha256": "4eaab19090b97003e983caa470da17a0556d16358290983bcc9602e70ac98948",
+            "definedFunctionOrdinal": 902,
+            "diagnosticName": "902",
+            "linkerName": "FSE_readNCount"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/zstd/lib/common/xxhash.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zstd/lib/common/xxhash.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zstd/lib/common/xxhash.o",
+            "sizeBytes": 6854,
+            "sha256": "227ae9dd5942ff5e2a18ffdcbdeab83437aea39d3d838e31a07e08b32a3016ee",
+            "nonCustomSectionsSha256": "b83ecd19c0ab6f8d104724cbc154234eaa9efa8d6b9c47957b8b47a7546667d0"
+          },
+          "linkerOwner": "libretro_emscripten.a(xxhash.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1384856,
+            "bodyOffset": 1384858,
+            "size": 558,
+            "sha256": "46cc32a52c1a78312d0380e75ac94a8963333f916093d2473277bf6ea398a87a",
+            "definedFunctionOrdinal": 1715,
+            "diagnosticName": "1715",
+            "linkerName": "ZSTD_XXH64_update"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-zlib",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "Zlib",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/zlib-1.2.11/adler32.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zlib-1.2.11/adler32.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zlib-1.2.11/adler32.o",
+            "sizeBytes": 1301,
+            "sha256": "905d8491955168a944ea2db2c96c8d1822ded8c2797821d784a5f620c3bb2efc",
+            "nonCustomSectionsSha256": "7a1761090c09454668f46b5a050954cc49989c50c97c32f466db88f401e7222a"
+          },
+          "linkerOwner": "libretro_emscripten.a(adler32.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 686336,
+            "bodyOffset": 686338,
+            "size": 955,
+            "sha256": "c07f7c0464556c6510cdbb5de6fd74b5c56080741323688a86f4bcf5d1ff683f",
+            "definedFunctionOrdinal": 904,
+            "diagnosticName": "904",
+            "linkerName": "adler32"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/zlib-1.2.11/crc32.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zlib-1.2.11/crc32.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zlib-1.2.11/crc32.o",
+            "sizeBytes": 1905,
+            "sha256": "57351bc4d7bd6915a3c7117abdcaec13263aa9e1748c2782cc27697827d02bb3",
+            "nonCustomSectionsSha256": "7ea5b701ddc7b0682da59c5df47bc7df852410cf73fedd51098a88616c7d20d3"
+          },
+          "linkerOwner": "libretro_emscripten.a(crc32.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 222757,
+            "bodyOffset": 222759,
+            "size": 439,
+            "sha256": "d8e529b5fd9457c6a4cbe6e5645a84ef89c3b85cb9cb3e63f6b48e1372e38877",
+            "definedFunctionOrdinal": 322,
+            "diagnosticName": "322",
+            "linkerName": "crc32"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/deps/zlib-1.2.11/inftrees.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zlib-1.2.11/inftrees.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/deps/zlib-1.2.11/inftrees.o",
+            "sizeBytes": 3085,
+            "sha256": "24c86f0a2331d6301ae99d1cf21b9b3badb6027e71f2a4e0e8b2b06297b33c64",
+            "nonCustomSectionsSha256": "92379226e0ba8dc7d5343c8a120dd3331423263baff9bd433ec6e2773e52eebd"
+          },
+          "linkerOwner": "libretro_emscripten.a(inftrees.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 572588,
+            "bodyOffset": 572590,
+            "size": 2006,
+            "sha256": "69aefe050fd6d905d7118174a47c0ae81cbb36bf746e3b98d6338280934843ef",
+            "definedFunctionOrdinal": 733,
+            "diagnosticName": "733",
+            "linkerName": "inflate_table"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-tremor",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/mednafen/tremor/bitwise.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/tremor/bitwise.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/tremor/bitwise.o",
+            "sizeBytes": 5091,
+            "sha256": "fe4e86c5fe6a94dcc33997478416eab0e7f8c3f001d02335fc7fef2f16252ea9",
+            "nonCustomSectionsSha256": "0967cc520583e167008a7d0f8619037b68a0e70d6da8f4a87dc3c8fbd90f1713"
+          },
+          "linkerOwner": "libretro_emscripten.a(bitwise.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 947466,
+            "bodyOffset": 947468,
+            "size": 215,
+            "sha256": "71d75e7661d91b4d2fc856518d6baa953ea370bae97d661170879b3b0cf26789",
+            "definedFunctionOrdinal": 1187,
+            "diagnosticName": "1187",
+            "linkerName": "oggpack_look"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/mednafen/tremor/bitwise.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/tremor/bitwise.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/tremor/bitwise.o",
+            "sizeBytes": 5091,
+            "sha256": "fe4e86c5fe6a94dcc33997478416eab0e7f8c3f001d02335fc7fef2f16252ea9",
+            "nonCustomSectionsSha256": "0967cc520583e167008a7d0f8619037b68a0e70d6da8f4a87dc3c8fbd90f1713"
+          },
+          "linkerOwner": "libretro_emscripten.a(bitwise.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 1338094,
+            "bodyOffset": 1338095,
+            "size": 95,
+            "sha256": "7ae30c369944006c043f9912695f4c732ebfb3b3f34e5eca528042f53384acbc",
+            "definedFunctionOrdinal": 1702,
+            "diagnosticName": "1702",
+            "linkerName": "oggpack_adv"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/mednafen/tremor/block.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/tremor/block.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/tremor/block.o",
+            "sizeBytes": 5131,
+            "sha256": "470d50838e36997b95ed9b8c5233ea8182e745ed32c1d9179357c8c0f1d27bfc",
+            "nonCustomSectionsSha256": "70c6105dd53127a96760fda3efe576d9b41ef259cddd5c5e7c27922f57be2d70"
+          },
+          "linkerOwner": "libretro_emscripten.a(block.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 947434,
+            "bodyOffset": 947435,
+            "size": 26,
+            "sha256": "f4a9527998d07d7fa037e14e53500a62ea6ec2b471550bcd7cf584c32d48b03c",
+            "definedFunctionOrdinal": 1185,
+            "diagnosticName": "1185",
+            "linkerName": "vorbis_block_init"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-v810",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "GPL-2.0-or-later OR LicenseRef-RealityBoy-Noncommercial",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "pcfx-jpeg-idct",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": null,
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/mednafen-pcfx/mednafen/pcfx/jrevdct.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/pcfx/jrevdct.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/mednafen-pcfx/mednafen/pcfx/jrevdct.o",
+            "sizeBytes": 1015,
+            "sha256": "107117b6f823beecca23f03a1eb323f4fe87375d979401a7bcd546a071792108",
+            "nonCustomSectionsSha256": "2cc860c3f31ff21e81cde46ebcdd3eba998d1d036f8f570987f2e1f8f4c8cc41"
+          },
+          "linkerOwner": "libretro_emscripten.a(jrevdct.o)",
+          "selectedArchiveMemberMatchesObject": true,
+          "finalFunction": {
+            "offset": 453420,
+            "bodyOffset": 453422,
+            "size": 740,
+            "sha256": "84a62628b1d6cbe393201dd6e652aec147b6ceaa0ba178cbf55d7e8fd06e21a7",
+            "definedFunctionOrdinal": 600,
+            "diagnosticName": "600",
+            "linkerName": "j_rev_dct"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-bcdec",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "MIT AND (MIT OR Unlicense)",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/dds/rdds.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/dds/rdds.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/dds/rdds.o",
+            "sizeBytes": 48783,
+            "sha256": "b663cf0e1082608195402038eca39a6b0fba7cdef662f3c99c5fe4bc413457e2",
+            "nonCustomSectionsSha256": "247c848ca49650798c3ff84875b84c56f95a4b0a7b255b794851119b292f082e"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/dds/rdds.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1702496,
+            "bodyOffset": 1702498,
+            "size": 487,
+            "sha256": "15df19099a460b1c2fc1fa1ef2681d07ee999cee81568040587cbe4753d76d15",
+            "definedFunctionOrdinal": 1929,
+            "diagnosticName": "1929",
+            "linkerName": "rdds_parse_header"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/dds/rdds.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/dds/rdds.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/dds/rdds.o",
+            "sizeBytes": 48783,
+            "sha256": "b663cf0e1082608195402038eca39a6b0fba7cdef662f3c99c5fe4bc413457e2",
+            "nonCustomSectionsSha256": "247c848ca49650798c3ff84875b84c56f95a4b0a7b255b794851119b292f082e"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/dds/rdds.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1690124,
+            "bodyOffset": 1690126,
+            "size": 12370,
+            "sha256": "934f765ab3849e402389793bdee3eec28204f90bc5c6811c74e0b2aad46d3c24",
+            "definedFunctionOrdinal": 1928,
+            "diagnosticName": "1928",
+            "linkerName": "rdds_bcdec_bc6h_float"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-ppmd",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": true,
+      "witnesses": [
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_ppmd7.o",
+            "sizeBytes": 11015,
+            "sha256": "472cfb2708baead0b314f48e96ba022e2195abb84e14add01e8ec7a9ffc95704",
+            "nonCustomSectionsSha256": "f9916ded992d63207c0d9b8f9416d3bb6d2cd7d20e0bfd0f411d129bf0db730c"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_ppmd7.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 357608,
+            "bodyOffset": 357610,
+            "size": 3107,
+            "sha256": "40f9a6caa483d03fba8585b31c15cd3ae6f27847f2af2b7615ff0a489a497606",
+            "definedFunctionOrdinal": 490,
+            "diagnosticName": "490",
+            "linkerName": "rrar_ppmd7_decode_symbol"
+          }
+        },
+        {
+          "compilerInputPaths": ["source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"],
+          "sourceTranslationUnits": [
+            "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/libretro-common/formats/rar/rrar_ppmd7.c"
+          ],
+          "object": {
+            "path": "/private/var/tmp/ecs-custom-verification-2026-11-06/mednafen-pcfx/source/frontend/obj-emscripten/libretro-common/formats/rar/rrar_ppmd7.o",
+            "sizeBytes": 11015,
+            "sha256": "472cfb2708baead0b314f48e96ba022e2195abb84e14add01e8ec7a9ffc95704",
+            "nonCustomSectionsSha256": "f9916ded992d63207c0d9b8f9416d3bb6d2cd7d20e0bfd0f411d129bf0db730c"
+          },
+          "linkerOwner": "obj-emscripten/./libretro-common/formats/rar/rrar_ppmd7.o",
+          "selectedArchiveMemberMatchesObject": false,
+          "finalFunction": {
+            "offset": 1066080,
+            "bodyOffset": 1066082,
+            "size": 935,
+            "sha256": "6a9782f36e816e94fa9d644291779b0e605331db1121d814108923e4841cbd65",
+            "definedFunctionOrdinal": 1302,
+            "diagnosticName": "1302",
+            "linkerName": "ppmd_rescale"
+          }
+        }
+      ],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    },
+    {
+      "componentId": "frontend-bitwise",
+      "build": "org.libretro.mednafen-pcfx",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "hasPositiveFinalFunctionEvidence": false,
+      "witnesses": [],
+      "scope": "Positive witness only. Header dependencies without a source/symbol-specific attribution are excluded. Names duplicated among emitted object owners are excluded. Absent witnesses cannot exclude inlining or static data."
+    }
+  ],
+  "componentScopeIndex": [
+    {
+      "componentId": "frontend",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "libretro-common",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "frontend-xxhash",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-2-Clause",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-snes-ntsc",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-nebuleon-scaler",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-hyllian-2xbr",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later AND GPL-2.0-or-later",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-modtracker",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-rar",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT AND BSD-2-Clause",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-base64",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "Zlib",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-md5",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-OR-BSD-fallback",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "frontend-sha1",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": null,
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "frontend-pdjson",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "atari800",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "freeintv",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "mednafen-pcfx",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "pokemini",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "potator",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "Unlicense",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "prosystem",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "sameduck",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "stella2014",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-only",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "atari800-ntsc",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "positiveFinalParticipationBuilds": ["org.libretro.atari800"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "atari800-ide",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT",
+      "positiveFinalParticipationBuilds": ["org.libretro.atari800"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "atari800-altirra",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "FSFAP",
+      "positiveFinalParticipationBuilds": ["org.libretro.atari800"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "atari800-zlib",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "Zlib",
+      "positiveFinalParticipationBuilds": ["org.libretro.atari800"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "atari800-zlib-compat",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "Zlib",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "atari800-caprice",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "LicenseRef-Caprice32-Noncommercial",
+      "positiveFinalParticipationBuilds": ["org.libretro.atari800"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "atari800-pokey",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "LGPL-2.0-only",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "freeintv-stb",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT OR Unlicense",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "pcfx-libchdr",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "positiveFinalParticipationBuilds": ["org.libretro.mednafen-pcfx"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "pcfx-dr-flac",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "Unlicense OR MIT-0",
+      "positiveFinalParticipationBuilds": ["org.libretro.mednafen-pcfx"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "pcfx-lzma",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-Declaration",
+      "positiveFinalParticipationBuilds": ["org.libretro.mednafen-pcfx"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "pcfx-zstd",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-3-Clause OR GPL-2.0-only",
+      "positiveFinalParticipationBuilds": ["org.libretro.mednafen-pcfx"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "pcfx-zlib",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "Zlib",
+      "positiveFinalParticipationBuilds": ["org.libretro.mednafen-pcfx"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "pcfx-tremor",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "positiveFinalParticipationBuilds": ["org.libretro.mednafen-pcfx"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "pcfx-v810",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later OR LicenseRef-RealityBoy-Noncommercial",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "pcfx-jpeg-idct",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": null,
+      "positiveFinalParticipationBuilds": ["org.libretro.mednafen-pcfx"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "potator-m6502",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "LicenseRef-M65C02-Noncommercial",
+      "positiveFinalParticipationBuilds": ["org.libretro.potator"],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "prosystem-coretone",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "Zlib",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "prosystem-ron-fries",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later AND LGPL-2.0-only",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "stella-rsa-md5",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "RSA-MD",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "frontend-bcdec",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT AND (MIT OR Unlicense)",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-ppmd",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "positiveFinalParticipationBuilds": [
+        "org.libretro.atari800",
+        "org.libretro.mednafen-pcfx",
+        "org.libretro.potator"
+      ],
+      "evidenceState": "positive-final-witness"
+    },
+    {
+      "componentId": "frontend-bitwise",
+      "existingMatrix": "docs/operations/component-notice-audit-2026-11-06.json",
+      "declaredLicenseExpression": "MIT AND LicenseRef-Public-Domain-Declaration",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "fceumm-frontend",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "fceumm-libretro-common",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "MIT",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-frontend",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-libretro-common",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "MIT",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "fceumm-main",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "fceumm-nes-ntsc",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "LGPL-2.1-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "fceumm-pic16c5x",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "fceumm-md5",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-2.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-main",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-uae-m68k",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "GPL-3.0-or-later",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-libchdr",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-3-Clause",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-dr-flac",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "Unlicense OR MIT-0",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-lzma",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "LicenseRef-Public-Domain-Declaration",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-miniz",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "MIT",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    },
+    {
+      "componentId": "jaguar-zstd",
+      "existingMatrix": "docs/operations/legacy-component-notices-2026-11-06.json",
+      "declaredLicenseExpression": "BSD-3-Clause OR GPL-2.0-only",
+      "positiveFinalParticipationBuilds": [],
+      "evidenceState": "compiler/source evidence retained; final participation not resolved by this batch"
+    }
+  ],
+  "findings": [
+    {
+      "id": "caprice-live-and-material-gap",
+      "componentId": "atari800-caprice",
+      "status": "positive-final-contribution; missing binary material prepared for reissue",
+      "finalEvidence": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/atari800/caprice-inline-witness.json",
+        "sizeBytes": 2490,
+        "sha256": "7fa612070dd0897affb9f5cc7324f83ac1d076097b6f0774bd9197a941680c97",
+        "nonCustomSectionsSha256": null
+      },
+      "wrapper": {
+        "offset": 1416471,
+        "bodyOffset": 1416473,
+        "size": 158,
+        "sha256": "9a8eed5b0d2ec2a13031f43be717e20389850e0a8a2815971e3f6cc68cbe5742",
+        "definedFunctionOrdinal": 1778,
+        "diagnosticName": "1778",
+        "linkerName": "retro_vfs_exists"
+      },
+      "explanation": "The selected retro_utils.o emits file_exists; selected retro_vfs.o directly calls it. The surviving final retro_vfs_exists contains the stat fallback and its permission/directory masks384 and16384. The bounded structural correspondence supports incorporated final logic despite inlining removing the original utility function names.",
+      "distributionCondition": "The complete source notice requires reproducing its copyright, conditions and disclaimer in documentation and/or other materials accompanying redistribution. Existing November6 standalone package and release-notice ZIP omit the full notice; source archives preserve it.",
+      "preparedFiles": ["atari800-caprice32.txt"]
+    },
+    {
+      "id": "m6502-live-and-complete-banners",
+      "componentId": "potator-m6502",
+      "status": "positive-final-functions; complete attribution prepared conservatively",
+      "finalFunctions": [
+        {
+          "offset": 1167706,
+          "bodyOffset": 1167708,
+          "size": 257,
+          "sha256": "ae4e0ac3aba23813a8de7d39415517eb44a640e35e8f64f66437801582cf863b",
+          "definedFunctionOrdinal": 1495,
+          "diagnosticName": "1495",
+          "linkerName": "Int6502"
+        },
+        {
+          "offset": 1167965,
+          "bodyOffset": 1167966,
+          "size": 92,
+          "sha256": "2a87959000141ed09bc826dacc3023672fd3d7e412ab1a2b9c5608814afd335f",
+          "definedFunctionOrdinal": 1496,
+          "diagnosticName": "1496",
+          "linkerName": "Reset6502"
+        }
+      ],
+      "explanation": "Selected non-LTO m6502.o matches the compiler output; Reset6502 and Int6502 survive in the exact-runtime-equivalent final function inventory. Earlier machine notice spans captured only individual copyright lines, so three complete banners now preserve all nearby terms.",
+      "distributionCondition": "The banners prohibit commercial distribution and request notification of changes. They do not separately state a binary documentation reproduction condition. Carrying all three complete banners is conservative attribution, not a determination that the broader Unlicense supersedes them.",
+      "preparedFiles": [
+        "potator-m6502-source.txt",
+        "potator-m6502-header.txt",
+        "potator-m6502-tables.txt"
+      ]
+    },
+    {
+      "id": "ijg-final-scope-confirmed",
+      "componentId": "pcfx-jpeg-idct",
+      "status": "final participation confirmed; grant and publication already resolved November6",
+      "finalFunction": {
+        "offset": 453420,
+        "bodyOffset": 453422,
+        "size": 740,
+        "sha256": "84a62628b1d6cbe393201dd6e652aec147b6ceaa0ba178cbf55d7e8fd06e21a7",
+        "definedFunctionOrdinal": 600,
+        "diagnosticName": "600",
+        "linkerName": "j_rev_dct"
+      },
+      "explanation": "j_rev_dct survives with a740-byte final body. Existing IJG README, attribution and modification documentation remain byte-identical; no new recovery or reissue is needed for this component."
+    },
+    {
+      "id": "sha1-compiler-scope-correction",
+      "componentId": "frontend-sha1",
+      "status": "SHA1-family functions present in non-LTO objects but absent from all ten emitted linker CODE maps",
+      "evidence": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/sha1-link-scope.json",
+        "sizeBytes": 59271,
+        "sha256": "737767195ccf6810088e11a48b6b8ffd30a5f0a247481ffa9af0572fa8b56ab8",
+        "nonCustomSectionsSha256": null
+      },
+      "buildCount": 10,
+      "emittedNonSha1Functions": ["djb2_calculate", "sha256_block", "sha256_hash"],
+      "explanation": "Object disassembly retains function-specific relocations: the emitted sha256/djb2 functions reference no SHA1-family functions. Compiler scanning alone overstated binary SHA1 scope. This is bounded function/GC evidence; source archives still contain SHA1 and published FPL notices are retained."
+    },
+    {
+      "id": "atari-static-components",
+      "status": "positive-final-static-data",
+      "evidence": {
+        "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/atari800/retained-data.json",
+        "sizeBytes": 10196,
+        "sha256": "a2c230209218081ce1ed308aa111e25044d7246f87a1f43c5e7b15399b857c71",
+        "nonCustomSectionsSha256": null
+      },
+      "matchingRangeCount": 8,
+      "components": ["atari800-altirra", "atari800-ntsc"],
+      "explanation": "Eight linker-addressed static data intervals match the final WASM active memory image byte-for-byte. Four are Atari NTSC preset records and four are Altirra arrays. This establishes retained incorporated data; it does not claim those source TUs emit surviving functions."
+    }
+  ],
+  "publishedMaterialInventory": {
+    "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/published-package-inventory.json",
+    "sizeBytes": 28241,
+    "sha256": "e50ce02333d111137d09e5ac410b8e6dd9a72b26d5cb6ae21b1298737b1e50cb",
+    "nonCustomSectionsSha256": null
+  },
+  "primarySourceVerification": {
+    "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/primary-sources/verification.json",
+    "sizeBytes": 1196,
+    "sha256": "9b594bdd751629d3cad3b948de9d1cc73fce0c261484e36fb9768d901ba375c3",
+    "nonCustomSectionsSha256": null
+  },
+  "selectedObjectEvidence": {
+    "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/target-object-linkage.json",
+    "sizeBytes": 12704,
+    "sha256": "40016f5a633f36ae054211868f0f05f446fbb1e9c4c9b80f27478377675f0712",
+    "nonCustomSectionsSha256": null
+  },
+  "inheritedNoticeIdentity": {
+    "path": "/var/tmp/ecs-gap-closure-2026-11-07/notices/inherited-notice-identity.json",
+    "sizeBytes": 4895,
+    "sha256": "a2a56089eba1c21c1d394c54fa8ce03240eeaaaec3906b7a1b011c639d72ea8f",
+    "nonCustomSectionsSha256": null
+  },
+  "publicationBoundary": {
+    "observedPublishedRelease": "browser-core-notices-2026.11.06.1",
+    "newMaterialsState": "Prepared in repository and conditional package/source/flat-sidecar helper. Publication is a separate operation and receipt. The prior published receipt remains immutable.",
+    "unchangedInheritedBuilds": 8,
+    "existingFplAndIjgPreserved": true
+  },
+  "remainingGaps": [
+    {
+      "id": "confirmed-other-binary-materials",
+      "scope": [
+        "frontend-xxhash",
+        "frontend-modtracker",
+        "frontend-rar",
+        "frontend-bcdec",
+        "frontend-snes-ntsc",
+        "frontend-nebuleon-scaler",
+        "frontend-hyllian-2xbr"
+      ],
+      "state": "open",
+      "explanation": "Positive final witnesses exist in the three probed builds. Existing standalone package notice files and the consolidated recovered-notices ZIP lack these full component grants/attributions and full GNU license texts. In particular the xxHash, tracker and RAR incorporated BSD banners expressly address binary documentation/materials. These texts remain in or linked from source/audit evidence; a complete standalone binary-material consolidation is still needed. This batch prepares only the specifically identified Caprice/M6502 materials and does not certify all third-party notice coverage."
+    },
+    {
+      "id": "complete-custom-final-scope",
+      "state": "open",
+      "explanation": "The58 existing modern/legacy matrix scopes remain an overlapping source-based inventory. Positive witnesses now narrow several scopes in3 builds; the other7 custom builds and unproven header-only/inlined/name-ambiguous ranges do not have a complete final-origin map. A missing witness is not an absence finding."
+    },
+    {
+      "id": "upstream-nested-components",
+      "state": "open",
+      "explanation": "The50 upstream core rebuild/source pairs are not a complete per-component notice matrix. Exact runtime reconstruction does not by itself resolve all incorporated grants or final-code notice scope."
+    },
+    {
+      "id": "sdk-source-reconstruction",
+      "state": "separately-tracked",
+      "explanation": "Selected SDK members and recipe sources remain covered by prior SDK link evidence. Independent SDK archive reconstruction is owned by the parallel root work; this component report makes no new SDK reconstruction claim."
+    },
+    {
+      "id": "two-upstream-runtime-mismatches",
+      "state": "separately-tracked",
+      "scope": ["VitaQuake2", "FBNeo"],
+      "explanation": "The existing48/50 upstream byte matches and two mismatches are investigated separately. Notice/source evidence must not be presented as resolving those runtime mismatches."
+    }
+  ],
+  "validation": {
+    "regressionLog": "/var/tmp/ecs-gap-closure-2026-11-07/notices/helper-green-final.log",
+    "regressionStatus": "passed14 tests with Node22.22.2; both new behavioral regressions first failed before implementation",
+    "primarySourceFilesHashMatched": 4,
+    "allTenPublishedPackagesFullyRead": true,
+    "noticeReleaseZipMembersFullyRead": 50,
+    "sourceArchiveRereadThisBatch": false,
+    "regressionCommand": "node --test scripts/recovered-notices.test.mjs",
+    "formatCommand": "pnpm exec biome check docs/operations/notice-closure-2026-11-07.json scripts/browser-core/recovered-notices.mjs scripts/recovered-notices.test.mjs"
+  }
+}

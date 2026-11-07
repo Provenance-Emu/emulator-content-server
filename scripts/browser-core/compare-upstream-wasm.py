@@ -953,6 +953,61 @@ def self_test():
                 self.assertEqual(result["differingSpanSample"][0]["start"], 6)
                 self.assertEqual(original.read_bytes(), b"let x=1;")
 
+        def test_cli_output_never_overwrites_existing_files_or_input_aliases(self):
+            import os
+            import subprocess
+
+            for input_name in (
+                "original.wasm", "built.wasm", "original.js", "built.js"
+            ):
+                for alias in ("same-path", "symlink", "hardlink", "existing-output"):
+                    with (
+                        self.subTest(input=input_name, alias=alias),
+                        tempfile.TemporaryDirectory() as directory,
+                    ):
+                        root = Path(directory)
+                        inputs = {
+                            "original.wasm": fixture(),
+                            "built.wasm": fixture(True),
+                            "original.js": b"let x=1;",
+                            "built.js": b"let x=2;",
+                        }
+                        for name, data in inputs.items():
+                            (root / name).write_bytes(data)
+                        source = root / input_name
+                        destination = root / "comparison.json"
+                        if alias == "same-path":
+                            destination = source
+                        elif alias == "symlink":
+                            destination.symlink_to(source)
+                        elif alias == "hardlink":
+                            os.link(source, destination)
+                        else:
+                            destination.write_bytes(b"existing diagnostic evidence")
+                        original_output = destination.read_bytes()
+                        result = subprocess.run(
+                            [
+                                sys.executable,
+                                str(Path(__file__).resolve()),
+                                "--original-wasm",
+                                str(root / "original.wasm"),
+                                "--built-wasm",
+                                str(root / "built.wasm"),
+                                "--original-js",
+                                str(root / "original.js"),
+                                "--built-js",
+                                str(root / "built.js"),
+                                "--output",
+                                str(destination),
+                            ],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                        )
+                        self.assertNotEqual(result.returncode, 0)
+                        for name, data in inputs.items():
+                            self.assertEqual((root / name).read_bytes(), data)
+                        self.assertEqual(destination.read_bytes(), original_output)
+
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(CollectorTests)
     return unittest.TextTestRunner().run(suite).wasSuccessful()
 
@@ -977,7 +1032,8 @@ def main():
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     # Stream compact metadata because full numeric operand inventories can be large.
-    with args.output.open("w") as target:
+    # Exclusive creation also rejects symlink/hardlink aliases of retained inputs.
+    with args.output.open("x") as target:
         json.dump(result, target, separators=(",", ":"))
         target.write("\n")
     print(

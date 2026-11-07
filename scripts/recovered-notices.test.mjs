@@ -329,3 +329,95 @@ test('release artifact sidecars stay flat for the release upload glob', async (t
     assert.deepEqual(await readFile(join(artifacts, file)), bytes);
   await assert.rejects(readFile(join(artifacts, 'notices', 'sha1-fpl.txt')), { code: 'ENOENT' });
 });
+
+test('restrictive incorporated component banners are complete and scoped to their actual cores', async () => {
+  const expected = {
+    atari800: ['atari800-caprice32.txt'],
+    potator: ['potator-m6502-source.txt', 'potator-m6502-header.txt', 'potator-m6502-tables.txt'],
+  };
+  const allNames = Object.values(expected).flat();
+  for (const id of coreIds) {
+    const files = await recoveredNoticeFiles(id);
+    assert.deepEqual(
+      files.filter(({ file }) => allNames.includes(file)).map(({ file }) => file),
+      expected[id] ?? [],
+    );
+    for (const name of expected[id] ?? []) {
+      const file = files.find(({ file }) => file === name);
+      assert.deepEqual(
+        file.bytes,
+        await readFile(new URL(`../docs/operations/notices/${name}`, import.meta.url)),
+      );
+      assert.match(file.bytes.toString(), /Copyright/);
+      assert.match(
+        file.bytes.toString(),
+        id === 'atari800' ? /documentation and\/or other/ : /commercially/,
+      );
+    }
+    const evidence = JSON.parse(
+      files.find(({ file }) => file === 'recovered-notice-evidence.json').bytes,
+    );
+    if (expected[id]) {
+      assert.equal(
+        evidence.componentNoticeReport.file,
+        'docs/operations/notice-closure-2026-11-07.json',
+      );
+      assert.deepEqual(
+        evidence.supplementaryComponents.map(({ retainedFile }) => retainedFile.file),
+        expected[id],
+      );
+      for (const component of evidence.supplementaryComponents) {
+        assert.match(component.source.url, /^https:\/\/raw.githubusercontent.com\/libretro\//);
+        assert.match(component.source.revision, /^[a-f0-9]{40}$/);
+        assert.equal(component.source.span.startByte, 0);
+        assert.ok(component.source.span.endByte > 800);
+      }
+    } else assert.equal(evidence.componentNoticeReport, undefined);
+  }
+});
+
+test('Atari800 and Potator package, corresponding-source and flat artifact exports carry the same full banners', async (t) => {
+  const { addRecoveredArtifactNotices } = await import('./browser-core/recovered-notices.mjs');
+  for (const id of ['atari800', 'potator']) {
+    const { root, directory, resources } = await fixture(t, id);
+    const files = await addRecoveredPlayerNotices(directory, id);
+    const bytes = await packagePlayer(directory, join(root, 'player.ecsplayer'));
+    const parsed = parsePlayerPackage(bytes);
+    const source = join(root, 'source');
+    const artifacts = join(root, 'artifacts');
+    await mkdir(source);
+    await mkdir(artifacts);
+    await addRecoveredSourceNotices(source, id, { packageBytes: bytes });
+    await addRecoveredArtifactNotices(artifacts, id);
+    const banners = files.filter(({ file }) =>
+      file.startsWith(id === 'atari800' ? 'atari800-caprice' : 'potator-m6502'),
+    );
+    assert.equal(banners.length, id === 'atari800' ? 1 : 3);
+    for (const file of banners) {
+      assert.deepEqual(parsed.files.get(file.file), file.bytes);
+      assert.deepEqual(await readFile(join(source, 'notices', file.file)), file.bytes);
+      assert.deepEqual(await readFile(join(artifacts, file.file)), file.bytes);
+    }
+    for (const [file, original] of resources) assert.deepEqual(parsed.files.get(file), original);
+  }
+});
+
+test('the eight inherited November 6 notice sets remain byte-identical', async () => {
+  const published = JSON.parse(
+    await readFile(
+      new URL('../docs/operations/published-notice-reissue-2026-11-06.json', import.meta.url),
+    ),
+  );
+  let checked = 0;
+  for (const profile of published.profiles) {
+    const id = profile.id.slice('org.libretro.'.length);
+    if (id === 'atari800' || id === 'potator') continue;
+    const files = await recoveredNoticeFiles(id);
+    assert.deepEqual(
+      files.map(({ file, sha256, sizeBytes }) => ({ file, sha256, sizeBytes })),
+      profile.notices,
+    );
+    checked++;
+  }
+  assert.equal(checked, 8);
+});

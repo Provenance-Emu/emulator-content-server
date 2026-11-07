@@ -514,7 +514,7 @@ def self_test(sdk=None):
                     "wasm-ld", driver, {}, lambda args, env: calls.append(args)
                 )
                 self.assertEqual(calls, [[str(driver), "--version"]])
-                self.assertEqual(record["resolvedPath"], str(target))
+                self.assertEqual(record["resolvedPath"], str(target.resolve()))
                 self.assertEqual(record["sha256"], file_pin(target)["sha256"])
 
         def test_bsd_long_names(self):

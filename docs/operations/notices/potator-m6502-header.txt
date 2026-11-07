@@ -1,0 +1,13 @@
+/** M6502: portable 6502 emulator ****************************/
+/**                                                         **/
+/**                         M6502.h                         **/
+/**                                                         **/
+/** This file contains declarations relevant to emulation   **/
+/** of 6502 CPU.                                            **/
+/**                                                         **/
+/** Copyright (C) Marat Fayzullin 1996                      **/
+/**               Alex Krasivsky  1996                      **/
+/**     You are not allowed to distribute this software     **/
+/**     commercially. Please, notify me, if you make any    **/
+/**     changes to this file.                               **/
+/*************************************************************/

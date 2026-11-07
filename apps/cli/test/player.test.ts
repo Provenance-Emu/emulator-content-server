@@ -64,25 +64,36 @@ test('serve enables playback only for the explicit player flag or environment', 
         'none',
         ...(mode === 'flag' ? ['--player-dir', playerDir] : []),
       ],
-      { env, stdio: 'ignore' },
+      { env, stdio: ['ignore', 'pipe', 'ignore'] },
     );
+    const closed = once(child, 'close');
+    let startupOutput = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      startupOutput = `${startupOutput}${chunk.toString()}`.slice(-512);
+    });
     try {
       let enabled: boolean | undefined;
       for (let retry = 0; retry < 100; retry++) {
-        if (child.exitCode !== null) throw new Error('Fixture server exited before listening');
+        if (child.exitCode !== null || child.signalCode !== null)
+          throw new Error('Fixture server exited before listening');
         try {
           const response = await fetch(`http://127.0.0.1:${port}/api/v1/capabilities`);
           enabled = ((await response.json()) as { features: { webPlayback: boolean } }).features
             .webPlayback;
-          break;
+          // HTTP can listen before the CLI installs its graceful shutdown handlers.
+          if (startupOutput.includes('listening on http://')) break;
         } catch {
-          await delay(100);
+          /* Startup is asynchronous. */
         }
+        await delay(100);
       }
+      assert.ok(startupOutput.includes('listening on http://'), 'Fixture CLI must finish startup');
       assert.equal(enabled, mode !== 'off');
     } finally {
-      child.kill('SIGTERM');
-      if (child.exitCode === null) await once(child, 'exit');
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+      const [code, signal] = await closed;
+      assert.equal(code, 0, 'Fixture server must finish graceful shutdown');
+      assert.equal(signal, null, 'Fixture server must handle SIGTERM before cleanup');
       await rm(dir, { recursive: true, force: true });
     }
   }
@@ -168,16 +179,21 @@ test('player plugins flag and environment install a live portable player catalog
         'none',
         ...(mode === 'flag' ? ['--player-plugins', registry] : []),
       ],
-      { env, stdio: 'ignore' },
+      { env, stdio: ['ignore', 'pipe', 'ignore'] },
     );
+    const closed = once(child, 'close');
+    let startupOutput = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      startupOutput = `${startupOutput}${chunk.toString()}`.slice(-512);
+    });
     try {
       let ready = false;
       for (let retry = 0; retry < 100; retry++) {
-        if (child.exitCode !== null)
+        if (child.exitCode !== null || child.signalCode !== null)
           throw new Error('Fixture plugin server exited before listening');
         try {
           const response = await fetch(`http://127.0.0.1:${port}/api/v1/capabilities`);
-          if (response.ok) {
+          if (response.ok && startupOutput.includes('listening on http://')) {
             ready = true;
             break;
           }
@@ -206,8 +222,10 @@ test('player plugins flag and environment install a live portable player catalog
       assert.equal(catalog?.items[0]?.id, 'org.example.player');
       assert.equal(catalog?.defaultProfileId, 'org.example.player');
     } finally {
-      child.kill('SIGTERM');
-      if (child.exitCode === null) await once(child, 'exit');
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+      const [code, signal] = await closed;
+      assert.equal(code, 0, 'Fixture server must finish graceful shutdown');
+      assert.equal(signal, null, 'Fixture server must handle SIGTERM before cleanup');
       await rm(dir, { recursive: true, force: true });
     }
   }

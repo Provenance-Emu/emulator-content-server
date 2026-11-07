@@ -34,6 +34,18 @@ export async function recoveredNoticeFiles(id) {
     const ijg = report.components.find((component) => component.id === 'pcfx-jpeg-idct');
     components.push({ component: ijg, retained: 'ijg-v4-README.txt', expected: ijg.readme });
   }
+  let componentNoticeReport;
+  let supplementaryComponents = [];
+  if (id === 'atari800' || id === 'potator') {
+    const file = 'docs/operations/notice-closure-2026-11-07.json';
+    const bytes = await readFile(new URL(`../../${file}`, import.meta.url));
+    componentNoticeReport = { file, sha256: digest(bytes) };
+    supplementaryComponents = JSON.parse(bytes).materials.filter(
+      (material) => material.coreId === id,
+    );
+    if (supplementaryComponents.length !== (id === 'atari800' ? 1 : 3))
+      throw new Error('Incorporated component notice evidence is incomplete');
+  }
   const files = [];
   for (const { retained, expected } of components) {
     const file = noticeFile(
@@ -42,6 +54,15 @@ export async function recoveredNoticeFiles(id) {
     );
     if (file.sha256 !== expected.sha256 || file.sizeBytes !== expected.sizeBytes)
       throw new Error(`Retained notice does not match recovery evidence: ${retained}`);
+    files.push(file);
+  }
+  for (const material of supplementaryComponents) {
+    const file = noticeFile(
+      material.file,
+      await readFile(new URL(`../../docs/operations/notices/${material.file}`, import.meta.url)),
+    );
+    if (file.sha256 !== material.sha256 || file.sizeBytes !== material.sizeBytes)
+      throw new Error(`Retained notice does not match component evidence: ${material.file}`);
     files.push(file);
   }
   let scope =
@@ -71,6 +92,15 @@ export async function recoveredNoticeFiles(id) {
       'ijg-modifications.txt records the compared Mednafen adaptation and its modified final scale.\n\n' +
       'This software is based in part on the work of the Independent JPEG Group.\n';
   }
+  if (id === 'atari800')
+    scope +=
+      '\nAtari800 libretro/retro_utils.c incorporates Caprice32-derived utilities.\n' +
+      'atari800-caprice32.txt preserves the complete copyright, conditions and disclaimer, including the documentation/materials reproduction condition.\n';
+  if (id === 'potator')
+    scope +=
+      '\nPotator common/m6502 incorporates M65C02 code.\n' +
+      'potator-m6502-source.txt, potator-m6502-header.txt and potator-m6502-tables.txt preserve the complete source banners, including noncommercial distribution terms and the modification notification request.\n' +
+      'These full banners supplement the source attribution; they do not resolve the restrictive terms through a broader project license.\n';
   scope +=
     '\nThese supplemental materials accompany the original frontend/core notices and corresponding source.\n' +
     'recovered-notice-evidence.json identifies their retained bytes and recovery provenance.\n';
@@ -83,6 +113,20 @@ export async function recoveredNoticeFiles(id) {
       file: 'docs/operations/sha1-ijg-resolution-2026-11-06.json',
       sha256: digest(reportBytes),
     },
+    ...(componentNoticeReport
+      ? {
+          componentNoticeReport,
+          supplementaryComponents: supplementaryComponents.map((material) => ({
+            id: material.componentId,
+            retainedFile: {
+              file: material.file,
+              sha256: material.sha256,
+              sizeBytes: material.sizeBytes,
+            },
+            source: material.source,
+          })),
+        }
+      : {}),
     components: components.map(({ component, retained, expected }) => ({
       id: component.id,
       grantNameAsPublished: component.grantNameAsPublished,

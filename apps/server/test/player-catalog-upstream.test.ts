@@ -51,7 +51,7 @@ test('new source-built systems have one installable immutable package each', () 
     assert.deepEqual(entry.systems, [`com.provenance.${system}`]);
     assert.equal(
       entry.url,
-      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/${id}.ecsplayer`,
+      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-${id === 'atari800' || id === 'potator' ? '2026.11.07.1' : '2026.11.06.1'}/${id}.ecsplayer`,
     );
     assert.match(entry.sha256 ?? '', /^[a-f0-9]{64}$/);
     assert.ok((entry.downloadBytes ?? 0) > 0);
@@ -71,7 +71,7 @@ test('source-built Atari and Intellivision cores are installable from immutable 
     assert.deepEqual(entry.systems, [`com.provenance.${system}`]);
     assert.equal(
       entry.url,
-      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-2026.11.06.1/${id}.ecsplayer`,
+      `https://github.com/Provenance-Emu/emulator-content-server/releases/download/browser-core-notices-${id === 'atari800' || id === 'potator' ? '2026.11.07.1' : '2026.11.06.1'}/${id}.ecsplayer`,
     );
     assert.match(entry.sha256 ?? '', /^[a-f0-9]{64}$/);
     assert.ok((entry.downloadBytes ?? 0) > 0);
