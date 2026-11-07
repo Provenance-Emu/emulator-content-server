@@ -84,6 +84,32 @@ try {
         })
       : execFileSync(join(root, 'ecs'), ['--help'], { cwd: temporary, env, encoding: 'utf8' });
   assert.match(help, /ecs serve/);
+  const pluginsHelp =
+    process.platform === 'win32'
+      ? execFileSync('cmd.exe', ['/d', '/s', '/c', 'ecs-plugins.cmd --help'], {
+          cwd: root,
+          env,
+          encoding: 'utf8',
+        })
+      : execFileSync(join(root, 'ecs-plugins'), ['--help'], {
+          cwd: temporary,
+          env,
+          encoding: 'utf8',
+        });
+  assert.match(pluginsHelp, /ecs-plugins workflows install-defaults/);
+  const workflowState = await mkdtemp(join(temporary, 'workflow-host-'));
+  const workflow = execFileSync(
+    node,
+    [
+      join(root, 'plugins/dist/src/main.js'),
+      'workflows',
+      'install-defaults',
+      '--state',
+      workflowState,
+    ],
+    { cwd: temporary, env, encoding: 'utf8' },
+  );
+  assert.match(workflow, /^org\.ecs\.library-cleanup\t.*\tactive/m);
   const reserve = createServer();
   reserve.listen(0, '127.0.0.1');
   await once(reserve, 'listening');

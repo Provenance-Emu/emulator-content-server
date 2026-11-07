@@ -14,6 +14,12 @@ On first open, the app checks for a verified local service. Choose **Set up this
 
 To use a server on another computer, enter its URL and select **Connect**. Use **Status and settings → Servers** to switch between saved servers. The local service controls apply to this Mac.
 
+Choose **Install CLI Tools** from the menu bar to use `ecs` and `ecs-plugins`
+in Terminal. It installs per-user commands in `~/.local/bin` and adds that
+folder to the standard zsh or Bash profile when it can. Open a new Terminal
+window to use the commands. See the [workflow host guide](ai-cleanup.md#run-the-native-host)
+for `ecs-plugins workflows install-defaults`.
+
 ## Windows
 
 Run the `.msi` installer, then open Emulation Server. Select your server address and connect. This early installer is unsigned. Service installation remains a separate CLI step. Folder selection uses the server's chooser.

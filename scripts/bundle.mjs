@@ -23,8 +23,7 @@ async function detachBuildFiles(directory) {
   }
 }
 
-/** Deploy the already built production graph and its first-party web interface. */
-export async function bundle(destination, stdio = 'inherit', { portable = false } = {}) {
+export async function deployPackage(filter, destination, stdio, { portable = false } = {}) {
   const target = resolve(destination);
   const existing = await lstat(target).catch((error) => {
     if (error.code === 'ENOENT') return null;
@@ -33,8 +32,6 @@ export async function bundle(destination, stdio = 'inherit', { portable = false 
   if (existing && (!existing.isDirectory() || (await readdir(target)).length > 0)) {
     throw new Error('Bundle destination must be an absent or empty directory, never a symlink');
   }
-  const web = resolve(root, 'apps/web/dist');
-  await stat(resolve(web, 'index.html'));
   // Windows cannot execute pnpm.cmd directly without a shell. Invoke pnpm's JS entrypoint.
   const pnpmScript = process.env.npm_execpath;
   if (process.platform === 'win32' && !pnpmScript) {
@@ -45,7 +42,7 @@ export async function bundle(destination, stdio = 'inherit', { portable = false 
     [
       ...(pnpmScript ? [pnpmScript] : []),
       '--filter',
-      '@provenance-content/server',
+      filter,
       'deploy',
       '--prod',
       ...(portable ? ['--config.node-linker=hoisted'] : []),
@@ -58,6 +55,14 @@ export async function bundle(destination, stdio = 'inherit', { portable = false 
   if (deployed.error) throw deployed.error;
   if (deployed.status !== 0) throw new Error(`Production deployment failed (${deployed.status})`);
   await detachBuildFiles(target);
+  return target;
+}
+
+/** Deploy the already built production graph and its first-party web interface. */
+export async function bundle(destination, stdio = 'inherit', options = {}) {
+  const web = resolve(root, 'apps/web/dist');
+  await stat(resolve(web, 'index.html'));
+  const target = await deployPackage('@provenance-content/server', destination, stdio, options);
   await cp(web, resolve(target, 'ui'), { recursive: true });
   await cp(resolve(root, 'LICENSE'), resolve(target, 'LICENSE'));
   await cp(resolve(root, 'docs/operations/first-version.md'), resolve(target, 'FIRST-VERSION.md'));

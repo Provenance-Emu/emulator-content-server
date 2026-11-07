@@ -4,6 +4,7 @@ fn main() {
             "service_status",
             "service_start",
             "service_stop",
+            "install_cli_tools",
             "managed_endpoint",
             "install_local_server",
             "reveal_local_setup_code",

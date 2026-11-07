@@ -1,6 +1,7 @@
 // Prevents a console window from opening alongside the app on Windows.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod cli_tools;
 mod downloads;
 mod local_endpoint;
 mod navigation;
@@ -177,6 +178,18 @@ async fn service_stop(window: tauri::WebviewWindow) -> Result<String, String> {
     service_command(service::Action::Stop).await
 }
 
+#[tauri::command]
+async fn install_cli_tools(window: tauri::WebviewWindow) -> Result<bool, String> {
+    require_status_window(&window)?;
+    let home = window
+        .path()
+        .home_dir()
+        .map_err(|_| "Your home folder is unavailable.")?;
+    tauri::async_runtime::spawn_blocking(move || cli_tools::install(&home))
+        .await
+        .map_err(|_| "CLI tools installation could not finish.".to_string())?
+}
+
 fn require_status_window(window: &tauri::WebviewWindow) -> Result<(), String> {
     if window
         .url()
@@ -296,6 +309,7 @@ fn main() {
             service_status,
             service_start,
             service_stop,
+            install_cli_tools,
             managed_endpoint,
             install_local_server,
             reveal_local_setup_code,

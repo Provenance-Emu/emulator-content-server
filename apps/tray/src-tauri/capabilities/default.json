@@ -25,6 +25,7 @@
     "process:allow-exit",
     "allow-service-status",
     "allow-service-start",
-    "allow-service-stop"
+    "allow-service-stop",
+    "allow-install-cli-tools"
   ]
 }

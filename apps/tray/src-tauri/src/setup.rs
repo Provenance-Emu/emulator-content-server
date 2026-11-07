@@ -82,7 +82,7 @@ pub fn available() -> bool {
 }
 
 pub fn install(home: &std::path::Path) -> Result<String, String> {
-    use std::{fs, path::Path, time::Duration};
+    use std::{fs, time::Duration};
 
     if !available() || !home.is_absolute() {
         return Err("Local setup is available on Apple Silicon Macs.".into());
@@ -102,60 +102,11 @@ pub fn install(home: &std::path::Path) -> Result<String, String> {
     let launchers = support.join("launchers");
     fs::create_dir_all(&launchers)
         .map_err(|_| "Could not create the server installation folder.")?;
-    let scratch = launchers.join(format!(".setup-{}", uuid::Uuid::new_v4()));
-    fs::create_dir(&scratch).map_err(|_| "Could not stage the server download.")?;
-    struct RemoveScratch<'a>(&'a Path);
-    impl Drop for RemoveScratch<'_> {
-        fn drop(&mut self) {
-            let _ = fs::remove_dir_all(self.0);
-        }
-    }
-    let _cleanup = RemoveScratch(&scratch);
-    let release_file = scratch.join("release.json");
-    let manifest_file = scratch.join("update.json");
-    fetch(RELEASE, &release_file, 1024 * 1024)?;
-    fetch(
-        &format!("{DOWNLOAD}/ecs-update-macos-arm64.json"),
-        &manifest_file,
-        4096,
-    )?;
-    let release: Release = json(&release_file, 1024 * 1024)?;
-    let manifest: Manifest = json(&manifest_file, 4096)?;
-    let bytes = verify_release(&release, &manifest)?;
-
-    let archive = scratch.join(ARCHIVE);
-    fetch(&format!("{DOWNLOAD}/{ARCHIVE}"), &archive, bytes)?;
-    let checksum = run("/usr/bin/shasum", &["-a", "256", path(&archive)?], 90)?;
-    if fs::metadata(&archive)
-        .map_err(|_| "Could not inspect the server archive.")?
-        .len()
-        != bytes
-        || checksum.split_whitespace().next() != Some(&manifest.sha256)
-    {
-        return Err("The downloaded server archive did not match its checksum.".into());
-    }
-    run(
-        "/usr/bin/tar",
-        &["-xzf", path(&archive)?, "-C", path(&scratch)?],
-        120,
-    )?;
-    let extracted = scratch.join(ARCHIVE_ROOT);
-    let runtime_file = "runtime/node";
-    let cli_file = "server/dist/src/supervise.js";
-    if !extracted.symlink_metadata().is_ok_and(|m| m.is_dir())
-        || ![runtime_file, cli_file].iter().all(|file| {
-            extracted
-                .join(file)
-                .symlink_metadata()
-                .is_ok_and(|m| m.is_file())
-        })
-        || json::<Build>(&extracted.join("BUILD.json"), 4096)? != manifest.build
-    {
-        return Err("The extracted server build did not match the verified download.".into());
-    }
+    let download = Download::new(&launchers)?;
+    let (extracted, _) = download.extract()?;
     let launcher = launchers.join(format!("desktop-nightly-{}", uuid::Uuid::new_v4()));
-    let runtime = launcher.join(runtime_file);
-    let cli = launcher.join(cli_file);
+    let runtime = launcher.join("runtime/node");
+    let cli = launcher.join("server/dist/src/supervise.js");
     let data = support.join("data");
     let args = [
         path(&cli)?,
@@ -190,6 +141,70 @@ pub fn install(home: &std::path::Path) -> Result<String, String> {
         return Err("The local service returned an invalid setup code.".into());
     }
     Ok(setup.setup_code)
+}
+
+pub(crate) struct Download(std::path::PathBuf);
+
+impl Download {
+    pub(crate) fn new(parent: &std::path::Path) -> Result<Self, String> {
+        let scratch = parent.join(format!(".download-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&scratch).map_err(|_| "Could not stage the server download.")?;
+        Ok(Self(scratch))
+    }
+
+    pub(crate) fn extract(&self) -> Result<(std::path::PathBuf, String), String> {
+        use std::fs;
+        let scratch = &self.0;
+        let release_file = scratch.join("release.json");
+        let manifest_file = scratch.join("update.json");
+        fetch(RELEASE, &release_file, 1024 * 1024)?;
+        fetch(
+            &format!("{DOWNLOAD}/ecs-update-macos-arm64.json"),
+            &manifest_file,
+            4096,
+        )?;
+        let release: Release = json(&release_file, 1024 * 1024)?;
+        let manifest: Manifest = json(&manifest_file, 4096)?;
+        let bytes = verify_release(&release, &manifest)?;
+
+        let archive = scratch.join(ARCHIVE);
+        fetch(&format!("{DOWNLOAD}/{ARCHIVE}"), &archive, bytes)?;
+        let checksum = run("/usr/bin/shasum", &["-a", "256", path(&archive)?], 90)?;
+        if fs::metadata(&archive)
+            .map_err(|_| "Could not inspect the server archive.")?
+            .len()
+            != bytes
+            || checksum.split_whitespace().next() != Some(&manifest.sha256)
+        {
+            return Err("The downloaded server archive did not match its checksum.".into());
+        }
+        run(
+            "/usr/bin/tar",
+            &["-xzf", path(&archive)?, "-C", path(scratch)?],
+            120,
+        )?;
+        let extracted = scratch.join(ARCHIVE_ROOT);
+        if !extracted.symlink_metadata().is_ok_and(|m| m.is_dir())
+            || !["runtime/node", "server/dist/src/supervise.js"]
+                .iter()
+                .all(|file| {
+                    extracted
+                        .join(file)
+                        .symlink_metadata()
+                        .is_ok_and(|m| m.is_file())
+                })
+            || json::<Build>(&extracted.join("BUILD.json"), 4096)? != manifest.build
+        {
+            return Err("The extracted server build did not match the verified download.".into());
+        }
+        Ok((extracted, manifest.sha256))
+    }
+}
+
+impl Drop for Download {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
 }
 
 fn path(path: &std::path::Path) -> Result<&str, String> {
