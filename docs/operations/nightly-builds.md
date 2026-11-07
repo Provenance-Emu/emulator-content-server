@@ -38,7 +38,7 @@ Download `SHA256SUMS.txt` from the same release and verify the file before extra
 
 ## Start the server
 
-On Apple Silicon Macs, the **Desktop app** offers **Set up this Mac** to download and configure the server. The steps below are for the standalone server archive and headless installations.
+On Apple Silicon Macs, the desktop app opens a setup guide on first launch. Choose **Set up this computer** to download and configure the server, or use an existing local installation. The steps below are for the standalone server archive and headless installations.
 
 On macOS/Linux, extract your platform archive in Terminal (replace the filename for your system):
 
@@ -60,7 +60,9 @@ Open <http://127.0.0.1:8473/ui/>. The first run prints a one-time setup token; e
 
 ## Desktop app
 
-On macOS, open the DMG and drag Emulation Server to Applications. Open the app to set up this Mac or connect to an existing server. On Windows, run the MSI. On Linux, install the DEB with your package manager or make the AppImage executable and run it on a tray-capable desktop. On Windows and Linux, start the standalone server separately or connect to an existing server.
+On macOS, open the DMG and drag Emulation Server to Applications. Open the app and follow the setup guide. Choose **Set up this computer** for a local library or **Connect to another computer** for an existing server. The guide covers your account, library, games, suggested emulators and optional library helpers. **Finish later** saves your progress. Reopen **Setup guide** from the sidebar whenever you need it.
+
+On Windows, run the MSI. On Linux, install the DEB with your package manager or make the AppImage executable and run it on a tray-capable desktop. On Windows and Linux, start the standalone server separately or connect to an existing server.
 
 Linux and Windows nightly desktop installers are unsigned. When macOS signing is enabled, the macOS desktop installer is Developer ID signed and Apple notarized from the same commit as the server archives. Repositories with signing disabled retain their last notarized DMG and can download the unsigned desktop build as a workflow test artifact.
 
