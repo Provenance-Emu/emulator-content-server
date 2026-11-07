@@ -68,6 +68,7 @@ test('each platform registration starts at login and carries no credential', asy
       if (platform === 'darwin') {
         assert.match(text, /<key>RunAtLoad<\/key>\s*<true\/>/);
         assert.match(text, /<key>KeepAlive<\/key>\s*<true\/>/);
+        assert.match(text, /<key>ProcessType<\/key>\s*<string>Interactive<\/string>/);
         assert.doesNotMatch(text, /LaunchDaemons/);
       }
       if (platform === 'linux') {

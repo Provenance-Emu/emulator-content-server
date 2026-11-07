@@ -306,6 +306,8 @@ test('a status login finishing after profile replacement cannot restore A into e
 test('desktop connection accepts computer names and UI URLs without accepting credentials or protocols', () => {
   assert.equal(connectionAddress(' Studio.local '), 'http://studio.local:8473');
   assert.equal(connectionAddress('192.168.1.20:9000'), 'http://192.168.1.20:9000');
+  assert.equal(connectionAddress('library.local:80/ui/'), 'http://library.local');
+  assert.equal(connectionAddress('[::1]:80'), 'http://[::1]');
   assert.equal(connectionAddress('https://library.example/ui/'), 'https://library.example');
   assert.equal(connectionAddress('http://localhost:8473'), 'http://localhost:8473');
   for (const value of [

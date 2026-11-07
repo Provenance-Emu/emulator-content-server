@@ -47,7 +47,8 @@ export function connectionAddress(value: string): string {
   try {
     const explicit = /^[a-z][a-z0-9+.-]*:\/\//i.test(text);
     const url = new URL(explicit ? text : `http://${text}`);
-    if (!explicit && !url.port) url.port = '8473';
+    const explicitPort = /:\d+(?=[/?#]|$)/.test(text);
+    if (!explicit && !url.port && !explicitPort) url.port = '8473';
     if (url.pathname === '/ui/' || url.pathname === '/ui') url.pathname = '/';
     return canonicalServerOrigin(url.href);
   } catch {
