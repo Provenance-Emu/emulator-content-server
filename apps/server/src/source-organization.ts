@@ -4,7 +4,7 @@ import { basename, extname } from 'node:path';
 import { type Actor, DomainError, type SourceFileRecord } from '@ecs/domain';
 import { PROVENANCE_SYSTEMS } from '@ecs/protocol';
 import {
-  applyOrganization,
+  applyOrganizationGroup,
   inspectOrganizationFile,
   type OrganizationPlan,
   portableSegment,
@@ -15,13 +15,14 @@ import {
 import type { FastifyInstance } from 'fastify';
 import type { ServerContext } from './context.js';
 import { jsonObject, requiredString, requireOwner } from './http.js';
+import {
+  organizationFiles,
+  organizationPaths,
+  validateOrganizationGroups,
+} from './organization-files.js';
 import { reserveContentRoots } from './root-mutations.js';
 import { localSource } from './source-groups.js';
 
-// Deliberately excludes archives, descriptors, tracks and disc images. A future
-// grouped operation must preview every companion before supporting those files.
-const RAW_ROM =
-  /\.(nes|sfc|smc|n64|z64|v64|gba|gb|gbc|nds|sms|gg|md|gen|a26|a52|a78|lnx|j64|jag|pce|ws|wsc|ngp|ngc|vb)$/i;
 const TTL = 10 * 60 * 1000;
 interface SavedPlan {
   ownerId: string;
@@ -30,6 +31,7 @@ interface SavedPlan {
   snapshot: string;
   expiresAt: number;
   operation: OrganizationPlan;
+  members: { sourceId: string; operation: OrganizationPlan }[];
 }
 type Mode = OrganizationPlan['mode'];
 interface FolderPlan {
@@ -72,16 +74,6 @@ function destination(source: SourceFileRecord): string {
     portableSegment(source.title ?? basename(source.displayName, extname(source.displayName))),
     fileName,
   ].join('/');
-}
-
-function standaloneRom(source: SourceFileRecord): boolean {
-  return (
-    source.kind === 'rom' &&
-    RAW_ROM.test(source.displayName) &&
-    !source.groupAnchor &&
-    !source.groupError &&
-    !source.groupMembers?.length
-  );
 }
 
 function organizationDraft(input: unknown) {
@@ -142,23 +134,12 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
   const plans = new Map<string, SavedPlan>();
   const folderPlans = new Map<string, FolderPlan>();
   const busy = new Set<string>();
+  const group = (source: SourceFileRecord) =>
+    organizationFiles(source, catalog.listSources(source.rootId));
   const snapshot = (source: SourceFileRecord) =>
-    JSON.stringify({ source, matches: catalog.sourceMatches(source.id) });
-  const eligible = (source: SourceFileRecord) => {
-    if (
-      !standaloneRom(source) ||
-      catalog
-        .listSources(source.rootId)
-        .some(
-          (other) => other.id !== source.id && other.groupMembers?.includes(source.relativePath),
-        )
-    )
-      throw new DomainError(
-        'organization-unsupported',
-        409,
-        'Only a single local cartridge ROM can be organized. Disc sets, archives, descriptors and companion files are not supported.',
-      );
-  };
+    JSON.stringify(
+      group(source).map((file) => ({ file, matches: catalog.sourceMatches(file.id) })),
+    );
   async function prepare(
     actor: Owner,
     sourceId: string,
@@ -174,7 +155,9 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
     busy.add(sourceId);
     try {
       const local = await localSource(context, actor, sourceId);
-      eligible(local.source);
+      const indexed = catalog.listSources(local.root.id);
+      const files = organizationFiles(local.source, indexed);
+      await validateOrganizationGroups(local.root.path, files, indexed);
       const target = catalog.getContentRoot(targetRootId);
       if (!target) throw new DomainError('not-found', 404, 'Target folder not found');
       if (target.libraryId !== local.root.libraryId)
@@ -196,27 +179,37 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
       const original = catalog.getSource(sourceId);
       if (!original) stale();
       const before = snapshot(original);
-      const targetRelativePath = destination(original);
-      const operation = await previewOrganization(
-        local.root.path,
-        original.relativePath,
-        target.path,
-        targetRelativePath,
-        mode,
-      );
-      const scanned = catalog.sourceInspectionIdentity(sourceId);
-      if (
-        !scanned?.filesystemIdentity ||
-        scanned.mtimeMs === null ||
-        scanned.filesystemIdentity !== operation.file.filesystemIdentity ||
-        scanned.size !== operation.file.size ||
-        scanned.mtimeMs !== operation.file.mtimeMs
-      )
-        throw new DomainError(
-          'organization-conflict',
-          409,
-          'Source changed since scanning. Rescan its folder before organizing.',
+      const paths = organizationPaths(original, files, destination);
+      const members: SavedPlan['members'] = [];
+      for (const file of files) {
+        await localSource(context, actor, file.id);
+        const targetRelativePath = paths.get(file.id);
+        if (!targetRelativePath) stale();
+        const operation = await previewOrganization(
+          local.root.path,
+          file.relativePath,
+          target.path,
+          targetRelativePath,
+          mode,
         );
+        const scanned = catalog.sourceInspectionIdentity(file.id);
+        if (
+          !scanned?.filesystemIdentity ||
+          scanned.mtimeMs === null ||
+          scanned.filesystemIdentity !== operation.file.filesystemIdentity ||
+          scanned.size !== operation.file.size ||
+          scanned.mtimeMs !== operation.file.mtimeMs
+        )
+          throw new DomainError(
+            'organization-conflict',
+            409,
+            'Source changed since scanning. Rescan its folder before organizing.',
+          );
+        members.push({ sourceId: file.id, operation });
+      }
+      const operation = members.find((member) => member.sourceId === sourceId)?.operation;
+      if (!operation) stale();
+      const targetRelativePath = operation.targetRelativePath;
       const current = catalog.getSource(sourceId);
       if (!current || snapshot(current) !== before) stale();
       const now = Date.now();
@@ -238,6 +231,7 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
         snapshot: before,
         expiresAt,
         operation,
+        members,
       });
       return {
         planId,
@@ -248,6 +242,10 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
         sourceRelativePath: original.relativePath,
         targetRelativePath,
         expiresAt: new Date(expiresAt).toISOString(),
+        files: members.map(({ operation }) => ({
+          sourceRelativePath: operation.sourceRelativePath,
+          targetRelativePath: operation.targetRelativePath,
+        })),
       };
     } finally {
       busy.delete(sourceId);
@@ -258,7 +256,7 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
     sourceId: string,
     planId: string,
     validate?: () => void,
-    organizationCopy?: { sourceRootId: string; originalIdentity: string; sha256: string },
+    organizationCopy = false,
   ) {
     const plan = plans.get(planId);
     if (
@@ -276,7 +274,12 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
     try {
       const source = catalog.getSource(sourceId);
       if (!source || snapshot(source) !== plan.snapshot) stale();
-      eligible(source);
+      const files = group(source);
+      if (
+        JSON.stringify(files.map((file) => file.id)) !==
+        JSON.stringify(plan.members.map((member) => member.sourceId))
+      )
+        stale();
       const root = catalog.getContentRoot(source.rootId);
       const target = catalog.getContentRoot(plan.targetRootId);
       if (
@@ -289,7 +292,8 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
         stale();
       releaseRoots = reserveContentRoots(catalog, [root.id, target.id]);
       try {
-        await localSource(context, actor, sourceId);
+        for (const file of files) await localSource(context, actor, file.id);
+        await validateOrganizationGroups(root.path, files, catalog.listSources(root.id));
       } catch {
         stale();
       }
@@ -306,35 +310,76 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
       if (
         catalog
           .listSources(target.id)
-          .some((file) => file.relativePath === plan.operation.targetRelativePath)
+          .some((file) =>
+            plan.members.some(
+              (member) => member.operation.targetRelativePath === file.relativePath,
+            ),
+          )
       )
         stale();
       validate?.();
-      const operation = await applyOrganization(plan.operation);
+      const operation = await applyOrganizationGroup(
+        plan.members.map((member) => member.operation),
+      );
       let saved: SourceFileRecord;
       try {
         // Async file work gives other requests an opportunity to change metadata.
         validate?.();
         const current = catalog.getSource(sourceId);
         if (!current || snapshot(current) !== plan.snapshot) stale();
-        const file = {
-          ...source,
-          ...operation.file,
-          relativePath: plan.operation.targetRelativePath,
-          displayName: basename(plan.operation.targetRelativePath),
-          availability: 'local' as const,
-        };
-        const input = {
-          sourceId,
-          targetRootId: target.id,
-          actorId: actor.userId,
-          file,
-          ...(organizationCopy ? { organizationCopy } : {}),
-        };
-        saved =
-          plan.operation.mode === 'move'
-            ? catalog.relocateSource(input)
-            : catalog.cloneSource(input);
+        const paths = new Map(
+          plan.members.map((member) => [
+            member.operation.sourceRelativePath,
+            member.operation.targetRelativePath,
+          ]),
+        );
+        const inputs = plan.members.map((member, index) => {
+          const source = files.find((file) => file.id === member.sourceId);
+          const placed = operation.files[index];
+          if (!source || !placed) stale();
+          const path = (value: string) => {
+            const target = paths.get(value);
+            if (!target) stale();
+            return target;
+          };
+          return {
+            sourceId: source.id,
+            targetRootId: target.id,
+            actorId: actor.userId,
+            file: {
+              ...source,
+              ...placed,
+              relativePath: member.operation.targetRelativePath,
+              displayName: basename(member.operation.targetRelativePath),
+              availability: 'local' as const,
+              groupAnchor: source.groupAnchor ? path(source.groupAnchor) : null,
+              groupMembers: source.groupMembers?.map(path) ?? [],
+            },
+            ...(organizationCopy
+              ? {
+                  organizationCopy: {
+                    sourceRootId: root.id,
+                    originalIdentity: member.operation.file.filesystemIdentity,
+                    sha256: member.operation.file.sha256,
+                  },
+                }
+              : {}),
+          };
+        });
+        const first = inputs[0];
+        if (!first) stale();
+        const transferred =
+          inputs.length > 1
+            ? catalog.transferSourceGroup(inputs, plan.operation.mode === 'copy')
+            : [
+                plan.operation.mode === 'move'
+                  ? catalog.relocateSource(first)
+                  : catalog.cloneSource(first),
+              ];
+        const index = plan.members.findIndex((member) => member.sourceId === sourceId);
+        const selected = transferred[index];
+        if (!selected) stale();
+        saved = selected;
       } catch (error) {
         await operation.rollback();
         throw error;
@@ -406,18 +451,28 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
       );
 
     const sources = catalog.listSources(rootId);
-    const companions = new Set(sources.flatMap((source) => source.groupMembers ?? []));
+    const visited = new Set<string>();
     const examples: { sourceRelativePath: string; targetRelativePath: string }[] = [];
     for (const source of sources) {
-      if (
-        source.availability !== 'local' ||
-        !standaloneRom(source) ||
-        companions.has(source.relativePath)
-      )
+      if (visited.has(source.id)) continue;
+      let files: SourceFileRecord[];
+      try {
+        files = organizationFiles(source, sources);
+      } catch {
         continue;
-      const targetRelativePath = destination(source);
-      if (rootId === targetRootId && targetRelativePath === source.relativePath) continue;
-      examples.push({ sourceRelativePath: source.relativePath, targetRelativePath });
+      }
+      const paths = organizationPaths(source, files, destination);
+      for (const file of files) {
+        visited.add(file.id);
+        const targetRelativePath = paths.get(file.id);
+        if (
+          !targetRelativePath ||
+          (rootId === targetRootId && targetRelativePath === file.relativePath)
+        )
+          continue;
+        examples.push({ sourceRelativePath: file.relativePath, targetRelativePath });
+        if (examples.length === 5) break;
+      }
       if (examples.length === 5) break;
     }
     return { root, target, examples, snapshot: JSON.stringify([root, target, from, to, examples]) };
@@ -527,7 +582,7 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
       if (
         !refreshed ||
         !currentSource ||
-        refreshed.operation.file.validator !== plan.operation.file.validator ||
+        JSON.stringify(refreshed.members) !== JSON.stringify(plan.members) ||
         refreshed.operation.targetRelativePath !== plan.operation.targetRelativePath ||
         snapshot(currentSource) !== plan.snapshot
       )
@@ -580,10 +635,22 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
     if (owned) {
       const release = reserveContentRoots(catalog, [root.id, target.id]);
       try {
-        const copy = catalog.getSource(owned.copySourceId);
-        if (!copy || copy.rootId !== target.id) stale();
+        const originals = group(source);
+        const pairs = originals.map((original) => {
+          const ownership = catalog.getSourceOrganizationCopy(root.id, original.id);
+          const copy = ownership && catalog.getSource(ownership.copySourceId);
+          if (!ownership || !copy || copy.rootId !== target.id) stale();
+          return { original, copy, ownership };
+        });
         const before = snapshot(source);
+        const copy = catalog.getSource(owned.copySourceId);
+        if (!copy) stale();
         const copyBefore = snapshot(copy);
+        if (
+          group(copy).length !== pairs.length ||
+          group(copy).some((file) => !pairs.some((pair) => pair.copy.id === file.id))
+        )
+          stale();
         const media = await Promise.all([probeRoot(root.path), probeRoot(target.path)]);
         if (
           media.some(
@@ -591,21 +658,27 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
           )
         )
           stale();
-        const [originalFile, copyFile] = await Promise.all([
-          resolveInside(root.path, source.relativePath, { pinnedRoot: true }).then(
-            inspectOrganizationFile,
-          ),
-          resolveInside(target.path, copy.relativePath, { pinnedRoot: true }).then(
-            inspectOrganizationFile,
-          ),
-        ]);
-        if (
-          originalFile.filesystemIdentity !== owned.originalIdentity ||
-          copyFile.filesystemIdentity !== owned.copyIdentity ||
-          originalFile.sha256 !== owned.sha256 ||
-          copyFile.sha256 !== owned.sha256
-        )
-          stale();
+        await validateOrganizationGroups(root.path, originals, catalog.listSources(root.id));
+        await validateOrganizationGroups(
+          target.path,
+          pairs.map((pair) => pair.copy),
+          catalog.listSources(target.id),
+        );
+        for (const { original, copy, ownership } of pairs) {
+          const originalFile = await inspectOrganizationFile(
+            await resolveInside(root.path, original.relativePath, { pinnedRoot: true }),
+          );
+          const copyFile = await inspectOrganizationFile(
+            await resolveInside(target.path, copy.relativePath, { pinnedRoot: true }),
+          );
+          if (
+            originalFile.filesystemIdentity !== ownership.originalIdentity ||
+            copyFile.filesystemIdentity !== ownership.copyIdentity ||
+            originalFile.sha256 !== ownership.sha256 ||
+            copyFile.sha256 !== ownership.sha256
+          )
+            stale();
+        }
         stillEnabled();
         const currentSource = catalog.getSource(sourceId);
         const currentCopy = catalog.getSource(copy.id);
@@ -616,31 +689,30 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
           snapshot(currentCopy) !== copyBefore
         )
           stale();
-        catalog.synchronizeSourceMatches(sourceId, copy.id);
+        catalog.synchronizeSourceGroupMatches(
+          pairs.map(({ original, copy }) => ({ originalId: original.id, copyId: copy.id })),
+        );
         return { status: 'synchronized', sourceId: copy.id };
       } finally {
         release();
       }
     }
-    eligible(source);
+    const files = group(source);
     // A later match in a same-root move should not attempt to overwrite itself.
-    if (source.rootId === target.id && source.relativePath === destination(source))
+    const paths = organizationPaths(source, files, destination);
+    if (
+      source.rootId === target.id &&
+      files.every((file) => file.relativePath === paths.get(file.id))
+    )
       return { status: 'skipped', sourceId };
     const preview = await prepare(actor, sourceId, policy.mode, target.id);
     stillEnabled();
-    const originalIdentity = plans.get(preview.planId)?.operation.file;
     const result = await execute(
       actor,
       sourceId,
       preview.planId,
       stillEnabled,
-      policy.mode === 'copy' && originalIdentity
-        ? {
-            sourceRootId: root.id,
-            originalIdentity: originalIdentity.filesystemIdentity,
-            sha256: originalIdentity.sha256,
-          }
-        : undefined,
+      policy.mode === 'copy',
     );
     return {
       status: policy.mode === 'copy' ? 'copied' : 'moved',

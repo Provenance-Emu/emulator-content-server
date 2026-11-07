@@ -937,7 +937,7 @@ paths:
             schema: { $ref: '#/components/schemas/SourceOrganizationDraft' }
       responses:
         '200':
-          description: Owner-only preview of a future folder policy, with up to five example paths based on indexed cartridge ROMs. The owner-bound plan expires after ten minutes. Files are checked individually when a match triggers organization.
+          description: Owner-only preview of a future folder policy, with up to five example paths based on indexed ROMs, archives and complete disc groups. The owner-bound plan expires after ten minutes. Files are checked individually when a match triggers organization.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/FolderOrganizationPreview' }
@@ -955,7 +955,7 @@ paths:
             schema: { $ref: '#/components/schemas/SourceOrganizationDraft' }
       responses:
         '200':
-          description: Owner-only, read-only preview for one local cartridge ROM. Destination is generated from system, saved title and original filename, within a registered root in the same library (including unassigned roots). Archives, disc sets and companions are unsupported. Copy supports different volumes; move requires the same volume. Preview is bound to owner, source, roots, saved matches and file validators, expires after ten minutes and may be discarded when the bounded preview cache fills. Preview itself does not organize files. A separate explicit root policy can enable automatic organization on future saved matches.
+          description: Owner-only, read-only preview for a local ROM, intact archive or complete disc game set. Destination is generated from system, saved title and original filename, within a registered root in the same library (including unassigned roots). Every member and companion is included in the preview. Descriptor references, relative layout and archive contents are preserved. Copy supports different volumes; move requires the same volume. Preview is bound to owner, source, roots, saved matches and file validators, expires after ten minutes and may be discarded when the bounded preview cache fills. Preview itself does not organize files. A separate explicit root policy can enable automatic organization on future saved matches.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SourceOrganizationPreview' }
@@ -1905,7 +1905,7 @@ components:
         label: { type: string }
         libraryId: { type: [string, 'null'] }
         watch: { type: boolean, description: Explicitly enable automatic watching for the new folder. }
-        organize: { type: boolean, description: Explicitly enable in-place organization of eligible cartridge ROMs on future match saves. }
+        organize: { type: boolean, description: Explicitly enable in-place organization of ROMs, archives and complete disc groups on future match saves. }
     ContentRootScan:
       type: object
       required: [rootId, medium, online, count]
@@ -2028,6 +2028,16 @@ components:
         sourceRelativePath: { type: string }
         targetRelativePath: { type: string }
         expiresAt: { type: string, format: date-time }
+        files:
+          type: array
+          maxItems: 512
+          items: { $ref: '#/components/schemas/SourceOrganizationFile' }
+    SourceOrganizationFile:
+      type: object
+      required: [sourceRelativePath, targetRelativePath]
+      properties:
+        sourceRelativePath: { type: string }
+        targetRelativePath: { type: string }
     SourceOrganizationResult:
       type: object
       required: [sourceId, originalSourceId, mode, targetRootId, targetRelativePath]

@@ -155,3 +155,42 @@ test('finalize preserves an unrelated replacement of the original pathname', asy
     await f.dispose();
   }
 });
+
+test('group finalize validates every destination before deleting any original', async () => {
+  const f = await fixture();
+  try {
+    const { applyOrganizationGroup } = await import('../src/organization.js');
+    await writeFile(join(f.from, 'companion.bin'), 'generated companion');
+    const plans = [
+      await previewOrganization(f.from, 'generated.nes', f.to, 'Set/generated.nes', 'move'),
+      await previewOrganization(f.from, 'companion.bin', f.to, 'Set/companion.bin', 'move'),
+    ];
+    const operation = await applyOrganizationGroup(plans);
+    await rm(join(f.to, 'Set/companion.bin'));
+    await writeFile(join(f.to, 'Set/companion.bin'), 'unrelated replacement');
+    await assert.rejects(operation.finalize(), /changed/);
+    assert.equal(await readFile(join(f.from, 'generated.nes'), 'utf8'), 'generated ROM bytes');
+    assert.equal(await readFile(join(f.from, 'companion.bin'), 'utf8'), 'generated companion');
+    assert.equal(await readFile(join(f.to, 'Set/companion.bin'), 'utf8'), 'unrelated replacement');
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('large disc images are inspected incrementally beyond the former cartridge size limit', async () => {
+  const f = await fixture();
+  try {
+    const { open } = await import('node:fs/promises');
+    const { inspectOrganizationFile } = await import('../src/organization.js');
+    const path = join(f.from, 'generated.iso');
+    const file = await open(path, 'w');
+    try {
+      await file.truncate(513 * 1024 * 1024);
+    } finally {
+      await file.close();
+    }
+    assert.equal((await inspectOrganizationFile(path)).size, 513 * 1024 * 1024);
+  } finally {
+    await f.dispose();
+  }
+});

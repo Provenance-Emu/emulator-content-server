@@ -165,7 +165,7 @@ test('lookups open a populated category and retain the selected category while i
     route.fulfill({
       contentType: 'image/png',
       body: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+e5l8AAAAASUVORK5CYII=',
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==',
         'base64',
       ),
     }),
@@ -213,9 +213,9 @@ test('lookups open a populated category and retain the selected category while i
     'true',
   );
   await expect(matching.getByRole('heading', { name: 'Suggestion 1' })).toBeVisible();
-  await expect(
-    matching.getByRole('img', { name: 'Artwork suggestion for Suggestion 1' }),
-  ).toBeVisible();
+  const artwork = matching.getByRole('img', { name: 'Artwork suggestion for Suggestion 1' });
+  await expect(artwork).toBeVisible();
+  await expect.poll(() => artwork.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
   await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
   await expect(matching.getByRole('heading', { name: 'Suggestion 2' })).toBeVisible();
   await expect(matching.getByRole('button', { name: 'Artwork (1)', exact: true })).toHaveAttribute(

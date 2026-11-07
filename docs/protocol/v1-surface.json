@@ -820,6 +820,7 @@
     "SourceOrganizationPreview": {
       "properties": [
         "expiresAt",
+        "files",
         "mode",
         "planId",
         "sourceId",
@@ -837,6 +838,16 @@
         "sourceRootId",
         "targetRelativePath",
         "targetRootId"
+      ]
+    },
+    "SourceOrganizationFile": {
+      "properties": [
+        "sourceRelativePath",
+        "targetRelativePath"
+      ],
+      "required": [
+        "sourceRelativePath",
+        "targetRelativePath"
       ]
     },
     "SourceOrganizationResult": {

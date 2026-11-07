@@ -362,6 +362,12 @@ export interface SourceOrganizationPreview {
   sourceRelativePath: string;
   targetRelativePath: string;
   expiresAt: string;
+  files?: SourceOrganizationFile[];
+}
+
+export interface SourceOrganizationFile {
+  sourceRelativePath: string;
+  targetRelativePath: string;
 }
 
 export interface SourceOrganizationResult {

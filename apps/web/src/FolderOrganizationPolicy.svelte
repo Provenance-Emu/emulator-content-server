@@ -72,7 +72,7 @@
 </script>
 
 <p><strong>{root.label}</strong></p>
-<p class="dim">When you save a system, metadata, or artwork match, eligible cartridge ROMs can be arranged under <code>System / Game title / Original filename</code>. Existing files stay in place until a match triggers the rule. Archives and disc sets are excluded, and existing destinations are protected from overwrites.</p>
+<p class="dim">When you save a system, metadata, or artwork match, ROMs, archives, and complete disc sets can be arranged under <code>System / Game title / Original filename</code>. Existing files stay in place until a match triggers the rule. Multi-disc sets and companion files stay together. Existing destinations are protected from overwrites.</p>
 {#if policy}
   {#if policy.enabled}
     <p role="status">Automatic {policy.mode} to {roots.find((folder) => folder.id === policy?.targetRootId)?.label ?? 'the selected folder'} is on.</p>

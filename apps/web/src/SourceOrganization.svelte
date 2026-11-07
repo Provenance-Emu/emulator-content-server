@@ -71,9 +71,9 @@
 {#if owner}
 <section class="organization" aria-label="Organize original file">
   <h2>Organize files</h2>
-  <p class="dim">Optionally arrange one cartridge ROM into System / Matched title / Original filename. Preview a file before applying a change or enabling automatic organization for its source folder. This applies to standalone cartridge ROMs.</p>
+  <p class="dim">Arrange ROMs, ZIP archives, and disc games under System / Matched title. Multi-disc sets and companion files move together, preserving descriptor references and archive contents. Preview every file before applying a change or enabling automatic organization.</p>
   {#if policy?.enabled}
-    <p role="status">Automatic {policy.mode==='move'?'Move':'Copy'} is enabled for this source folder. Future saved metadata, artwork or system matches organize eligible cartridge ROMs into {roots.find(root=>root.id===policy?.targetRootId)?.label??'the confirmed destination folder'}. Move waits for suggested local metadata and artwork choices to be saved. Existing files are not processed in bulk.</p>
+    <p role="status">Automatic {policy.mode==='move'?'Move':'Copy'} is enabled for this source folder. Future saved metadata, artwork or system matches organize games and their companion files into {roots.find(root=>root.id===policy?.targetRootId)?.label??'the confirmed destination folder'}. Move waits for suggested local metadata and artwork choices to be saved. Existing files are not processed in bulk.</p>
     <button type="button" disabled={policyBusy||busy} onclick={()=>void setAutomatic(false)}>{policyBusy?'Turning off…':'Turn off automatic organization'}</button>
   {:else if policy}<p class="dim">Automatic organization is off for this source folder.</p>{/if}
   {#if policyFailure}<p role="alert" class="problem">{policyFailure}</p>{/if}
@@ -86,8 +86,9 @@
       <p class="dim">Choose a registered folder in this library. Copy supports another volume; Move requires the same volume. Files already at the destination are never overwritten.</p>
       <button type="button" onclick={()=>void preview()} disabled={busy||policyBusy||!targetRootId}>{busy?'Preparing…':'Preview organization'}</button>
     {:else}
-      <dl><dt>Action</dt><dd>{plan.mode==='move'?'Move':'Copy'}</dd><dt>From {roots.find((root)=>root.id===plan?.sourceRootId)?.label??'source folder'}</dt><dd><code>{plan.sourceRelativePath}</code></dd><dt>To {roots.find((root)=>root.id===plan?.targetRootId)?.label??'destination folder'}</dt><dd><code>{plan.targetRelativePath}</code></dd></dl>
-      {#if plan.mode==='move'}<p>The original file will move to the previewed destination. Saved metadata and artwork stay with this game.</p>{:else}<p>The original file stays in place. The new copy receives the same saved metadata and artwork.</p>{/if}
+      <p>{plan.mode==='move'?'Move':'Copy'} from {roots.find(root=>root.id===plan?.sourceRootId)?.label??'source folder'} to {roots.find(root=>root.id===plan?.targetRootId)?.label??'destination folder'}.</p>
+      <ul class="organization-files">{#each plan.files??[plan] as file (file.sourceRelativePath)}<li><code>{file.sourceRelativePath}</code> → <code>{file.targetRelativePath}</code></li>{/each}</ul>
+      {#if plan.mode==='move'}<p>All listed files will move together to the previewed destinations. Saved metadata and artwork stay with this game.</p>{:else}<p>Original files stay in place. The copied game receives the same saved metadata and artwork.</p>{/if}
       <button type="button" onclick={()=>void apply()} disabled={busy||policyBusy}>{busy?'Applying…':plan.mode==='move'?'Confirm move':'Confirm copy'}</button>
       <p class="dim">Optional automatic {plan.mode==='move'?'Move':'Copy'} applies to future successful saved metadata, artwork and system matches for eligible files in this source folder. Copy keeps one owned copy and updates its saved matches; Move keeps the game identity. Existing destinations are never overwritten. Move waits for suggested local metadata and artwork choices to be saved. Enabling changes no files now.</p>
       <button type="button" onclick={()=>void setAutomatic(true)} disabled={busy||policyBusy}>{policyBusy?'Enabling…':plan.mode==='move'?'Confirm automatic Move for this source folder':'Confirm automatic Copy for this source folder'}</button>
@@ -103,7 +104,6 @@
   label {display:block;margin-block:.75rem;}
   select {max-width:100%;margin-inline-start:.5rem;}
   button {margin:.25rem .5rem .25rem 0;}
-  dd {margin-inline-start:0;margin-block-end:.75rem;overflow-wrap:anywhere;}
-  dt {font-weight:600;}
+  .organization-files { overflow-wrap:anywhere; max-height:22rem; overflow-y:auto; }
 </style>
 {/if}

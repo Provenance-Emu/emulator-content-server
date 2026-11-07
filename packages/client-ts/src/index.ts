@@ -128,6 +128,7 @@ export type {
   SourceMatchSelectionDraft,
   SourceMatchSelections,
   SourceOrganizationDraft,
+  SourceOrganizationFile,
   SourceOrganizationPolicy,
   SourceOrganizationPolicyDraft,
   SourceOrganizationPreview,

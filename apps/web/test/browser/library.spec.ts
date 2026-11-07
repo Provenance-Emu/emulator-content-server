@@ -421,3 +421,27 @@ test('supported managed and source Play actions navigate only to the isolated pl
   expect(target.searchParams.get('source')).toBe(sources.items[0].id);
   expect(target.searchParams.has('token')).toBe(false);
 });
+
+test('disc organization preview lists every track and companion before a move', async ({
+  page,
+  fixture,
+}) => {
+  const root = await fixture.legacy();
+  await writeFile(join(root.path, 'Generated set.m3u'), 'Disc 1.cue\nDisc 2.cue\n');
+  for (const disc of [1, 2]) {
+    await writeFile(join(root.path, `Disc ${disc}.cue`), `FILE "Disc ${disc}.bin" BINARY\n`);
+    await writeFile(join(root.path, `Disc ${disc}.bin`), `generated disc ${disc}`);
+  }
+  await writeFile(join(root.path, 'Disc 1.sbi'), 'generated companion');
+  await fixture.client.scanRoot(root.id);
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Generated set.m3u', exact: true }).click();
+  const organization = page.getByRole('region', { name: 'Organize original file', exact: true });
+  await organization.getByRole('button', { name: 'Organize files', exact: true }).click();
+  await organization.getByRole('button', { name: 'Preview organization', exact: true }).click();
+  await expect(organization.locator('.organization-files li')).toHaveCount(6);
+  await expect(organization.locator('.organization-files')).toContainText('Disc 1.sbi');
+  await expect(organization.locator('.organization-files')).toContainText('Disc 2.bin');
+  expect(await readFile(join(root.path, 'Disc 1.bin'), 'utf8')).toBe('generated disc 1');
+});

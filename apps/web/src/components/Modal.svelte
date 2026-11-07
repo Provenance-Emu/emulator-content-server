@@ -14,9 +14,11 @@
     navigation?: boolean;
   } = $props();
   let dialog: HTMLDialogElement;
+  let disposed = false;
   onMount(() => {
     dialog.showModal();
     return () => {
+      disposed = true;
       dialog.close();
     };
   });
@@ -26,7 +28,7 @@
   bind:this={dialog}
   aria-label={title}
   class:navigation-dialog={navigation}
-  {onclose}
+  onclose={() => { if (!disposed) onclose(); }}
   oncancel={(event) => {
     if (busy) event.preventDefault();
   }}

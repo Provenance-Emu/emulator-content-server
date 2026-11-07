@@ -717,8 +717,9 @@ public struct SourceOrganizationPreview: Codable, Equatable, Sendable {
     public var sourceRelativePath: String
     public var targetRelativePath: String
     public var expiresAt: String
+    public var files: [SourceOrganizationFile]?
 
-    public init(planId: String, sourceId: String, mode: String, sourceRootId: String, targetRootId: String, sourceRelativePath: String, targetRelativePath: String, expiresAt: String) {
+    public init(planId: String, sourceId: String, mode: String, sourceRootId: String, targetRootId: String, sourceRelativePath: String, targetRelativePath: String, expiresAt: String, files: [SourceOrganizationFile]? = nil) {
         self.planId = planId
         self.sourceId = sourceId
         self.mode = mode
@@ -727,6 +728,17 @@ public struct SourceOrganizationPreview: Codable, Equatable, Sendable {
         self.sourceRelativePath = sourceRelativePath
         self.targetRelativePath = targetRelativePath
         self.expiresAt = expiresAt
+        self.files = files
+    }
+}
+
+public struct SourceOrganizationFile: Codable, Equatable, Sendable {
+    public var sourceRelativePath: String
+    public var targetRelativePath: String
+
+    public init(sourceRelativePath: String, targetRelativePath: String) {
+        self.sourceRelativePath = sourceRelativePath
+        self.targetRelativePath = targetRelativePath
     }
 }
 

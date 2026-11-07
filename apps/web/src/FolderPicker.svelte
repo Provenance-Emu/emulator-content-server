@@ -88,7 +88,7 @@
         <legend>Folder automation</legend>
         <label><input type="checkbox" bind:checked={watch} /> Automatically watch for file changes</label>
         <label><input type="checkbox" bind:checked={organize} /> Automatically organize after saving matches</label>
-        <p class="dim">Saving a system, metadata, or artwork match can move a cartridge ROM within this folder to <code>System / Game title / Original filename</code>. Adding the folder indexes files in place.</p>
+        <p class="dim">Saving a system, metadata, or artwork match can move a ROM, archive, or complete disc set within this folder to <code>System / Game title / Original filename</code>. Multi-disc sets and their companion files stay together. Adding the folder indexes files in place.</p>
       </fieldset>
     {/if}
     <div class="picker-actions ui-actions">

@@ -262,9 +262,9 @@ test('organization rejects local trust, foreign libraries, unsupported files and
       actorId: f.owner.id,
     });
     assert.equal((await request({ mode: 'copy', targetRootId: foreign.id })).statusCode, 409);
-    await writeFile(join(f.path, 'archive.zip'), 'generated archive placeholder');
+    await writeFile(join(f.path, 'notes.txt'), 'generated document');
     await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
-    const archive = f.catalog.listSources(f.root.id).find((s) => s.displayName === 'archive.zip');
+    const archive = f.catalog.listSources(f.root.id).find((s) => s.displayName === 'notes.txt');
     assert.ok(archive);
     assert.equal(
       (
@@ -707,6 +707,422 @@ test('an automatic destination collision leaves the saved selection successful a
       await readFile(join(f.target, 'NES/Collision/generated.nes'), 'utf8'),
       'existing destination',
     );
+  } finally {
+    await f.dispose();
+  }
+});
+
+for (const mode of ['move', 'copy'] as const) {
+  test(`${mode} organization keeps nested multi-disc playlists, tracks and companions together`, async () => {
+    const f = await fixture();
+    try {
+      await mkdir(join(f.path, 'discs'));
+      const content: Record<string, string> = {
+        'Set.m3u': 'discs/Disc 1.cue\ndiscs/Disc 2.ccd\n',
+        'discs/Disc 1.cue': 'FILE "Disc 1.bin" BINARY\n TRACK 01 MODE1/2352\n INDEX 01 00:00:00\n',
+        'discs/Disc 1.bin': 'generated first disc',
+        'discs/Disc 1.sbi': 'generated subchannel correction',
+        'discs/Disc 2.ccd': '[CloneCD]\nVersion=3\n',
+        'discs/Disc 2.img': 'generated second disc',
+        'discs/Disc 2.sub': 'generated subchannel',
+      };
+      for (const [path, bytes] of Object.entries(content))
+        await writeFile(join(f.path, path), bytes);
+      await f.app.inject({
+        method: 'POST',
+        url: `/api/v1/roots/${f.root.id}/scan`,
+        headers: f.auth,
+      });
+      const source = f.catalog
+        .listSources(f.root.id)
+        .find((file) => file.relativePath === 'Set.m3u');
+      assert.ok(source);
+      const url = `/api/v1/sources/${source.id}/organization`;
+      const preview = await f.app.inject({
+        method: 'POST',
+        url: `${url}/preview`,
+        headers: f.auth,
+        payload: { mode, targetRootId: f.to.id },
+      });
+      assert.equal(preview.statusCode, 200, preview.body);
+      const plan = preview.json();
+      assert.equal(plan.files.length, Object.keys(content).length);
+      const apply = await f.app.inject({
+        method: 'POST',
+        url: `${url}/apply`,
+        headers: f.auth,
+        payload: { planId: plan.planId },
+      });
+      assert.equal(apply.statusCode, 200, apply.body);
+      const organized = f.catalog.getSource(apply.json().sourceId);
+      assert.ok(organized);
+      const folder = organized.relativePath.slice(0, -'Set.m3u'.length);
+      for (const [path, bytes] of Object.entries(content)) {
+        assert.equal(await readFile(join(f.target, folder, path), 'utf8'), bytes);
+        if (mode === 'move') await assert.rejects(readFile(join(f.path, path)), { code: 'ENOENT' });
+        else assert.equal(await readFile(join(f.path, path), 'utf8'), bytes);
+      }
+      assert.equal(f.catalog.sourceGroup(organized.id).length, 6);
+      await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.to.id}/scan`, headers: f.auth });
+      assert.equal(f.catalog.getSource(organized.id)?.groupError, null);
+      assert.equal(f.catalog.sourceGroup(organized.id).length, 6);
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+test('automatic organization moves ZIP archives intact and retains their source identity', async () => {
+  const f = await fixture();
+  try {
+    const bytes = Buffer.from([80, 75, 5, 6, ...new Array(18).fill(0)]);
+    await writeFile(join(f.path, 'Generated.zip'), bytes);
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
+    const source = f.catalog
+      .listSources(f.root.id)
+      .find((file) => file.relativePath === 'Generated.zip');
+    assert.ok(source);
+    f.catalog.setSourceOrganizationPolicy({
+      sourceRootId: f.root.id,
+      targetRootId: f.to.id,
+      libraryId: f.library.id,
+      sourceRootPath: f.path,
+      targetRootPath: f.target,
+      mode: 'move',
+      enabledBy: f.owner.id,
+      enabledAt: new Date().toISOString(),
+    });
+    const { runAutomaticOrganization } = await import('../src/source-organization.js');
+    const result = await runAutomaticOrganization(
+      { catalog: f.catalog },
+      {
+        kind: 'user',
+        userId: f.owner.id,
+        username: 'owner',
+        tokenKind: 'session',
+        deviceId: null,
+        isOwner: true,
+        scopes: ['read', 'write'],
+      },
+      source.id,
+    );
+    assert.equal(result?.status, 'moved');
+    const moved = f.catalog.getSource(source.id);
+    assert.equal(moved?.rootId, f.to.id);
+    assert.deepEqual(await readFile(join(f.target, moved?.relativePath ?? '')), bytes);
+  } finally {
+    await f.dispose();
+  }
+});
+
+async function discFixture() {
+  const f = await fixture();
+  await writeFile(join(f.path, 'Game (Disc 1).cue'), 'FILE "Game (Disc 1).bin" BINARY\n');
+  await writeFile(join(f.path, 'Game (Disc 1).bin'), 'generated disc one');
+  await writeFile(join(f.path, 'Game (Disc 2).cue'), 'FILE "Game (Disc 2).bin" BINARY\n');
+  await writeFile(join(f.path, 'Game (Disc 2).bin'), 'generated disc two');
+  await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
+  const source = f.catalog
+    .listSources(f.root.id)
+    .find((file) => file.relativePath === 'Game (Disc 2).cue');
+  assert.ok(source);
+  return { ...f, disc: source };
+}
+
+for (const mode of ['copy', 'move'] as const) {
+  test(`automatic ${mode} keeps filename-numbered discs together and preserves subsequent saves`, async () => {
+    const f = await discFixture();
+    try {
+      const { runAutomaticOrganization } = await import('../src/source-organization.js');
+      const actor = {
+        kind: 'user' as const,
+        userId: f.owner.id,
+        username: 'owner',
+        tokenKind: 'session' as const,
+        deviceId: null,
+        isOwner: true,
+        scopes: ['read' as const, 'write' as const],
+      };
+      f.catalog.setSourceOrganizationPolicy({
+        sourceRootId: f.root.id,
+        targetRootId: f.to.id,
+        libraryId: f.library.id,
+        sourceRootPath: f.path,
+        targetRootPath: f.target,
+        mode,
+        enabledBy: f.owner.id,
+        enabledAt: new Date().toISOString(),
+      });
+      const result = await runAutomaticOrganization({ catalog: f.catalog }, actor, f.disc.id);
+      assert.equal(result?.status, mode === 'move' ? 'moved' : 'copied');
+      const transferred = f.catalog.listSources(f.to.id);
+      assert.equal(transferred.length, 4);
+      assert.ok(transferred.every((file) => file.relativePath.startsWith('Unknown System/Game/')));
+      assert.equal(f.catalog.sourceGroup(result?.sourceId ?? '').length, 2);
+      if (mode === 'copy') {
+        f.catalog.saveSourceMatch(
+          f.disc.id,
+          0,
+          'metadata',
+          {
+            id: 'new-title',
+            providerId: 'org.ecs.local',
+            kind: 'metadata',
+            title: 'Matched Disc',
+            confidence: 'local',
+            metadata: {},
+            originKind: null,
+            contentAvailable: false,
+            contentType: null,
+            fileName: null,
+            updatedAt: new Date().toISOString(),
+          },
+          null,
+          f.owner.id,
+        );
+        assert.equal(
+          (await runAutomaticOrganization({ catalog: f.catalog }, actor, f.disc.id))?.status,
+          'synchronized',
+        );
+        assert.equal(f.catalog.listSources(f.to.id).length, 4);
+        assert.equal(
+          f.catalog.sourceMatches(result?.sourceId ?? '').matches[0]?.title,
+          'Matched Disc',
+        );
+        const companion = transferred.find((file) => file.displayName.endsWith('.bin'));
+        assert.ok(companion);
+        await writeFile(join(f.target, companion.relativePath), 'unrelated replacement');
+        assert.equal(
+          (await runAutomaticOrganization({ catalog: f.catalog }, actor, f.disc.id))?.status,
+          'failed',
+        );
+        assert.equal(
+          await readFile(join(f.target, companion.relativePath), 'utf8'),
+          'unrelated replacement',
+        );
+      }
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+for (const failure of ['changed-companion', 'collision', 'catalog'] as const) {
+  test(`disc group ${failure} preserves all originals and rolls back every prepared destination`, async () => {
+    const f = await discFixture();
+    try {
+      const url = `/api/v1/sources/${f.disc.id}/organization`;
+      const preview = await f.app.inject({
+        method: 'POST',
+        url: `${url}/preview`,
+        headers: f.auth,
+        payload: { mode: 'move', targetRootId: f.to.id },
+      });
+      assert.equal(preview.statusCode, 200, preview.body);
+      const plan = preview.json();
+      const last = plan.files.at(-1);
+      assert.ok(last);
+      if (failure === 'changed-companion')
+        await writeFile(join(f.path, last.sourceRelativePath), 'changed bytes');
+      if (failure === 'collision') {
+        const { dirname } = await import('node:path');
+        await mkdir(dirname(join(f.target, last.targetRelativePath)), { recursive: true });
+        await writeFile(join(f.target, last.targetRelativePath), 'keep destination');
+      }
+      if (failure === 'catalog') {
+        const transfer = f.catalog.transferSourceGroup.bind(f.catalog);
+        f.catalog.transferSourceGroup = (inputs, copy) => {
+          const last = inputs.at(-1);
+          assert.ok(last);
+          return transfer(
+            [...inputs.slice(0, -1), { ...last, file: { ...last.file, filesystemIdentity: null } }],
+            copy,
+          );
+        };
+      }
+      const apply = await f.app.inject({
+        method: 'POST',
+        url: `${url}/apply`,
+        headers: f.auth,
+        payload: { planId: plan.planId },
+      });
+      assert.ok(apply.statusCode >= 400, apply.body);
+      for (const file of plan.files) {
+        await readFile(join(f.path, file.sourceRelativePath));
+        if (failure === 'collision' && file === last)
+          assert.equal(
+            await readFile(join(f.target, file.targetRelativePath), 'utf8'),
+            'keep destination',
+          );
+        else
+          await assert.rejects(readFile(join(f.target, file.targetRelativePath)), {
+            code: 'ENOENT',
+          });
+      }
+      assert.equal(f.catalog.listSources(f.to.id).length, 0);
+      assert.equal(f.catalog.getSource(f.disc.id)?.rootId, f.root.id);
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+for (const [name, content] of [
+  [
+    'Game.toc',
+    {
+      'Game.toc':
+        'CD_ROM_XA\nTRACK MODE2_RAW\nDATAFILE "data.bin"\nTRACK AUDIO\nAUDIOFILE "audio.wav" 0\n',
+      'data.bin': 'generated data',
+      'audio.wav': 'generated audio',
+    },
+  ],
+  [
+    'Game.gdi',
+    {
+      'Game.gdi': '2\n1 0 4 2352 track01.bin 0\n2 45000 0 2352 track02.raw 0\n',
+      'track01.bin': 'generated data',
+      'track02.raw': 'generated audio',
+    },
+  ],
+  ['Game.mds', { 'Game.mds': 'generated descriptor', 'Game.mdf': 'generated image' }],
+  [
+    'Game.m3u',
+    {
+      'Game.m3u': 'Disc 1.chd\nDisc 2.chd\n',
+      'Disc 1.chd': 'generated first CHD bytes',
+      'Disc 2.chd': 'generated second CHD bytes',
+    },
+  ],
+] as const) {
+  test(`automatic organization retains the full ${name} game set`, async () => {
+    const f = await fixture();
+    try {
+      for (const [path, bytes] of Object.entries(content))
+        await writeFile(join(f.path, path), bytes);
+      await f.app.inject({
+        method: 'POST',
+        url: `/api/v1/roots/${f.root.id}/scan`,
+        headers: f.auth,
+      });
+      const source = f.catalog.listSources(f.root.id).find((file) => file.displayName === name);
+      assert.ok(source);
+      f.catalog.setSourceOrganizationPolicy({
+        sourceRootId: f.root.id,
+        targetRootId: f.to.id,
+        libraryId: f.library.id,
+        sourceRootPath: f.path,
+        targetRootPath: f.target,
+        mode: 'move',
+        enabledBy: f.owner.id,
+        enabledAt: new Date().toISOString(),
+      });
+      const { runAutomaticOrganization } = await import('../src/source-organization.js');
+      const result = await runAutomaticOrganization(
+        { catalog: f.catalog },
+        {
+          kind: 'user',
+          userId: f.owner.id,
+          username: 'owner',
+          tokenKind: 'session',
+          deviceId: null,
+          isOwner: true,
+          scopes: ['read', 'write'],
+        },
+        source.id,
+      );
+      assert.equal(result?.status, 'moved');
+      assert.equal(f.catalog.sourceGroup(source.id).length, Object.keys(content).length);
+      for (const file of f.catalog.sourceGroup(source.id))
+        assert.equal(
+          await readFile(join(f.target, file.relativePath), 'utf8'),
+          content[file.displayName as keyof typeof content],
+        );
+    } finally {
+      await f.dispose();
+    }
+  });
+}
+
+test('shared disc tracks bring every referring descriptor into the organization preview', async () => {
+  const f = await fixture();
+  try {
+    for (const name of ['First.cue', 'Second.cue'])
+      await writeFile(join(f.path, name), 'FILE "Shared.bin" BINARY\n');
+    await writeFile(join(f.path, 'Shared.bin'), 'generated shared track');
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
+    const source = f.catalog
+      .listSources(f.root.id)
+      .find((file) => file.displayName === 'First.cue');
+    assert.ok(source);
+    const preview = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/sources/${source.id}/organization/preview`,
+      headers: f.auth,
+      payload: { mode: 'move', targetRootId: f.to.id },
+    });
+    assert.equal(preview.statusCode, 200, preview.body);
+    assert.equal(preview.json().files.length, 3);
+    await writeFile(join(f.path, 'Second.cue'), 'FILE "Missing.bin" BINARY\n');
+    const apply = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/sources/${source.id}/organization/apply`,
+      headers: f.auth,
+      payload: { planId: preview.json().planId },
+    });
+    assert.equal(apply.statusCode, 409, apply.body);
+    assert.equal(f.catalog.listSources(f.to.id).length, 0);
+    assert.equal(await readFile(join(f.path, 'Shared.bin'), 'utf8'), 'generated shared track');
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('saving a metadata match through HTTP automatically moves its entire disc family and sidecar', async () => {
+  const f = await discFixture();
+  try {
+    await writeFile(
+      join(f.path, 'Game (Disc 2).json'),
+      JSON.stringify({ title: 'Matched whole game' }),
+    );
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
+    f.catalog.setSourceOrganizationPolicy({
+      sourceRootId: f.root.id,
+      targetRootId: f.to.id,
+      libraryId: f.library.id,
+      sourceRootPath: f.path,
+      targetRootPath: f.target,
+      mode: 'move',
+      enabledBy: f.owner.id,
+      enabledAt: new Date().toISOString(),
+    });
+    const found = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/sources/${f.disc.id}/matches`,
+      headers: f.auth,
+      payload: { online: false },
+    });
+    assert.equal(found.statusCode, 200, found.body);
+    const metadata = found
+      .json()
+      .candidates.find((candidate: { kind: string }) => candidate.kind === 'metadata');
+    assert.ok(metadata);
+    const save = await f.app.inject({
+      method: 'PUT',
+      url: `/api/v1/sources/${f.disc.id}/matches/selections`,
+      headers: f.auth,
+      payload: { requestId: found.json().requestId, candidateId: metadata.id, expectedRevision: 0 },
+    });
+    assert.equal(save.statusCode, 200, save.body);
+    assert.equal(save.json().automaticOrganization.status, 'moved');
+    assert.equal(f.catalog.listSources(f.to.id).length, 5);
+    assert.ok(
+      f.catalog
+        .listSources(f.to.id)
+        .every((file) => file.relativePath.startsWith('Unknown System/Matched whole game/')),
+    );
+    assert.equal(f.catalog.sourceMatches(f.disc.id).matches[0]?.title, 'Matched whole game');
+    assert.equal(f.catalog.sourceGroup(f.disc.id).length, 2);
   } finally {
     await f.dispose();
   }
