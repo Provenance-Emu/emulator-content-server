@@ -1,6 +1,15 @@
 # Plugins
 
-`ecs serve` is the library. `ecs-plugins` is everything that is not the library: a folder on a NAS or a cloud account, an AltStore source, a wasm player, a signer, or a JIT activator. The host is a separate process. It does not open the content database, and the content server does not load plugins.
+Open **Settings → Plugins** in the desktop app or web interface and sign in as
+the server owner. Choose **Install bundled plugins** to install Library cleanup
+and connect its host automatically. The page lists installed workflows, enabled
+versions, metadata integrations and enrolled hosts. **Check and repair connection**
+validates packages and reconnects the local host. Browser cores are managed under
+**Settings → Emulators**.
+
+`ecs-plugins` is Emulation Content Server’s companion command for advanced plugin
+hosts, connectors, feeds, signing plans and JIT plans. Plugin code runs in a separate
+process from the content server. Developers can also use the repository directly.
 
 ```sh
 pnpm build

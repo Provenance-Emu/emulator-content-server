@@ -16,7 +16,10 @@ test('Play links admit only supported NES content and currently local sources, w
     null,
   );
   assert.equal(assetPlayHref(f.core, f.item, battery), null);
-  assert.equal(assetPlayHref(f.core, f.item, { ...rom, relativePath: 'game.zip' }), null);
+  assert.equal(
+    assetPlayHref(f.core, f.item, { ...rom, relativePath: 'game.zip' }),
+    '/play/?item=item&asset=rom',
+  );
   assert.equal(sourcePlayHref(f.core, f.source), '/play/?source=source');
   for (const availability of ['evicted', 'offline', 'unknown'])
     assert.equal(sourcePlayHref(f.core, { ...f.source, availability }), null);

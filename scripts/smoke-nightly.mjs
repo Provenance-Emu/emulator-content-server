@@ -84,6 +84,10 @@ try {
         })
       : execFileSync(join(root, 'ecs'), ['--help'], { cwd: temporary, env, encoding: 'utf8' });
   assert.match(help, /ecs serve/);
+  assert.ok(
+    (await lstat(join(root, 'plugins/dist/src/managed.js'))).isFile(),
+    'Managed plugin host must be included',
+  );
   const pluginsHelp =
     process.platform === 'win32'
       ? execFileSync('cmd.exe', ['/d', '/s', '/c', 'ecs-plugins.cmd --help'], {

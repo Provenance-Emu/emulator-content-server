@@ -1,4 +1,5 @@
 import type { Item, Manifest, ManifestFile } from '@ecs/client';
+import { extractPlayerZip, supportsContentName, zipContentExtensions } from './archive.js';
 import type { PlayerClient, PlayerSelection, StartOptions } from './controller.js';
 import { MAX_CUE_BYTES } from './cue.js';
 import { prepareCueMedia } from './cue-media.js';
@@ -133,12 +134,7 @@ export async function preparePlayer(
       const file = manifest?.files.find(
         (entry) => entry.id === selection.assetId && entry.kind === 'rom',
       );
-      if (
-        !file ||
-        !contentExtensions(core).some((extension) =>
-          file.relativePath.toLowerCase().endsWith(`.${extension}`),
-        )
-      )
+      if (!file || !supportsContentName(core, file.relativePath))
         throw new Error('Select a game file supported by this emulator');
       contentExtension = file.relativePath.split('.').at(-1)?.toLowerCase() ?? '';
       bounded(
@@ -186,9 +182,7 @@ export async function preparePlayer(
         ((source.groupFileCount ?? 1) > 1 && !/\.cue$/i.test(source.name)) ||
         source.groupError ||
         source.kind !== 'rom' ||
-        !contentExtensions(core).some((extension) =>
-          source.name.toLowerCase().endsWith(`.${extension}`),
-        ) ||
+        !supportsContentName(core, source.name) ||
         !source.systemId ||
         !core.systems.includes(source.systemId)
       )
@@ -225,6 +219,16 @@ export async function preparePlayer(
             signal: options.signal,
           })
         ).bytes;
+    }
+    if (contentExtension === 'zip' && !contentExtensions(core).includes('zip')) {
+      const extracted = await extractPlayerZip(
+        content,
+        zipContentExtensions(core),
+        core.maxContentBytes,
+        options.signal,
+      );
+      content = extracted.bytes;
+      contentExtension = extracted.extension;
     }
     bounded(disk?.file.size ?? content.byteLength, core.maxContentBytes);
     if (core.saveCompletion === 'none' && (options.batteryAssetId || options.stateAssetId))

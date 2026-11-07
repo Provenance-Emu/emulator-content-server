@@ -825,6 +825,37 @@ export interface WorkflowRun {
   error: string | null;
 }
 
+export interface PluginConfiguration {
+  id: string;
+  digest: string;
+  enabled: boolean;
+}
+
+export interface ManagedWorkflowPlugin {
+  id: string;
+  name: string;
+  version: string;
+  digest: string;
+  kind: string;
+  enabled: boolean;
+}
+
+export interface DefaultPlugin {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+}
+
+export interface PluginManagement {
+  available: boolean;
+  hostId: string | null;
+  running: boolean;
+  error: string | null;
+  items: ManagedWorkflowPlugin[];
+  defaults: DefaultPlugin[];
+}
+
 export interface WorkflowPackageSummary {
   id: string;
   name: string;

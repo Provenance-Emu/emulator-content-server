@@ -376,6 +376,7 @@
       {:else}<div class="empty-state"><h2>No libraries shared yet</h2><p>Ask the person who runs this server to give your account access to a library. Shared libraries will appear here.</p></div>{/if}
     </section>
   {:else if detail}<LibraryDetail
+    onemulators={owner ? () => onsettings({ section: 'emulators' }) : undefined}
       controller={detail}
       onauthorization={rejectUploadAccess}
       selectedSource={$browser.active?.source??null}

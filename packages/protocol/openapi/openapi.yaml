@@ -66,6 +66,50 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ServerUpdateStatus' }
+  /api/v1/plugins:
+    get:
+      operationId: getPluginManagement
+      description: Signed-in owner only. Managed native plugins and host health.
+      responses:
+        '200':
+          description: Plugin installation state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginManagement' }
+    patch:
+      operationId: configurePlugin
+      description: Signed-in owner only. Enable an installed immutable plugin version or disable its package.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PluginConfiguration' }
+      responses:
+        '200':
+          description: Updated plugin state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginManagement' }
+  /api/v1/plugins/defaults:
+    post:
+      operationId: installDefaultPlugins
+      description: Signed-in owner only. Install bundled native plugins and provision a scoped local workflow host.
+      responses:
+        '200':
+          description: Installed plugins and host state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginManagement' }
+  /api/v1/plugins/doctor:
+    post:
+      operationId: doctorPlugins
+      description: Signed-in owner only. Check packages, repair revoked host enrollment and resume the local plugin host.
+      responses:
+        '200':
+          description: Checked plugin state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginManagement' }
   /api/v1/player/core:
     get:
       operationId: getPlayerCore
@@ -2347,6 +2391,46 @@ components:
         createdAt: {"type": "string"}
         updatedAt: {"type": "string"}
         error: {"type": ["string","null"]}
+    PluginConfiguration:
+      type: object
+      additionalProperties: false
+      required: [id, digest, enabled]
+      properties:
+        id: { type: string, maxLength: 200 }
+        digest: { type: string, pattern: '^[a-f0-9]{64}$' }
+        enabled: { type: boolean }
+    ManagedWorkflowPlugin:
+      type: object
+      required: [id, name, version, digest, kind, enabled]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        digest: { type: string }
+        kind: { type: string, enum: [workflow, translator, tool] }
+        enabled: { type: boolean }
+    DefaultPlugin:
+      type: object
+      required: [id, name, version, description]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        description: { type: string }
+    PluginManagement:
+      type: object
+      required: [available, hostId, running, error, items, defaults]
+      properties:
+        available: { type: boolean }
+        hostId: { type: [string, 'null'] }
+        running: { type: boolean }
+        error: { type: [string, 'null'] }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ManagedWorkflowPlugin' }
+        defaults:
+          type: array
+          items: { $ref: '#/components/schemas/DefaultPlugin' }
     WorkflowPackageSummary:
       type: object
       additionalProperties: false

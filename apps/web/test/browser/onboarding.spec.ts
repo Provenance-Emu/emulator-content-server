@@ -119,11 +119,12 @@ test('server-folder games explain browser support and use the actual console nam
 }) => {
   await fixture.legacy();
   await page.route('**/api/v1/player/core', (route) => route.fulfill({ status: 404 }));
+  await page.route('**/api/v1/player/profiles', (route) => route.fulfill({ status: 404 }));
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: 'Take this game to your emulator', exact: true }),
+    page.getByRole('heading', { name: 'Browser play needs attention', exact: true }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveCount(0);
   await expect(

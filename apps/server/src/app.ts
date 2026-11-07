@@ -16,6 +16,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { stopLibraryJobs } from './library-jobs.js';
 import { PlayerManager, registerPlayerManagement } from './player-manager.js';
+import { type PluginManagementBridge, registerPluginManagement } from './plugin-management.js';
 import './actor.js';
 import type { ServerContext } from './context.js';
 import { registerFolderWatchRoutes } from './folder-watch-routes.js';
@@ -35,6 +36,7 @@ import { authenticateWorkflowPrincipal } from './workflow-auth.js';
 export interface OpenServerOptions {
   dataDir: string;
   updates?: ServerUpdates;
+  pluginManagement?: PluginManagementBridge;
   supervisedStartup?: { activated: Promise<void>; acceptingRequests: () => boolean };
   /** Trusted operator-installed matching provider and manager directory. */
   matchingPluginsDir?: string;
@@ -128,6 +130,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     catalog.recoverInterruptedRootScans();
     app = await buildApp(context, options.logger ?? false, options.supervisedStartup);
     registerServerUpdates(app, options.updates);
+    registerPluginManagement(app, context, options.pluginManagement);
   } catch (error) {
     await virtual.close();
     catalog.close();

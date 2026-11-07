@@ -125,3 +125,12 @@ Off is the default shader. Scanlines and LCD grid are original lightweight singl
 Shader error monitoring continues after the initial frame window. A later reported compilation failure attempts Off recovery, updates the controls and removes that failed preset from matching local preferences for this build. If recovery is unavailable, the UI reports an unknown shader state and asks for reload. Settings changes are blocked while a save upload remains pending; retry or export that save first.
 
 The focused real-core test also changes palette pixels, switches both shaders and Off, saves/loads after shader operations, verifies remembered non-default startup settings and clearing them. Physical Safari/iPhone and sustained phone performance still need device acceptance.
+
+### Compressed cartridge games
+
+Browser play can open a ZIP containing one supported game file. Extraction happens
+in the browser within the selected emulator’s content-size limit. The ZIP stays
+in the library. Archives containing multiple matching game files, encrypted or
+linked entries, or disc-set references require extraction and a library rescan.
+Extract 7z and RAR files before playing them. Game details explain missing cores
+and unsupported formats, with a shortcut to **Settings → Emulators** for owners.

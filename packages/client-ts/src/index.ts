@@ -1,5 +1,8 @@
 export type {
   CleanupChange,
+  ManagedWorkflowPlugin,
+  PluginConfiguration,
+  PluginManagement,
   WorkflowApplication,
   WorkflowApproval,
   WorkflowArtifact,

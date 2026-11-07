@@ -6,7 +6,19 @@ then apply it. Saved metadata and front-cover selections change per source in on
 transaction. Original game files stay in place. Undo is conditional on the saved
 selection still matching the application receipt and expires after 30 days.
 
-## Run the native host
+## Set up from the app or web interface
+
+Sign in with the server owner account, open **Settings → Plugins**, and choose
+**Install bundled plugins**. This installs Library cleanup, creates its scoped
+connection, and runs the separate plugin host on the server. Enabled plugins
+resume with the server after a restart. Use **Check and repair connection** to
+validate installed packages and repair a revoked host connection. The page lists
+installed workflows, their enabled state, metadata integrations, and other hosts.
+
+The managed host keeps private state under the server data directory’s
+`plugin-host` folder. Existing manually configured hosts remain listed separately.
+
+## Run an additional native host from Terminal
 
 On Apple Silicon, choose **Install CLI Tools** from the Emulation Server menu
 bar icon and open a new Terminal window. A standalone server archive also

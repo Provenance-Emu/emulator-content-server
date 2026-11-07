@@ -10,6 +10,7 @@
   import Accounts from './Accounts.svelte';
   import WebDav from './WebDav.svelte';
   import DeviceTokens from './DeviceTokens.svelte';
+  import PluginSettings from './PluginSettings.svelte';
   import EmulatorSettings from './EmulatorSettings.svelte';
   import Audit from './Audit.svelte';
   import Status from './Status.svelte';
@@ -90,7 +91,8 @@
       onmanagefolders={() => choose('libraries')}
     />{:else if appState.owner && active === 'emulators'}<EmulatorSettings
       {client} {onrejected} onchange={onplayerschange ?? context.onchanged ?? (() => {})}
-    />{:else if appState.owner && active === 'access'}
+    />{:else if appState.owner && active === 'plugins'}<PluginSettings {client} {onrejected} onemulators={() => choose('emulators')} />
+    {:else if appState.owner && active === 'access'}
       <h1>Access</h1>
       <Accounts {client} libraries={appState.libraries} {onrejected} onchange={context.onchanged ?? (() => {})} />
       <Grants {client} onchange={() => noted++} />

@@ -1652,6 +1652,68 @@ public struct WorkflowRun: Codable, Equatable, Sendable {
     }
 }
 
+public struct PluginConfiguration: Codable, Equatable, Sendable {
+    public var id: String
+    public var digest: String
+    public var enabled: Bool
+
+    public init(id: String, digest: String, enabled: Bool) {
+        self.id = id
+        self.digest = digest
+        self.enabled = enabled
+    }
+}
+
+public struct ManagedWorkflowPlugin: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var version: String
+    public var digest: String
+    public var kind: String
+    public var enabled: Bool
+
+    public init(id: String, name: String, version: String, digest: String, kind: String, enabled: Bool) {
+        self.id = id
+        self.name = name
+        self.version = version
+        self.digest = digest
+        self.kind = kind
+        self.enabled = enabled
+    }
+}
+
+public struct DefaultPlugin: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var version: String
+    public var description: String
+
+    public init(id: String, name: String, version: String, description: String) {
+        self.id = id
+        self.name = name
+        self.version = version
+        self.description = description
+    }
+}
+
+public struct PluginManagement: Codable, Equatable, Sendable {
+    public var available: Bool
+    public var hostId: String?
+    public var running: Bool
+    public var error: String?
+    public var items: [ManagedWorkflowPlugin]
+    public var defaults: [DefaultPlugin]
+
+    public init(available: Bool, hostId: String? = nil, running: Bool, error: String? = nil, items: [ManagedWorkflowPlugin], defaults: [DefaultPlugin]) {
+        self.available = available
+        self.hostId = hostId
+        self.running = running
+        self.error = error
+        self.items = items
+        self.defaults = defaults
+    }
+}
+
 public struct WorkflowPackageSummary: Codable, Equatable, Sendable {
     public var id: String
     public var name: String
