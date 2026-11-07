@@ -55,22 +55,23 @@ if ! jq -e '.status == "Accepted"' "$result" >/dev/null; then
   jq -r '"Apple notarization status: \(.status). Submission: \(.id)"' "$result" >&2
   exit 1
 fi
-xcrun stapler staple "$dmg"
 # Stapler's exit code also covers invalid tickets. Retry only URL transport errors.
-for attempt in 1 2 3; do
-  if validation=$(xcrun stapler validate "$dmg" 2>&1); then
-    printf '%s\n' "$validation"
-    break
-  else
-    status=$?
-  fi
-  printf '%s\n' "$validation" >&2
-  if (( attempt == 3 )) || ! [[ $validation =~ Domain=NSURLErrorDomain[[:space:]]Code=-(1001|1004|1005)($|[[:space:]]) ]]; then
-    exit "$status"
-  fi
-  delay=$((attempt * 5))
-  printf 'Ticket validation hit a network error (attempt %s/3). Retrying in %s seconds.\n' "$attempt" "$delay" >&2
-  sleep "$delay"
+for action in staple validate; do
+  for attempt in 1 2 3; do
+    if ticket_output=$(xcrun stapler "$action" "$dmg" 2>&1); then
+      printf '%s\n' "$ticket_output"
+      break
+    else
+      status=$?
+    fi
+    printf '%s\n' "$ticket_output" >&2
+    if (( attempt == 3 )) || ! [[ $ticket_output =~ Domain=NSURLErrorDomain[[:space:]]Code=-(1001|1004|1005)($|[[:space:]]) ]]; then
+      exit "$status"
+    fi
+    delay=$((attempt * 5))
+    printf 'Ticket %s hit a network error (attempt %s/3). Retrying in %s seconds.\n' "$action" "$attempt" "$delay" >&2
+    sleep "$delay"
+  done
 done
 hdiutil verify "$dmg" >/dev/null
 spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
