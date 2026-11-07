@@ -41,7 +41,7 @@
   onDestroy(() => { disposed = true; revision++; });
 </script>
 <p>{root.label}</p>
-<p class="dim">Folder watching starts off. Enable it to detect file changes and moves in this registered server folder without a manual scan. Watching updates the index and never moves your files.</p>
+<p class="dim">Folder watching detects file changes and moves in this server folder and keeps the index up to date.</p>
 <p class="dim">Enable watching on both registered folders in the same library (or both unassigned) for reliable move detection in either direction. Periodic recovery scans catch missed events and provide a fallback when native watching is unavailable.</p>
 {#if busy}<p role="status">Updating watching settings…</p>{:else if policy}
   <p role="status">{descriptions[policy.state]}</p>

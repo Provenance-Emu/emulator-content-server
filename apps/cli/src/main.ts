@@ -22,6 +22,7 @@ import {
 } from './lifecycle.js';
 import { captureDaemonLogs } from './log.js';
 import { playerCatalogSelection } from './player-catalog-options.js';
+import { ManagedPluginHost } from './plugin-host.js';
 import { ServerUpdater } from './server-updater.js';
 import {
   installService,
@@ -219,11 +220,16 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   const uiDir = await webAssets(value('--ui'));
   const decoder = chdmanPath();
   const matchingDirectory = value('--matching-plugins');
+  const pluginManagement = new ManagedPluginHost(
+    join(resolve(dataDir), 'plugin-host'),
+    `http://127.0.0.1:${listen.port}`,
+  );
   let server: Awaited<ReturnType<typeof openServer>>;
   try {
     server = await openServer({
       dataDir,
       updates,
+      pluginManagement,
       ...(activation
         ? {
             supervisedStartup: {
@@ -264,6 +270,8 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
     await logging?.close();
     throw error;
   }
+  // Optional native integrations must not prevent the content server from starting.
+  void (activation ?? Promise.resolve()).then(() => pluginManagement.doctor()).catch(() => {});
   if (daemon) await writeServicePid(dataDir);
   let announcement: { stop(): void } | undefined;
   if (has('--advertise')) {
@@ -279,6 +287,7 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
   if (uiDir) console.log(`interface at http://${listen.host}:${listen.port}/ui/`);
   shutdown = async () => {
     await updates?.stop();
+    await pluginManagement.close();
     announcement?.stop();
     await server.close();
     if (daemon) await removeServicePid(dataDir);

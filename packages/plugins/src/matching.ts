@@ -611,7 +611,11 @@ function assessEvidence(input: MatchingInput, metadata: Record<string, string>) 
   };
 }
 /** Opt-in filename policy: full release text is retained; no title/region/edition guessing. */
-function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+function exactNameEvidence(
+  input: MatchingInput,
+  candidate: MatchCandidate,
+  allArtworkRoles = false,
+): boolean {
   if (!input.allowExactNames || !['metadata', 'artwork'].includes(candidate.kind)) return false;
   if (candidate.kind === 'artwork' && candidate.metadata.artworkReviewRequired === 'true')
     return false;
@@ -632,7 +636,7 @@ function exactNameEvidence(input: MatchingInput, candidate: MatchCandidate): boo
     return false;
   if (
     candidate.kind === 'artwork' &&
-    (candidate.metadata.artworkRole !== 'front' || !input.systemId)
+    ((!allArtworkRoles && candidate.metadata.artworkRole !== 'front') || !input.systemId)
   )
     return false;
   const exact = (value: string) =>
@@ -771,10 +775,14 @@ export function selectedArtworkAnchor(
     ],
   };
 }
-function savedSelectionEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+function savedSelectionEvidence(
+  input: MatchingInput,
+  candidate: MatchCandidate,
+  allArtworkRoles = false,
+): boolean {
   if (
     candidate.kind !== 'artwork' ||
-    candidate.metadata.artworkRole !== 'front' ||
+    (!allArtworkRoles && candidate.metadata.artworkRole !== 'front') ||
     candidate.metadata.matchEvidence !== 'saved-selection'
   )
     return false;
@@ -804,7 +812,11 @@ function savedSelectionEvidence(input: MatchingInput, candidate: MatchCandidate)
   );
 }
 /** Recheck private byte/serial facts. Provider confidence or hashVerified markers are never authority. */
-export function automaticEvidence(input: MatchingInput, candidate: MatchCandidate): boolean {
+export function automaticEvidence(
+  input: MatchingInput,
+  candidate: MatchCandidate,
+  allArtworkRoles = false,
+): boolean {
   if (discIdentityConflict(input)) return false;
   if (candidate.kind === 'artwork' && candidate.metadata.artworkReviewRequired === 'true')
     return false;
@@ -819,7 +831,12 @@ export function automaticEvidence(input: MatchingInput, candidate: MatchCandidat
     candidate.metadata.matchEvidence === 'identity-conflict'
   )
     return false;
-  if (candidate.kind === 'artwork' && candidate.metadata.artworkRole !== 'front') return false;
+  if (
+    !allArtworkRoles &&
+    candidate.kind === 'artwork' &&
+    candidate.metadata.artworkRole !== 'front'
+  )
+    return false;
   if (!['metadata', 'artwork', 'patch'].includes(candidate.kind)) return false;
   if (
     candidate.kind === 'patch' &&
@@ -828,7 +845,7 @@ export function automaticEvidence(input: MatchingInput, candidate: MatchCandidat
     return false;
   if (
     candidate.metadata.matchEvidence === 'saved-selection' &&
-    !savedSelectionEvidence(input, candidate)
+    !savedSelectionEvidence(input, candidate, allArtworkRoles)
   )
     return false;
   const evidence = assessEvidence(input, candidate.metadata);
@@ -838,10 +855,71 @@ export function automaticEvidence(input: MatchingInput, candidate: MatchCandidat
     !evidence.conflict &&
     (evidence.verifiedHash ||
       (candidate.kind !== 'patch' && evidence.verifiedSerial) ||
-      exactNameEvidence(input, candidate) ||
-      savedSelectionEvidence(input, candidate))
+      exactNameEvidence(input, candidate, allArtworkRoles) ||
+      savedSelectionEvidence(input, candidate, allArtworkRoles))
   );
 }
+/** Rank server-checked evidence for automatic library filling without relying on list order. */
+export function automaticMatchRank(
+  input: MatchingInput,
+  candidate: MatchCandidate & { providerId?: string },
+): number {
+  if (
+    discIdentityConflict(input) ||
+    candidate.metadata.artworkReviewRequired === 'true' ||
+    candidate.metadata.identityConflict === 'true' ||
+    candidate.metadata.matchEvidence === 'identity-conflict' ||
+    (input.systemId &&
+      candidate.metadata.systemId &&
+      input.systemId !== candidate.metadata.systemId) ||
+    (candidate.kind === 'artwork' &&
+      (candidate.metadata.artworkRole === 'manual' || candidate.metadata.imageKind === 'pdf'))
+  )
+    return 0;
+  const evidence = assessEvidence(input, candidate.metadata);
+  const layers = provenanceRows(candidate);
+  if (
+    evidence.conflict ||
+    !layers ||
+    layers.some((row) => assessEvidence(input, row.metadata).conflict)
+  )
+    return 0;
+  if (automaticEvidence(input, candidate, true)) {
+    if (evidence.verifiedHash) return 4;
+    if (evidence.verifiedSerial) return 3;
+    return savedSelectionEvidence(input, candidate, true) ? 2 : 1;
+  }
+  if (candidate.kind === 'artwork') {
+    const anchor = selectedArtworkAnchor(input);
+    if (
+      anchor &&
+      candidate.metadata.systemId === input.systemId &&
+      anchor.titles.some((title) =>
+        artworkTitleMatches(title, candidate.title, [
+          ...identifiers(anchor.identity.metadata.serials),
+          ...identifiers(anchor.identity.metadata.setIds),
+        ]),
+      )
+    )
+      return 2;
+  }
+  // Local metadata and images are explicit same-name companions, not fuzzy catalog guesses.
+  const companion = input.companions.find((file) => file.id === candidate.fileId);
+  if (input.allowExactNames && candidate.providerId === 'org.ecs.local' && companion) {
+    const associated =
+      candidate.kind === 'artwork'
+        ? classifyArtwork(companion.name).baseTitle.normalize('NFC').toLowerCase()
+        : stem(companion.name);
+    if (
+      associated === stem(input.name) &&
+      ((candidate.kind === 'metadata' && companion.metadata) ||
+        (candidate.kind === 'artwork' && /\.(png|jpe?g|webp)$/i.test(companion.name)))
+    )
+      return 1;
+  }
+  return 0;
+}
+
 function compatibleMetadata(left: Record<string, string>, right: Record<string, string>): boolean {
   if (left.systemId && right.systemId && left.systemId !== right.systemId) return false;
   if (

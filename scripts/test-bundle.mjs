@@ -40,7 +40,7 @@ test('bundle refuses a symlink to an empty destination directory', async () => {
   }
 });
 
-test('isolated production bundle serves health, interface and its JS/CSS assets', async () => {
+test('isolated production bundle serves the interface and API reference', async () => {
   const temporary = await mkdtemp(join(tmpdir(), 'ecs-bundle-'));
   let child;
   try {
@@ -110,6 +110,16 @@ test('isolated production bundle serves health, interface and its JS/CSS assets'
       assert.match(fetched.headers.get('content-type'), /javascript|text\/css/);
       assert.ok((await fetched.arrayBuffer()).byteLength > 0);
     }
+    const docs = await fetch(`${origin}/docs/`);
+    assert.equal(docs.status, 200);
+    assert.match(await docs.text(), /\/docs\/swagger-ui-bundle\.js/);
+    const swagger = await fetch(`${origin}/docs/swagger-ui-bundle.js`);
+    assert.equal(swagger.status, 200);
+    assert.match(swagger.headers.get('content-type'), /javascript/);
+    assert.ok((await swagger.arrayBuffer()).byteLength > 0);
+    const contract = await fetch(`${origin}/openapi.yaml`);
+    assert.equal(contract.status, 200);
+    assert.match(await contract.text(), /^openapi: 3\.1\./);
   } finally {
     if (child && child.exitCode === null) {
       const stopped = once(child, 'exit');

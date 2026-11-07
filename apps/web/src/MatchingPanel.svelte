@@ -14,8 +14,8 @@
   let plugins=$state<MatchingPlugin[]>([]);
   let providerIds=$state<string[]>([]);
   let managerId=$state('org.ecs.matches');
-  let online=$state(false);
-  let checksum=$state(false);
+  let online=$state(true);
+  let checksum=$state(true);
   let failure=$state<string|null>(null);
   let registryFailure=$state<string|null>(null);
   let registryLoading=$state(false);
@@ -27,6 +27,12 @@
   let artworkFilter=$state('all');
   const categories=[['metadata','Metadata'],['artwork','Artwork'],['patch','Patches'],['rom','System matching'],['cheats','Cheats']] as const;
   const candidates=$derived($controller.result?.candidates.filter((c)=>c.kind===category&&(category!=='artwork'||artworkFilter==='all'||roleOf(c)===artworkFilter)) ?? []);
+  const visibleCandidates=$derived(candidates.slice(page*8,page*8+8));
+  $effect(()=>{
+    if(category==='artwork'&&!$controller.suggestionsStale){
+      for(const candidate of visibleCandidates)void controller.preview(candidate.id);
+    }
+  });
   const activeProviders=$derived(plugins.some((plugin)=>plugin.kind==='provider'&&providerIds.includes(plugin.id)&&(!plugin.network||online)));
   $effect(()=>{onbusy?.($controller.loading || $controller.savedLoading || !!$controller.saving);});
   const container=$derived(/\.(rar|m3u|ccd)$/i.test(sourceName));
@@ -37,8 +43,8 @@
     try {
       const registry=await context.client.matchingPlugins();
       if(disposed)return;
-      plugins=registry.plugins;providerIds=reviewOptions?.providerIds??plugins.filter((p)=>p.kind==='provider').map((p)=>p.id);ready=true;
-      if(reviewOptions){online=reviewOptions.online===true;checksum=reviewOptions.checksum===true;managerId=reviewOptions.managerId??'org.ecs.matches';await savedReady;if(!disposed)await find();}
+      plugins=registry.plugins;providerIds=plugins.filter((p)=>p.kind==='provider').map((p)=>p.id);ready=true;
+      if(reviewOptions){await savedReady;if(!disposed)await find();}
     } catch(error){if(!disposed)registryFailure=explain(error);}
     finally {if(!disposed)registryLoading=false;}
   }
@@ -64,8 +70,9 @@
   async function find(){
     if(!activeProviders)return;
     page=0;failure=null;
-    await controller.find({online,checksum:checksum&&!container,providerIds,managerId,allowExactNames:reviewOptions?.allowExactNames??false});
+    await controller.find({online,checksum:checksum&&!container,providerIds,managerId,allowExactNames:true,autoSave:true});
     const state=get(controller);
+    if(state.result?.automatic?.saved)onchanged();
     const suggestions=state.result?.candidates??[];
     const unsaved=reviewOptions?suggestions.find((c)=>!state.saved?.matches.some((m)=>matchSlot(m)===matchSlot(c))):null;
     if(unsaved)category=unsaved.kind;
@@ -103,7 +110,7 @@
   {#if registryFailure}<p role="alert" class="problem">{registryFailure}</p><button type="button" disabled={registryLoading} onclick={()=>void loadPlugins()}>Retry matching providers</button>{/if}
   {#if owner}
   <h2>Find metadata, artwork, patches & cheats</h2>
-  <p class="dim">Find suggestions from files beside this game and your selected providers. Save a choice to keep it with this game. Saving metadata makes its title and details visible to people who can read the game. Your original files stay unchanged.</p>
+  <p class="dim">Search local and online providers, then save unique verified, exact-title, and local companion matches automatically. Fuzzy alternatives and conflicting identities stay available for review. Saved artwork is downloaded and kept with the game.</p>
   <div class="matching-actions" aria-label="Matching actions">
     <button type="button" class="primary" disabled={!ready||$controller.loading||$controller.savedLoading||!!$controller.saving||!activeProviders} onclick={()=>void find()}>{$controller.loading ? 'Finding matches…' : 'Find matches'}</button>
     {#if $controller.result}<button type="button" disabled={!!$controller.saving} onclick={()=>controller.clear()}>Clear matches</button>{/if}
@@ -113,7 +120,7 @@
     <div class="matching-disclosure-content matching-fields">
       <label class="matching-check"><input type="checkbox" bind:checked={checksum} disabled={container || $controller.loading} /> Read game IDs and verify hashes</label>
       <MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={$controller.loading||!!$controller.saving} />
-      <p class="dim">Identification plugins read bounded ROM or disc data. Supported archives verify the inner ROM; CHD header hashes are labelled separately from verified content. Online providers use public Libretro catalogs and cheat indexes. Artwork loads only when you choose Preview. ROM bytes and server paths stay on this machine.
+      <p class="dim">Identification plugins read bounded ROM or disc data. Supported archives verify the inner ROM; CHD header hashes are labelled separately from verified content. Online providers use public Libretro catalogs and cheat indexes. ROM bytes and server paths stay on this machine.
       {#if /\.zip$/i.test(sourceName)} A ZIP can be verified when it contains one supported ROM. Ambiguous or unsupported archives keep filename suggestions.{/if}
       {#if container} This disc layout uses filename suggestions until a supported identification plugin can read it.{/if}</p>
       {#if ready&&!activeProviders}<p class="form-help">Select a local provider or include an online provider before matching.</p>{/if}
@@ -122,6 +129,7 @@
 
 
   {#if $controller.result}
+    {#if $controller.result.automatic?.saved}<p role="status">Saved {$controller.result.automatic.saved} matches automatically.</p>{/if}
     {#each $controller.result.problems as problem}<p class="problem">{providerName(problem.providerId)} could not complete its lookup. Other results are still available.</p>{/each}
     <div class="actions matching-tabs" aria-label="Match categories">
       {#each categories as [id,label]}<button type="button" class:active={category===id} aria-pressed={category===id} onclick={()=>{category=id;page=0;}}>{label} ({$controller.result.candidates.filter((c)=>c.kind===id).length})</button>{/each}
@@ -129,13 +137,14 @@
     {#if !candidates.length}<p>No {categories.find(([id])=>id===category)?.[1]?.toLowerCase()} suggestions from the selected providers.</p>{/if}
     {#if category==='artwork'}<div class="matching-field"><FormField label="Artwork type">{#snippet children(attributes)}<select {...attributes} bind:value={artworkFilter} onchange={()=>page=0}><option value="all">All artwork</option>{#each artworkRoles as [role,label]}<option value={role}>{label}</option>{/each}</select>{/snippet}</FormField></div>{/if}
     <div class="matching-card-grid">
-      {#each candidates.slice(page*8,page*8+8) as candidate (candidate.id)}
+      {#each visibleCandidates as candidate (candidate.id)}
         <article class="matching-card">
           <h3>{candidate.title}</h3>
           <p class="dim">{providerName(candidate.providerId)} · {candidate.kind==='artwork'?matchLabel(candidate)+' · ':''} {candidate.metadata.matchEvidence==='saved-selection'?'Matches saved game details':candidate.metadata.matchEvidence==='exact-name'?'Exact filename and edition':candidate.metadata.matchEvidence==='verified-serial'?'Verified disc ID':candidate.metadata.matchEvidence==='declared-hash'?'Declared container hash — content not reread':candidate.metadata.matchEvidence==='hash-conflict'?'Conflicting checksums — review':candidate.confidence==='checksum' ? 'Verified checksum' : candidate.confidence==='local' ? 'Local filename association' : 'Filename suggestion — verify the edition'}</p>
           {#if candidate.kind==='artwork'&&candidate.metadata.imageKind!=='pdf'}
             {#if $controller.artwork[candidate.id]}<img src={$controller.artwork[candidate.id]} alt={'Artwork suggestion for '+candidate.title} />
-            {:else}<button type="button" disabled={!!$controller.previewing} onclick={()=>void controller.preview(candidate.id)}>{$controller.previewing===candidate.id ? 'Loading preview…' : 'Preview artwork'}</button>{/if}
+            {:else if $controller.artworkFailures[candidate.id]}<p class="dim">{$controller.artworkFailures[candidate.id]}</p>
+            {:else if !$controller.suggestionsStale}<p class="dim">Loading artwork…</p>{/if}
           {:else}<MatchMetadata metadata={candidate.metadata} />{/if}
           <button type="button" disabled={$controller.suggestionsStale||!$controller.saved||!!$controller.saving||$controller.savedLoadFailed||$controller.savedLoading||$controller.saved.matches.some((m)=>m.id===candidate.id)} onclick={()=>void save(candidate.id)}>{$controller.saving===candidate.id ? 'Saving…' : $controller.saved?.matches.some((m)=>m.id===candidate.id) ? 'Saved' : $controller.saved?.matches.some((m)=>matchSlot(m)===matchSlot(candidate)) ? 'Replace saved '+matchLabel(candidate) : 'Save '+matchLabel(candidate)}</button>
           {#if onnext}<button type="button" disabled={$controller.suggestionsStale||!$controller.saved||!!$controller.saving||$controller.loading||$controller.savedLoadFailed||$controller.savedLoading||$controller.saved.matches.some((m)=>m.id===candidate.id)} onclick={()=>void saveAndNext(candidate.id)}>{nextCategory(matchSlot(candidate))?'Save and next category':'Save and next game'}</button>{/if}

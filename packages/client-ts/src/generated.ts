@@ -268,6 +268,8 @@ export interface ContentRootDraft {
   path: string;
   label: string;
   libraryId?: string | null;
+  watch?: boolean;
+  organize?: boolean;
 }
 
 export interface ContentRootScan {
@@ -331,6 +333,11 @@ export interface SourceOrganizationPolicyDraft {
   planId?: string;
 }
 
+export interface FolderOrganizationPreview {
+  planId: string;
+  examples: Record<string, unknown>[];
+}
+
 export interface AutomaticOrganizationOutcome {
   status: string;
   sourceId?: string;
@@ -355,6 +362,12 @@ export interface SourceOrganizationPreview {
   sourceRelativePath: string;
   targetRelativePath: string;
   expiresAt: string;
+  files?: SourceOrganizationFile[];
+}
+
+export interface SourceOrganizationFile {
+  sourceRelativePath: string;
+  targetRelativePath: string;
 }
 
 export interface SourceOrganizationResult {
@@ -369,6 +382,7 @@ export interface SourceOrganizationResult {
 export interface MatchingOptions {
   online?: boolean;
   checksum?: boolean;
+  autoSave?: boolean;
   refreshCatalogs?: boolean;
   allowExactNames?: boolean;
   providerIds?: string[];
@@ -423,9 +437,16 @@ export interface MatchingProblem {
 export interface SourceMatches {
   sourceId: string;
   requestId: string;
+  automatic?: MatchingAutomaticResult;
   plugins: MatchingPlugin[];
   candidates: MatchingCandidate[];
   problems: MatchingProblem[];
+}
+
+export interface MatchingAutomaticResult {
+  status: string;
+  saved: number;
+  error: string | null;
 }
 
 export interface SourceGroupFile {
@@ -825,6 +846,37 @@ export interface WorkflowRun {
   error: string | null;
 }
 
+export interface PluginConfiguration {
+  id: string;
+  digest: string;
+  enabled: boolean;
+}
+
+export interface ManagedWorkflowPlugin {
+  id: string;
+  name: string;
+  version: string;
+  digest: string;
+  kind: string;
+  enabled: boolean;
+}
+
+export interface DefaultPlugin {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+}
+
+export interface PluginManagement {
+  available: boolean;
+  hostId: string | null;
+  running: boolean;
+  error: string | null;
+  items: ManagedWorkflowPlugin[];
+  defaults: DefaultPlugin[];
+}
+
 export interface WorkflowPackageSummary {
   id: string;
   name: string;
@@ -854,6 +906,10 @@ export interface WorkflowHost {
   enrolled: boolean;
   revokedAt: string | null;
   createdAt: string;
+}
+
+export interface WorkflowHostResponse {
+  host: WorkflowHost;
 }
 
 export interface WorkflowLease {

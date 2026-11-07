@@ -26,6 +26,7 @@ export { type ContentHash, crc32, crc32Hex, hashFile } from './hash.js';
 export { ensureBlobStore, ensureLayout, locationOnline } from './layout.js';
 export {
   applyOrganization,
+  applyOrganizationGroup,
   inspectOrganizationFile,
   type OrganizationFile,
   type OrganizationMode,

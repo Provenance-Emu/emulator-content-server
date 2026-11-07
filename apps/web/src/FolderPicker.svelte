@@ -3,14 +3,17 @@
   import { onDestroy, untrack } from 'svelte';
   import type { FolderSelection } from './lib/folder-selection';
   import { explain } from './lib/problems';
-  let { client, contextKey, origin = window.location.origin, title, submitLabel, onsubmit, oncancel, onbusy = () => {} }: {
+  let { client, contextKey, origin = window.location.origin, title, submitLabel, libraryFolder = false, preselected = null, onsubmit, oncancel, onbusy = () => {} }: {
     client: ContentClient; contextKey: string; origin?: string; title: string; submitLabel: string;
+    libraryFolder?: boolean; preselected?: FolderSelection | null;
     onsubmit: (selection: FolderSelection) => Promise<boolean>; oncancel: () => void; onbusy?: (busy: boolean) => void;
   } = $props();
   const key = untrack(() => contextKey);
   let listing = $state<FolderListing | null>(null);
-  let path = $state('');
-  let name = $state('');
+  let path = $state(untrack(() => preselected?.path ?? ''));
+  let name = $state(untrack(() => preselected?.suggestedName ?? ''));
+  let watch = $state(true);
+  let organize = $state(true);
   let failure = $state<string | null>(null);
   let reading = $state(false);
   let busy = $state(false);
@@ -30,7 +33,10 @@
     if (busy || disposed || key !== contextKey || !path.trim()) return;
     generation++; reading = false; busy = true; onbusy(true); failure = null;
     try {
-      const accepted = await onsubmit({ path: path.trim(), suggestedName: name.trim(), origin, contextKey: key });
+      const selection = preselected ?? { path: path.trim(), origin, contextKey: key };
+      const accepted = await onsubmit({ ...selection, suggestedName: name.trim(),
+        ...(libraryFolder ? { automation: { watch, organize } } : {}),
+      });
       if (!disposed && key === contextKey) {
         if (accepted) oncancel();
         else failure = 'The folder could not be selected. Check the path and try again.';
@@ -38,12 +44,13 @@
     } catch (error) { if (!disposed && key === contextKey) failure = explain(error); }
     finally { if (!disposed) { busy = false; onbusy(false); } }
   }
-  untrack(() => { void open(null); });
+  untrack(() => { if (!preselected) void open(null); });
   onDestroy(() => { disposed = true; generation++; });
 </script>
 <section aria-label={title} class="picker folder-picker compact-controls">
-  <p class="picker-intro dim">Browse folders on the computer running Emulation Server. This does not copy files from your device.</p>
+  {#if !preselected}<p class="picker-intro dim">Browse folders on the computer running Emulation Server.</p>{/if}
   <form class="picker-form" onsubmit={submit}>
+    {#if preselected}<p class="path">{preselected.path}</p>{:else}
     <div class="picker-path-row">
       <label>Server folder path<input bind:value={path} required disabled={busy} placeholder="/Volumes/Games" oninput={() => { generation++; reading = false; }} /></label>
       <button type="button" disabled={busy || reading || !path.trim()} onclick={() => void open(path.trim())}>Browse path</button>
@@ -73,8 +80,17 @@
       </div>
     {/if}
     {#if reading}<p class="picker-status dim" role="status">Reading folders on the server…</p>{/if}
+    {/if}
     {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
     <label class="picker-name">Folder name (optional)<input bind:value={name} maxlength="80" disabled={busy} placeholder="Uses the folder name" /></label>
+    {#if libraryFolder}
+      <fieldset class="folder-automation" disabled={busy}>
+        <legend>Folder automation</legend>
+        <label><input type="checkbox" bind:checked={watch} /> Automatically watch for file changes</label>
+        <label><input type="checkbox" bind:checked={organize} /> Automatically organize after saving matches</label>
+        <p class="dim">Metadata and artwork fill in automatically after scanning. With organization enabled, matched ROMs, archives, and complete disc sets move within this folder to <code>System / Game title / Original filename</code>. Multi-disc sets and their companion files stay together.</p>
+      </fieldset>
+    {/if}
     <div class="picker-actions ui-actions">
       <button type="button" disabled={busy} onclick={oncancel}>Cancel</button>
       <button class="primary" type="submit" disabled={busy || !path.trim()}>{busy ? 'Working…' : submitLabel}</button>
@@ -104,6 +120,10 @@
   .folder-empty { padding: var(--space-4); font-size: var(--text-label); }
   .picker-status { margin: 0; }
   .picker-name { width: min(100%, 24rem); }
+  .folder-automation { display: grid; gap: var(--space-2); margin: 0; }
+  .folder-automation label { flex-direction: row; align-items: center; }
+  .folder-automation input { width: auto; }
+  .folder-automation p { margin: 0; }
   .picker-actions { padding-top: var(--space-1); }
   @media (max-width: 760px) {
     .picker-intro { font-size: var(--text-label); }

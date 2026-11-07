@@ -13,6 +13,7 @@ export interface StagedFolder {
   rootId: string | null;
   scanned: boolean;
   failure: string | null;
+  organizationUnsupported?: boolean;
 }
 export interface LibraryEditorState {
   name: string;
@@ -102,6 +103,7 @@ export function createLibraryEditor(
               path: folder.selection.path.trim(),
               label: folder.selection.suggestedName.trim() || folderName(folder.selection.path),
               libraryId: current.libraryId,
+              ...folder.selection.automation,
             });
             if (!live()) return false;
             folder.rootId = root.id;
@@ -116,6 +118,11 @@ export function createLibraryEditor(
         } catch (error) {
           if (live()) {
             folder.failure = explain(error);
+            folder.organizationUnsupported =
+              !folder.rootId &&
+              !!folder.selection.automation?.organize &&
+              error instanceof ContentError &&
+              error.problem?.type.endsWith('organization-unsupported');
             update({ folders: [...current.folders] });
           }
           throw error;
@@ -165,6 +172,14 @@ export function createLibraryEditor(
     removeStagedFolder(index: number) {
       if (!current.busy && !current.libraryId)
         update({ folders: current.folders.filter((_, i) => i !== index) });
+    },
+    turnOffFolderOrganization(index: number) {
+      const folder = current.folders[index];
+      if (current.busy || !folder?.organizationUnsupported || !folder.selection.automation) return;
+      folder.selection.automation = { ...folder.selection.automation, organize: false };
+      folder.organizationUnsupported = false;
+      folder.failure = null;
+      update({ folders: [...current.folders], failure: null });
     },
     submit,
     retryRemaining: submit,

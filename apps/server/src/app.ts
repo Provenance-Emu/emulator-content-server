@@ -14,8 +14,10 @@ import {
 } from '@ecs/storage';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { registerApiDocs } from './api-docs.js';
 import { stopLibraryJobs } from './library-jobs.js';
 import { PlayerManager, registerPlayerManagement } from './player-manager.js';
+import { type PluginManagementBridge, registerPluginManagement } from './plugin-management.js';
 import './actor.js';
 import type { ServerContext } from './context.js';
 import { registerFolderWatchRoutes } from './folder-watch-routes.js';
@@ -35,9 +37,12 @@ import { authenticateWorkflowPrincipal } from './workflow-auth.js';
 export interface OpenServerOptions {
   dataDir: string;
   updates?: ServerUpdates;
+  pluginManagement?: PluginManagementBridge;
   supervisedStartup?: { activated: Promise<void>; acceptingRequests: () => boolean };
   /** Trusted operator-installed matching provider and manager directory. */
   matchingPluginsDir?: string;
+  /** Fill missing metadata and artwork after scans. Enabled by default. */
+  automaticMatching?: boolean;
   /** Trusted native read adapters for identification only; omitted paths are discovered locally. */
   matchingTools?: { sevenZip?: string; chdman?: string };
   /** Optional operator-owned absolute native decoder path; omitted means ZIP only. */
@@ -92,6 +97,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
   }
   const context: ServerContext = {
     catalog,
+    automaticMatching: options.automaticMatching !== false,
     ...(options.matchingPluginsDir ? { matchingPluginsDir: options.matchingPluginsDir } : {}),
     ...(options.matchingTools || options.chdmanPath
       ? {
@@ -126,7 +132,12 @@ export async function openServer(options: OpenServerOptions): Promise<{
     // pending scans belong to an abandoned run. Auxiliary catalog opens must
     // preserve active scans and never perform this recovery.
     catalog.recoverInterruptedRootScans();
-    app = await buildApp(context, options.logger ?? false, options.supervisedStartup);
+    app = await buildApp(
+      context,
+      options.logger ?? false,
+      options.supervisedStartup,
+      options.pluginManagement,
+    );
     registerServerUpdates(app, options.updates);
   } catch (error) {
     await virtual.close();
@@ -154,6 +165,7 @@ export async function buildApp(
   context: ServerContext,
   logger = false,
   startup?: OpenServerOptions['supervisedStartup'],
+  pluginManagement?: PluginManagementBridge,
 ): Promise<FastifyInstance> {
   context.catalog.ensureServer(context.displayName);
   const app = Fastify({
@@ -307,7 +319,9 @@ export async function buildApp(
   });
   registerFolderWatchRoutes(app, context, folderWatcher);
   registerWebDav(app, context);
-  registerRoutes(app, context);
+  registerApiDocs(app);
+  registerRoutes(app, context, (rootId) => folderWatcher.reconcile(rootId));
+  registerPluginManagement(app, context, pluginManagement);
   registerPlayerManagement(app, context);
   registerPlayerIsolation(app, context);
   registerPlayerAssets(app, context);

@@ -1,5 +1,6 @@
 import type { Item, ManifestFile, SourceFile } from '@ecs/client';
-import { type BrowserCore, contentExtensions, validateProfile } from './runtime.js';
+import { supportsContentName } from './archive.js';
+import { type BrowserCore, validateProfile } from './runtime.js';
 export type PlayableCores = BrowserCore | readonly BrowserCore[] | null;
 function supported(
   cores: PlayableCores,
@@ -18,7 +19,7 @@ function supported(
     }
     if (
       core.systems.includes(system) &&
-      contentExtensions(core).some((extension) => name.toLowerCase().endsWith(`.${extension}`)) &&
+      supportsContentName(core, name) &&
       size <= core.maxContentBytes
     )
       return core;
@@ -55,4 +56,47 @@ export function playerReturnHref(value: string | null, origin: string): string {
   } catch {
     return '/ui/';
   }
+}
+
+export function playUnavailableReason(
+  cores: PlayableCores,
+  system: string | null,
+  name: string,
+  kind: string,
+  size: number,
+): string | null {
+  if (supported(cores, system, name, kind, size)) return null;
+  if (!system) return 'Choose the game’s console before playing it.';
+  const installed = (cores ? (Array.isArray(cores) ? cores : [cores as BrowserCore]) : []).filter(
+    (core) => {
+      try {
+        validateProfile(core);
+        return core.systems.includes(system);
+      } catch {
+        return false;
+      }
+    },
+  );
+  if (!installed.length)
+    return 'No enabled browser emulator supports this console. Install or enable one in Settings → Emulators.';
+  if (/\.(7z|rar)$/i.test(name))
+    return 'Extract this archive and rescan the library folder. Browser play supports a single game in a ZIP or an uncompressed game file.';
+  if (size <= 0)
+    return 'This game file is empty. Rescan its library folder after restoring the file.';
+  if (installed.every((core) => size > core.maxContentBytes))
+    return 'This game exceeds the installed emulators’ supported file size.';
+  return 'This file format is unsupported by the enabled emulators for this console. Check the supported formats in Settings → Emulators.';
+}
+export function sourcePlayUnavailableReason(
+  cores: PlayableCores,
+  source: SourceFile,
+): string | null {
+  if (sourcePlayHref(cores, source)) return null;
+  if (source.availability !== 'local')
+    return 'Bring this library folder online and download the game on the server first.';
+  if (source.groupError)
+    return 'Fix this disc set’s missing or invalid files, then rescan the library folder.';
+  if ((source.groupFileCount ?? 1) > 1 && !/\.cue$/i.test(source.name))
+    return 'Open the disc set’s CUE file to play it, or choose a supported single-file disc image.';
+  return playUnavailableReason(cores, source.systemId, source.name, source.kind, source.size);
 }

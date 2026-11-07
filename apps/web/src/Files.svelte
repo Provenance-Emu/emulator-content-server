@@ -3,19 +3,21 @@
   import type { DetailState } from './lib/detail';
   import { KIND_ORDER, kindLabel, saveGroups } from './lib/content-format';
   import { bytes } from './lib/format';
-  import { assetPlayHref } from './player/links';
+  import { assetPlayHref, playUnavailableReason } from './player/links';
   let {
     detailState,
     playerCore,
     ondownload,
     onplay,
     externalBusy = false,
+    onemulators,
   }: {
     detailState: DetailState;
     playerCore: import('./player/links').PlayableCores;
     ondownload: (file: ManifestFile) => void;
     onplay: (href: string) => void;
     externalBusy?: boolean;
+    onemulators?: () => void;
   } = $props();
   let selected = $state('overview');
   const playable = $derived.by(() => {
@@ -70,8 +72,9 @@
     <h2>Choose a game file to play</h2>
     <p>Use Play beside a game file below. You can also download it to use in your emulator.</p>
   {:else if gameFiles.length}
-    <h2>Take this game to your emulator</h2>
-    <p>Browser play is not available for this game on this server. Download the game file below and open it in an emulator that supports this console.</p>
+    <h2>Browser play needs attention</h2>
+    <p>{playUnavailableReason(playerCore, detailState.item?.systemIdentifier ?? null, gameFiles[0]!.relativePath, gameFiles[0]!.kind, gameFiles[0]!.size)}</p>
+    {#if onemulators}<button type="button" onclick={onemulators}>Manage emulators</button>{/if}
   {:else}
     <h2>This game needs a game file</h2>
     <p>{detailState.canUpload ? 'Choose Add a file above to add the game. Saves and pictures can stay here too.' : 'Ask the library owner to add the game file. You can still download any saves or pictures below.'}</p>

@@ -2,6 +2,7 @@ export const settingsSections = [
   { id: 'libraries', label: 'Libraries', group: 'Collection' },
   { id: 'storage', label: 'Storage', group: 'Collection' },
   { id: 'emulators', label: 'Emulators', group: 'Collection' },
+  { id: 'plugins', label: 'Plugins', group: 'Server' },
   { id: 'access', label: 'Access', group: 'Sharing' },
   { id: 'devices', label: 'Devices', group: 'Sharing' },
   { id: 'webdav', label: 'WebDAV', group: 'Sharing' },

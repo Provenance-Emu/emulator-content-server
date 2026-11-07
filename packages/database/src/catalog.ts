@@ -84,6 +84,13 @@ interface OrganizationCopyInput {
   originalIdentity: string;
   sha256: string;
 }
+interface SourceTransferInput {
+  sourceId: string;
+  targetRootId: string;
+  actorId: string;
+  file: SourceInspection;
+  organizationCopy?: OrganizationCopyInput;
+}
 
 export interface CatalogLimits {
   maxUploadBytes: number;
@@ -956,6 +963,8 @@ export class CatalogDatabase {
     label: string;
     libraryId: string | null;
     actorId: string;
+    watch?: boolean;
+    organize?: boolean;
   }): ContentRootRecord {
     const createdAt = nowIso();
     const id = randomUUID();
@@ -982,6 +991,19 @@ export class CatalogDatabase {
         path: input.path,
         label: input.label,
       });
+      if (input.watch) this.setFolderWatchPolicy(id, input.actorId);
+      if (input.organize) {
+        this.writeSourceOrganizationPolicy({
+          sourceRootId: id,
+          targetRootId: id,
+          libraryId: input.libraryId,
+          sourceRootPath: input.path,
+          targetRootPath: input.path,
+          mode: 'move',
+          enabledBy: input.actorId,
+          enabledAt: createdAt,
+        });
+      }
     });
     return {
       id,
@@ -1423,74 +1445,71 @@ export class CatalogDatabase {
     return this.transferInspectedSource(input, true);
   }
 
-  private transferInspectedSource(
-    input: {
-      sourceId: string;
-      targetRootId: string;
-      actorId: string;
-      file: SourceInspection;
-      organizationCopy?: OrganizationCopyInput;
-    },
-    copy: boolean,
-  ): SourceFileRecord {
-    return this.transaction(() => {
-      const source = this.getSource(input.sourceId);
-      const target = this.getContentRoot(input.targetRootId);
-      if (!source || !target)
-        throw new DomainError('not-found', 404, 'Source or content root not found');
-      if (target.libraryId !== source.libraryId)
-        throw new DomainError('conflict', 409, 'Organization must stay in the same library');
-      assertInspection(input.file);
-      if (!input.file.filesystemIdentity || input.file.mtimeMs == null)
-        throw new DomainError(
-          'invalid-body',
-          400,
-          'Organization requires inspected filesystem identity',
-        );
-      const collision = this.one<{ id: string }>(
-        'SELECT id FROM source_files WHERE root_id=? AND relative_path=?',
-        input.targetRootId,
-        input.file.relativePath,
+  private transferInspectedSource(input: SourceTransferInput, copy: boolean): SourceFileRecord {
+    return this.transaction(() => this.writeTransferredSource(input, copy));
+  }
+
+  transferSourceGroup(inputs: SourceTransferInput[], copy: boolean): SourceFileRecord[] {
+    return this.transaction(() => inputs.map((input) => this.writeTransferredSource(input, copy)));
+  }
+
+  private writeTransferredSource(input: SourceTransferInput, copy: boolean): SourceFileRecord {
+    const source = this.getSource(input.sourceId);
+    const target = this.getContentRoot(input.targetRootId);
+    if (!source || !target)
+      throw new DomainError('not-found', 404, 'Source or content root not found');
+    if (target.libraryId !== source.libraryId)
+      throw new DomainError('conflict', 409, 'Organization must stay in the same library');
+    assertInspection(input.file);
+    if (!input.file.filesystemIdentity || input.file.mtimeMs == null)
+      throw new DomainError(
+        'invalid-body',
+        400,
+        'Organization requires inspected filesystem identity',
       );
-      if (collision && (copy || collision.id !== source.id))
-        throw new DomainError('conflict', 409, 'Target path is already indexed');
-      const id = copy ? randomUUID() : source.id;
-      const at = nowIso();
-      if (copy) {
-        this.insertInspectedSource(id, target.id, input.file, at);
-        this.db
-          .prepare(`INSERT INTO source_match_state(source_id,revision)
-          SELECT ?,revision FROM source_match_state WHERE source_id=?`)
-          .run(id, source.id);
-        this.db
-          .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
-          SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
-          .run(id, source.id);
-        if (input.organizationCopy)
-          this.setSourceOrganizationCopy(input.organizationCopy.sourceRootId, source.id, {
-            copySourceId: id,
-            originalIdentity: input.organizationCopy.originalIdentity,
-            copyIdentity: input.file.filesystemIdentity,
-            sha256: input.organizationCopy.sha256,
-          });
-      } else this.updateInspectedSource(id, target.id, input.file, at);
-      this.insertChange(
-        'source',
-        id,
-        'upsert',
-        source.libraryId,
-        null,
-        sensitiveKind(input.file.kind),
-        at,
-        null,
-      );
-      this.insertAudit(input.actorId, copy ? 'copy-source' : 'move-source', 'source', id, {
-        targetRootId: target.id,
-      });
-      const result = this.getSource(id);
-      if (!result) throw new DomainError('not-found', 500, 'Organized source was not saved');
-      return result;
+    const collision = this.one<{ id: string }>(
+      'SELECT id FROM source_files WHERE root_id=? AND relative_path=?',
+      input.targetRootId,
+      input.file.relativePath,
+    );
+    if (collision && (copy || collision.id !== source.id))
+      throw new DomainError('conflict', 409, 'Target path is already indexed');
+    const id = copy ? randomUUID() : source.id;
+    const at = nowIso();
+    if (copy) {
+      this.insertInspectedSource(id, target.id, input.file, at);
+      this.db
+        .prepare(`INSERT INTO source_match_state(source_id,revision)
+        SELECT ?,revision FROM source_match_state WHERE source_id=?`)
+        .run(id, source.id);
+      this.db
+        .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
+        SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
+        .run(id, source.id);
+      if (input.organizationCopy)
+        this.setSourceOrganizationCopy(input.organizationCopy.sourceRootId, source.id, {
+          copySourceId: id,
+          originalIdentity: input.organizationCopy.originalIdentity,
+          copyIdentity: input.file.filesystemIdentity,
+          sha256: input.organizationCopy.sha256,
+        });
+    } else this.updateInspectedSource(id, target.id, input.file, at);
+    this.insertChange(
+      'source',
+      id,
+      'upsert',
+      source.libraryId,
+      null,
+      sensitiveKind(input.file.kind),
+      at,
+      null,
+    );
+    this.insertAudit(input.actorId, copy ? 'copy-source' : 'move-source', 'source', id, {
+      targetRootId: target.id,
     });
+    const result = this.getSource(id);
+    if (!result) throw new DomainError('not-found', 500, 'Organized source was not saved');
+    return result;
   }
 
   listFolderWatchPolicies(): { rootId: string; rootPath: string; enabledBy: string }[] {
@@ -1543,48 +1562,50 @@ export class CatalogDatabase {
   }
 
   setSourceOrganizationPolicy(policy: SourceOrganizationPolicy): void {
-    this.transaction(() => {
-      const source = this.getContentRoot(policy.sourceRootId);
-      const target = this.getContentRoot(policy.targetRootId);
-      if (
-        !source ||
-        !target ||
-        source.libraryId !== policy.libraryId ||
-        target.libraryId !== policy.libraryId ||
-        source.path !== policy.sourceRootPath ||
-        target.path !== policy.targetRootPath
-      )
-        throw new DomainError('conflict', 409, 'Organization policy folders changed');
-      // Disabled policies keep ownership, but a new destination must not inherit
-      // the previous destination's mapping when the policy row no longer exists.
-      this.db
-        .prepare(`DELETE FROM source_organization_copies WHERE source_root_id=?
+    this.transaction(() => this.writeSourceOrganizationPolicy(policy));
+  }
+
+  private writeSourceOrganizationPolicy(policy: SourceOrganizationPolicy): void {
+    const source = this.getContentRoot(policy.sourceRootId);
+    const target = this.getContentRoot(policy.targetRootId);
+    if (
+      !source ||
+      !target ||
+      source.libraryId !== policy.libraryId ||
+      target.libraryId !== policy.libraryId ||
+      source.path !== policy.sourceRootPath ||
+      target.path !== policy.targetRootPath
+    )
+      throw new DomainError('conflict', 409, 'Organization policy folders changed');
+    // Disabled policies keep ownership, but a new destination must not inherit
+    // the previous destination's mapping when the policy row no longer exists.
+    this.db
+      .prepare(`DELETE FROM source_organization_copies WHERE source_root_id=?
         AND (? != 'copy' OR copy_source_id NOT IN (SELECT id FROM source_files WHERE root_id=?))`)
-        .run(policy.sourceRootId, policy.mode, policy.targetRootId);
-      this.db
-        .prepare(`INSERT INTO source_organization_policies
+      .run(policy.sourceRootId, policy.mode, policy.targetRootId);
+    this.db
+      .prepare(`INSERT INTO source_organization_policies
         (source_root_id,library_id,target_root_id,source_root_path,target_root_path,mode,enabled_by,enabled_at)
         VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(source_root_id) DO UPDATE SET
         library_id=excluded.library_id,target_root_id=excluded.target_root_id,source_root_path=excluded.source_root_path,
         target_root_path=excluded.target_root_path,mode=excluded.mode,enabled_by=excluded.enabled_by,enabled_at=excluded.enabled_at`)
-        .run(
-          policy.sourceRootId,
-          policy.libraryId,
-          policy.targetRootId,
-          policy.sourceRootPath,
-          policy.targetRootPath,
-          policy.mode,
-          policy.enabledBy,
-          policy.enabledAt,
-        );
-      this.insertAudit(
-        policy.enabledBy,
-        'enable-source-organization',
-        'content-root',
+      .run(
         policy.sourceRootId,
-        { mode: policy.mode, targetRootId: policy.targetRootId },
+        policy.libraryId,
+        policy.targetRootId,
+        policy.sourceRootPath,
+        policy.targetRootPath,
+        policy.mode,
+        policy.enabledBy,
+        policy.enabledAt,
       );
-    });
+    this.insertAudit(
+      policy.enabledBy,
+      'enable-source-organization',
+      'content-root',
+      policy.sourceRootId,
+      { mode: policy.mode, targetRootId: policy.targetRootId },
+    );
   }
 
   clearSourceOrganizationPolicy(sourceRootId: string): void {
@@ -1652,49 +1673,57 @@ export class CatalogDatabase {
 
   /** The organizer verified ownership and both files before synchronizing their selections. */
   synchronizeSourceMatches(originalId: string, copyId: string): SourceMatchState {
-    return this.transaction(() => {
-      const original = this.getSource(originalId);
-      const copy = this.getSource(copyId);
-      if (!original || !copy || original.libraryId !== copy.libraryId || original.id === copy.id)
-        throw new DomainError('conflict', 409, 'Source copies must stay in the same library');
-      const current = sourceMatches(this.db, copyId);
-      const differs =
-        this.one<{ n: number }>(
-          `SELECT COUNT(*) AS n FROM (
-        SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?
-        EXCEPT SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?)`,
-          originalId,
-          copyId,
-        )?.n ||
-        this.one<{ n: number }>(
-          `SELECT COUNT(*) AS n FROM (
-        SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?
-        EXCEPT SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?)`,
-          copyId,
-          originalId,
-        )?.n;
-      if (!differs) return current;
-      this.db.prepare('DELETE FROM source_match_selections WHERE source_id=?').run(copyId);
-      this.db
-        .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
-        SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
-        .run(copyId, originalId);
-      this.db
-        .prepare(`INSERT INTO source_match_state(source_id,revision) VALUES(?,?)
-        ON CONFLICT(source_id) DO UPDATE SET revision=excluded.revision`)
-        .run(copyId, Math.max(current.revision + 1, sourceMatches(this.db, originalId).revision));
-      this.insertChange(
-        'source',
-        copyId,
-        'upsert',
-        copy.libraryId,
-        null,
-        sensitiveKind(copy.kind),
-        nowIso(),
-        null,
-      );
-      return sourceMatches(this.db, copyId);
+    return this.transaction(() => this.writeSynchronizedSourceMatches(originalId, copyId));
+  }
+
+  synchronizeSourceGroupMatches(pairs: { originalId: string; copyId: string }[]): void {
+    this.transaction(() => {
+      for (const pair of pairs) this.writeSynchronizedSourceMatches(pair.originalId, pair.copyId);
     });
+  }
+
+  private writeSynchronizedSourceMatches(originalId: string, copyId: string): SourceMatchState {
+    const original = this.getSource(originalId);
+    const copy = this.getSource(copyId);
+    if (!original || !copy || original.libraryId !== copy.libraryId || original.id === copy.id)
+      throw new DomainError('conflict', 409, 'Source copies must stay in the same library');
+    const current = sourceMatches(this.db, copyId);
+    const differs =
+      this.one<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM (
+      SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?
+      EXCEPT SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?)`,
+        originalId,
+        copyId,
+      )?.n ||
+      this.one<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM (
+      SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?
+      EXCEPT SELECT kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?)`,
+        copyId,
+        originalId,
+      )?.n;
+    if (!differs) return current;
+    this.db.prepare('DELETE FROM source_match_selections WHERE source_id=?').run(copyId);
+    this.db
+      .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
+      SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
+      .run(copyId, originalId);
+    this.db
+      .prepare(`INSERT INTO source_match_state(source_id,revision) VALUES(?,?)
+      ON CONFLICT(source_id) DO UPDATE SET revision=excluded.revision`)
+      .run(copyId, Math.max(current.revision + 1, sourceMatches(this.db, originalId).revision));
+    this.insertChange(
+      'source',
+      copyId,
+      'upsert',
+      copy.libraryId,
+      null,
+      sensitiveKind(copy.kind),
+      nowIso(),
+      null,
+    );
+    return sourceMatches(this.db, copyId);
   }
 
   listSources(rootId: string, limit?: number): SourceFileRecord[] {

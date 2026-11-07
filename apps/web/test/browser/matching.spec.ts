@@ -59,7 +59,9 @@ for (const bulk of [false, true])
       .locator('summary')
       .filter({ hasText: /^Matching options$/ })
       .click();
-    await panel.getByRole('checkbox', { name: 'Include online providers', exact: true }).uncheck();
+    const online = panel.getByRole('checkbox', { name: 'Include online providers', exact: true });
+    await expect(online).toBeChecked();
+    await online.uncheck();
     const local = panel.getByRole('checkbox', { name: /\(local\)$/ });
     expect(await local.count()).toBeGreaterThan(0);
     for (const checkbox of await local.all()) await checkbox.uncheck();
@@ -93,10 +95,21 @@ test('committed match saves and removals survive a lost response without duplica
       await route.abort('failed');
     },
   );
+  // Keep a manual review candidate for testing recovery of a committed explicit choice.
+  await page.route('**/api/v1/sources/*/matches', (route) =>
+    route.continue({
+      postData: JSON.stringify({ ...route.request().postDataJSON(), autoSave: false }),
+    }),
+  );
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
   const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await matching
+    .locator('summary')
+    .filter({ hasText: /^Matching options$/ })
+    .click();
+  await matching.getByRole('checkbox', { name: 'Include online providers', exact: true }).uncheck();
   await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
   await matching.getByRole('button', { name: 'Save metadata', exact: true }).click();
   await expect(
@@ -154,6 +167,15 @@ test('lookups open a populated category and retain the selected category while i
 }) => {
   await fixture.legacy();
   let lookups = 0;
+  await page.route('**/api/v1/sources/*/matches/*/artwork/*', (route) =>
+    route.fulfill({
+      contentType: 'image/png',
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    }),
+  );
   await page.route('**/api/v1/sources/*/matches', async (route) => {
     lookups++;
     const kinds =
@@ -197,6 +219,9 @@ test('lookups open a populated category and retain the selected category while i
     'true',
   );
   await expect(matching.getByRole('heading', { name: 'Suggestion 1' })).toBeVisible();
+  const artwork = matching.getByRole('img', { name: 'Artwork suggestion for Suggestion 1' });
+  await expect(artwork).toBeVisible();
+  await expect.poll(() => artwork.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
   await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
   await expect(matching.getByRole('heading', { name: 'Suggestion 2' })).toBeVisible();
   await expect(matching.getByRole('button', { name: 'Artwork (1)', exact: true })).toHaveAttribute(
@@ -512,4 +537,50 @@ test('front, back, disc and manual choices coexist with role filtering and a PDF
   await expect(
     matching.getByRole('button', { name: 'Remove saved back cover', exact: true }),
   ).toHaveCount(0);
+});
+
+test('a search defaults to all online sources and saves local metadata and artwork without a save click', async ({
+  page,
+  fixture,
+}) => {
+  const root = await fixture.legacy();
+  await writeFile(
+    join(root.path, 'external.json'),
+    JSON.stringify({ title: 'Automatically matched game' }),
+  );
+  await writeFile(
+    join(root.path, 'external.png'),
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  );
+  await fixture.client.scanRoot(root.id);
+  const providers = (await fixture.client.matchingPlugins()).plugins
+    .filter((plugin) => plugin.kind === 'provider')
+    .map((plugin) => plugin.id)
+    .sort();
+  await page.route('**/api/v1/sources/*/matches', async (route) => {
+    const options = route.request().postDataJSON();
+    expect(options.online).toBe(true);
+    expect(options.checksum).toBe(true);
+    expect(options.autoSave).toBe(true);
+    expect([...options.providerIds].sort()).toEqual(providers);
+    // Exercise automatic saving with generated local fixtures and no external network lookup.
+    await route.continue({ postData: JSON.stringify({ ...options, online: false }) });
+  });
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
+  const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved metadata', exact: true }),
+  ).toBeVisible();
+  await expect(
+    matching.getByRole('button', { name: 'Remove saved front cover', exact: true }),
+  ).toBeVisible();
+  await expect(matching.getByText('Saved 2 matches automatically.', { exact: true })).toBeVisible();
+  const art = matching.getByRole('img', { name: 'Saved artwork for external' });
+  await expect.poll(() => art.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
 });

@@ -13,19 +13,20 @@ async function withDesktop(page: Page, run: (origin: string) => Promise<void>) {
       response.writeHead(404).end();
       return;
     }
-    try {
-      response
-        .writeHead(200, {
-          'content-type': file.endsWith('.html')
-            ? 'text/html'
-            : file.endsWith('.css')
-              ? 'text/css'
-              : 'text/javascript',
-        })
-        .end(await readFile(file));
-    } catch {
+    const contents = await readFile(file).catch(() => null);
+    if (!contents) {
       response.writeHead(404).end();
+      return;
     }
+    response
+      .writeHead(200, {
+        'content-type': file.endsWith('.html')
+          ? 'text/html'
+          : file.endsWith('.css')
+            ? 'text/css'
+            : 'text/javascript',
+      })
+      .end(contents);
   });
   await new Promise<void>((done, reject) => {
     server.once('error', reject);
@@ -86,7 +87,6 @@ test('desktop native adapter cancels without fallback, registers once, and recov
   );
   await withDesktop(page, async (desktop) => {
     await page.goto(`${desktop}/library.html`);
-    await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
     await page.getByLabel('Username', { exact: true }).fill('browser-owner');
     await page.getByLabel('Password', { exact: true }).fill(fixture.password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click({ noWaitAfter: true });
@@ -123,6 +123,14 @@ test('desktop native adapter cancels without fallback, registers once, and recov
         choice;
     }, quickFolder);
     await addServerFolder();
+    const quickPicker = page.getByRole('dialog', { name: 'Add server folder', exact: true });
+    await expect(quickPicker.getByRole('checkbox', { name: /automatically watch/i })).toBeChecked();
+    await expect(
+      quickPicker.getByRole('checkbox', { name: /automatically organize/i }),
+    ).toBeChecked();
+    await quickPicker.getByRole('button', { name: 'Add folder', exact: true }).click();
+    await expect(quickPicker).toHaveCount(0);
+    await page.locator('.collection-options summary').click();
     await expect(
       page
         .getByRole('combobox', { name: /^Library folder/ })
@@ -195,6 +203,10 @@ test('desktop native adapter cancels without fallback, registers once, and recov
         folder;
     }, folder);
     await add.click();
+    await page
+      .getByRole('dialog', { name: 'Add library folder', exact: true })
+      .getByRole('button', { name: 'Add folder', exact: true })
+      .click();
     await expect(
       page.getByRole('button', { name: 'View files in Desktop folder', exact: true }),
     ).toBeVisible();
@@ -210,7 +222,8 @@ test('desktop native adapter cancels without fallback, registers once, and recov
     expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
     await page.getByText('Change connection', { exact: true }).click();
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(page.locator('.connection-summary')).toContainText(fixture.origin);
+    await expect(page.getByRole('heading', { name: 'Libraries', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Add folder to Arcade', exact: true }).click();
     await expect(
       page.getByRole('dialog', { name: 'Add library folder', exact: true }),
@@ -306,7 +319,6 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
     );
     await withDesktop(page, async (desktop) => {
       await page.goto(`${desktop}/library.html`);
-      await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
       await page.getByLabel('Username', { exact: true }).fill('browser-owner');
       await page.getByLabel('Password', { exact: true }).fill(fixture.password);
       await page.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -314,6 +326,7 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
         await page.getByRole('button', { name: 'Add library', exact: true }).click();
         const editor = page.getByRole('dialog', { name: 'Create library', exact: true });
         await editor.getByRole('button', { name: 'Select server folder', exact: true }).click();
+        await editor.getByRole('button', { name: 'Select folder', exact: true }).click();
         await expect(editor.getByText(folder, { exact: true })).toBeVisible();
       } else {
         await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -340,7 +353,10 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
           window as unknown as { __nativeRecovery: { available: boolean } }
         ).__nativeRecovery.available = false;
       });
-      const reverify = page.getByRole('button', { name: 'Use local managed service', exact: true });
+      const reverify = page.getByRole('button', {
+        name: 'Use the server on this computer',
+        exact: true,
+      });
       // Exercise the same transition with a staged modal too; modal focus normally blocks its header.
       const connection = page.getByText('Change connection', { exact: true });
       if (action === 'library-editor') {

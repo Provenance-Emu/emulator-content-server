@@ -5,7 +5,7 @@ import type { ScannedFile } from './scan.js';
 
 const MAX_DESCRIPTOR_BYTES = 64 * 1024;
 const MAX_MEMBERS = 512;
-const DESCRIPTORS = new Set(['cue', 'm3u', 'gdi', 'ccd']);
+const DESCRIPTORS = new Set(['cue', 'm3u', 'gdi', 'ccd', 'mds', 'toc']);
 const extension = (path: string) => path.split('.').at(-1)?.toLowerCase() ?? '';
 
 /** Only small local descriptors are opened by an explicit scan, never ROM/track bytes. */
@@ -131,6 +131,18 @@ function references(path: string, text: string, files: Map<string, ScannedFile>)
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter((line) => line && !line.startsWith('#'));
+  if (ext === 'toc') {
+    // cdrdao/dao/cdrdao.man defines quoted file references for these statements.
+    const refs = [...text.matchAll(/^\s*(?:FILE|AUDIOFILE|DATAFILE)\s+"([^"]+)"(?:\s|$)/gim)].map(
+      (match) => match[1] ?? '',
+    );
+    if (
+      text.split(/\r?\n/).filter((line) => /^\s*(?:FILE|AUDIOFILE|DATAFILE)\b/i.test(line))
+        .length !== refs.length
+    )
+      throw new Error('TOC file description is invalid.');
+    return refs;
+  }
   if (ext === 'gdi') {
     const lines = text
       .split(/\r?\n/)
@@ -145,7 +157,7 @@ function references(path: string, text: string, files: Map<string, ScannedFile>)
       return match[1] ?? match[2] ?? '';
     });
   }
-  const stem = path.replace(/\.ccd$/i, '');
+  const stem = path.replace(/\.(ccd|mds)$/i, '');
   const sibling = (suffix: string) => {
     const matches = [...files.keys()].filter(
       (name) => name.toLowerCase() === `${stem}.${suffix}`.toLowerCase(),
@@ -153,6 +165,11 @@ function references(path: string, text: string, files: Map<string, ScannedFile>)
     if (matches.length > 1) throw new Error('CloneCD companions have ambiguous names.');
     return matches[0];
   };
+  if (ext === 'mds') {
+    const image = sibling('mdf');
+    if (!image) throw new Error('Media Descriptor image is missing.');
+    return [posix.basename(image)];
+  }
   const image = sibling('img');
   if (!image) throw new Error('CloneCD image is missing.');
   const sub = sibling('sub');

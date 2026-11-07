@@ -72,6 +72,10 @@ Owners can open **Settings → Folder watching** for a registered server folder 
 
 `ecs serve --webdav` enables authenticated, read-only browsing and ranged downloads at `/dav/`. Finder uses revocable Digest app credentials; existing bearer credentials also work. See [WebDAV setup](docs/webdav.md) for enablement, credential management, and client configuration.
 
+## REST API and client SDKs
+
+Open [Swagger UI](http://127.0.0.1:8473/docs/) on a running server or download its [OpenAPI contract](http://127.0.0.1:8473/openapi.yaml). The [client integration guide](docs/protocol/client-integration.md) covers browsing and downloading games, getting started with iOS and Virtual Jaguar, and generating SDKs for nine language targets.
+
 ## Verify
 
 ```sh

@@ -92,7 +92,7 @@ export async function inspectOrganizationFile(path: string): Promise<Organizatio
   try {
     const before = await handle.stat({ bigint: true });
     if (!before.isFile()) conflict('Only regular files can be organized');
-    if (before.size > 512n * 1024n * 1024n) conflict('Organization supports ROMs up to 512 MB');
+    if (before.size > BigInt(Number.MAX_SAFE_INTEGER)) conflict('File is too large to organize');
     const digest = createHash('sha256');
     const buffer = Buffer.alloc(1024 * 1024);
     let position = 0;
@@ -286,4 +286,99 @@ export async function applyOrganization(
       conflict('Moving between volumes is not supported; use Copy instead');
     throw error;
   }
+}
+
+/** Place every destination before the caller commits the catalog or removes any original. */
+export async function applyOrganizationGroup(plans: OrganizationPlan[]) {
+  const operations: Awaited<ReturnType<typeof applyOrganization>>[] = [];
+  const rollback = async () => {
+    // Attempt every compensation even if another destination needs manual recovery.
+    const errors = [];
+    for (const operation of [...operations].reverse()) {
+      try {
+        await operation.rollback();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (errors.length) throw errors[0];
+  };
+  try {
+    for (const plan of plans) operations.push(await applyOrganization(plan));
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+  return {
+    files: operations.map((operation) => operation.file),
+    rollback,
+    async finalize() {
+      if (plans.length <= 1) {
+        for (const operation of operations) await operation.finalize();
+        return;
+      }
+      const claimed: { plan: OrganizationPlan; source: string; recovery: string; path: string }[] =
+        [];
+      let deleting = false;
+      try {
+        for (const plan of plans) {
+          if (plan.mode !== 'move') continue;
+          const source = await contained(plan.sourceRoot, plan.sourceRelativePath);
+          const recovery = await mkdtemp(join(dirname(source), '.ecs-organize-'));
+          const path = join(recovery, 'original');
+          try {
+            await rename(source, path);
+          } catch (error) {
+            await rmdir(recovery);
+            throw error;
+          }
+          claimed.push({ plan, source, recovery, path });
+        }
+        // Verify the entire set before removing any original, including companions
+        // that changed while the catalog was being committed.
+        for (const entry of claimed) {
+          const original = await inspectOrganizationFile(entry.path);
+          const target = await inspectOrganizationFile(
+            await contained(entry.plan.targetRoot, entry.plan.targetRelativePath),
+          );
+          const index = plans.indexOf(entry.plan);
+          const placed = operations[index]?.file;
+          if (
+            original.filesystemIdentity !== entry.plan.file.filesystemIdentity ||
+            original.sha256 !== entry.plan.file.sha256 ||
+            target.filesystemIdentity !== placed?.filesystemIdentity ||
+            target.sha256 !== entry.plan.file.sha256
+          )
+            conflict('A game set member changed during finalization');
+        }
+        deleting = true;
+        for (const entry of claimed) await unlink(entry.path);
+      } catch (error) {
+        const retained: string[] = [];
+        for (const entry of claimed) {
+          try {
+            if (!deleting) {
+              await link(entry.path, entry.source);
+              await unlink(entry.path);
+            } else {
+              await lstat(entry.path);
+              retained.push(relative(entry.plan.sourceRoot, entry.path).split('\\').join('/'));
+            }
+          } catch (restoreError) {
+            if ((restoreError as NodeJS.ErrnoException).code !== 'ENOENT')
+              retained.push(relative(entry.plan.sourceRoot, entry.path).split('\\').join('/'));
+          }
+        }
+        if (retained.length)
+          throw new DomainError(
+            'organization-recovery',
+            409,
+            `The destination set is indexed. Original bytes were retained at ${retained.join(', ')}. Inspect these recovery files before removing them.`,
+          );
+        throw error;
+      } finally {
+        for (const entry of claimed) await rmdir(entry.recovery).catch(() => undefined);
+      }
+    },
+  };
 }

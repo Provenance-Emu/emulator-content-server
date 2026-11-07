@@ -25,7 +25,7 @@
   import Upload from './Upload.svelte';
   import FolderPicker from './FolderPicker.svelte';
   import {createLibraryFolders} from './lib/library-folders';
-  import { chooseFolder, type FolderContext } from './lib/folder-selection';
+  import { chooseFolder, type FolderContext, type FolderSelection } from './lib/folder-selection';
   import LibraryJobs from './LibraryJobs.svelte';
   import type { SettingsDestination } from './lib/shell-navigation';
   let {
@@ -72,6 +72,7 @@
   let uploading = $state(false);
   let folderAdder = $state.raw<ReturnType<typeof createLibraryFolders>|null>(null);
   let addingFolder = $state(false);
+  let preselected = $state<FolderSelection | null>(null);
   let addingFolderBusy = $state(false);
   let folderSelectionFailure = $state<string | null>(null);
   function folderController() {
@@ -100,11 +101,12 @@
   async function addServerFolder() {
     const adder = folderController();
     if (!adder) return;
+    preselected = null;
     if (!folderContext.folderSelection) { addingFolder = true; return; }
     addingFolderBusy = true;
     try {
       const selected = await chooseFolder(folderContext, 'library-folder');
-      if (selected && !disposed && folderAdder === adder) await adder.add(selected);
+      if (selected && !disposed && folderAdder === adder) { preselected = selected; addingFolder = true; }
     } catch (error) {
       if (!disposed && folderAdder === adder) folderSelectionFailure = explain(error);
     } finally {
@@ -234,6 +236,7 @@
       }
       lastNavigation = navigation;
       addingFolder = false;
+      preselected = null;
       addingFolderBusy = false;
       folderSelectionFailure = null;
       folderAdder?.dispose();
@@ -376,6 +379,7 @@
       {:else}<div class="empty-state"><h2>No libraries shared yet</h2><p>Ask the person who runs this server to give your account access to a library. Shared libraries will appear here.</p></div>{/if}
     </section>
   {:else if detail}<LibraryDetail
+    onemulators={owner ? () => onsettings({ section: 'emulators' }) : undefined}
       controller={detail}
       onauthorization={rejectUploadAccess}
       selectedSource={$browser.active?.source??null}
@@ -509,7 +513,7 @@
         onauthorization={rejectUploadAccess}
         oncomplete={() => { void browser.refresh(); }}
       />
-      {:else if addingFolder && owner}<FolderPicker client={context.client} contextKey={context.key} origin={context.origin} title="Add server folder" submitLabel="Add folder" onbusy={busy=>addingFolderBusy=busy} oncancel={()=>{addingFolder=false;addChoices=false;}} onsubmit={async selection=>{if(!folderAdder)return false;const saved=await folderAdder.add(selection);if(!saved)throw new Error(get(folderAdder).failure??'Folder could not be added.');return true;}} />
+      {:else if addingFolder && owner}<FolderPicker client={context.client} contextKey={context.key} origin={context.origin} title="Add server folder" submitLabel="Add folder" libraryFolder {preselected} onbusy={busy=>addingFolderBusy=busy} oncancel={()=>{addingFolder=false;addChoices=false;}} onsubmit={async selection=>{if(!folderAdder)return false;const saved=await folderAdder.add(selection);if(!saved)throw new Error(get(folderAdder).failure??'Folder could not be added.');return true;}} />
       {:else}<p>Where are the files you want to add?</p>
         <div class="add-games-options">
           {#if canCreate}
@@ -518,7 +522,7 @@
               <button type="button" onclick={() => { uploadMode='folder';upload=true;addChoices=false; }}>Upload folder</button></div>
             </section>
           {/if}
-          {#if owner}<section class="add-games-option"><h3>Already on the server</h3><p>Files stay on the server computer. Nothing is copied.</p><button type="button" onclick={() => { void addServerFolder(); addChoices=false; }}>Add server folder</button></section>{/if}
+          {#if owner}<section class="add-games-option"><h3>Already on the server</h3><p>Register a server folder and choose watching and organization options. Metadata and artwork fill in automatically.</p><button type="button" onclick={() => { void addServerFolder(); addChoices=false; }}>Add server folder</button></section>{/if}
         </div>
       {/if}
       {#if addingFolder && $folderAdder?.existingRoot}<div class="existing-folder-link"><p>This folder is already registered. Add it to {title} and scan its files?</p><button type="button" disabled={!!$folderAdder?.busy} onclick={async()=>{if(await folderAdder?.linkExisting())addingFolder=false;}}>Use existing folder</button></div>{/if}

@@ -40,6 +40,7 @@
     "GET /api/v1/player/management",
     "GET /api/v1/player/profiles",
     "GET /api/v1/player/profiles/:id",
+    "GET /api/v1/plugins",
     "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
     "GET /api/v1/roots/:rootId/organization-policy",
@@ -82,6 +83,7 @@
     "PATCH /api/v1/items/:itemId",
     "PATCH /api/v1/libraries/:libraryId",
     "PATCH /api/v1/player/management/:id",
+    "PATCH /api/v1/plugins",
     "PATCH /api/v1/users/:userId",
     "POST /api/v1/auth/bootstrap",
     "POST /api/v1/auth/login",
@@ -98,7 +100,10 @@
     "POST /api/v1/player/isolated-sessions",
     "POST /api/v1/player/management/install",
     "POST /api/v1/player/management/install/:id",
+    "POST /api/v1/plugins/defaults",
+    "POST /api/v1/plugins/doctor",
     "POST /api/v1/roots",
+    "POST /api/v1/roots/:rootId/organization-policy/preview",
     "POST /api/v1/roots/:rootId/scan",
     "POST /api/v1/server/updates",
     "POST /api/v1/sources/:sourceId/matches",
@@ -653,7 +658,9 @@
       "properties": [
         "label",
         "libraryId",
-        "path"
+        "organize",
+        "path",
+        "watch"
       ],
       "required": [
         "label",
@@ -772,6 +779,16 @@
         "enabled"
       ]
     },
+    "FolderOrganizationPreview": {
+      "properties": [
+        "examples",
+        "planId"
+      ],
+      "required": [
+        "examples",
+        "planId"
+      ]
+    },
     "AutomaticOrganizationOutcome": {
       "properties": [
         "sourceId",
@@ -803,6 +820,7 @@
     "SourceOrganizationPreview": {
       "properties": [
         "expiresAt",
+        "files",
         "mode",
         "planId",
         "sourceId",
@@ -820,6 +838,16 @@
         "sourceRootId",
         "targetRelativePath",
         "targetRootId"
+      ]
+    },
+    "SourceOrganizationFile": {
+      "properties": [
+        "sourceRelativePath",
+        "targetRelativePath"
+      ],
+      "required": [
+        "sourceRelativePath",
+        "targetRelativePath"
       ]
     },
     "SourceOrganizationResult": {
@@ -842,6 +870,7 @@
     "MatchingOptions": {
       "properties": [
         "allowExactNames",
+        "autoSave",
         "checksum",
         "managerId",
         "online",
@@ -936,6 +965,7 @@
     },
     "SourceMatches": {
       "properties": [
+        "automatic",
         "candidates",
         "plugins",
         "problems",
@@ -948,6 +978,18 @@
         "problems",
         "requestId",
         "sourceId"
+      ]
+    },
+    "MatchingAutomaticResult": {
+      "properties": [
+        "error",
+        "saved",
+        "status"
+      ],
+      "required": [
+        "error",
+        "saved",
+        "status"
       ]
     },
     "SourceGroupFile": {
@@ -1703,6 +1745,68 @@
         "workflowId"
       ]
     },
+    "PluginConfiguration": {
+      "properties": [
+        "digest",
+        "enabled",
+        "id"
+      ],
+      "required": [
+        "digest",
+        "enabled",
+        "id"
+      ]
+    },
+    "ManagedWorkflowPlugin": {
+      "properties": [
+        "digest",
+        "enabled",
+        "id",
+        "kind",
+        "name",
+        "version"
+      ],
+      "required": [
+        "digest",
+        "enabled",
+        "id",
+        "kind",
+        "name",
+        "version"
+      ]
+    },
+    "DefaultPlugin": {
+      "properties": [
+        "description",
+        "id",
+        "name",
+        "version"
+      ],
+      "required": [
+        "description",
+        "id",
+        "name",
+        "version"
+      ]
+    },
+    "PluginManagement": {
+      "properties": [
+        "available",
+        "defaults",
+        "error",
+        "hostId",
+        "items",
+        "running"
+      ],
+      "required": [
+        "available",
+        "defaults",
+        "error",
+        "hostId",
+        "items",
+        "running"
+      ]
+    },
     "WorkflowPackageSummary": {
       "properties": [
         "digest",
@@ -1761,6 +1865,14 @@
         "name",
         "ownerId",
         "revokedAt"
+      ]
+    },
+    "WorkflowHostResponse": {
+      "properties": [
+        "host"
+      ],
+      "required": [
+        "host"
       ]
     },
     "WorkflowLease": {

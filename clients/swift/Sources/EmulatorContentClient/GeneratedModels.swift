@@ -534,11 +534,15 @@ public struct ContentRootDraft: Codable, Equatable, Sendable {
     public var path: String
     public var label: String
     public var libraryId: String?
+    public var watch: Bool?
+    public var organize: Bool?
 
-    public init(path: String, label: String, libraryId: String? = nil) {
+    public init(path: String, label: String, libraryId: String? = nil, watch: Bool? = nil, organize: Bool? = nil) {
         self.path = path
         self.label = label
         self.libraryId = libraryId
+        self.watch = watch
+        self.organize = organize
     }
 }
 
@@ -664,6 +668,16 @@ public struct SourceOrganizationPolicyDraft: Codable, Equatable, Sendable {
     }
 }
 
+public struct FolderOrganizationPreview: Codable, Equatable, Sendable {
+    public var planId: String
+    public var examples: [[String: String]]
+
+    public init(planId: String, examples: [[String: String]]) {
+        self.planId = planId
+        self.examples = examples
+    }
+}
+
 public struct AutomaticOrganizationOutcome: Codable, Equatable, Sendable {
     public var status: String
     public var sourceId: String?
@@ -703,8 +717,9 @@ public struct SourceOrganizationPreview: Codable, Equatable, Sendable {
     public var sourceRelativePath: String
     public var targetRelativePath: String
     public var expiresAt: String
+    public var files: [SourceOrganizationFile]?
 
-    public init(planId: String, sourceId: String, mode: String, sourceRootId: String, targetRootId: String, sourceRelativePath: String, targetRelativePath: String, expiresAt: String) {
+    public init(planId: String, sourceId: String, mode: String, sourceRootId: String, targetRootId: String, sourceRelativePath: String, targetRelativePath: String, expiresAt: String, files: [SourceOrganizationFile]? = nil) {
         self.planId = planId
         self.sourceId = sourceId
         self.mode = mode
@@ -713,6 +728,17 @@ public struct SourceOrganizationPreview: Codable, Equatable, Sendable {
         self.sourceRelativePath = sourceRelativePath
         self.targetRelativePath = targetRelativePath
         self.expiresAt = expiresAt
+        self.files = files
+    }
+}
+
+public struct SourceOrganizationFile: Codable, Equatable, Sendable {
+    public var sourceRelativePath: String
+    public var targetRelativePath: String
+
+    public init(sourceRelativePath: String, targetRelativePath: String) {
+        self.sourceRelativePath = sourceRelativePath
+        self.targetRelativePath = targetRelativePath
     }
 }
 
@@ -737,14 +763,16 @@ public struct SourceOrganizationResult: Codable, Equatable, Sendable {
 public struct MatchingOptions: Codable, Equatable, Sendable {
     public var online: Bool?
     public var checksum: Bool?
+    public var autoSave: Bool?
     public var refreshCatalogs: Bool?
     public var allowExactNames: Bool?
     public var providerIds: [String]?
     public var managerId: String?
 
-    public init(online: Bool? = nil, checksum: Bool? = nil, refreshCatalogs: Bool? = nil, allowExactNames: Bool? = nil, providerIds: [String]? = nil, managerId: String? = nil) {
+    public init(online: Bool? = nil, checksum: Bool? = nil, autoSave: Bool? = nil, refreshCatalogs: Bool? = nil, allowExactNames: Bool? = nil, providerIds: [String]? = nil, managerId: String? = nil) {
         self.online = online
         self.checksum = checksum
+        self.autoSave = autoSave
         self.refreshCatalogs = refreshCatalogs
         self.allowExactNames = allowExactNames
         self.providerIds = providerIds
@@ -845,16 +873,30 @@ public struct MatchingProblem: Codable, Equatable, Sendable {
 public struct SourceMatches: Codable, Equatable, Sendable {
     public var sourceId: String
     public var requestId: String
+    public var automatic: MatchingAutomaticResult?
     public var plugins: [MatchingPlugin]
     public var candidates: [MatchingCandidate]
     public var problems: [MatchingProblem]
 
-    public init(sourceId: String, requestId: String, plugins: [MatchingPlugin], candidates: [MatchingCandidate], problems: [MatchingProblem]) {
+    public init(sourceId: String, requestId: String, automatic: MatchingAutomaticResult? = nil, plugins: [MatchingPlugin], candidates: [MatchingCandidate], problems: [MatchingProblem]) {
         self.sourceId = sourceId
         self.requestId = requestId
+        self.automatic = automatic
         self.plugins = plugins
         self.candidates = candidates
         self.problems = problems
+    }
+}
+
+public struct MatchingAutomaticResult: Codable, Equatable, Sendable {
+    public var status: String
+    public var saved: Int
+    public var error: String?
+
+    public init(status: String, saved: Int, error: String? = nil) {
+        self.status = status
+        self.saved = saved
+        self.error = error
     }
 }
 
@@ -1652,6 +1694,68 @@ public struct WorkflowRun: Codable, Equatable, Sendable {
     }
 }
 
+public struct PluginConfiguration: Codable, Equatable, Sendable {
+    public var id: String
+    public var digest: String
+    public var enabled: Bool
+
+    public init(id: String, digest: String, enabled: Bool) {
+        self.id = id
+        self.digest = digest
+        self.enabled = enabled
+    }
+}
+
+public struct ManagedWorkflowPlugin: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var version: String
+    public var digest: String
+    public var kind: String
+    public var enabled: Bool
+
+    public init(id: String, name: String, version: String, digest: String, kind: String, enabled: Bool) {
+        self.id = id
+        self.name = name
+        self.version = version
+        self.digest = digest
+        self.kind = kind
+        self.enabled = enabled
+    }
+}
+
+public struct DefaultPlugin: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var version: String
+    public var description: String
+
+    public init(id: String, name: String, version: String, description: String) {
+        self.id = id
+        self.name = name
+        self.version = version
+        self.description = description
+    }
+}
+
+public struct PluginManagement: Codable, Equatable, Sendable {
+    public var available: Bool
+    public var hostId: String?
+    public var running: Bool
+    public var error: String?
+    public var items: [ManagedWorkflowPlugin]
+    public var defaults: [DefaultPlugin]
+
+    public init(available: Bool, hostId: String? = nil, running: Bool, error: String? = nil, items: [ManagedWorkflowPlugin], defaults: [DefaultPlugin]) {
+        self.available = available
+        self.hostId = hostId
+        self.running = running
+        self.error = error
+        self.items = items
+        self.defaults = defaults
+    }
+}
+
 public struct WorkflowPackageSummary: Codable, Equatable, Sendable {
     public var id: String
     public var name: String
@@ -1711,6 +1815,14 @@ public struct WorkflowHost: Codable, Equatable, Sendable {
         self.enrolled = enrolled
         self.revokedAt = revokedAt
         self.createdAt = createdAt
+    }
+}
+
+public struct WorkflowHostResponse: Codable, Equatable, Sendable {
+    public var host: WorkflowHost
+
+    public init(host: WorkflowHost) {
+        self.host = host
     }
 }
 

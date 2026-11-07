@@ -446,3 +446,60 @@ test('saved back-cover preview and removal address their role while preserving t
   assert.ok(get(controller).savedArtwork);
   assert.equal(get(controller).savedArtworkByRole.back, undefined);
 });
+
+test('automatic searches refresh saved selections before offering further writes', async (t) => {
+  const f = transport((url) =>
+    url.pathname.endsWith('/matches')
+      ? Response.json({ ...reply, automatic: { status: 'saved', saved: 1, error: null } })
+      : Response.json({
+          sourceId: 'source',
+          revision: 1,
+          matches: [
+            {
+              ...reply.candidates[0],
+              contentAvailable: false,
+              contentType: null,
+              fileName: null,
+              updatedAt: '',
+            },
+          ],
+        }),
+  );
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.find({ autoSave: true });
+  assert.equal(get(controller).saved?.revision, 1);
+  assert.equal(get(controller).saved?.matches[0]?.id, 'art');
+  assert.equal(get(controller).result?.automatic?.saved, 1);
+});
+
+test('a lost automatic search response reconciles saved metadata without repeating the search', async (t) => {
+  let searches = 0;
+  const f = transport((url) => {
+    if (url.pathname.endsWith('/matches')) {
+      searches++;
+      throw new TypeError('Generated response loss after commit');
+    }
+    return Response.json({
+      sourceId: 'source',
+      revision: 1,
+      matches: [
+        {
+          ...reply.candidates[0],
+          contentAvailable: false,
+          contentType: null,
+          fileName: null,
+          updatedAt: '',
+        },
+      ],
+    });
+  });
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  await controller.find({ autoSave: true });
+  assert.equal(get(controller).saved?.revision, 1);
+  assert.equal(get(controller).savedLoadFailed, false);
+  assert.equal(searches, 1);
+});

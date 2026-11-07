@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { type Actor, DomainError } from '@ecs/domain';
 import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
-  automaticEvidence,
+  automaticMatchRank,
   hasIdentityConflict,
   isBuiltinArtworkUrl,
   type MatchCandidate,
@@ -27,11 +27,12 @@ import { identifySource } from './rom-identification.js';
 import { localSource, visibleSource } from './source-groups.js';
 import { sourceMetadata } from './source-metadata.js';
 import { runAutomaticOrganization } from './source-organization.js';
-import { registerSourceSelections } from './source-selections.js';
+import { matchSlot, registerSourceSelections } from './source-selections.js';
 
 export function matchBody(value: unknown): {
   online: boolean;
   checksum: boolean;
+  autoSave?: boolean;
   allowExactNames?: boolean;
   refreshCatalogs?: boolean;
   providerIds?: string[];
@@ -45,6 +46,7 @@ export function matchBody(value: unknown): {
       (key) =>
         ![
           'online',
+          'autoSave',
           'checksum',
           'allowExactNames',
           'refreshCatalogs',
@@ -52,7 +54,7 @@ export function matchBody(value: unknown): {
           'managerId',
         ].includes(key),
     ) ||
-    ['online', 'checksum', 'allowExactNames', 'refreshCatalogs'].some(
+    ['online', 'checksum', 'allowExactNames', 'refreshCatalogs', 'autoSave'].some(
       (key) => record[key] !== undefined && typeof record[key] !== 'boolean',
     )
   )
@@ -72,6 +74,7 @@ export function matchBody(value: unknown): {
   return {
     online: record.online === true,
     checksum: record.checksum === true,
+    ...(record.autoSave === true ? { autoSave: true } : {}),
     ...(record.refreshCatalogs === true ? { refreshCatalogs: true } : {}),
     ...(record.allowExactNames === true ? { allowExactNames: true } : {}),
     ...(record.providerIds ? { providerIds: record.providerIds as string[] } : {}),
@@ -133,8 +136,13 @@ export function registerSourceMatching(
   };
   const jobs = new Map<string, Job>();
   const inflight = new Map<string, Promise<Awaited<ReturnType<typeof executeMatch>>>>();
+  const automaticRequests = new Map<
+    string,
+    { options: string; promise: Promise<AutomaticOutcome> }
+  >();
   const abort = new AbortController();
   let active = 0;
+  let activeArtworkPreviews = 0;
   let listing: Promise<MatchingPluginDescription[]> | null = null;
   let pluginList: { expires: number; plugins: MatchingPluginDescription[] } | null = null;
   app.addHook('preClose', async () => {
@@ -172,14 +180,21 @@ export function registerSourceMatching(
   });
   app.post('/api/v1/sources/:sourceId/matches', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can run matching');
-    const result = await match(
-      actor,
-      (request.params as { sourceId: string }).sourceId,
-      matchBody(request.body ?? {}),
-      abort.signal,
-    );
+    const sourceId = (request.params as { sourceId: string }).sourceId;
+    const options = matchBody(request.body ?? {});
+    const outcome = options.autoSave
+      ? await autoMatch(actor, sourceId, options, abort.signal)
+      : null;
+    const result = outcome?.saved
+      ? await match(actor, sourceId, options, abort.signal)
+      : (outcome?.result ?? (await match(actor, sourceId, options, abort.signal)));
     reply.header('cache-control', 'private, no-store');
-    return result;
+    return outcome
+      ? {
+          ...result,
+          automatic: { status: outcome.status, saved: outcome.saved, error: outcome.error },
+        }
+      : result;
   });
   function match(
     actor: Actor & { kind: 'user' },
@@ -358,7 +373,9 @@ export function registerSourceMatching(
       const candidates = reconcileCandidates(
         input,
         (result.result?.candidates ?? []).filter((c) => !badProviders.has(c.providerId)),
-      ).map((candidate) => ({ ...candidate, id: randomUUID() }));
+      )
+        .sort((left, right) => automaticMatchRank(input, right) - automaticMatchRank(input, left))
+        .map((candidate) => ({ ...candidate, id: randomUUID() }));
       for (const [id, job] of jobs) if (job.expires < Date.now()) jobs.delete(id);
       while (jobs.size >= 128) {
         const oldest = jobs.keys().next().value;
@@ -409,9 +426,12 @@ export function registerSourceMatching(
         ...new Set(
           job.candidates
             .filter(
-              (candidate) => candidate.fileId && ['metadata', 'artwork'].includes(candidate.kind),
+              (candidate) =>
+                candidate.fileId &&
+                ['metadata', 'artwork'].includes(candidate.kind) &&
+                candidate.metadata.imageKind !== 'pdf',
             )
-            .map((candidate) => candidate.kind),
+            .map(matchSlot),
         ),
       ],
       async validate(actor: Actor) {
@@ -455,14 +475,16 @@ export function registerSourceMatching(
     _request: FastifyRequest,
     reply: FastifyReply | null,
     jobSignal?: AbortSignal,
+    preview = false,
   ) {
-    if (active >= 2)
+    if ((preview ? activeArtworkPreviews : active) >= 2)
       throw new DomainError(
         'matching-busy',
         429,
         'Two matching jobs are already running. Try again shortly.',
       );
-    active++;
+    if (preview) activeArtworkPreviews++;
+    else active++;
     const cancelled = new AbortController();
     const disconnect = () => {
       if (reply && !reply.raw.writableEnded) cancelled.abort();
@@ -578,7 +600,8 @@ export function registerSourceMatching(
         throw new DomainError('unsupported-patch', 415, 'Patch file is invalid or changed');
       return { bytes, contentType, fileName, originKind };
     } finally {
-      active--;
+      if (preview) activeArtworkPreviews--;
+      else active--;
       reply?.raw.removeListener('close', disconnect);
     }
   }
@@ -597,7 +620,15 @@ export function registerSourceMatching(
       );
       if (selected.candidate.kind !== 'artwork')
         throw new DomainError('not-found', 404, 'Artwork not found');
-      const content = await resource(selected.candidate, params.sourceId, actor, request, reply);
+      const content = await resource(
+        selected.candidate,
+        params.sourceId,
+        actor,
+        request,
+        reply,
+        undefined,
+        true,
+      );
       reply.header('cache-control', 'private, no-store');
       reply.header('x-content-type-options', 'nosniff');
       if (content.contentType === 'application/pdf')
@@ -648,215 +679,243 @@ export function registerSourceMatching(
         );
       }
     },
-    async autoMatch(actor, sourceId, options, signal) {
+    autoMatch,
+  };
+  type AutomaticOutcome = Awaited<ReturnType<SourceMatchingService['autoMatch']>> & {
+    result?: Awaited<ReturnType<typeof executeMatch>>;
+  };
+  function autoMatch(
+    actor: Actor & { kind: 'user' },
+    sourceId: string,
+    options: ReturnType<typeof matchBody>,
+    signal: AbortSignal,
+  ): Promise<AutomaticOutcome> {
+    const key = `${actor.userId}\0${sourceId}`;
+    const optionKey = JSON.stringify(options);
+    const previous = automaticRequests.get(key);
+    if (previous?.options === optionKey) return previous.promise;
+    const execute = () => executeAutomaticMatch(actor, sourceId, options, signal);
+    const promise = (previous ? previous.promise.then(execute, execute) : execute()).finally(() => {
+      if (automaticRequests.get(key)?.promise === promise) automaticRequests.delete(key);
+    });
+    automaticRequests.set(key, { options: optionKey, promise });
+    return promise;
+  }
+  async function executeAutomaticMatch(
+    actor: Actor & { kind: 'user' },
+    sourceId: string,
+    options: ReturnType<typeof matchBody>,
+    signal: AbortSignal,
+  ): Promise<AutomaticOutcome> {
+    signal.throwIfAborted();
+    const source = visibleSource(context, actor, sourceId);
+    if (source.availability !== 'local')
+      return {
+        status: 'skipped',
+        saved: 0,
+        suggestions: 0,
+        error: 'Server folder is offline or unavailable.',
+      };
+    const checksum =
+      options.checksum &&
+      !source.groupError &&
+      ((source.groupMembers?.length ?? 1) <= 1 || /\.(cue|gdi)$/i.test(source.displayName));
+    let result = await match(actor, sourceId, { ...options, checksum }, signal);
+    let saved = context.catalog.sourceMatches(sourceId);
+    let count = 0;
+    let warning: string | null = null;
+    const unavailable = new Set<string>();
+    for (let attempt = 0; attempt < 11; attempt++) {
       signal.throwIfAborted();
-      const source = visibleSource(context, actor, sourceId);
-      if (source.availability !== 'local')
-        return {
-          status: 'skipped',
-          saved: 0,
-          suggestions: 0,
-          error: 'Server folder is offline or unavailable.',
-        };
-      const checksum =
-        options.checksum &&
-        !source.groupError &&
-        ((source.groupMembers?.length ?? 1) <= 1 || /\.(cue|gdi)$/i.test(source.displayName));
-      let result = await match(actor, sourceId, { ...options, checksum }, signal);
-      let saved = context.catalog.sourceMatches(sourceId);
-      let count = 0;
-      let warning: string | null = null;
-      for (let attempt = 0; attempt < 11; attempt++) {
-        signal.throwIfAborted();
-        const remaining = result.candidates.filter(
-          (candidate) =>
-            !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
-        );
-        const pendingInput = jobs.get(result.requestId)?.input;
-        const conflicts = pendingInput
-          ? result.candidates.filter((candidate) => hasIdentityConflict(pendingInput, [candidate]))
-          : [];
-        const eligibleSet = new Set(
-          remaining.filter(
-            (candidate) =>
-              pendingInput &&
-              automaticEvidence(pendingInput, candidate) &&
-              !hasIdentityConflict(pendingInput, conflicts, candidate),
-          ),
-        );
-        const strongSet = new Set(
-          [...eligibleSet].filter(
-            (candidate) =>
-              pendingInput &&
-              automaticEvidence({ ...pendingInput, allowExactNames: false }, candidate),
-          ),
-        );
-        const strongSlots = new Set([...strongSet].map(matchSlot));
-        const preferred = (candidate: (typeof remaining)[number]) =>
-          eligibleSet.has(candidate) &&
-          (!strongSlots.has(matchSlot(candidate)) || strongSet.has(candidate));
-        const slotCounts = new Map<string, number>();
-        for (const candidate of eligibleSet)
-          if (preferred(candidate))
-            slotCounts.set(matchSlot(candidate), (slotCounts.get(matchSlot(candidate)) ?? 0) + 1);
-        const systems = new Set(
-          [...saved.matches, ...eligibleSet]
-            .map((candidate) => candidate.metadata.systemId)
-            .filter(Boolean),
-        );
-        const candidate =
-          pendingInput && !result.problems.length && systems.size <= 1
-            ? remaining.find(
-                (candidate) =>
-                  preferred(candidate) &&
-                  (candidate.kind !== 'artwork' ||
-                    (candidate.metadata.artworkRole ?? 'front') === 'front') &&
-                  slotCounts.get(matchSlot(candidate)) === 1,
-              )
-            : undefined;
-        if (!candidate) break;
-        const proposed = proposal(sourceId, actor.userId, result.requestId, candidate.id);
-        await proposed.validate(actor);
-        if (candidate.metadata.systemId && validateSystemIdentifier(candidate.metadata.systemId))
-          throw new DomainError(
-            'invalid-match',
-            400,
-            'The provider returned an invalid system identifier',
-          );
-        if (candidate.kind === 'rom' && !candidate.metadata.systemId) break;
-        let file: Awaited<ReturnType<typeof resource>> | null = null;
-        try {
-          if (['artwork', 'patch', 'cheats'].includes(candidate.kind))
-            file = await resource(candidate, sourceId, actor, {} as FastifyRequest, null, signal);
-        } catch (error) {
-          signal.throwIfAborted();
-          if (
-            error instanceof DomainError &&
-            [
-              'artwork-unavailable',
-              'matching-resource-unavailable',
-              'unsupported-artwork',
-              'unsupported-cheats',
-              'unsupported-patch',
-            ].includes(error.code)
-          ) {
-            warning = error.message;
-            break;
-          }
-          throw error;
-        }
-        signal.throwIfAborted();
-        await proposed.validate(actor);
-        visibleSource(context, actor, sourceId);
-        saved = context.catalog.saveSourceMatch(
-          sourceId,
-          saved.revision,
-          candidate.kind,
-          {
-            id: candidate.id,
-            providerId: candidate.providerId,
-            kind: candidate.kind,
-            title: candidate.title,
-            confidence: candidate.confidence,
-            metadata: candidate.metadata,
-            originKind: file?.originKind ?? null,
-            ...(candidate.fileId ? { originFileId: candidate.fileId } : {}),
-            ...(candidate.url ? { originUrl: candidate.url } : {}),
-            contentAvailable: !!file,
-            contentType: file?.contentType ?? null,
-            fileName: file?.fileName ?? null,
-            updatedAt: new Date().toISOString(),
-          },
-          file?.bytes ?? null,
-          actor.userId,
-        );
-        count++;
-        if (['rom', 'metadata', 'artwork'].includes(candidate.kind)) {
-          const organization = await runAutomaticOrganization(
-            context,
-            actor,
-            sourceId,
-            proposed.pendingLocalKinds.filter(
-              (kind) => !saved.matches.some((match) => match.kind === kind),
-            ),
-          );
-          if (organization?.warning) {
-            warning = organization.warning;
-            break;
-          }
-          if (organization?.status === 'moved' || candidate.kind === 'metadata')
-            result = await match(actor, sourceId, { ...options, checksum }, signal);
-        }
-      }
       const remaining = result.candidates.filter(
         (candidate) =>
           !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
       );
-      const primary = remaining.filter(
-        (candidate) =>
-          candidate.kind !== 'artwork' || (candidate.metadata.artworkRole ?? 'front') === 'front',
+      const pendingInput = jobs.get(result.requestId)?.input;
+      const conflicts = pendingInput
+        ? result.candidates.filter((candidate) => hasIdentityConflict(pendingInput, [candidate]))
+        : [];
+      const ranked = remaining.map((candidate) => ({
+        candidate,
+        rank:
+          pendingInput &&
+          !unavailable.has(candidate.id) &&
+          !hasIdentityConflict(pendingInput, conflicts, candidate)
+            ? automaticMatchRank(pendingInput, candidate)
+            : 0,
+      }));
+      const highest = new Map<string, number>();
+      for (const { candidate, rank } of ranked)
+        highest.set(matchSlot(candidate), Math.max(highest.get(matchSlot(candidate)) ?? 0, rank));
+      const preferred = ranked.filter(
+        ({ candidate, rank }) => rank > 0 && highest.get(matchSlot(candidate)) === rank,
       );
-      const input = jobs.get(result.requestId)?.input;
-      const warnings = input?.facts?.warnings ?? [];
-      const discConflict = warnings.includes('disc-system-conflict')
-        ? 'The embedded disc ID disagrees with this system. Review the system before matching.'
-        : warnings.includes('disc-identifiers-conflict')
-          ? 'The disc contains conflicting game IDs. Choose its catalog match explicitly.'
-          : null;
-      const status =
-        primary.length || result.problems.length || warning || discConflict
-          ? 'review'
-          : saved.matches.length
-            ? 'saved'
-            : 'unmatched';
-      let reason =
-        discConflict ??
-        warning ??
-        (result.problems.length ? 'Some matching providers failed; retry this game.' : null);
-      if (!reason && status === 'review') {
-        const metadata = primary.filter((candidate) => candidate.kind === 'metadata');
-        reason =
-          metadata.length > 1
-            ? 'More than one catalog entry matches; review the game edition.'
-            : metadata.length
-              ? 'Suggested game details need a verified ID or an exact edition match.'
-              : primary.some((candidate) => candidate.kind === 'artwork')
-                ? 'Front-cover suggestions need a clearer game or edition match.'
-                : 'A suggested match needs review.';
+      const slotCounts = new Map<string, number>();
+      for (const { candidate } of preferred)
+        slotCounts.set(matchSlot(candidate), (slotCounts.get(matchSlot(candidate)) ?? 0) + 1);
+      const bestRank = Math.max(0, ...preferred.map(({ rank }) => rank));
+      const systems = new Set(
+        [
+          ...saved.matches,
+          ...preferred
+            .filter(({ rank }) => bestRank < 3 || rank === bestRank)
+            .map(({ candidate }) => candidate),
+        ]
+          .map((candidate) => candidate.metadata.systemId)
+          .filter(Boolean),
+      );
+      const candidate =
+        pendingInput && systems.size <= 1
+          ? preferred.find(
+              ({ candidate }) =>
+                slotCounts.get(matchSlot(candidate)) === 1 &&
+                (!candidate.metadata.systemId ||
+                  !systems.size ||
+                  systems.has(candidate.metadata.systemId)),
+            )?.candidate
+          : undefined;
+      if (!candidate) break;
+      const proposed = proposal(sourceId, actor.userId, result.requestId, candidate.id);
+      await proposed.validate(actor);
+      if (candidate.metadata.systemId && validateSystemIdentifier(candidate.metadata.systemId))
+        throw new DomainError(
+          'invalid-match',
+          400,
+          'The provider returned an invalid system identifier',
+        );
+      if (candidate.kind === 'rom' && !candidate.metadata.systemId) break;
+      let file: Awaited<ReturnType<typeof resource>> | null = null;
+      try {
+        if (['artwork', 'patch', 'cheats'].includes(candidate.kind))
+          file = await resource(candidate, sourceId, actor, {} as FastifyRequest, null, signal);
+      } catch (error) {
+        signal.throwIfAborted();
+        if (
+          error instanceof DomainError &&
+          [
+            'artwork-unavailable',
+            'matching-resource-unavailable',
+            'unsupported-artwork',
+            'unsupported-cheats',
+            'unsupported-patch',
+          ].includes(error.code)
+        ) {
+          warning = error.message;
+          unavailable.add(candidate.id);
+          continue;
+        }
+        throw error;
       }
-      if (!reason && status === 'unmatched') {
-        reason = warnings.includes('cue-jaguarcd-requires-catalog-or-explicit-match')
-          ? 'Jaguar CD has no standard embedded game ID. Choose a catalog match or use an exact filename.'
-          : warnings.includes('cue-secondary-track-iso-origin-unsupported')
-            ? 'This secondary data track needs a supported filesystem origin to identify its game.'
-            : input?.facts?.hashes.some((hash) => hash.verified)
-              ? 'No catalog entry matches the verified ROM bytes.'
-              : input?.facts?.identifiers.some((id) => id.verified)
-                ? 'No catalog entry matches the disc ID.'
-                : (source.groupMembers?.length ?? 1) > 1
-                  ? 'This multi-file disc has no supported identity yet.'
-                  : 'No catalog match was found; this file has no supported game ID yet.';
+      signal.throwIfAborted();
+      await proposed.validate(actor);
+      visibleSource(context, actor, sourceId);
+      saved = context.catalog.saveSourceMatch(
+        sourceId,
+        saved.revision,
+        candidate.kind,
+        {
+          id: candidate.id,
+          providerId: candidate.providerId,
+          kind: candidate.kind,
+          title: candidate.title,
+          confidence: candidate.confidence,
+          metadata: candidate.metadata,
+          originKind: file?.originKind ?? null,
+          ...(candidate.fileId ? { originFileId: candidate.fileId } : {}),
+          ...(candidate.url ? { originUrl: candidate.url } : {}),
+          contentAvailable: !!file,
+          contentType: file?.contentType ?? null,
+          fileName: file?.fileName ?? null,
+          updatedAt: new Date().toISOString(),
+        },
+        file?.bytes ?? null,
+        actor.userId,
+      );
+      count++;
+      if (['rom', 'metadata', 'artwork'].includes(candidate.kind)) {
+        const organization = await runAutomaticOrganization(
+          context,
+          actor,
+          sourceId,
+          proposed.pendingLocalKinds.filter(
+            (kind) => !saved.matches.some((match) => matchSlot(match) === kind),
+          ),
+        );
+        if (organization?.warning) {
+          warning = organization.warning;
+          break;
+        }
+        if (organization?.status === 'moved' || candidate.kind === 'metadata')
+          result = await match(actor, sourceId, { ...options, checksum }, signal);
       }
-      if (
-        !reason &&
-        status === 'saved' &&
-        saved.matches.some((match) => match.kind === 'metadata') &&
-        !saved.matches.some(
-          (match) => match.kind === 'artwork' && (match.artworkRole ?? 'front') === 'front',
-        )
+    }
+    const remaining = result.candidates.filter(
+      (candidate) =>
+        !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
+    );
+    const missingDetails =
+      !saved.matches.some((match) => match.kind === 'metadata') ||
+      !saved.matches.some(
+        (match) => match.kind === 'artwork' && (match.artworkRole ?? 'front') === 'front',
+      );
+    const primary = remaining.filter(
+      (candidate) =>
+        candidate.kind === 'metadata' ||
+        candidate.kind === 'rom' ||
+        (candidate.kind === 'artwork'
+          ? (candidate.metadata.artworkRole ?? 'front') === 'front'
+          : missingDetails),
+    );
+    const input = jobs.get(result.requestId)?.input;
+    const warnings = input?.facts?.warnings ?? [];
+    const discConflict = warnings.includes('disc-system-conflict')
+      ? 'The embedded disc ID disagrees with this system. Review the system before matching.'
+      : warnings.includes('disc-identifiers-conflict')
+        ? 'The disc contains conflicting game IDs. Choose its catalog match explicitly.'
+        : null;
+    const status =
+      primary.length || (result.problems.length && missingDetails) || warning || discConflict
+        ? 'review'
+        : saved.matches.length
+          ? 'saved'
+          : 'unmatched';
+    let reason =
+      discConflict ??
+      warning ??
+      (result.problems.length ? 'Some matching providers failed; retry this game.' : null);
+    if (!reason && status === 'review') {
+      const metadata = primary.filter((candidate) => candidate.kind === 'metadata');
+      reason =
+        metadata.length > 1
+          ? 'More than one catalog entry matches; review the game edition.'
+          : metadata.length
+            ? 'Suggested game details need a verified ID or an exact edition match.'
+            : primary.some((candidate) => candidate.kind === 'artwork')
+              ? 'Front-cover suggestions need a clearer game or edition match.'
+              : 'A suggested match needs review.';
+    }
+    if (!reason && status === 'unmatched') {
+      reason = warnings.includes('cue-jaguarcd-requires-catalog-or-explicit-match')
+        ? 'Jaguar CD has no standard embedded game ID. Choose a catalog match or use an exact filename.'
+        : warnings.includes('cue-secondary-track-iso-origin-unsupported')
+          ? 'This secondary data track needs a supported filesystem origin to identify its game.'
+          : input?.facts?.hashes.some((hash) => hash.verified)
+            ? 'No catalog entry matches the verified ROM bytes.'
+            : input?.facts?.identifiers.some((id) => id.verified)
+              ? 'No catalog entry matches the disc ID.'
+              : (source.groupMembers?.length ?? 1) > 1
+                ? 'This multi-file disc has no supported identity yet.'
+                : 'No catalog match was found; this file has no supported game ID yet.';
+    }
+    if (
+      !reason &&
+      status === 'saved' &&
+      saved.matches.some((match) => match.kind === 'metadata') &&
+      !saved.matches.some(
+        (match) => match.kind === 'artwork' && (match.artworkRole ?? 'front') === 'front',
       )
-        reason = 'Game details are saved; no matching front cover was found.';
-      return { status, saved: count, suggestions: remaining.length, error: reason };
-    },
-  };
-}
-
-function matchSlot(candidate: {
-  kind: string;
-  metadata: Record<string, string>;
-  artworkRole?: string;
-}) {
-  return candidate.kind === 'artwork'
-    ? `artwork:${candidate.artworkRole ?? candidate.metadata.artworkRole ?? 'front'}`
-    : candidate.kind;
+    )
+      reason = 'Game details are saved; no matching front cover was found.';
+    return { status, saved: count, suggestions: remaining.length, error: reason, result };
+  }
 }

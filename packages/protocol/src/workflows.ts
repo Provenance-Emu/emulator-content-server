@@ -221,3 +221,20 @@ export interface WorkflowProposalSuggestion {
   evidenceIds: string[];
   reason: string;
 }
+
+export interface ManagedWorkflowPlugin extends WorkflowPackageSummary {
+  enabled: boolean;
+}
+export interface PluginManagement {
+  available: boolean;
+  hostId: string | null;
+  running: boolean;
+  error: string | null;
+  items: ManagedWorkflowPlugin[];
+  defaults: { id: string; name: string; version: string; description: string }[];
+}
+export interface PluginConfiguration {
+  id: string;
+  digest: string;
+  enabled: boolean;
+}

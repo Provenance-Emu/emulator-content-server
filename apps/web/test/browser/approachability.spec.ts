@@ -77,9 +77,7 @@ test('unsupported browser play explains downloading and sign-in explains library
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
   await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Take this game to your emulator' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser play needs attention' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Download sample.nes', exact: true }),

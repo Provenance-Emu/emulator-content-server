@@ -8,7 +8,7 @@
   import { bytes } from './lib/format';
   import { chooseBrowserDownload } from './lib/browser-download';
   import { boundedDownloadBlob } from './lib/download-limits';
-  import { sourcePlayHref } from './player/links';
+  import { sourcePlayHref, sourcePlayUnavailableReason } from './player/links';
   import Files from './Files.svelte';
   import MatchingPanel from './MatchingPanel.svelte';
   import SourceOrganization from './SourceOrganization.svelte';
@@ -26,6 +26,7 @@
     onback,
     onchanged,
     onauthorization = () => {},
+    onemulators,
   }: {
     controller: DetailController;
     context: ServerContext;
@@ -38,6 +39,7 @@
     onback: () => void;
     onchanged: () => void;
     onauthorization?: (status:401|403) => void;
+    onemulators?: () => void;
   } = $props();
   let upload = $state(false);
   let uploadTarget = $state.raw<Item|null>(null);
@@ -144,7 +146,7 @@
 {#if $controller.loading}<p role="status">Reading file details…</p>{/if}
 {#if $controller.source}<section>
     {#if play}<h2>Ready to play</h2><p>Play here in your browser, or download the game file to use in your emulator.</p>
-    {:else if $controller.source.kind === 'rom' && $controller.source.availability === 'local'}<h2>Take this game to your emulator</h2><p>Browser play is not available for this game on this server. Download it and open it in an emulator that supports this console.</p>
+    {:else if $controller.source.kind === 'rom' && $controller.source.availability === 'local'}<h2>Browser play needs attention</h2><p>{sourcePlayUnavailableReason(playerCore, $controller.source)}</p>{#if owner && onemulators}<button type="button" onclick={onemulators}>Manage emulators</button>{/if}
     {:else}<h2>File download</h2>{/if}
     <p>
       {bytes($controller.source.size)} · {availabilityLabel($controller.source.availability)}
@@ -178,6 +180,7 @@
     detailState={$controller}
     externalBusy={saving || groupDownloading}
     {playerCore}
+    {onemulators}
     ondownload={(file) => {
       void download(file);
     }}

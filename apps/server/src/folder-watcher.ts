@@ -35,7 +35,7 @@ export class FolderWatcher {
     return { ...(this.folders.get(rootId)?.status ?? { state: 'off' }) };
   }
 
-  reconcile(): void {
+  reconcile(newRootId?: string): void {
     if (this.closed) return;
     const policies = this.catalog
       .listFolderWatchPolicies()
@@ -52,7 +52,9 @@ export class FolderWatcher {
       if (this.folders.has(policy.rootId)) continue;
       const folder: WatchedFolder = {
         ...policy,
-        due: Date.now(),
+        // The add-folder flow requests its own initial scan. Attach immediately
+        // and allow that scan to start before the watcher's first recovery pass.
+        due: Date.now() + (policy.rootId === newRootId ? 30_000 : 0),
         nextAudit: 0,
         status: { state: 'polling' },
       };

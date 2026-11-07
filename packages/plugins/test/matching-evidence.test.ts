@@ -1313,3 +1313,43 @@ test('an upstream front marked review-required never acquires automatic authorit
     false,
   );
 });
+
+test('automatic library ranking prefers verified bytes over exact names and accepts explicit local companions', () => {
+  const request: matching.MatchingInput = {
+    name: 'Original Game (USA).rom',
+    systemId,
+    online: true,
+    allowExactNames: true,
+    facts: facts({
+      hashes: [{ algorithm: 'md5', value: md5, size: 4, representation: 'raw', verified: true }],
+    }),
+    companions: [
+      { id: 'local-meta', name: 'Original Game (USA).json', metadata: { title: 'Local title' } },
+    ],
+  };
+  const verified = candidate({ md5, hashSize: '4', hashRepresentation: 'raw' });
+  const exact = candidate();
+  assert.ok(
+    matching.automaticMatchRank(request, verified) > matching.automaticMatchRank(request, exact),
+  );
+  assert.equal(
+    matching.automaticMatchRank(request, { ...candidate(), title: 'Unrelated fuzzy title' }),
+    0,
+  );
+  const local = {
+    ...candidate(),
+    providerId: 'org.ecs.local',
+    fileId: 'local-meta',
+    title: 'Local title',
+    metadata: {},
+  };
+  assert.equal(matching.automaticMatchRank(request, local), 1);
+  assert.equal(matching.automaticMatchRank(request, { ...local, providerId: 'test.external' }), 0);
+  assert.equal(
+    matching.automaticMatchRank(request, {
+      ...verified,
+      metadata: { ...verified.metadata, md5: 'f'.repeat(32) },
+    }),
+    0,
+  );
+});

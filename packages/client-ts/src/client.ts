@@ -1,4 +1,6 @@
 import type {
+  PluginConfiguration,
+  PluginManagement,
   WorkflowApplication,
   WorkflowApproval,
   WorkflowArtifact,
@@ -34,6 +36,7 @@ import type {
   DeviceTokenDraft,
   DeviceTokenList,
   FolderListing,
+  FolderOrganizationPreview,
   FolderWatchPolicy,
   FolderWatchPolicyDraft,
   GuestGrantCreated,
@@ -252,6 +255,35 @@ export class ContentClient {
     if (this.requestOptions.timeoutMs !== undefined)
       signals.push(AbortSignal.timeout(this.requestOptions.timeoutMs));
     return signals.length ? AbortSignal.any(signals) : undefined;
+  }
+
+  pluginManagement(): Promise<PluginManagement> {
+    return this.getJson('/api/v1/plugins', 'error');
+  }
+  installDefaultPlugins(): Promise<PluginManagement> {
+    return this.pluginRequest('POST', '/api/v1/plugins/defaults', {});
+  }
+  doctorPlugins(): Promise<PluginManagement> {
+    return this.pluginRequest('POST', '/api/v1/plugins/doctor', {});
+  }
+  configurePlugin(configuration: PluginConfiguration): Promise<PluginManagement> {
+    return this.pluginRequest('PATCH', '/api/v1/plugins', configuration);
+  }
+
+  private async pluginRequest(
+    method: 'POST' | 'PATCH',
+    path: string,
+    body: unknown,
+  ): Promise<PluginManagement> {
+    const response = await fetch(this.url(path), {
+      method,
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      redirect: 'error',
+      signal: this.requestSignal(AbortSignal.timeout(40_000)),
+    });
+    if (!response.ok) throw await failure(response);
+    return response.json() as Promise<PluginManagement>;
   }
 
   advertiseWorkflowHost(packages: WorkflowPackageSummary[]): Promise<{ host: WorkflowHost }> {
@@ -1053,6 +1085,16 @@ export class ContentClient {
     draft: SourceOrganizationPolicyDraft,
   ): Promise<SourceOrganizationPolicy> {
     return this.putJson(`/api/v1/roots/${encodeURIComponent(rootId)}/organization-policy`, draft);
+  }
+
+  previewFolderOrganization(
+    rootId: string,
+    draft: SourceOrganizationDraft,
+  ): Promise<FolderOrganizationPreview> {
+    return this.post(
+      `/api/v1/roots/${encodeURIComponent(rootId)}/organization-policy/preview`,
+      draft,
+    );
   }
 
   previewSourceOrganization(

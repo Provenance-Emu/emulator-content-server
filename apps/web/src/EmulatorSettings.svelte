@@ -176,6 +176,7 @@
               <span class="emulator-state">{item.enabled ? 'Enabled' : 'Disabled'}{$emulators.listing.defaultProfileId === item.profile.id ? ' · Default' : ''}</span>
             </div>
             <p class="dim">{systemNames(item.profile.systems)} · Version {item.profile.buildVersion}</p>
+            <p class="dim">Formats {item.profile.contentExtensions.map(extension => `.${extension}`).join(', ')} · Up to {bytes(item.profile.maxContentBytes)} per game</p>
             {#if item.source === 'operator'}
               <p class="dim">Installed by the server administrator. Manage this emulator on the server.</p>
             {:else}

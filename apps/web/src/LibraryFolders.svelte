@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import { onDestroy, tick, untrack } from 'svelte';
   import { createLibraryFolders } from './lib/library-folders';
-  import { chooseFolder, type FolderContext } from './lib/folder-selection';
+  import { chooseFolder, type FolderContext, type FolderSelection } from './lib/folder-selection';
   import { explain } from './lib/problems';
   import FolderOrganizationPolicy from './FolderOrganizationPolicy.svelte';
   import FolderWatchPolicy from './FolderWatchPolicy.svelte';
@@ -16,6 +16,7 @@
   } = $props();
   const folders = untrack(() => createLibraryFolders(client, context, library ? { libraryId: library.id } : { unassigned: true }));
   let picking = $state(false);
+  let preselected = $state<FolderSelection | null>(null);
   let pickerBusy = $state(false);
   let choosing = $state(false);
   let failure = $state<string | null>(null);
@@ -26,13 +27,13 @@
   let libraryId = $state('');
   let disposed = false;
   let addButton = $state<HTMLButtonElement>();
-  async function closePicker() { picking = false; await tick(); if (!disposed) addButton?.focus(); }
+  async function closePicker() { picking = false; preselected = null; await tick(); if (!disposed) addButton?.focus(); }
   $effect(() => { const cached = summaries; untrack(() => folders.receive(cached)); });
   async function choose() {
     if (!context.folderSelection) { picking = true; return; }
     if (choosing) return;
     choosing = true; failure = null;
-    try { const selected = await chooseFolder(context, 'library-folder'); if (selected && !disposed) await folders.add(selected); }
+    try { const selected = await chooseFolder(context, 'library-folder'); if (selected && !disposed) { preselected = selected; picking = true; } }
     catch (error) { if (!disposed) failure = explain(error); }
     finally { if (!disposed) choosing = false; }
   }
@@ -50,7 +51,7 @@
 {#if $folders.failure || failure}<p class="problem" role="alert">{$folders.failure || failure}</p>{/if}
 {#if $folders.denied}<button type="button" disabled={$folders.busy} onclick={() => void folders.load(library ? { libraryId: library.id } : { unassigned: true })}>Retry folder access</button>{/if}
 {#if picking}<Modal title="Add library folder" busy={pickerBusy || $folders.busy} onclose={() => void closePicker()}>
-  <FolderPicker {client} contextKey={context.key} origin={context.origin} title="Add library folder" submitLabel="Add folder" onbusy={(busy) => (pickerBusy = busy)} oncancel={() => void closePicker()}
+  <FolderPicker {client} contextKey={context.key} origin={context.origin} title="Add library folder" submitLabel="Add folder" libraryFolder {preselected} onbusy={(busy) => (pickerBusy = busy)} oncancel={() => void closePicker()}
     onsubmit={async (selection) => { const saved = await folders.add(selection); if (!saved) throw new Error(get(folders).failure ?? 'Folder could not be added.'); return saved; }} />
   {#if $folders.existingRoot}<div><p>This folder is already registered. Add it to {library?.name} and scan its files?</p><button type="button" disabled={$folders.busy} onclick={async()=>{if(await folders.linkExisting())void closePicker();}}>Use existing folder</button></div>{/if}
 </Modal>{/if}

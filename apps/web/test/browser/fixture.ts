@@ -92,6 +92,7 @@ async function createFixture() {
     dataDir: join(directory, 'data'),
     uiDir: resolve('dist'),
     localTrust: false,
+    automaticMatching: false,
     logger: false,
     webdavEnabled: true,
     playerDir,
