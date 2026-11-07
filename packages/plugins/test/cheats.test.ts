@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import {
   createLibretroCheatsProvider,
@@ -63,4 +66,26 @@ test('online cheats use a bounded public index, preserve edition matching and re
     found.candidates[0]?.url?.includes('/cht/Nintendo%20-%20Nintendo%20Entertainment%20System/'),
   );
   assert.equal(calls, 2);
+});
+
+test('missing cheat systems reuse the public index across games and worker restarts', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-cheat-cache-'));
+  let calls = 0;
+  const fetcher: typeof fetch = async () => {
+    calls++;
+    return Response.json([]);
+  };
+  try {
+    for (let worker = 0; worker < 2; worker++) {
+      const provider = createLibretroCheatsProvider(fetcher, directory);
+      for (let game = 0; game < 3; game++)
+        assert.deepEqual(
+          await provider.search({ ...input, systemId: 'com.provenance.jaguarcd', online: true }),
+          [],
+        );
+    }
+    assert.equal(calls, 1, 'unsupported systems must not exhaust the GitHub API quota');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

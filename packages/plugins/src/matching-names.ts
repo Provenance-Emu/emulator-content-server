@@ -319,3 +319,20 @@ export function artworkTitleMatches(
   ];
   return equalSets(opaqueTags(a), opaqueTags(b));
 }
+
+/** Cover preference for a known game; release differences affect preference, not game identity. */
+export function artworkGameScore(left: string, right: string): number {
+  const a = facts(left),
+    b = facts(right);
+  if (!a.bases[0] || a.bases[0] !== b.bases[0]) return 0;
+  if (a.exact === b.exact) return 100;
+  if (artworkTitleMatches(left, right)) return 95;
+  return (
+    nameMatchScore(left, right) ||
+    60 +
+      ([...a.regions].some((region) => b.regions.has(region) || b.regions.has('world')) ? 10 : 0) +
+      (a.edition === b.edition ? 5 : 0) +
+      (a.revision === b.revision ? 3 : 0) +
+      (a.date === b.date ? 1 : 0)
+  );
+}

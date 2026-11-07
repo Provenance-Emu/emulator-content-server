@@ -374,7 +374,15 @@ export function registerSourceMatching(
         input,
         (result.result?.candidates ?? []).filter((c) => !badProviders.has(c.providerId)),
       )
-        .sort((left, right) => automaticMatchRank(input, right) - automaticMatchRank(input, left))
+        .sort(
+          (left, right) =>
+            automaticMatchRank(input, right) - automaticMatchRank(input, left) ||
+            left.title.localeCompare(right.title, 'en') ||
+            (left.url ?? left.fileId ?? left.providerId).localeCompare(
+              right.url ?? right.fileId ?? right.providerId,
+              'en',
+            ),
+        )
         .map((candidate) => ({ ...candidate, id: randomUUID() }));
       for (const [id, job] of jobs) if (job.expires < Date.now()) jobs.delete(id);
       while (jobs.size >= 128) {
@@ -758,7 +766,7 @@ export function registerSourceMatching(
         [
           ...saved.matches,
           ...preferred
-            .filter(({ rank }) => bestRank < 3 || rank === bestRank)
+            .filter(({ rank }) => bestRank < 3 || Math.floor(rank) === Math.floor(bestRank))
             .map(({ candidate }) => candidate),
         ]
           .map((candidate) => candidate.metadata.systemId)
@@ -768,7 +776,9 @@ export function registerSourceMatching(
         pendingInput && systems.size <= 1
           ? preferred.find(
               ({ candidate }) =>
-                slotCounts.get(matchSlot(candidate)) === 1 &&
+                (slotCounts.get(matchSlot(candidate)) === 1 ||
+                  (candidate.kind === 'artwork' &&
+                    (candidate.metadata.artworkRole ?? 'front') === 'front')) &&
                 (!candidate.metadata.systemId ||
                   !systems.size ||
                   systems.has(candidate.metadata.systemId)),

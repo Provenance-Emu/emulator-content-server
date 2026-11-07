@@ -71,7 +71,7 @@ function builtins(directory?: string): MatchingProvider[] {
     const hostedCheats = catalogProviders.find(
       (provider) => provider.id === 'org.ecs.catalog.cheats',
     );
-    const legacyCheats = createLibretroCheatsProvider();
+    const legacyCheats = createLibretroCheatsProvider(fetch, directory);
     providers = [
       localMatchingProvider,
       {

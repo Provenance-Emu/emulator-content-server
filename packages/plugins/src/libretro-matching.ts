@@ -20,6 +20,7 @@ import {
   selectedArtworkAnchor,
 } from './matching.js';
 import {
+  artworkGameScore,
   artworkTitleMatches,
   contentStem,
   nameMatchKeys,
@@ -554,6 +555,9 @@ export function createLibretroProvider(
       const selected = selectedArtworkAnchor(lookupInput);
       const names = [
         ...(selected?.titles ?? []),
+        ...(lookupInput.selectedMetadata?.systemId === systemId
+          ? [lookupInput.selectedMetadata.title]
+          : []),
         input.name,
         ...(input.facts?.names ?? []),
         ...metadata.flatMap((candidate) => [
@@ -566,7 +570,13 @@ export function createLibretroProvider(
         .map(({ image, index }) => ({
           image,
           index,
-          score: Math.max(...names.map((name) => nameMatchScore(name, image.title))),
+          score: Math.max(
+            ...names.map((name) =>
+              image.kind === 'boxarts'
+                ? artworkGameScore(name, image.title)
+                : nameMatchScore(name, image.title),
+            ),
+          ),
         }))
         .filter((row) => row.score > 0)
         .sort(

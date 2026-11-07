@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createLibretroProvider } from '../src/libretro-matching.js';
-import { automaticEvidence, type MatchingInput } from '../src/matching.js';
+import { automaticEvidence, automaticMatchRank, type MatchingInput } from '../src/matching.js';
 
 const revision = 'ffea7893a59dd9b9e6f9b85c51627810338b0778';
 const prefix = 'site/thumbnails/Atari - Jaguar CD/';
@@ -106,6 +106,19 @@ test('a missing release alias never turns an arbitrary edition into an automatic
   const { client } = provider(['Named_Boxarts/Frog Feast (USA).png']);
   const input = request('Frog Feast (USA) (Demo)');
   assert.ok((await client.search(input)).every((row) => !automaticEvidence(input, row)));
+});
+
+test('automatic library filling can use the available cover for a known game from another edition', async () => {
+  const { client } = provider(['Named_Boxarts/Frog Feast (USA).png']);
+  const input = request('Frog Feast (Europe) (Demo)');
+  const cover = (await client.search(input)).find((row) => row.metadata.artworkRole === 'front');
+  assert.ok(cover, 'edition differences must not hide the available cover');
+  assert.ok(automaticMatchRank(input, cover) > 0);
+  assert.equal(
+    automaticEvidence(input, cover),
+    false,
+    'strict workflow evidence retains its policy',
+  );
 });
 
 test('official dedicated thumbnails take precedence over the mirror', async () => {

@@ -1,5 +1,6 @@
 import { LIBRETRO_SYSTEMS } from './libretro-matching.js';
 import type { MatchCandidate, MatchingProvider } from './matching.js';
+import { type CatalogLoader, createCatalogLoader } from './public-catalog.js';
 
 export function cheatStem(name: string): string {
   return name
@@ -67,34 +68,18 @@ export const localCheatsProvider: MatchingProvider = {
 };
 async function publicJson(
   url: string,
-  fetcher: typeof fetch,
+  catalogs: CatalogLoader,
   signal?: AbortSignal,
 ): Promise<unknown> {
-  const response = await fetcher(url, {
-    redirect: 'error',
-    headers: { accept: 'application/vnd.github+json' },
-    ...(signal ? { signal } : {}),
-  });
-  if (response.status === 404) return null;
-  if (!response.ok || !response.body) throw new Error('Cheat index unavailable');
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    for (;;) {
-      const part = await reader.read();
-      if (part.done) break;
-      size += part.value.byteLength;
-      if (size > 2 * 1024 * 1024) throw new Error('Cheat index too large');
-      chunks.push(part.value);
-    }
-  } finally {
-    await reader.cancel().catch(() => undefined);
-  }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+  const body = await catalogs.load(url, signal, 2 * 1024 * 1024);
+  return body === null ? null : JSON.parse(body);
 }
-export function createLibretroCheatsProvider(fetcher: typeof fetch = fetch): MatchingProvider {
+export function createLibretroCheatsProvider(
+  fetcher: typeof fetch = fetch,
+  cacheDirectory?: string,
+): MatchingProvider {
   const cache = new Map<string, string[]>();
+  const catalogs = createCatalogLoader(fetcher, cacheDirectory);
   return {
     id: 'org.ecs.cheats.libretro',
     name: 'Libretro cheat database',
@@ -107,19 +92,22 @@ export function createLibretroCheatsProvider(fetcher: typeof fetch = fetch): Mat
       if (!files) {
         const directories = await publicJson(
           'https://api.github.com/repos/libretro/libretro-database/contents/cht',
-          fetcher,
+          catalogs,
           signal,
         );
         if (!Array.isArray(directories)) throw new Error('Invalid cheat index');
         const directory = directories.find(
           (entry) => entry && entry.name === system.platform && entry.type === 'dir',
         );
-        if (!directory) return [];
+        if (!directory) {
+          cache.set(system.platform, []);
+          return [];
+        }
         if (typeof directory.sha !== 'string' || !/^[0-9a-f]{40}$/.test(directory.sha))
           throw new Error('Invalid cheat directory');
         const tree = (await publicJson(
           `https://api.github.com/repos/libretro/libretro-database/git/trees/${directory.sha}`,
-          fetcher,
+          catalogs,
           signal,
         )) as { truncated?: boolean; tree?: unknown[] } | null;
         if (!tree || tree.truncated || !Array.isArray(tree.tree))

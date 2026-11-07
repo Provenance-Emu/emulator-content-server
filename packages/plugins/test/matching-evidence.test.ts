@@ -1353,3 +1353,67 @@ test('automatic library ranking prefers verified bytes over exact names and acce
     0,
   );
 });
+
+test('known games use the best front cover across edition differences while rejecting other games and systems', () => {
+  const title = 'Original Game (USA)';
+  const request: matching.MatchingInput = {
+    ...input,
+    selectedMetadata: { id: 'saved', revision: 1, title, systemId, metadata: { systemId } },
+  };
+  const cover: matching.MatchCandidate = {
+    id: 'cover',
+    kind: 'artwork',
+    title: 'Original Game (Europe) (Songbird)',
+    confidence: 'name',
+    metadata: { systemId, artworkRole: 'front', artworkReviewRequired: 'true' },
+  };
+  const rank = matching.automaticMatchRank(request, cover);
+  assert.ok(rank > 0);
+  assert.ok(matching.automaticMatchRank(request, { ...cover, title }) > rank);
+  assert.equal(
+    matching.automaticMatchRank(request, { ...cover, title: 'Original Game 2 (USA)' }),
+    0,
+  );
+  assert.equal(
+    matching.automaticMatchRank(request, {
+      ...cover,
+      metadata: { ...cover.metadata, systemId: 'com.provenance.nes' },
+    }),
+    0,
+  );
+  assert.equal(matching.automaticMatchRank(input, cover), 0, 'a review flag needs a known game');
+  assert.ok(request.selectedMetadata);
+  const legacy = {
+    ...request,
+    selectedMetadata: {
+      ...request.selectedMetadata,
+      metadata: { systemId, matchProvenance: 'invalid legacy JSON' },
+    },
+  };
+  assert.ok(
+    matching.automaticMatchRank(legacy, cover) > 0,
+    'saved game choice remains authoritative for covers',
+  );
+  const alternateDump = {
+    ...request,
+    facts: facts({
+      hashes: [
+        {
+          algorithm: 'md5' as const,
+          value: md5,
+          size: 4,
+          representation: 'raw' as const,
+          verified: true,
+        },
+      ],
+    }),
+    selectedMetadata: {
+      ...request.selectedMetadata,
+      metadata: { systemId, md5: 'f'.repeat(32), hashSize: '4', hashRepresentation: 'raw' },
+    },
+  };
+  assert.ok(
+    matching.automaticMatchRank(alternateDump, cover) > 0,
+    'another dump of a saved game may use the cover',
+  );
+});

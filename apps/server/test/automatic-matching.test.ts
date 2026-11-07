@@ -9,7 +9,7 @@ import type { ServerContext } from '../src/context.js';
 import { registerLibraryJobs } from '../src/library-jobs.js';
 import { libraryFixture } from './library-fixture.js';
 
-async function fixture(automaticMatching = false, alternatives = false) {
+async function fixture(automaticMatching = false, alternatives = false, coverAlternatives = false) {
   const plugins = await mkdtemp(join(tmpdir(), 'ecs-autofill-'));
   for (const id of ['test.fill', 'test.unavailable']) {
     const path = join(plugins, id);
@@ -31,6 +31,12 @@ async function fixture(automaticMatching = false, alternatives = false) {
       id === 'test.unavailable'
         ? "export default {search:async()=>{throw new Error('Generated provider outage')}};"
         : `export default {search:async input=>{if(!input.online||!input.md5)throw new Error('Expected online lookup with verified hashing');const metadata={md5:input.md5,hashSize:String(input.size),hashRepresentation:'raw',systemId:input.systemId};const candidates=[{id:'verified',kind:'metadata',title:'Verified game',confidence:'checksum',metadata}];if(${alternatives})candidates.push({id:'alternative',kind:'metadata',title:'Different game',confidence:'checksum',metadata});else {const file=input.companions.find(file=>file.name.endsWith('.png'));if(file)candidates.push({id:'cover',kind:'artwork',title:'Verified game',confidence:'checksum',fileId:file.id,metadata:{...metadata,artworkRole:'front'}});}return candidates;}};`,
+    );
+  }
+  if (coverAlternatives) {
+    await writeFile(
+      join(plugins, 'test.fill', 'entry.mjs'),
+      `export default {search:async input=>{const file=input.companions.find(f=>f.name.endsWith('.png'));return [{id:'game',kind:'metadata',title:'Verified game (USA)',confidence:'checksum',metadata:{md5:input.md5,hashSize:String(input.size),hashRepresentation:'raw',systemId:input.systemId}},...['Verified game (Europe) (Rev 2)','Verified game (Europe)'].map((title,i)=>({id:'cover-'+i,kind:'artwork',title,confidence:'name',fileId:file.id,metadata:{systemId:input.systemId,artworkRole:'front',artworkReviewRequired:'true'}}))];}};`,
     );
   }
   const f = await libraryFixture({ matchingPluginsDir: plugins, automaticMatching });
@@ -61,6 +67,30 @@ async function waitFor(check: () => boolean) {
     await pause(10);
   }
 }
+
+test('a known game automatically uses a cover even when multiple scans have different editions', async () => {
+  const f = await fixture(false, false, true);
+  try {
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
+    const source = f.catalog.listSources(f.root.id).find((file) => file.kind === 'rom');
+    assert.ok(source);
+    const response = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/sources/${source.id}/matches`,
+      headers: f.auth,
+      payload: { online: true, checksum: true, autoSave: true, providerIds: ['test.fill'] },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    const cover = f.catalog
+      .sourceMatches(source.id)
+      .matches.find((match) => match.kind === 'artwork');
+    assert.ok(cover, response.body);
+    assert.equal(cover.title, 'Verified game (Europe)');
+    assert.equal(cover.contentAvailable, true);
+  } finally {
+    await f.dispose();
+  }
+});
 
 test('single-game automatic search saves unique verified metadata and cover despite another provider outage', async () => {
   const f = await fixture();

@@ -4,6 +4,7 @@ import { crc32 } from 'node:zlib';
 import { classifyArtwork } from './artwork-classification.js';
 import type { ProviderCapability } from './manifest.js';
 import {
+  artworkGameScore,
   artworkTitleMatches,
   compatibleGameTitles,
   contentStem,
@@ -742,9 +743,11 @@ export function selectedArtworkAnchor(
     confidence: 'name',
     metadata,
   };
-  const originals = provenanceRows(identity);
-  if (!originals || originals.some((row) => assessEvidence(input, row.metadata).conflict))
-    return null;
+  // A saved game is authoritative for covers even when older provenance cannot be decoded.
+  const decoded = provenanceRows(identity);
+  if (!decoded) delete metadata.matchProvenance;
+  const originals = decoded ?? [identity];
+  if (originals.some((row) => assessEvidence(input, row.metadata).conflict)) return null;
   const titles = [
     ...new Set([
       saved.title,
@@ -866,7 +869,6 @@ export function automaticMatchRank(
 ): number {
   if (
     discIdentityConflict(input) ||
-    candidate.metadata.artworkReviewRequired === 'true' ||
     candidate.metadata.identityConflict === 'true' ||
     candidate.metadata.matchEvidence === 'identity-conflict' ||
     (input.systemId &&
@@ -884,25 +886,46 @@ export function automaticMatchRank(
     layers.some((row) => assessEvidence(input, row.metadata).conflict)
   )
     return 0;
-  if (automaticEvidence(input, candidate, true)) {
-    if (evidence.verifiedHash) return 4;
-    if (evidence.verifiedSerial) return 3;
-    return savedSelectionEvidence(input, candidate, true) ? 2 : 1;
+  const automatic = automaticEvidence(input, candidate, true);
+  if (automatic) {
+    const preference =
+      candidate.kind === 'artwork' && candidate.metadata.artworkRole === 'front'
+        ? artworkGameScore(
+            input.selectedMetadata?.title ?? candidate.metadata.matchedGame ?? candidate.title,
+            candidate.title,
+          ) / 1000
+        : 0;
+    if (evidence.verifiedHash) return 4 + preference;
+    if (evidence.verifiedSerial) return 3 + preference;
   }
   if (candidate.kind === 'artwork') {
     const anchor = selectedArtworkAnchor(input);
-    if (
-      anchor &&
-      candidate.metadata.systemId === input.systemId &&
-      anchor.titles.some((title) =>
-        artworkTitleMatches(title, candidate.title, [
-          ...identifiers(anchor.identity.metadata.serials),
-          ...identifiers(anchor.identity.metadata.setIds),
-        ]),
+    // Saved game identity also covers alternate dumps/editions; never reuse their ROM hashes.
+    const saved = input.selectedMetadata;
+    const coverTitle =
+      candidate.metadata.artworkRole === 'front' &&
+      saved?.systemId === input.systemId &&
+      !input.facts?.identifiers.some(
+        (id) => id.verified && id.systemId && id.systemId !== saved.systemId,
       )
-    )
-      return 2;
+        ? saved?.title
+        : undefined;
+    const titles = anchor?.titles ?? (coverTitle ? [coverTitle] : []);
+    const score = titles.length
+      ? Math.max(
+          0,
+          ...titles.map((title) =>
+            candidate.metadata.artworkRole === 'front'
+              ? artworkGameScore(title, candidate.title)
+              : artworkTitleMatches(title, candidate.title)
+                ? 100
+                : 0,
+          ),
+        )
+      : 0;
+    if (candidate.metadata.systemId === input.systemId && score > 0) return 2 + score / 1000;
   }
+  if (automatic) return savedSelectionEvidence(input, candidate, true) ? 2 : 1;
   // Local metadata and images are explicit same-name companions, not fuzzy catalog guesses.
   const companion = input.companions.find((file) => file.id === candidate.fileId);
   if (input.allowExactNames && candidate.providerId === 'org.ecs.local' && companion) {
