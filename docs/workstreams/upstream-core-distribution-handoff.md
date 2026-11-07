@@ -223,3 +223,34 @@ changed-file Biome, fixture/secret scanning, boundaries and whitespace checks
 passed. Independent review cleared the storage and concurrency changes. A
 production deployment recovered a generated archive through its packaged child,
 worker and WebAssembly dependency, including the carried license materials.
+
+## Completed upstream reconstruction probes
+
+The [completed reconstruction report](../operations/upstream-reconstructions-2026-11-06.md)
+covers all 49 additional profiles. Forty-seven new exact pairs plus the earlier
+VecX result yield 48 exact reconstructions among 50 pinned pairs. VitaQuake2 and
+FinalBurn Neo remain mismatched after bounded, recorded diagnostics. Their
+candidate source recipes and corrected metadata are retained with the failed
+comparisons. The catalog links the frozen report through its immutable commit,
+SHA-256 and exact size.
+
+Local verification covers 48 additional profiles and the earlier VecX pair.
+FBNeo comparisons execute on Linux against verified official archive members.
+The retained runner receipts, compiler records and source/header snapshots bind
+that separate comparison location. The final SDK inventory contains 8,097 files
+and matches its initial bytes. All 15,189 recorded SDK input observations match
+retained inventory bytes. Independent SDK source reconstruction, historical CI
+identity and final-code notice applicability remain open. All upstream source
+mappings retain their unverified status.
+
+An experimental formatter damaged four external audit drivers. Their original
+bytes were recovered and checked against pre-format hashes and sizes. Stable
+formatting passed an AST-equivalence check, and a fresh QuickNES repeat matched
+the earlier commands and both runtime files. Independent review checked the
+recovery evidence. Original, damaged and recovered files remain retained.
+
+The catalog-link regression first rejected the missing report reference, then
+passed after the immutable link was added. All 53 focused catalog/provenance tests
+passed, along with the server TypeScript build, changed-file Biome, fixture/secret
+scan, package boundaries and whitespace checks. The concurrent guided-setup page
+also displays the archive recovery download estimate and passed Svelte checking.

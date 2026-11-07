@@ -190,3 +190,60 @@ test('upstream CI candidates stay distinct from reproducible pairs and complete 
     }
   }
 });
+
+test('upstream reconstruction receipts require complete pair equality and preserve open mapping scopes', () => {
+  const { record, ref } = evidence('upstream-reconstructions');
+  assert.equal(record.status, 'completed-probes');
+  assert.equal(record.profiles.length, 49);
+  const prior = evidence('vecx-upstream-rebuild').record;
+  assert.deepEqual(
+    [...record.profiles.map((p: { id: string }) => p.id), prior.id].sort(),
+    playerCatalog
+      .filter((entry) => entry.upstream)
+      .map((entry) => entry.id)
+      .sort(),
+  );
+  const mismatches = record.profiles.filter(
+    (profile: { status: string }) => profile.status === 'built-pair-mismatch',
+  );
+  const failures = record.profiles.filter(
+    (profile: { status: string }) => profile.status === 'build-failed',
+  );
+  assert.equal(record.counts.newBuiltPairMismatches, mismatches.length);
+  assert.equal(record.counts.newBuildFailures, failures.length);
+  const exact = record.profiles.filter(
+    (profile: { status: string }) => profile.status === 'exact-runtime-pair-reproduced',
+  );
+  assert.equal(record.counts.newExactRuntimePairs, exact.length);
+  assert.equal(exact.length + mismatches.length + failures.length, record.profiles.length);
+  assert.equal(record.counts.newProfilesAttempted, record.profiles.length);
+  assert.equal(record.counts.totalExactRuntimePairsIncludingPreviousVecx, exact.length + 1);
+  assert.equal(record.counts.fullSourceBuildNoticeMappingsVerified, 0);
+  assert.equal(
+    new Set(record.profiles.map((p: { id: string }) => p.id)).size,
+    record.profiles.length,
+  );
+  for (const profile of record.profiles) {
+    const entry = playerCatalog.find((e) => e.id === profile.id);
+    assert.ok(entry?.upstream);
+    assert.equal(entry.provenance?.sourceMapping, 'unverified');
+    assert.equal(profile.sourceMapping, 'unverified');
+    if (profile.status === 'exact-runtime-pair-reproduced') {
+      assert.equal(profile.resources.length, 2);
+      for (const resource of profile.resources) {
+        const pin: { file: string; sha256: string; sizeBytes: number } | undefined =
+          entry.upstream.resources.find((p) => p.file === resource.file);
+        assert.ok(pin);
+        assert.equal(resource.matchesPublished, true);
+        assert.equal(resource.hashAndSizeMatch, true);
+        assert.equal(resource.directByteEquality, true);
+        assert.equal(resource.sha256, pin.sha256);
+        assert.equal(resource.sizeBytes, pin.sizeBytes);
+      }
+    }
+    const artifact = entry.provenance?.artifacts?.find((a) => a.sha256 === ref.sha256);
+    assert.equal(artifact?.kind, 'build');
+    assert.equal(artifact?.sizeBytes, ref.sizeBytes);
+    assert.match(artifact?.url ?? '', /\/[a-f0-9]{40}\/docs\/operations\/upstream-reconstructions/);
+  }
+});

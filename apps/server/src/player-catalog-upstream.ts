@@ -16,6 +16,13 @@ const upstreamBuildResolution = {
   sizeBytes: 66663,
 } as const;
 
+const upstreamReconstructionEvidence = {
+  kind: 'build',
+  url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/58445c9ab344c9339c4db8e155d50e9e9b10352a/docs/operations/upstream-reconstructions-2026-11-06.json',
+  sha256: '5322feffa54401d01741ea2f5dfdaaea3eaabfd98c66003dfd1bbb60e4ceefd7',
+  sizeBytes: 14625083,
+} as const;
+
 const vecxRebuildEvidence = {
   kind: 'build',
   url: 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/d98397772118a76f01de1d4e24acb3d30fae34bd/docs/operations/vecx-upstream-rebuild-2026-11-06.json',
@@ -98,6 +105,7 @@ export const upstreamPlayerCatalog: readonly TrustedPlayer[] = CORE_PINS.map((pi
       artifacts: [
         upstreamBuildEvidence,
         upstreamBuildResolution,
+        upstreamReconstructionEvidence,
         ...(pin.id === 'org.libretro.vecx' ? [vecxRebuildEvidence] : []),
       ],
     },

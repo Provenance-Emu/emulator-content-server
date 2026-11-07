@@ -102,6 +102,10 @@
       {download === null ? 'Download size varies.' : `Download ${bytes(download)}.`} Some consoles also
       need their own system files.
     </p>
+    <p class="dim">
+      The first fallback may download up to 1.6 GB of reviewed archives to prepare the local cache.
+      Later installs reuse cached files.
+    </p>
     <button
       class="primary"
       type="button"
