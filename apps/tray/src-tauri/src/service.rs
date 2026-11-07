@@ -243,6 +243,14 @@ fn required(reply: &Reply) -> Result<(), String> {
 }
 
 pub(crate) fn command(program: &str, args: &[&str]) -> Result<Reply, String> {
+    command_with_timeout(program, args, Duration::from_secs(15))
+}
+
+pub(crate) fn command_with_timeout(
+    program: &str,
+    args: &[&str],
+    timeout: Duration,
+) -> Result<Reply, String> {
     let mut cmd = Command::new(program);
     cmd.args(args)
         .stdin(Stdio::null())
@@ -262,7 +270,7 @@ pub(crate) fn command(program: &str, args: &[&str]) -> Result<Reply, String> {
         let _ = stdout.take(128 * 1024 + 1).read_to_string(&mut text);
         text
     });
-    let deadline = Instant::now() + Duration::from_secs(15);
+    let deadline = Instant::now() + timeout;
     loop {
         match child.try_wait() {
             Ok(Some(status)) => {

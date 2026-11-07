@@ -4,7 +4,23 @@ Headless library server for sharing emulator ROMs, saves, screenshots, artwork, 
 
 The server is a separate repository from the emulator apps. Apps stay adapters. This repository owns the versioned HTTP contract, storage, access control, and reference clients.
 
-## Run locally
+## Install the server
+
+On Apple Silicon macOS or Linux x64, paste this in Terminal.
+
+```sh
+curl -qfsSL https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/scripts/install-server.sh | bash
+```
+
+On Windows x64, paste this in PowerShell.
+
+```powershell
+& ([ScriptBlock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/scripts/install-server.ps1')))
+```
+
+Choose **Nightly** or **Release**, then choose whether to add the desktop app when available. The installer starts the server and shows where to finish setup. You can also start with the Apple Silicon DMG and choose **Set up this Mac**. See the [installation guide](docs/operations/nightly-builds.md#install-with-one-command).
+
+## Run from source
 
 Use Node.js 22.22.2 and pnpm 10.30.1:
 

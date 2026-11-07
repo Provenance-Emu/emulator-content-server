@@ -18,7 +18,9 @@
   let {
     context,
     folderSelection,
-  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter } = $props();
+    setupCode,
+    revealSetupCode,
+  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void> } = $props();
   const application = untrack(() => createApplication(context));
   const updates = untrack(() => createServerUpdates(context.client));
   const updateAccess = $derived($application.owner && $application.hasSession ? $application.authEpoch : null);
@@ -243,6 +245,8 @@
             client={context.client}
             origin={context.origin}
             setup={$application.capabilities?.bootstrapped === false}
+            {setupCode}
+            {revealSetupCode}
             onsignin={(session) => {
               signingIn = false;
               void application.adoptSession(session, expectedEpoch);

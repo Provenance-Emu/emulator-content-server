@@ -5,11 +5,14 @@ mod downloads;
 mod local_endpoint;
 mod navigation;
 mod service;
+mod setup;
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 
 type LocalState = Mutex<local_endpoint::Verifications>;
+#[derive(Default)]
+struct SetupState(Mutex<()>);
 fn require_library_window(window: &tauri::WebviewWindow) -> Result<(), String> {
     if window
         .url()
@@ -33,6 +36,51 @@ async fn managed_endpoint(window: tauri::WebviewWindow) -> Result<serde_json::Va
     })
     .await
     .map_err(|_| "Local service verification is unavailable.".to_string())?
+}
+#[tauri::command]
+async fn install_local_server(window: tauri::WebviewWindow) -> Result<String, String> {
+    require_library_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        require_library_window(&window)?;
+        let state = window.state::<SetupState>();
+        let _installing = state
+            .0
+            .try_lock()
+            .map_err(|_| "Local setup is already running.")?;
+        let home = window
+            .path()
+            .home_dir()
+            .map_err(|_| "Your home folder is unavailable.")?;
+        setup::install(&home)
+    })
+    .await
+    .map_err(|_| "Local setup could not finish.".to_string())?
+}
+#[tauri::command]
+async fn reveal_local_setup_code(
+    window: tauri::WebviewWindow,
+    verification_id: String,
+) -> Result<(), String> {
+    require_library_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let current = local_endpoint::current()?;
+        {
+            let state = window.state::<LocalState>();
+            let mut state = state
+                .lock()
+                .map_err(|_| "Local service verification is unavailable.")?;
+            if !state.validate(&verification_id, Some(&current)) {
+                return Err("Verify the local service again before finding its setup code.".into());
+            }
+        }
+        let path = current.mac_setup_code_path()?;
+        require_library_window(&window)?;
+        tauri_plugin_opener::reveal_item_in_dir(path).map_err(|_| {
+            "The setup code file is unavailable. It is removed after owner setup.".into()
+        })
+    })
+    .await
+    .map_err(|_| "The setup code file could not be located.".to_string())?
 }
 #[tauri::command]
 async fn validate_managed_selection(
@@ -130,10 +178,9 @@ async fn service_stop(window: tauri::WebviewWindow) -> Result<String, String> {
 }
 
 fn require_status_window(window: &tauri::WebviewWindow) -> Result<(), String> {
-    if window.label() == "status"
-        && window
-            .url()
-            .is_ok_and(|url| navigation::trusted_document(&url))
+    if window
+        .url()
+        .is_ok_and(|url| navigation::trusted_status(window.label(), &url))
     {
         Ok(())
     } else {
@@ -195,6 +242,7 @@ fn startup_menu_action(app: &tauri::AppHandle, id: &str) {
 fn main() {
     tauri::Builder::default()
         .manage(LocalState::default())
+        .manage(SetupState::default())
         .on_menu_event(|app, event| startup_menu_action(app, event.id().as_ref()))
         .setup(|app| {
             install_startup_menu(app)?;
@@ -233,8 +281,8 @@ fn main() {
         .plugin(
             tauri::plugin::Builder::<tauri::Wry>::new("trusted-navigation")
                 .on_navigation(|webview, url| {
-                    matches!(webview.label(), "status" | "library")
-                        && navigation::trusted_document(url)
+                    navigation::trusted_status(webview.label(), url)
+                        || navigation::trusted_library(webview.label(), url)
                 })
                 .build(),
         )
@@ -249,6 +297,8 @@ fn main() {
             service_start,
             service_stop,
             managed_endpoint,
+            install_local_server,
+            reveal_local_setup_code,
             choose_managed_directory,
             validate_managed_selection
         ])

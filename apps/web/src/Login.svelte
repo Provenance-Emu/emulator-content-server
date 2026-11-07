@@ -9,12 +9,16 @@
     origin,
     onsignin,
     setup = false,
+    setupCode,
+    revealSetupCode,
   }: {
     client: ContentClient;
     origin: string;
     onsignin: (session: StoredSession) => void;
     /** True when the server has no owner yet and is asking for its bootstrap token. */
     setup?: boolean;
+    setupCode?: string;
+    revealSetupCode?: () => Promise<void>;
   } = $props();
 
   let token = $state('');
@@ -24,6 +28,7 @@
   let working = $state(false);
   let failure = $state<string | null>(null);
   let disposed = false;
+  $effect(() => { if (setup && setupCode) token = setupCode; });
   onDestroy(() => { disposed = true; password = ''; token = ''; });
 
   async function submit(event: SubmitEvent): Promise<void> {
@@ -34,7 +39,7 @@
       const pasted = token.trim();
       const authentication = new ContentClient(origin);
       const session = !setup && useToken ? await tokenSession(pasted) : setup
-        ? await authentication.bootstrap(token, username, password)
+        ? await authentication.bootstrap(pasted, username, password)
         : await authentication.login(username, password);
       if (disposed) return;
       password = '';
@@ -57,10 +62,21 @@
 <section class="sign-in-panel">
   <h2>{setup ? 'Set up your library' : 'Sign in'}</h2>
   {#if setup}
-    <p class="dim">
-      Create an account to add games and manage this library. Use the setup code shown when
-      Emulation Server first started. It is also saved in the server’s data folder as bootstrap.token.
-    </p>
+    {#if setupCode}
+      <p class="dim">The setup code is filled in. Create an owner account to add games and manage this library.</p>
+    {:else if revealSetupCode}
+      <p class="dim">Find the setup code in Finder, open the selected file, and paste its contents here to create the owner account.</p>
+      <button type="button" class="text-button" onclick={async () => {
+        failure = null;
+        try { await revealSetupCode?.(); }
+        catch (error) { if (!disposed) failure = error instanceof Error ? error.message : String(error); }
+      }}>Find setup code in Finder</button>
+    {:else}
+      <p class="dim">
+        Create an account to add games and manage this library. Use the setup code shown when
+        Emulation Server first started. It is also saved in the server’s data folder as bootstrap.token.
+      </p>
+    {/if}
   {:else}
     <p class="sign-in-intro">Sign in to browse your games, download them to an emulator, or play supported games in your browser.</p>
   {/if}

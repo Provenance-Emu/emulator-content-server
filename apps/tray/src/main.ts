@@ -2,6 +2,7 @@ import '@ecs/web/app.css';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { mount } from 'svelte';
+import { writable } from 'svelte/store';
 import { createDesktopSelection } from './lib/application';
 import { createServiceControl } from './lib/service';
 import { insideTauri, installTray } from './lib/tray';
@@ -25,34 +26,36 @@ const service = createServiceControl(
 // A browser cannot own a menu bar, so the tray is only built inside the shell.
 // The window still works without one, which is what makes this developable.
 let refresh: (() => Promise<void>) | null = null;
-let trayFailure: string | null = null;
-if (native) {
-  try {
-    refresh = await installTray(watch, service);
-  } catch (error) {
-    // Without this the menu would simply be absent and nothing would say why,
-    // which is the worst way for a menu-bar application to fail.
-    trayFailure = error instanceof Error ? error.message : String(error);
-    // The Rust startup menu remains usable; surface the failure instead of
-    // leaving its explanation in an inaccessible hidden status window.
-    const window = getCurrentWindow();
-    await window
-      .show()
-      .then(() => window.setFocus())
-      .catch(() => {});
-  }
-}
+const trayFailure = writable<string | null>(null);
 
 mount(Panel, {
   target,
   props: {
     watch,
     service,
+    selection,
     trayFailure,
     canOpen: () => void showLibrary(),
     openBrowser: () => void openExternal(watch.interfaceUrl),
   },
 });
+
+// Native menu requests must never delay the bundled status window.
+if (native) {
+  void installTray(watch, service)
+    .then(async (update) => {
+      refresh = update;
+      await update();
+    })
+    .catch((error: unknown) => {
+      trayFailure.set(error instanceof Error ? error.message : String(error));
+      const window = getCurrentWindow();
+      void window
+        .show()
+        .then(() => window.setFocus())
+        .catch(() => {});
+    });
+}
 
 const unsubscribeService = service.subscribe(() => {
   void refresh?.();

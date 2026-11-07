@@ -183,6 +183,30 @@ test('a public listen without TLS is refused before a registration is written', 
   }
 });
 
+test('desktop setup only bootstraps a new login service and leaves an existing one intact', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'ecs-service-home-'));
+  try {
+    const darwin = spec(home, join(home, 'data'), 'darwin');
+    const file = registrationFile(darwin);
+    assert.ok(file);
+    await assert.rejects(() =>
+      installService(darwin, () => ({ status: 1, stdout: '', stderr: 'failed' }), true),
+    );
+    await assert.rejects(() => readFile(file), { code: 'ENOENT' });
+
+    const { runner, calls } = recordingRunner();
+    await installService(darwin, runner, true);
+    await assert.rejects(
+      () => installService({ ...darwin, dataDir: join(home, 'other') }, runner, true),
+      { code: 'EEXIST' },
+    );
+    assert.equal(await readFile(file, 'utf8'), renderRegistration(darwin));
+    assert.deepEqual(calls, [['launchctl', 'bootstrap', 'gui/501', file]]);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 test('status reports the registration, the process, and the port', async () => {
   const home = await mkdtemp(join(tmpdir(), 'ecs-service-home-'));
   const dataDir = join(home, 'data');

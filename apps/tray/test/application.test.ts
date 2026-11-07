@@ -98,6 +98,36 @@ test('player URLs resolve at the selected server and never allow external creden
   }
 });
 
+test('saved servers survive a restart and switching preserves each origin’s own sign-in', () => {
+  const f = fixture();
+  const a = profile('https://a.test');
+  const b = profile('https://b.test');
+  const local = {
+    origin: 'http://127.0.0.1:8473',
+    label: 'This computer',
+    profileKey: 'managed-service',
+  };
+  const first = createDesktopSelection(f.dependencies);
+  first.select(a);
+  get(first)?.sessions.save(session);
+  first.select(b);
+  first.select(local);
+  first.dispose();
+
+  const second = createDesktopSelection(f.dependencies);
+  try {
+    assert.equal(get(second)?.origin, local.origin);
+    assert.deepEqual(get(second.profiles), [local, b, a]);
+    second.select(a);
+    assert.equal(get(second)?.sessions.load()?.token, session.token);
+    second.select(b);
+    assert.equal(get(second)?.sessions.load(), null);
+    assert.deepEqual(get(second.profiles), [b, a, local]);
+  } finally {
+    second.dispose();
+  }
+});
+
 test('switching contexts clears the old client before B requests; late A results stay inert', async () => {
   const f = fixture();
   const previous = globalThis.fetch;

@@ -1,0 +1,188 @@
+param(
+    [ValidateSet('nightly', 'release')][string]$Channel,
+    [ValidateSet('server', 'both')][string]$Components,
+    [switch]$Doctor
+)
+
+$ErrorActionPreference = 'Stop'
+$repo = 'Provenance-Emu/emulator-content-server'
+$api = "https://api.github.com/repos/$repo/releases"
+$downloads = "https://github.com/$repo/releases/download"
+$origin = 'http://127.0.0.1:8473'
+$task = 'EmulatorContentServer'
+if ($env:OS -ne 'Windows_NT' -or [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne 'X64') {
+    throw 'This installer supports Windows x64.'
+}
+$base = Join-Path $env:LOCALAPPDATA 'Emulation Server'
+$data = Join-Path $base 'data'
+
+function Test-Server {
+    try { return [bool](Invoke-RestMethod -Uri "$origin/health" -TimeoutSec 2).ok }
+    catch { return $false }
+}
+
+function Get-LoginTask {
+    Get-ScheduledTask -TaskName $task -TaskPath '\' -ErrorAction SilentlyContinue
+}
+
+$registration = Get-LoginTask
+$appEntries = @(
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+)
+$installedApp = Get-ItemProperty -Path $appEntries -ErrorAction SilentlyContinue |
+    Where-Object { $_.DisplayName -eq 'Emulation Server' } | Select-Object -First 1
+if ($registration) {
+    $arguments = @($registration.Actions)[0].Arguments
+    if ($arguments -match '(?:^|\s)--data\s+(?:"([^"]+)"|(\S+))') {
+        $configuredData = if ($Matches[1]) { $Matches[1] } else { $Matches[2] }
+        if ([IO.Path]::IsPathRooted($configuredData)) { $data = $configuredData }
+    }
+    if ($arguments -match '(?:^|\s)--port\s+([1-9][0-9]{0,4})(?:\s|$)' -and [int]$Matches[1] -le 65535) {
+        $origin = 'http://127.0.0.1:' + $Matches[1]
+    }
+}
+$healthy = Test-Server
+$installServer = !$registration -and !$healthy
+if ($Doctor -or !$installServer) {
+    $state = if ($registration) { $registration.State } else { 'not installed' }
+    Write-Host "Login service: $state"
+    if ($healthy) { Write-Host "Server: responding at $origin/ui/" }
+    else { Write-Host "Server: no response at $origin/health" }
+    $appState = if ($installedApp) { 'installed' } else { 'not found' }
+    Write-Host "Desktop app: $appState"
+    if (Test-Path -LiteralPath (Join-Path $data 'bootstrap.token')) {
+        Write-Host "Owner setup code: $data\bootstrap.token"
+    }
+    if (Test-Path -LiteralPath (Join-Path $data 'logs\ecs.log')) { Write-Host "Server log: $data\logs\ecs.log" }
+    if ($Doctor) { return }
+    Write-Host 'Using the existing server installation.'
+}
+if ($installedApp) {
+    if ($installServer) { Write-Host 'Using the installed desktop app.' }
+    $Components = 'server'
+}
+if (!$installServer) {
+    if (!$Components) {
+        $Components = if ((Read-Host 'Install the desktop app for the existing server? [y/N]') -ieq 'y') { 'both' } else { 'server' }
+    }
+    if ($Components -ne 'both') { return }
+}
+$interactiveChannel = !$Channel
+if (!$Channel) {
+    switch (Read-Host 'Install from [1] Nightly or [2] Release? [1]') {
+        ''  { $Channel = 'nightly' }
+        '1' { $Channel = 'nightly' }
+        '2' { $Channel = 'release' }
+        default { throw 'Choose 1 or 2.' }
+    }
+}
+
+function Assert-NoService {
+    if (Get-LoginTask) {
+        throw 'A login service appeared during setup. Run the installer again to use it.'
+    }
+}
+
+function Find-Package {
+    $endpoint = if ($Channel -eq 'nightly') { "$api/tags/nightly" } else { "${api}?per_page=100" }
+    $releases = Invoke-RestMethod -Uri $endpoint -TimeoutSec 30
+    foreach ($release in $releases) {
+        if ($release.draft) { continue }
+        $tag = $release.tag_name
+        if ($Channel -eq 'nightly' -and $tag -cne 'nightly') { continue }
+        if ($Channel -eq 'release' -and $tag -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$') { continue }
+        $name = 'Emulation-Server-' + ($tag -creplace '^v', '') + '-windows-x64'
+        $server = @($release.assets | Where-Object { $_.name -ceq "$name.zip" })
+        $desktop = @($release.assets | Where-Object { $_.name -ceq "$name.msi" })
+        if (($installServer -and $server.Count -ne 1) -or (!$installServer -and $desktop.Count -ne 1)) { continue }
+        return @{ Tag = $tag; Name = $name; Server = $server[0]; Desktop = $desktop }
+    }
+}
+
+function Get-VerifiedAsset($Asset) {
+    if ($Asset.size -le 0 -or $Asset.size -gt 512MB -or $Asset.digest -cnotmatch '^sha256:[a-f0-9]{64}$') {
+        throw "Could not verify the download metadata for $($Asset.name)."
+    }
+    $file = Join-Path $scratch $Asset.name
+    # curl.exe is included in Windows and can reject an oversized download.
+    & curl.exe -q -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 300 `
+        --max-filesize $Asset.size -o $file "$downloads/$($package.Tag)/$($Asset.name)"
+    if ($LASTEXITCODE -ne 0) { throw "Could not download $($Asset.name)." }
+    if ((Get-Item -LiteralPath $file).Length -ne $Asset.size -or
+        (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $Asset.digest.Substring(7)) {
+        throw "Checksum mismatch for $($Asset.name). Try again shortly."
+    }
+    return $file
+}
+
+if ($installServer) { Assert-NoService }
+$package = Find-Package
+if (!$package -and $Channel -eq 'release' -and $interactiveChannel) {
+    if ((Read-Host 'No compatible tagged download is available. Install Nightly? [y/N]') -ine 'y') { return }
+    $Channel = 'nightly'
+    $package = Find-Package
+}
+if (!$package) { throw "No compatible $Channel download is available for this system." }
+$desktop = $false
+if ($package.Desktop.Count -eq 1) {
+    $desktop = $Components -eq 'both' -or
+        (!$Components -and (Read-Host 'Install the server and the desktop app? [y/N]') -ieq 'y')
+} elseif ($Components -eq 'both') {
+    throw 'A desktop app is unavailable for this release.'
+}
+
+$launchers = Join-Path $base 'launchers'
+$null = New-Item -ItemType Directory -Path $launchers -Force
+$lock = New-Item -ItemType Directory -Path (Join-Path $base '.installer-lock')
+$id = [guid]::NewGuid().ToString('N')
+$scratch = Join-Path $launchers ".install-$id"
+try {
+    $null = New-Item -ItemType Directory -Path $scratch
+    if ($installServer) {
+        Write-Host "Downloading $($package.Tag) server…"
+        $archive = Get-VerifiedAsset $package.Server
+        Expand-Archive -LiteralPath $archive -DestinationPath $scratch
+        $extracted = Join-Path $scratch $package.Name
+        if (!(Test-Path -LiteralPath (Join-Path $extracted 'ecs.cmd') -PathType Leaf)) {
+            throw 'The downloaded package is missing its launcher.'
+        }
+        Assert-NoService
+        $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 8473)
+        try { $listener.Start() } catch { throw "Port 8473 is already in use. Open $origin/ui/ to check the existing server." }
+        finally { $listener.Stop() }
+        $launcher = Join-Path $launchers "$($package.Name)-$id"
+        Move-Item -LiteralPath $extracted -Destination $launcher
+        $ecs = Join-Path $launcher 'ecs.cmd'
+        & $ecs init --data $data | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not initialize the local catalog.' }
+        & $ecs service install --data $data --host 127.0.0.1
+        if ($LASTEXITCODE -ne 0) { throw 'Could not register the login service.' }
+        Start-ScheduledTask -TaskName $task -TaskPath '\'
+        $healthy = $false
+        for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            try {
+                if ((Invoke-RestMethod -Uri "$origin/health" -TimeoutSec 1).ok) {
+                    $healthy = $true
+                    break
+                }
+            } catch {}
+            Start-Sleep -Seconds 1
+        }
+        if (!$healthy) { throw "The login service was registered, but the server has not answered. Check $data\logs\ecs.log." }
+        Write-Host "`nServer is running. Open $origin/ui/"
+        if (Test-Path -LiteralPath (Join-Path $data 'bootstrap.token')) {
+            Write-Host "Use the one-time setup code from $data\bootstrap.token to create the owner account."
+        }
+    }
+    if ($desktop) {
+        Write-Host 'Downloading the desktop app…'
+        $msi = Get-VerifiedAsset $package.Desktop[0]
+        $installer = Start-Process -FilePath msiexec.exe -ArgumentList '/i', ('"{0}"' -f $msi) -Wait -PassThru
+        if ($installer.ExitCode -notin @(0, 1641, 3010)) { throw "The desktop installer returned $($installer.ExitCode)." }
+    }
+} finally {
+    if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+    Remove-Item -LiteralPath $lock.FullName
+}
