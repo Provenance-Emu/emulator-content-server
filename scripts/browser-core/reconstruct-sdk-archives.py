@@ -23,6 +23,7 @@ DEFAULT_PLAN = (
     REPOSITORY / "docs/operations/sdk-archive-reconstruction-plan-2026-11-07.json"
 )
 CAPTURE_WRAPPER = REPOSITORY / "scripts/browser-core/capture-upstream-compiler.py"
+SDK_CAPTURE_ADAPTER = REPOSITORY / "scripts/browser-core/capture-sdk-compiler.py"
 HELPERS = runpy.run_path(
     str(REPOSITORY / "scripts/browser-core/reconstruct-vitaquake2.py")
 )
@@ -95,6 +96,177 @@ def parse_ar(data):
     return members
 
 
+OBJECT_SECTION_SCOPE = (
+    "Diagnostic equality of exact serialized WebAssembly v1 section bytes, "
+    "including section IDs, length encodings and custom names. Excludes only "
+    "custom names beginning .debug_ or reloc..debug_. All other sections, "
+    "including linking, reloc.CODE, reloc.DATA, producers and target_features, "
+    "remain compared in order. This checks section framing, not instruction "
+    "validity, semantic equivalence, archive order equivalence or whole bytes. "
+    "Malformed/unsupported objects cannot produce section equality."
+)
+
+
+def fingerprint_wasm_object(data):
+    if not data.startswith(b"\0asm"):
+        return {"status": "unsupported-non-wasm"}
+    if len(data) < 8:
+        return {"status": "malformed-wasm-object", "error": "Truncated WASM header"}
+    if data[4:8] != b"\x01\0\0\0":
+        return {"status": "unsupported-wasm-version", "versionBytes": data[4:8].hex()}
+
+    def u32(offset, limit):
+        value = 0
+        for index in range(5):
+            if offset >= limit:
+                raise ValueError("Truncated unsigned LEB128")
+            byte = data[offset]
+            offset += 1
+            if index == 4 and byte & 0xF0:
+                raise ValueError("Unsigned LEB128 exceeds 32 bits")
+            value |= (byte & 127) << (7 * index)
+            if byte < 128:
+                return value, offset
+        raise ValueError("Oversized unsigned LEB128")
+
+    non_debug, debug = [], []
+    digest = hashlib.sha256(data[:8])
+    # Tag and data-count sections have proposal-defined positions before globals/CODE.
+    order = {
+        kind: rank
+        for rank, kind in enumerate((1, 2, 3, 4, 5, 13, 6, 7, 8, 9, 12, 10, 11))
+    }
+    seen = set()
+    previous_rank = -1
+    offset = 8
+    try:
+        while offset < len(data):
+            start = offset
+            kind = data[offset]
+            offset += 1
+            size, offset = u32(offset, len(data))
+            end = offset + size
+            if end > len(data):
+                raise ValueError("Truncated WASM section payload")
+            name = None
+            if kind == 0:
+                name_size, name_start = u32(offset, end)
+                if name_start + name_size > end:
+                    raise ValueError("Custom section name exceeds its payload")
+                name = data[name_start : name_start + name_size].decode("utf-8")
+            else:
+                if kind not in order:
+                    raise ValueError("Unknown non-custom WASM section ID")
+                if kind in seen or order[kind] <= previous_rank:
+                    raise ValueError(
+                        "Duplicate or out-of-order non-custom WASM section"
+                    )
+                seen.add(kind)
+                previous_rank = order[kind]
+            raw = data[start:end]
+            record = {
+                "id": kind,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "sizeBytes": len(raw),
+            }
+            if name is not None:
+                record["customName"] = name
+            if name is not None and name.startswith((".debug_", "reloc..debug_")):
+                debug.append(record)
+            else:
+                non_debug.append(record)
+                digest.update(raw)
+            offset = end
+    except ValueError as error:
+        return {"status": "malformed-wasm-object", "error": str(error)}
+    return {
+        "status": "complete",
+        "nonDebugSectionsSha256": digest.hexdigest(),
+        "nonDebugSections": non_debug,
+        "excludedDebugSections": debug,
+    }
+
+
+def fingerprint_archive_members(members):
+    return [
+        {
+            "member": name,
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "sizeBytes": len(payload),
+            "objectSections": fingerprint_wasm_object(payload),
+        }
+        for name, payload in members.items()
+    ]
+
+
+def compare_object_sections(members, baseline):
+    if baseline is None:
+        return {
+            "status": "baseline-not-provided",
+            "allMemberNonDebugSectionsMatch": None,
+        }
+    expected = {row["member"]: row for row in baseline}
+    if len(expected) != len(baseline):
+        raise ValueError("Duplicate baseline object-section member")
+    actual = {row["member"]: row for row in fingerprint_archive_members(members)}
+    rows = []
+    for name in sorted(set(actual) | set(expected)):
+        first, second = expected.get(name), actual.get(name)
+        before = (
+            first["objectSections"] if first else {"status": "missing-baseline-member"}
+        )
+        after = (
+            second["objectSections"] if second else {"status": "missing-built-member"}
+        )
+        complete = before["status"] == after["status"] == "complete"
+        rows.append(
+            {
+                "member": name,
+                "expected": first,
+                "actual": second,
+                "memberObjectBytesMatch": (
+                    all(first[key] == second[key] for key in ("sha256", "sizeBytes"))
+                    if first and second
+                    else False
+                ),
+                "nonDebugSectionsMatch": (
+                    before["nonDebugSections"] == after["nonDebugSections"]
+                    and before["nonDebugSectionsSha256"]
+                    == after["nonDebugSectionsSha256"]
+                    if complete
+                    else None
+                ),
+                "excludedDebugSectionsMatch": (
+                    before["excludedDebugSections"] == after["excludedDebugSections"]
+                    if complete
+                    else None
+                ),
+            }
+        )
+    names_match = set(expected) == set(actual)
+    return {
+        "status": "complete",
+        "scope": OBJECT_SECTION_SCOPE,
+        "memberSetsMatch": names_match,
+        "memberOrderMatches": list(expected) == list(actual),
+        "expectedMemberCount": len(expected),
+        "builtMemberCount": len(actual),
+        "comparableMemberCount": sum(
+            row["nonDebugSectionsMatch"] is not None for row in rows
+        ),
+        "matchingNonDebugMemberCount": sum(
+            row["nonDebugSectionsMatch"] is True for row in rows
+        ),
+        "unavailableMemberCount": sum(
+            row["nonDebugSectionsMatch"] is None for row in rows
+        ),
+        "allMemberNonDebugSectionsMatch": bool(rows)
+        and names_match
+        and all(row["nonDebugSectionsMatch"] is True for row in rows),
+        "members": rows,
+    }
+
+
 def compare_archive(path, expected):
     if path.stat().st_size > MAX_ARCHIVE_BYTES:
         raise RuntimeError("Built archive exceeds the diagnostic size budget")
@@ -130,6 +302,9 @@ def compare_archive(path, expected):
         "wholeArchiveMatch": actual
         == {key: expected[key] for key in ("sha256", "sizeBytes")},
         "selectedMembers": comparisons,
+        "objectSectionDiagnostics": compare_object_sections(
+            members, expected.get("memberObjectSections")
+        ),
     }
 
 
@@ -162,7 +337,15 @@ def inspect_tool(name, path, environment, runner):
     return record
 
 
-def isolated_environment(sdk, source, output, capture):
+def isolated_environment(sdk, source, output, capture, historical_header_prefix=None):
+    if historical_header_prefix is None:
+        historical_header_prefix = json.loads(DEFAULT_PLAN.read_text())[
+            "historicalClangHeaderPrefix"
+        ]
+    header_prefix = str(sdk / "upstream/lib/clang/18/include")
+    runpy.run_path(str(SDK_CAPTURE_ADAPTER))["header_prefix_flag"](
+        header_prefix, historical_header_prefix
+    )
     cache = source / "cache"
     configuration = output / "emscripten-config.py"
     values = {
@@ -191,8 +374,10 @@ def isolated_environment(sdk, source, output, capture):
     environment.update(
         EM_CONFIG=str(configuration),
         EM_CACHE=str(cache),
-        EM_COMPILER_WRAPPER=str(CAPTURE_WRAPPER),
+        EM_COMPILER_WRAPPER=str(SDK_CAPTURE_ADAPTER),
         ECS_COMPILE_CAPTURE=str(capture),
+        ECS_SDK_CLANG_HEADER_FROM=header_prefix,
+        ECS_SDK_CLANG_HEADER_TO=historical_header_prefix,
         EMCC_TEMP_DIR=str(temporary),
         EMCC_USE_NINJA="0",
         EMCC_CORES="2",
@@ -305,6 +490,20 @@ def reconstruct(sdk, output, plan_path):
             selected = archive_pin["selectedMembers"]
             if len({member["member"] for member in selected}) != len(selected):
                 raise RuntimeError("Unique selected archive members are required")
+            baseline = archive_pin.get("memberObjectSections")
+            if not baseline or len({row["member"] for row in baseline}) != len(
+                baseline
+            ):
+                raise RuntimeError("All-member SDK object-section baseline is required")
+            baseline_by_name = {row["member"]: row for row in baseline}
+            for member in selected:
+                pinned = baseline_by_name.get(member["member"])
+                if pinned is None or any(
+                    pinned[key] != member[key] for key in ("sha256", "sizeBytes")
+                ):
+                    raise RuntimeError(
+                        "Selected member differs from object-section baseline"
+                    )
         if plan["schemaVersion"] != 1 or plan["sdkVersion"] != "3.1.46":
             raise RuntimeError("The pinned SDK 3.1.46 reconstruction plan is required")
         if not isinstance(plan["hostFileSystem"]["caseSensitive"], bool):
@@ -315,6 +514,10 @@ def reconstruct(sdk, output, plan_path):
             + plan["compilerRevision"]
         ):
             raise RuntimeError("Primary source URL differs from the compiler revision")
+        runpy.run_path(str(SDK_CAPTURE_ADAPTER))["header_prefix_flag"](
+            str(sdk / "upstream/lib/clang/18/include"),
+            plan["historicalClangHeaderPrefix"],
+        )
         report["plan"] = {"file": str(plan_path), **file_pin(plan_path)}
         report["diagnosticScript"] = file_pin(Path(__file__))
         report["baselineHostFileSystem"] = plan["hostFileSystem"]
@@ -343,7 +546,33 @@ def reconstruct(sdk, output, plan_path):
                 "The primary source archive contains a preexisting cache"
             )
         report["initialCacheEntries"] = []
-        environment, configuration = isolated_environment(sdk, source, output, capture)
+        environment, configuration = isolated_environment(
+            sdk, source, output, capture, plan["historicalClangHeaderPrefix"]
+        )
+        report["clangHeaderDebugPrefixMapping"] = {
+            "from": environment["ECS_SDK_CLANG_HEADER_FROM"],
+            "to": environment["ECS_SDK_CLANG_HEADER_TO"],
+            "effectiveAddedArgument": runpy.run_path(str(SDK_CAPTURE_ADAPTER))[
+                "header_prefix_flag"
+            ](
+                environment["ECS_SDK_CLANG_HEADER_FROM"],
+                environment["ECS_SDK_CLANG_HEADER_TO"],
+            ),
+            "adapter": {
+                "file": str(SDK_CAPTURE_ADAPTER.relative_to(REPOSITORY)),
+                **file_pin(SDK_CAPTURE_ADAPTER),
+            },
+            "captureHelper": {
+                "file": str(CAPTURE_WRAPPER.relative_to(REPOSITORY)),
+                **file_pin(CAPTURE_WRAPPER),
+            },
+            "baselineObservation": plan.get("historicalClangHeaderPrefixEvidence"),
+            "scope": (
+                "Injects only a compiler debug-prefix mapping before the original "
+                "arguments. No macro/runtime prefix map, source patch or "
+                "binary rewriting."
+            ),
+        }
         report["configuration"] = {
             "file": configuration.name,
             **file_pin(configuration),
@@ -355,6 +584,8 @@ def reconstruct(sdk, output, plan_path):
                 "EM_CACHE",
                 "EM_COMPILER_WRAPPER",
                 "ECS_COMPILE_CAPTURE",
+                "ECS_SDK_CLANG_HEADER_FROM",
+                "ECS_SDK_CLANG_HEADER_TO",
                 "EMCC_TEMP_DIR",
                 "EMCC_USE_NINJA",
                 "EMCC_CORES",
@@ -434,6 +665,26 @@ def reconstruct(sdk, output, plan_path):
             "selectedMembers": len(members),
             "exactSelectedMembers": sum(member["match"] for member in members),
         }
+        section_diagnostics = [
+            archive["objectSectionDiagnostics"] for archive in report["archives"]
+        ]
+        report["objectSectionComparison"] = {
+            "scope": OBJECT_SECTION_SCOPE,
+            "archiveCount": len(section_diagnostics),
+            "matchingNonDebugArchives": sum(
+                item["allMemberNonDebugSectionsMatch"] is True
+                for item in section_diagnostics
+            ),
+            "comparableMembers": sum(
+                item["comparableMemberCount"] for item in section_diagnostics
+            ),
+            "matchingNonDebugMembers": sum(
+                item["matchingNonDebugMemberCount"] for item in section_diagnostics
+            ),
+            "unavailableMembers": sum(
+                item["unavailableMemberCount"] for item in section_diagnostics
+            ),
+        }
         exact = all(
             archive["wholeArchiveMatch"] for archive in report["archives"]
         ) and all(member["match"] for member in members)
@@ -460,6 +711,7 @@ def reconstruct(sdk, output, plan_path):
             {
                 "status": report["status"],
                 "comparison": report.get("comparison"),
+                "objectSectionComparison": report.get("objectSectionComparison"),
                 "error": report.get("error"),
             },
             indent=2,
@@ -488,7 +740,233 @@ def self_test(sdk=None):
             + (b"\n" if len(payload) % 2 else b"")
         )
 
+    def u32(value):
+        encoded = bytearray()
+        while value >= 128:
+            encoded.append((value & 127) | 128)
+            value >>= 7
+        return bytes(encoded) + bytes([value])
+
+    def wasm_object(parts):
+        return b"\0asm\x01\0\0\0" + b"".join(
+            bytes([kind]) + u32(len(payload)) + payload for kind, payload in parts
+        )
+
+    def custom(name, payload):
+        encoded = name.encode()
+        return 0, u32(len(encoded)) + encoded + payload
+
     class ArchiveTests(unittest.TestCase):
+        def test_header_prefix_adapter_preserves_driver_and_forwards_only_debug_flag(
+            self,
+        ):
+            adapter = runpy.run_path(str(SDK_CAPTURE_ADAPTER))
+            arguments = [
+                "/tools/clang++",
+                "-c",
+                "a file.cpp",
+                "-o",
+                "a file.o",
+                "-DVALUE=1",
+            ]
+            original = list(arguments)
+            forwarded = []
+            status = adapter["capture_sdk_compiler"](
+                arguments,
+                "/sdk with spaces/upstream/lib/clang/18/include",
+                "/opt/s/w/ir/x/w/install/lib/clang/18/include",
+                lambda command: forwarded.append(command) or 7,
+            )
+            self.assertEqual(status, 7)
+            self.assertEqual(arguments, original)
+            self.assertEqual(
+                forwarded,
+                [
+                    [
+                        original[0],
+                        "-fdebug-prefix-map=/sdk with spaces"
+                        "/upstream/lib/clang/18/include="
+                        "/opt/s/w/ir/x/w/install/lib/clang/18/include",
+                        *original[1:],
+                    ]
+                ],
+            )
+            for prefix in ["", "relative/include", "/bad=prefix", "/bad\npath"]:
+                with self.subTest(prefix=prefix), self.assertRaises(ValueError):
+                    adapter["capture_sdk_compiler"](
+                        arguments, prefix, "/historical", lambda _: 0
+                    )
+
+        def test_isolated_capture_uses_explicit_observed_header_prefix_mapping(self):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root / "source"
+                source.mkdir()
+                environment, _ = isolated_environment(
+                    root / "sdk",
+                    source,
+                    root,
+                    root / "capture",
+                    "/opt/s/w/ir/x/w/install/lib/clang/18/include",
+                )
+                self.assertEqual(
+                    environment["EM_COMPILER_WRAPPER"], str(SDK_CAPTURE_ADAPTER)
+                )
+                self.assertEqual(
+                    environment["ECS_SDK_CLANG_HEADER_FROM"],
+                    str(root / "sdk/upstream/lib/clang/18/include"),
+                )
+                self.assertEqual(
+                    environment["ECS_SDK_CLANG_HEADER_TO"],
+                    "/opt/s/w/ir/x/w/install/lib/clang/18/include",
+                )
+                self.assertEqual(
+                    environment["ECS_COMPILE_CAPTURE"], str(root / "capture")
+                )
+
+        def test_object_sections_exclude_only_explicit_debug_custom_sections(self):
+            retained = [
+                (10, b"code"),
+                (11, b"data"),
+                custom("linking", b"symbols"),
+                custom("reloc.CODE", b"code relocations"),
+                custom("reloc.DATA", b"data relocations"),
+                custom("producers", b"compiler"),
+                custom("target_features", b"features"),
+                custom("other", b"metadata"),
+            ]
+            first = fingerprint_wasm_object(
+                wasm_object(
+                    retained
+                    + [
+                        custom(".debug_info", b"old debug"),
+                        custom("reloc..debug_info", b"old debug relocations"),
+                    ]
+                )
+            )
+            second = fingerprint_wasm_object(
+                wasm_object(
+                    retained
+                    + [
+                        custom(".debug_info", b"different longer debug"),
+                        custom("reloc..debug_info", b"different relocations"),
+                    ]
+                )
+            )
+            self.assertEqual(first["status"], "complete")
+            self.assertEqual(
+                first["nonDebugSectionsSha256"], second["nonDebugSectionsSha256"]
+            )
+            self.assertNotEqual(
+                first["excludedDebugSections"], second["excludedDebugSections"]
+            )
+            for index in range(len(retained)):
+                changed = list(retained)
+                kind, payload = changed[index]
+                changed[index] = kind, payload + b"changed"
+                with self.subTest(section=index):
+                    different = fingerprint_wasm_object(wasm_object(changed))
+                    self.assertNotEqual(
+                        first["nonDebugSectionsSha256"],
+                        different["nonDebugSectionsSha256"],
+                    )
+            for name in ("debug_info", ".debug", ".debugger", "reloc.debug_info"):
+                named_debug = fingerprint_wasm_object(wasm_object([custom(name, b"x")]))
+                self.assertEqual(len(named_debug["nonDebugSections"]), 1)
+            padded = fingerprint_wasm_object(b"\0asm\x01\0\0\0\x01\x80\x00")
+            unpadded = fingerprint_wasm_object(wasm_object([(1, b"")]))
+            self.assertNotEqual(
+                padded["nonDebugSectionsSha256"], unpadded["nonDebugSectionsSha256"]
+            )
+
+        def test_malformed_or_unsupported_objects_never_produce_section_equality(self):
+            header = b"\0asm\x01\0\0\0"
+            malformed = [
+                header[:-1],
+                header + b"\x01\x80",
+                header + b"\x01\x80\x80\x80\x80\x10",
+                header + b"\x01\x04x",
+                header + b"\x00\x02\x05x",
+                header + b"\x00\x02\x01\xff",
+                wasm_object([(1, b""), (1, b"")]),
+                wasm_object([(10, b""), (1, b"")]),
+            ]
+            for payload in malformed:
+                with self.subTest(payload=payload):
+                    result = fingerprint_wasm_object(payload)
+                    self.assertEqual(result["status"], "malformed-wasm-object")
+                    self.assertNotIn("nonDebugSectionsSha256", result)
+            for payload in [b"LLVM bitcode", b"\0asm\x02\0\0\0"]:
+                with self.subTest(payload=payload):
+                    result = fingerprint_wasm_object(payload)
+                    self.assertTrue(result["status"].startswith("unsupported-"))
+                    self.assertNotIn("nonDebugSectionsSha256", result)
+
+        def test_archive_byte_pins_and_non_debug_section_diagnostics_stay_separate(
+            self,
+        ):
+            original = wasm_object(
+                [
+                    (10, b"code"),
+                    custom("linking", b"symbols"),
+                    custom(".debug_info", b"first"),
+                ]
+            )
+            changed_debug = wasm_object(
+                [
+                    (10, b"code"),
+                    custom("linking", b"symbols"),
+                    custom(".debug_info", b"other"),
+                ]
+            )
+            changed_linking = wasm_object(
+                [
+                    (10, b"code"),
+                    custom("linking", b"different"),
+                    custom(".debug_info", b"first"),
+                ]
+            )
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "fixture.a"
+                archived = b"!<arch>\n" + member("x.o/", original)
+                expected = {
+                    "file": path.name,
+                    "target": "fixture",
+                    "sha256": hashlib.sha256(archived).hexdigest(),
+                    "sizeBytes": len(archived),
+                    "selectedMembers": [],
+                    "memberObjectSections": fingerprint_archive_members(
+                        {"x.o": original}
+                    ),
+                }
+                path.write_bytes(b"!<arch>\n" + member("x.o/", changed_debug))
+                comparison = compare_archive(path, expected)
+                self.assertFalse(comparison["wholeArchiveMatch"])
+                self.assertTrue(
+                    comparison["objectSectionDiagnostics"][
+                        "allMemberNonDebugSectionsMatch"
+                    ]
+                )
+                path.write_bytes(b"!<arch>\n" + member("x.o/", changed_linking))
+                self.assertFalse(
+                    compare_archive(path, expected)["objectSectionDiagnostics"][
+                        "allMemberNonDebugSectionsMatch"
+                    ]
+                )
+                path.write_bytes(b"!<arch>\n" + member("x.o/", b"unsupported bitcode"))
+                expected["memberObjectSections"] = fingerprint_archive_members(
+                    {"x.o": b"unsupported bitcode"}
+                )
+                unavailable = compare_archive(path, expected)[
+                    "objectSectionDiagnostics"
+                ]
+                self.assertFalse(unavailable["allMemberNonDebugSectionsMatch"])
+                self.assertIsNone(unavailable["members"][0]["nonDebugSectionsMatch"])
+                path.write_bytes(b"!<arch>\n" + member("other.o/", original))
+                missing = compare_archive(path, expected)["objectSectionDiagnostics"]
+                self.assertFalse(missing["memberSetsMatch"])
+                self.assertFalse(missing["allMemberNonDebugSectionsMatch"])
+
         def test_regular_gnu_long_names_and_symbol_indexes(self):
             data = (
                 b"!<arch>\n"
@@ -720,6 +1198,17 @@ def self_test(sdk=None):
                 compiled = [command for command in commands if "-c" in command["args"]]
                 self.assertEqual(len(compiled), 1)
                 record = compiled[0]
+                self.assertIn(
+                    record["args"][0],
+                    [
+                        str(sdk / "upstream/bin/clang"),
+                        str(sdk / "upstream/bin/clang++"),
+                    ],
+                )
+                self.assertEqual(
+                    record["args"][1],
+                    f"-fdebug-prefix-map={environment['ECS_SDK_CLANG_HEADER_FROM']}={environment['ECS_SDK_CLANG_HEADER_TO']}",
+                )
                 self.assertEqual(
                     record["outputObject"]["sha256"], file_pin(original)["sha256"]
                 )
