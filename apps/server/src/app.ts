@@ -41,6 +41,8 @@ export interface OpenServerOptions {
   supervisedStartup?: { activated: Promise<void>; acceptingRequests: () => boolean };
   /** Trusted operator-installed matching provider and manager directory. */
   matchingPluginsDir?: string;
+  /** Fill missing metadata and artwork after scans. Enabled by default. */
+  automaticMatching?: boolean;
   /** Trusted native read adapters for identification only; omitted paths are discovered locally. */
   matchingTools?: { sevenZip?: string; chdman?: string };
   /** Optional operator-owned absolute native decoder path; omitted means ZIP only. */
@@ -95,6 +97,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
   }
   const context: ServerContext = {
     catalog,
+    automaticMatching: options.automaticMatching !== false,
     ...(options.matchingPluginsDir ? { matchingPluginsDir: options.matchingPluginsDir } : {}),
     ...(options.matchingTools || options.chdmanPath
       ? {

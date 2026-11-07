@@ -870,6 +870,7 @@
     "MatchingOptions": {
       "properties": [
         "allowExactNames",
+        "autoSave",
         "checksum",
         "managerId",
         "online",
@@ -964,6 +965,7 @@
     },
     "SourceMatches": {
       "properties": [
+        "automatic",
         "candidates",
         "plugins",
         "problems",
@@ -976,6 +978,18 @@
         "problems",
         "requestId",
         "sourceId"
+      ]
+    },
+    "MatchingAutomaticResult": {
+      "properties": [
+        "error",
+        "saved",
+        "status"
+      ],
+      "required": [
+        "error",
+        "saved",
+        "status"
       ]
     },
     "SourceGroupFile": {

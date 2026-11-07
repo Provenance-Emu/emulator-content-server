@@ -382,6 +382,7 @@ export interface SourceOrganizationResult {
 export interface MatchingOptions {
   online?: boolean;
   checksum?: boolean;
+  autoSave?: boolean;
   refreshCatalogs?: boolean;
   allowExactNames?: boolean;
   providerIds?: string[];
@@ -436,9 +437,16 @@ export interface MatchingProblem {
 export interface SourceMatches {
   sourceId: string;
   requestId: string;
+  automatic?: MatchingAutomaticResult;
   plugins: MatchingPlugin[];
   candidates: MatchingCandidate[];
   problems: MatchingProblem[];
+}
+
+export interface MatchingAutomaticResult {
+  status: string;
+  saved: number;
+  error: string | null;
 }
 
 export interface SourceGroupFile {

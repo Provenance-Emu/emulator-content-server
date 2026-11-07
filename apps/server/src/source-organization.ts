@@ -612,7 +612,7 @@ export function registerSourceOrganization(app: FastifyInstance, context: Server
     // Keep local companion proposals usable until their selected snapshots are saved.
     if (
       policy.mode === 'move' &&
-      pendingLocalKinds.some((kind) => ['metadata', 'artwork'].includes(kind))
+      pendingLocalKinds.some((kind) => ['metadata', 'artwork'].includes(kind.split(':')[0] ?? kind))
     )
       return { status: 'skipped', sourceId };
     const root = catalog.getContentRoot(source.rootId);

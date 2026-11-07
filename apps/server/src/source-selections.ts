@@ -146,7 +146,9 @@ export function registerSourceSelections(
           sourceId,
           proposed.pendingLocalKinds?.filter(
             (kind) =>
-              !context.catalog.sourceMatches(sourceId).matches.some((match) => match.kind === kind),
+              !context.catalog
+                .sourceMatches(sourceId)
+                .matches.some((match) => matchSlot(match) === kind),
           ),
         )
       : undefined;
@@ -208,4 +210,14 @@ function artworkRole(request: FastifyRequest): NonNullable<SourceMatchRecord['ar
   )
     throw new DomainError('invalid-request', 400, 'Invalid artwork role');
   return value as NonNullable<SourceMatchRecord['artworkRole']>;
+}
+
+export function matchSlot(candidate: {
+  kind: string;
+  metadata: Record<string, string>;
+  artworkRole?: string;
+}) {
+  return candidate.kind === 'artwork'
+    ? `artwork:${candidate.artworkRole ?? candidate.metadata.artworkRole ?? 'front'}`
+    : candidate.kind;
 }

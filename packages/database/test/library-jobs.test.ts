@@ -225,3 +225,57 @@ test('equivalent legacy option order and disabled filename fallback reuse the ex
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('automatic matching appends newly scanned sources to a compatible queued job', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-auto-job-'));
+  const catalog = new CatalogDatabase(join(directory, 'catalog.sqlite'));
+  try {
+    const owner = catalog.createUser({
+      username: 'generated',
+      passwordHash: 'generated',
+      actorId: 'test',
+    });
+    const root = catalog.createContentRoot({
+      path: directory,
+      label: 'Games',
+      libraryId: null,
+      actorId: owner.id,
+    });
+    const files = [0, 1].map((index) => ({
+      relativePath: `Game-${index}.nes`,
+      displayName: `Game-${index}.nes`,
+      kind: 'rom',
+      systemId: null,
+      size: 4,
+      blocks: 1,
+      availability: 'local' as const,
+    }));
+    catalog.applyInspection({
+      rootId: root.id,
+      actorId: owner.id,
+      online: true,
+      files: files.slice(0, 1),
+    });
+    const firstSource = catalog.listSources(root.id)[0];
+    assert.ok(firstSource);
+    const options = { online: true, checksum: true, allowExactNames: true };
+    const first = catalog.libraryJobs.create('match', { rootId: root.id }, options, owner.id, [
+      firstSource.id,
+    ]);
+    catalog.applyInspection({ rootId: root.id, actorId: owner.id, online: true, files });
+    const secondSource = catalog
+      .listSources(root.id)
+      .find((source) => source.id !== firstSource.id);
+    assert.ok(secondSource);
+    const appended = catalog.libraryJobs.create('match', { rootId: root.id }, options, owner.id, [
+      secondSource.id,
+    ]);
+    assert.equal(appended.reused, true);
+    assert.equal(appended.job.id, first.job.id);
+    assert.equal(appended.job.total, 2);
+    assert.equal(catalog.libraryJobs.pendingItems(first.job.id, 10).length, 2);
+  } finally {
+    catalog.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

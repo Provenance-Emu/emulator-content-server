@@ -100,6 +100,7 @@ export type {
   LibraryMemberList,
   Manifest,
   ManifestFile,
+  MatchingAutomaticResult,
   MatchingCandidate,
   MatchingOptions,
   MatchingPlugin,

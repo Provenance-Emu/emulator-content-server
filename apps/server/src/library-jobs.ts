@@ -99,6 +99,67 @@ export function registerLibraryJobs(
     waiters.delete(id);
     scanOutcomes.delete(id);
   }
+  const pendingArtwork = new Map<string, string>();
+  const lastAutomatic = new Map<string, { signature: string; queuedAt: number }>();
+  function fillMissingDetails() {
+    if (closing || !context.automaticMatching) return;
+    for (const [rootId, actorId] of pendingArtwork) {
+      const root = context.catalog.getContentRoot(rootId);
+      const actor = context.catalog.actorForUser(actorId);
+      if (!root || actor?.kind !== 'user' || !actor.isOwner) {
+        pendingArtwork.delete(rootId);
+        continue;
+      }
+      const sources = context.catalog.listSources(rootId);
+      const missing = sources.filter((source) => {
+        if (
+          source.kind !== 'rom' ||
+          source.availability !== 'local' ||
+          source.groupError ||
+          (source.groupAnchor && source.groupAnchor !== source.relativePath)
+        )
+          return false;
+        const saved = context.catalog.sourceMatches(source.id).matches;
+        return (
+          !saved.some((match) => match.kind === 'metadata') ||
+          !saved.some(
+            (match) => match.kind === 'artwork' && (match.artworkRole ?? 'front') === 'front',
+          )
+        );
+      });
+      const signature = JSON.stringify(
+        sources.map((source) => [
+          source.id,
+          source.relativePath,
+          source.size,
+          context.catalog.sourceInspectionIdentity(source.id),
+        ]),
+      );
+      const previous = lastAutomatic.get(rootId);
+      if (
+        !missing.length ||
+        (previous?.signature === signature && Date.now() - previous.queuedAt < 15 * 60_000)
+      ) {
+        pendingArtwork.delete(rootId);
+        continue;
+      }
+      try {
+        const result = repository.create(
+          'match',
+          { rootId },
+          { online: true, checksum: true, allowExactNames: true },
+          actorId,
+          missing.map((source) => source.id),
+        );
+        if (!result.reused) {
+          lastAutomatic.set(rootId, { signature, queuedAt: Date.now() });
+          pendingArtwork.delete(rootId);
+        }
+      } catch (error) {
+        if (!(error instanceof DomainError) || error.code !== 'library-job-conflict') throw error;
+      }
+    }
+  }
   async function stop(): Promise<void> {
     closing = true;
     current?.abort.abort();
@@ -162,6 +223,7 @@ export function registerLibraryJobs(
   }
   async function work(): Promise<void> {
     while (!closing) {
+      fillMissingDetails();
       const next = repository.next();
       if (!next) return;
       const abort = new AbortController();
@@ -205,6 +267,8 @@ export function registerLibraryJobs(
                   const result = await scanRoot(context.catalog, root, next.actorId, abort.signal);
                   repository.saveScanResult(next.job.id, root.id, result);
                   repository.finishItem(next.job.id, { ...entry, status: 'saved' });
+                  if (context.automaticMatching && actor.isOwner && result.online)
+                    pendingArtwork.set(root.id, actor.userId);
                 }
               } else {
                 if (!context.catalog.getSource(entry.sourceId))
@@ -277,7 +341,15 @@ export function registerLibraryJobs(
       if (halted) return;
     }
   }
-  app.addHook('onReady', async () => wake());
+  app.addHook('onReady', async () => {
+    if (context.automaticMatching) {
+      const owner = context.catalog.listUsers().find((user) => user.isOwner);
+      if (owner)
+        for (const root of context.catalog.listContentRoots())
+          pendingArtwork.set(root.id, owner.id);
+    }
+    wake();
+  });
   app.addHook('preClose', stop);
   app.post('/api/v1/library-jobs', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can run shared library jobs');
@@ -318,7 +390,7 @@ export function registerLibraryJobs(
       repository.create(
         body.kind as 'scan' | 'match',
         scope,
-        matchBody(body.options ?? { checksum: true }),
+        matchBody(body.options ?? { online: true, checksum: true, allowExactNames: true }),
         actor.userId,
       ),
     );

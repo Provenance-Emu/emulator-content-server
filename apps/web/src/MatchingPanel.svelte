@@ -15,7 +15,7 @@
   let providerIds=$state<string[]>([]);
   let managerId=$state('org.ecs.matches');
   let online=$state(true);
-  let checksum=$state(false);
+  let checksum=$state(true);
   let failure=$state<string|null>(null);
   let registryFailure=$state<string|null>(null);
   let registryLoading=$state(false);
@@ -43,8 +43,8 @@
     try {
       const registry=await context.client.matchingPlugins();
       if(disposed)return;
-      plugins=registry.plugins;providerIds=reviewOptions?.providerIds??plugins.filter((p)=>p.kind==='provider').map((p)=>p.id);ready=true;
-      if(reviewOptions){online=reviewOptions.online===true;checksum=reviewOptions.checksum===true;managerId=reviewOptions.managerId??'org.ecs.matches';await savedReady;if(!disposed)await find();}
+      plugins=registry.plugins;providerIds=plugins.filter((p)=>p.kind==='provider').map((p)=>p.id);ready=true;
+      if(reviewOptions){await savedReady;if(!disposed)await find();}
     } catch(error){if(!disposed)registryFailure=explain(error);}
     finally {if(!disposed)registryLoading=false;}
   }
@@ -70,8 +70,9 @@
   async function find(){
     if(!activeProviders)return;
     page=0;failure=null;
-    await controller.find({online,checksum:checksum&&!container,providerIds,managerId,allowExactNames:reviewOptions?.allowExactNames??false});
+    await controller.find({online,checksum:checksum&&!container,providerIds,managerId,allowExactNames:true,autoSave:true});
     const state=get(controller);
+    if(state.result?.automatic?.saved)onchanged();
     const suggestions=state.result?.candidates??[];
     const unsaved=reviewOptions?suggestions.find((c)=>!state.saved?.matches.some((m)=>matchSlot(m)===matchSlot(c))):null;
     if(unsaved)category=unsaved.kind;
@@ -109,7 +110,7 @@
   {#if registryFailure}<p role="alert" class="problem">{registryFailure}</p><button type="button" disabled={registryLoading} onclick={()=>void loadPlugins()}>Retry matching providers</button>{/if}
   {#if owner}
   <h2>Find metadata, artwork, patches & cheats</h2>
-  <p class="dim">Find suggestions from files beside this game and your selected providers. Save a choice to keep it with this game. Saving metadata makes its title and details visible to people who can read the game. Your original files stay unchanged.</p>
+  <p class="dim">Search local and online providers, then save unique verified, exact-title, and local companion matches automatically. Fuzzy alternatives and conflicting identities stay available for review. Saved artwork is downloaded and kept with the game.</p>
   <div class="matching-actions" aria-label="Matching actions">
     <button type="button" class="primary" disabled={!ready||$controller.loading||$controller.savedLoading||!!$controller.saving||!activeProviders} onclick={()=>void find()}>{$controller.loading ? 'Finding matches…' : 'Find matches'}</button>
     {#if $controller.result}<button type="button" disabled={!!$controller.saving} onclick={()=>controller.clear()}>Clear matches</button>{/if}
@@ -128,6 +129,7 @@
 
 
   {#if $controller.result}
+    {#if $controller.result.automatic?.saved}<p role="status">Saved {$controller.result.automatic.saved} matches automatically.</p>{/if}
     {#each $controller.result.problems as problem}<p class="problem">{providerName(problem.providerId)} could not complete its lookup. Other results are still available.</p>{/each}
     <div class="actions matching-tabs" aria-label="Match categories">
       {#each categories as [id,label]}<button type="button" class:active={category===id} aria-pressed={category===id} onclick={()=>{category=id;page=0;}}>{label} ({$controller.result.candidates.filter((c)=>c.kind===id).length})</button>{/each}

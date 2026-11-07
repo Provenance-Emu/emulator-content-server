@@ -895,7 +895,7 @@ paths:
             schema: { $ref: '#/components/schemas/FolderWatchPolicyDraft' }
       responses:
         '200':
-          description: Persist explicit owner consent and start or stop watching this server folder. Watching refreshes the index without moving files. Enable both registered folders to track moves between them. Periodic recovery scans handle missed events and unavailable native watches. Preference survives restart; runtime status does not.
+          description: Persist explicit owner consent and start or stop watching this server folder. Watching refreshes the index and fills missing metadata and artwork. An enabled organization policy may move games after matching. Enable both registered folders to track moves between them. Periodic recovery scans handle missed events and unavailable native watches. Preference survives restart; runtime status does not.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/FolderWatchPolicy' }
@@ -991,7 +991,7 @@ paths:
             schema: { $ref: '#/components/schemas/MatchingOptions' }
       responses:
         '200':
-          description: Owner-requested suggestions from local and optionally online providers. Original files and catalog metadata are unchanged. Preview expires after fifteen minutes.
+          description: Owner-requested suggestions from local and online providers. With autoSave enabled, unique best-confidence choices are saved and enabled organization rules may run. Suggestions expire after fifteen minutes.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SourceMatches' }
@@ -2053,6 +2053,7 @@ components:
       properties:
         online: { type: boolean, default: false }
         checksum: { type: boolean, default: false }
+        autoSave: { type: boolean, default: false, description: Automatically save unique best-confidence matches during this search. Existing saved choices remain authoritative. }
         refreshCatalogs: { type: boolean, default: false, description: Refresh pinned hosted catalog shards through the shared matching job before matching. }
         allowExactNames: { type: boolean, default: false, description: Permit exact full filename and edition matches when no stronger identity conflicts. }
         providerIds:
@@ -2123,6 +2124,7 @@ components:
       properties:
         sourceId: { type: string }
         requestId: { type: string }
+        automatic: { $ref: '#/components/schemas/MatchingAutomaticResult' }
         plugins:
           type: array
           items: { $ref: '#/components/schemas/MatchingPlugin' }
@@ -2132,6 +2134,13 @@ components:
         problems:
           type: array
           items: { $ref: '#/components/schemas/MatchingProblem' }
+    MatchingAutomaticResult:
+      type: object
+      required: [status, saved, error]
+      properties:
+        status: { type: string, enum: [saved, review, unmatched, skipped] }
+        saved: { type: integer, minimum: 0 }
+        error: { type: [string, 'null'] }
     SourceGroupFile:
       type: object
       required: [id, name, size, availability]

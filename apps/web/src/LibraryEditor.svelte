@@ -57,7 +57,7 @@
 </script>
 <Modal {title} busy={$editor.busy || pickerBusy || choosing} {onclose}>
   <label>Library name<input value={$editor.name} maxlength="80" disabled={$editor.busy || (!!$editor.libraryId && !library)} oninput={(event) => editor.setName(event.currentTarget.value)} /></label>
-  {#if !library}<p class="dim">Give your collection a name, such as “My games” or “Family favorites”. Create it now and add games next. If your games are already on the server computer, you can optionally select that folder here; the files stay where they are.</p>
+  {#if !library}<p class="dim">Give your collection a name, such as “My games” or “Family favorites”. Create it now and add games next. If your games are already on the server computer, you can optionally select that folder here; metadata and artwork fill in automatically after scanning. Choose whether to watch and organize the folder before adding it.</p>
     <ul>{#each $editor.folders as folder, index (folder.selection.path)}<li>
       <span class="path">{folder.selection.path}</span>
       {#if folder.selection.automation}<small class="dim"> · Watching {folder.selection.automation.watch ? 'on' : 'off'} · Organization {folder.selection.automation.organize ? 'on' : 'off'}</small>{/if}

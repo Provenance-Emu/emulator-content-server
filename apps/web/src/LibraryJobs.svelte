@@ -31,12 +31,12 @@
     registryLoading=true;registryFailure=null;
     try {
       const result=await context.client.matchingPlugins();if(!live)return;
-      plugins=result.plugins;providerIds=plugins.filter(p=>p.kind==='provider'&&(!p.network||!p.capabilities.some(cap=>['cheats','patch'].includes(cap)))).map(p=>p.id);ready=true;
+      plugins=result.plugins;providerIds=plugins.filter(p=>p.kind==='provider').map(p=>p.id);ready=true;
     }catch(error){if(live){registryFailure=explain(error);ready=false;}}
     finally{if(live)registryLoading=false;}
   }
   async function choose(id:string){reviewing=null;await controller.choose(id);await controller.filter(filter);}
-  async function start(kind:'scan'|'match',refreshCatalogs=false){reviewing=null;await controller.start(kind,kind==='match'?{online,providerIds,managerId,checksum:true,allowExactNames,...(refreshCatalogs?{refreshCatalogs:true}:{})}:{});await controller.filter(filter);}
+  async function start(kind:'scan'|'match',refreshCatalogs=false){reviewing=null;await controller.start(kind,kind==='match'?{online,...(providerIds.length===plugins.filter(p=>p.kind==='provider').length?{}:{providerIds}),...(managerId==='org.ecs.matches'?{}:{managerId}),checksum:true,allowExactNames,...(refreshCatalogs?{refreshCatalogs:true}:{})}:{});await controller.filter(filter);}
   async function nextReview(done:boolean) {
     if(!reviewing||reviewBusy)return;
     reviewBusy=true;
@@ -99,7 +99,7 @@
     <label class="matching-check"><input type="checkbox" bind:checked={allowExactNames} disabled={$controller.loading} /> For new jobs, use exact filenames when a game ID is unavailable</label>
     <p class="form-help">Only a full title and edition match can use this fallback. Conflicting IDs, checksums, and editions stay in review.</p>
     <MatchingProviders {plugins} bind:online bind:providerIds bind:managerId disabled={$controller.loading} />
-    <p class="dim">Catalog updates download verified metadata and cheat or patch indexes for systems in this library. Cheat and patch files download only when selected; cheats stay disabled and patches are never applied automatically. Verified ROM or disc-ID matches can save automatically. Other suggestions and conflicting evidence need review. Unavailable files are skipped.</p>
+    <p class="dim">Catalog updates download verified metadata and cheat or patch indexes for systems in this library. Cheat and patch files download only when selected; cheats stay disabled and patches are never applied automatically. Unique best matches save automatically, prioritizing verified hashes, serials, and saved game identities. Exact titles and same-name local metadata and artwork also fill automatically. Fuzzy alternatives and conflicting identities need review. Unavailable files are skipped.</p>
   </div>
 </details>
 {/if}

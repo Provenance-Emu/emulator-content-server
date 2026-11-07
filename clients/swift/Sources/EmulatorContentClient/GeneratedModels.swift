@@ -763,14 +763,16 @@ public struct SourceOrganizationResult: Codable, Equatable, Sendable {
 public struct MatchingOptions: Codable, Equatable, Sendable {
     public var online: Bool?
     public var checksum: Bool?
+    public var autoSave: Bool?
     public var refreshCatalogs: Bool?
     public var allowExactNames: Bool?
     public var providerIds: [String]?
     public var managerId: String?
 
-    public init(online: Bool? = nil, checksum: Bool? = nil, refreshCatalogs: Bool? = nil, allowExactNames: Bool? = nil, providerIds: [String]? = nil, managerId: String? = nil) {
+    public init(online: Bool? = nil, checksum: Bool? = nil, autoSave: Bool? = nil, refreshCatalogs: Bool? = nil, allowExactNames: Bool? = nil, providerIds: [String]? = nil, managerId: String? = nil) {
         self.online = online
         self.checksum = checksum
+        self.autoSave = autoSave
         self.refreshCatalogs = refreshCatalogs
         self.allowExactNames = allowExactNames
         self.providerIds = providerIds
@@ -871,16 +873,30 @@ public struct MatchingProblem: Codable, Equatable, Sendable {
 public struct SourceMatches: Codable, Equatable, Sendable {
     public var sourceId: String
     public var requestId: String
+    public var automatic: MatchingAutomaticResult?
     public var plugins: [MatchingPlugin]
     public var candidates: [MatchingCandidate]
     public var problems: [MatchingProblem]
 
-    public init(sourceId: String, requestId: String, plugins: [MatchingPlugin], candidates: [MatchingCandidate], problems: [MatchingProblem]) {
+    public init(sourceId: String, requestId: String, automatic: MatchingAutomaticResult? = nil, plugins: [MatchingPlugin], candidates: [MatchingCandidate], problems: [MatchingProblem]) {
         self.sourceId = sourceId
         self.requestId = requestId
+        self.automatic = automatic
         self.plugins = plugins
         self.candidates = candidates
         self.problems = problems
+    }
+}
+
+public struct MatchingAutomaticResult: Codable, Equatable, Sendable {
+    public var status: String
+    public var saved: Int
+    public var error: String?
+
+    public init(status: String, saved: Int, error: String? = nil) {
+        self.status = status
+        self.saved = saved
+        self.error = error
     }
 }
 

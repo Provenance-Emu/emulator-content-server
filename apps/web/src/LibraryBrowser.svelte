@@ -522,7 +522,7 @@
               <button type="button" onclick={() => { uploadMode='folder';upload=true;addChoices=false; }}>Upload folder</button></div>
             </section>
           {/if}
-          {#if owner}<section class="add-games-option"><h3>Already on the server</h3><p>Files stay on the server computer. Nothing is copied.</p><button type="button" onclick={() => { void addServerFolder(); addChoices=false; }}>Add server folder</button></section>{/if}
+          {#if owner}<section class="add-games-option"><h3>Already on the server</h3><p>Register a server folder and choose watching and organization options. Metadata and artwork fill in automatically.</p><button type="button" onclick={() => { void addServerFolder(); addChoices=false; }}>Add server folder</button></section>{/if}
         </div>
       {/if}
       {#if addingFolder && $folderAdder?.existingRoot}<div class="existing-folder-link"><p>This folder is already registered. Add it to {title} and scan its files?</p><button type="button" disabled={!!$folderAdder?.busy} onclick={async()=>{if(await folderAdder?.linkExisting())addingFolder=false;}}>Use existing folder</button></div>{/if}

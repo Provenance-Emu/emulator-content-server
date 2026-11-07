@@ -94,6 +94,7 @@ export class LibraryJobRepository {
     scope: LibraryJobScope,
     options: LibraryJobOptions,
     actorId: string,
+    sourceIds?: readonly string[],
   ): { job: LibraryJobRecord; reused: boolean } {
     const optionsJson = JSON.stringify(normalizedOptions(kind, options));
     this.db.exec('BEGIN IMMEDIATE');
@@ -110,6 +111,8 @@ export class LibraryJobRepository {
             normalizedOptions(kind, JSON.parse(row.options_json) as LibraryJobOptions),
           ) === optionsJson;
         if (row.scope_json === JSON.stringify(scope) && sameOptions) {
+          if (sourceIds && row.state !== 'interrupted')
+            this.addMatchSources(row.id, scope, sourceIds);
           this.db.exec('COMMIT');
           return { job: this.get(row.id) as LibraryJobRecord, reused: true };
         }
@@ -117,6 +120,8 @@ export class LibraryJobRepository {
         const b = this.rootIds(scope);
         if (!b.some((id) => a.includes(id))) continue;
         if (sameOptions && b.every((id) => a.includes(id))) {
+          if (sourceIds && row.state !== 'interrupted')
+            this.addMatchSources(row.id, scope, sourceIds);
           this.db.exec('COMMIT');
           return { job: this.get(row.id) as LibraryJobRecord, reused: true };
         }
@@ -140,12 +145,7 @@ export class LibraryJobRepository {
             `INSERT INTO library_job_items(job_id,entity_id) SELECT ?,r.id FROM content_roots r WHERE ${filter.sql}`,
           )
           .run(id, ...filter.params);
-      else
-        this.db
-          .prepare(
-            `INSERT INTO library_job_items(job_id,entity_id,system_id) SELECT ?,s.id,s.system_id FROM live_source_files s JOIN content_roots r ON r.id=s.root_id WHERE s.kind='rom' AND (s.group_anchor IS NULL OR s.group_anchor=s.relative_path) AND ${filter.sql}`,
-          )
-          .run(id, ...filter.params);
+      else this.addMatchSources(id, scope, sourceIds);
       this.db
         .prepare(
           'UPDATE library_jobs SET total=(SELECT count(*) FROM library_job_items WHERE job_id=?) WHERE id=?',
@@ -157,6 +157,29 @@ export class LibraryJobRepository {
       this.db.exec('ROLLBACK');
       throw error;
     }
+  }
+  private addMatchSources(
+    jobId: string,
+    scope: LibraryJobScope,
+    sourceIds?: readonly string[],
+  ): void {
+    const filter = scopeSql(scope);
+    this.db
+      .prepare(`INSERT OR IGNORE INTO library_job_items(job_id,entity_id,system_id)
+      SELECT ?,s.id,s.system_id FROM live_source_files s JOIN content_roots r ON r.id=s.root_id
+      WHERE s.kind='rom' AND (s.group_anchor IS NULL OR s.group_anchor=s.relative_path) AND ${filter.sql}
+      AND (? IS NULL OR s.id IN (SELECT value FROM json_each(?)))`)
+      .run(
+        jobId,
+        ...filter.params,
+        sourceIds ? JSON.stringify(sourceIds) : null,
+        sourceIds ? JSON.stringify(sourceIds) : null,
+      );
+    this.db
+      .prepare(
+        'UPDATE library_jobs SET total=(SELECT count(*) FROM library_job_items WHERE job_id=?) WHERE id=?',
+      )
+      .run(jobId, jobId);
   }
   private rootIds(scope: LibraryJobScope): string[] {
     const filter = scopeSql(scope);

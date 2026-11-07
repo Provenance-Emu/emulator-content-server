@@ -5,9 +5,15 @@ import { issueToken } from '@ecs/auth';
 import type { Actor, AssetKind } from '@ecs/domain';
 import { openServer } from '../src/index.js';
 
-export async function libraryFixture(options: { matchingPluginsDir?: string } = {}) {
+export async function libraryFixture(
+  options: { matchingPluginsDir?: string; automaticMatching?: boolean } = {},
+) {
   const base = await realpath(await mkdtemp(join(tmpdir(), 'ecs-browse-')));
-  const server = await openServer({ dataDir: join(base, 'data'), ...options });
+  const server = await openServer({
+    dataDir: join(base, 'data'),
+    automaticMatching: false,
+    ...options,
+  });
   const bootstrap = issueToken();
   server.catalog.saveBootstrapHash(bootstrap.hash);
   const response = await server.app.inject({

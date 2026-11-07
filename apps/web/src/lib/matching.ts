@@ -280,9 +280,36 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
           options,
           AbortSignal.any([request.signal, lifetime.signal]),
         );
-        if (live(run)) update({ result, suggestionsStale: false });
+        if (live(run)) {
+          update({ result, suggestionsStale: false });
+          if (options.autoSave) {
+            try {
+              await showSaved(await client.sourceSelections(sourceId, request.signal), run);
+              if (live(run)) update({ savedLoadFailed: false });
+            } catch (error) {
+              if (live(run)) {
+                failure(error);
+                if (live(run)) update({ savedLoadFailed: true });
+              }
+            }
+          }
+        }
       } catch (error) {
-        if (live(run)) failure(error);
+        if (live(run)) {
+          failure(error);
+          if (
+            options.autoSave &&
+            live(run) &&
+            (!(error instanceof ContentError) || error.status >= 500 || error.status === 409)
+          ) {
+            try {
+              await showSaved(await client.sourceSelections(sourceId, request.signal), run);
+              if (live(run)) update({ savedLoadFailed: false });
+            } catch {
+              if (live(run)) update({ savedLoadFailed: true });
+            }
+          }
+        }
       } finally {
         if (live(run)) update({ loading: false });
       }
