@@ -128,9 +128,13 @@ export async function openServer(options: OpenServerOptions): Promise<{
     // pending scans belong to an abandoned run. Auxiliary catalog opens must
     // preserve active scans and never perform this recovery.
     catalog.recoverInterruptedRootScans();
-    app = await buildApp(context, options.logger ?? false, options.supervisedStartup);
+    app = await buildApp(
+      context,
+      options.logger ?? false,
+      options.supervisedStartup,
+      options.pluginManagement,
+    );
     registerServerUpdates(app, options.updates);
-    registerPluginManagement(app, context, options.pluginManagement);
   } catch (error) {
     await virtual.close();
     catalog.close();
@@ -157,6 +161,7 @@ export async function buildApp(
   context: ServerContext,
   logger = false,
   startup?: OpenServerOptions['supervisedStartup'],
+  pluginManagement?: PluginManagementBridge,
 ): Promise<FastifyInstance> {
   context.catalog.ensureServer(context.displayName);
   const app = Fastify({
@@ -311,6 +316,7 @@ export async function buildApp(
   registerFolderWatchRoutes(app, context, folderWatcher);
   registerWebDav(app, context);
   registerRoutes(app, context);
+  registerPluginManagement(app, context, pluginManagement);
   registerPlayerManagement(app, context);
   registerPlayerIsolation(app, context);
   registerPlayerAssets(app, context);

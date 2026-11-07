@@ -1,7 +1,7 @@
 import { issueToken } from '@ecs/auth';
 import { DomainError } from '@ecs/domain';
 import type { PluginConfiguration, PluginManagement } from '@ecs/protocol';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
 import { jsonObject, requireOwner } from './http.js';
 
@@ -44,87 +44,85 @@ export function registerPluginManagement(
       throw error;
     }
   }
-  app.register(async (router) => {
-    router.addHook('onRequest', async (request, reply) => {
-      if (!request.headers.authorization)
-        throw new DomainError('forbidden', 403, 'Sign in as the server owner to manage plugins');
-      requireOwner(request, 'Sign in as the server owner to manage plugins');
-      reply.header('cache-control', 'private, no-store');
-    });
-    router.get('/api/v1/plugins', async () =>
-      bridge
-        ? bridge.view()
-        : {
-            available: false,
-            hostId: null,
-            running: false,
-            error: null,
-            items: [],
-            defaults: [],
-          },
-    );
-    async function change(work: (manager: PluginManagementBridge) => Promise<void>) {
-      if (!bridge)
-        throw new DomainError(
-          'plugin-host-unavailable',
-          503,
-          'The plugin host is not included in this server installation.',
-        );
-      if (pending)
-        throw new DomainError(
-          'plugin-management-busy',
-          409,
-          'Another plugin change is still running. Refresh plugins when it finishes.',
-        );
-      pending = true;
-      try {
-        await work(bridge);
-        return await bridge.view();
-      } catch (error) {
-        if (error instanceof DomainError) throw error;
-        throw new DomainError(
-          'plugin-operation-failed',
-          503,
-          'The plugin operation could not finish. Refresh plugins, then use Check and repair connection.',
-        );
-      } finally {
-        pending = false;
-      }
+  const owner = async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.headers.authorization)
+      throw new DomainError('forbidden', 403, 'Sign in as the server owner to manage plugins');
+    requireOwner(request, 'Sign in as the server owner to manage plugins');
+    reply.header('cache-control', 'private, no-store');
+  };
+  app.get('/api/v1/plugins', { onRequest: owner }, async () =>
+    bridge
+      ? bridge.view()
+      : {
+          available: false,
+          hostId: null,
+          running: false,
+          error: null,
+          items: [],
+          defaults: [],
+        },
+  );
+  async function change(work: (manager: PluginManagementBridge) => Promise<void>) {
+    if (!bridge)
+      throw new DomainError(
+        'plugin-host-unavailable',
+        503,
+        'The plugin host is not included in this server installation.',
+      );
+    if (pending)
+      throw new DomainError(
+        'plugin-management-busy',
+        409,
+        'Another plugin change is still running. Refresh plugins when it finishes.',
+      );
+    pending = true;
+    try {
+      await work(bridge);
+      return await bridge.view();
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      throw new DomainError(
+        'plugin-operation-failed',
+        503,
+        'The plugin operation could not finish. Refresh plugins, then use Check and repair connection.',
+      );
+    } finally {
+      pending = false;
     }
-    router.post('/api/v1/plugins/defaults', async () =>
-      change(async (manager) => {
-        await manager.installDefaults();
-        await connected(manager);
-        await manager.doctor();
-      }),
-    );
-    router.post('/api/v1/plugins/doctor', async () =>
-      change(async (manager) => {
-        await connected(manager);
-        await manager.doctor();
-      }),
-    );
-    router.patch('/api/v1/plugins', async (request) => {
-      const body = jsonObject(request.body);
-      if (
-        Object.keys(body).some((key) => !['id', 'digest', 'enabled'].includes(key)) ||
-        typeof body.id !== 'string' ||
-        !/^[a-z0-9]+(?:\.[a-z0-9-]+)+$/.test(body.id) ||
-        body.id.length > 200 ||
-        typeof body.digest !== 'string' ||
-        !/^[a-f0-9]{64}$/.test(body.digest) ||
-        typeof body.enabled !== 'boolean'
-      )
-        throw new DomainError(
-          'invalid-body',
-          400,
-          'Choose an installed plugin version and enable or disable it.',
-        );
-      return change(async (manager) => {
-        await manager.configure(body as unknown as PluginConfiguration);
-        await connected(manager);
-        await manager.doctor();
-      });
+  }
+  app.post('/api/v1/plugins/defaults', { onRequest: owner }, async () =>
+    change(async (manager) => {
+      await manager.installDefaults();
+      await connected(manager);
+      await manager.doctor();
+    }),
+  );
+  app.post('/api/v1/plugins/doctor', { onRequest: owner }, async () =>
+    change(async (manager) => {
+      await connected(manager);
+      await manager.doctor();
+    }),
+  );
+  app.patch('/api/v1/plugins', { onRequest: owner }, async (request) => {
+    const body = jsonObject(request.body);
+    if (
+      Object.keys(body).some((key) => !['id', 'digest', 'enabled'].includes(key)) ||
+      typeof body.id !== 'string' ||
+      !/^[a-z0-9]+(?:\.[a-z0-9-]+)+$/.test(body.id) ||
+      body.id.length > 200 ||
+      typeof body.digest !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(body.digest) ||
+      typeof body.enabled !== 'boolean'
+    )
+      throw new DomainError(
+        'invalid-body',
+        400,
+        'Choose an installed plugin version and enable or disable it.',
+      );
+    return change(async (manager) => {
+      await manager.configure(body as unknown as PluginConfiguration);
+      await connected(manager);
+      await manager.doctor();
     });
   });
 }
