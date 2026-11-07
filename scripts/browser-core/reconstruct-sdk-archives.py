@@ -149,6 +149,19 @@ def download_source(pin, destination, opener=urllib.request.urlopen):
     return {"url": pin["url"], **actual}
 
 
+def inspect_tool(name, path, environment, runner):
+    invoked = path.absolute()
+    resolved = invoked.resolve(strict=True)
+    record = {
+        "name": name,
+        "path": str(invoked),
+        "resolvedPath": str(resolved),
+        **file_pin(resolved),
+    }
+    runner([str(invoked), "--version"], environment)
+    return record
+
+
 def isolated_environment(sdk, source, output, capture):
     cache = source / "cache"
     configuration = output / "emscripten-config.py"
@@ -361,9 +374,7 @@ def reconstruct(sdk, output, plan_path):
             "wasm-opt": sdk / "upstream/bin/wasm-opt",
             "node": sdk / "node/16.20.0_64bit/bin/node",
         }.items():
-            path = path.resolve(strict=True)
-            report["tools"].append({"name": name, "path": str(path), **file_pin(path)})
-            run([str(path), "--version"], environment)
+            report["tools"].append(inspect_tool(name, path, environment, run))
         for name in (
             "embuilder.py",
             "emcc.py",
@@ -491,6 +502,20 @@ def self_test(sdk=None):
                 parse_ar(data),
                 {"a_very_long_member_name.o": b"payload", "short.o": b"abc"},
             )
+
+        def test_tool_symlink_keeps_its_driver_name(self):
+            with tempfile.TemporaryDirectory() as directory:
+                target = Path(directory) / "lld"
+                target.write_bytes(b"tool bytes")
+                driver = Path(directory) / "wasm-ld"
+                driver.symlink_to(target)
+                calls = []
+                record = inspect_tool(
+                    "wasm-ld", driver, {}, lambda args, env: calls.append(args)
+                )
+                self.assertEqual(calls, [[str(driver), "--version"]])
+                self.assertEqual(record["resolvedPath"], str(target))
+                self.assertEqual(record["sha256"], file_pin(target)["sha256"])
 
         def test_bsd_long_names(self):
             name = b"another_long_member_name.o"
