@@ -9,6 +9,7 @@
     }
   },
   "dependencies": {
+    "7z-wasm": "1.2.0",
     "@ecs/auth": "workspace:*",
     "@ecs/database": "workspace:*",
     "@ecs/discovery": "workspace:*",

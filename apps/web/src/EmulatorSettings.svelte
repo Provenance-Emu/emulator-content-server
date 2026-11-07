@@ -210,6 +210,7 @@
       <section class="emulator-recommendations" aria-labelledby="emulator-recommendations-heading">
         <h3 id="emulator-recommendations-heading">Recommended set</h3>
         <p class="dim">Fill missing system coverage with a curated set of browser emulators.</p>
+        <p class="dim">The first fallback may download up to 1.6 GB of reviewed archives to prepare the local cache. Later installs reuse cached files.</p>
         <p class="dim">{recommended.length} additional emulator{recommended.length === 1 ? '' : 's'} recommended across the server catalog · Download {bytes(recommendedBytes)}{unknownRecommendedDownloads > 0 ? ` plus ${unknownRecommendedDownloads} with unknown size` : ''}.</p>
         <div class="actions">
           <button type="button" disabled={locked || recommended.length === 0} onclick={event => void action(event, () => emulators.installMany(recommended.map(entry => entry.id)))}>Install recommended ({recommended.length})</button>

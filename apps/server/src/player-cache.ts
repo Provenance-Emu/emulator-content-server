@@ -1,15 +1,22 @@
 import { randomUUID } from 'node:crypto';
-import { link, lstat, mkdir, opendir, rm, rmdir, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { link, lstat, mkdir, open, opendir, rm, rmdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DomainError } from '@ecs/domain';
 import { PLAYER_PACKAGE_LIMIT } from '@ecs/plugins';
 import { readRegular } from './player-assets.js';
+import type { TrustedPlayer } from './player-catalog.js';
 import {
   catalogJson,
   type PlayerCatalogSnapshot,
   playerCatalogEntryId,
 } from './player-catalog-snapshot.js';
 import { downloadCatalogPlayer, verifyCatalogPlayerPackage } from './player-download.js';
+import {
+  PlayerUpstreamArchive,
+  type UpstreamArchiveSource,
+  upstreamArchiveSources,
+} from './player-upstream-archive.js';
 
 const MAX_CACHE_BYTES = 512 * 1024 * 1024;
 const MAX_CATALOG_BYTES = 1024 * 1024;
@@ -19,13 +26,21 @@ const MAX_CACHE_FILES = 2048;
 export class PlayerPackageCache {
   private inFlight = new Map<string, Promise<Buffer>>();
   private retentionTail: Promise<void> = Promise.resolve();
+  private archives: PlayerUpstreamArchive;
 
   constructor(
     private directory: string,
     private maxBytes = MAX_CACHE_BYTES,
+    archiveSources: readonly UpstreamArchiveSource[] = upstreamArchiveSources,
   ) {
     if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || maxBytes > MAX_CACHE_BYTES)
       throw new Error('Invalid player cache size limit');
+    this.archives = new PlayerUpstreamArchive(
+      directory,
+      (snapshot, entry, bytes) =>
+        this.retain(snapshot, `player-${playerCatalogEntryId(entry)}.ecsplayer`, bytes),
+      archiveSources,
+    );
   }
 
   download(snapshot: PlayerCatalogSnapshot, id: string): Promise<Buffer> {
@@ -62,9 +77,63 @@ export class PlayerPackageCache {
         // Missing, corrupt or unsafe cache entries are never authoritative.
       }
     }
-    const bytes = await downloadCatalogPlayer(entry);
+    if (ready) {
+      const compatible = await this.compatiblePackage(entry).catch(() => null);
+      if (compatible) {
+        await this.retain(snapshot, file, compatible);
+        return compatible;
+      }
+    }
+    let bytes: Buffer;
+    try {
+      bytes = await downloadCatalogPlayer(entry);
+    } catch (error) {
+      const recovered = await this.archives.recover(entry, snapshot);
+      if (!recovered) throw error;
+      bytes = recovered;
+    }
     if (ready) await this.retain(snapshot, file, bytes);
     return bytes;
+  }
+
+  private async compatiblePackage(entry: TrustedPlayer): Promise<Buffer | null> {
+    let count = 0;
+    let used = 0;
+    const directory = await opendir(this.directory);
+    for await (const item of directory) {
+      if (++count > MAX_CACHE_FILES) return null;
+      if (!/^player-[a-f0-9]{64}\.ecsplayer$/.test(item.name)) continue;
+      try {
+        const path = join(this.directory, item.name);
+        const stat = await lstat(path);
+        used += stat.size;
+        if (used > MAX_CACHE_BYTES) return null;
+        if (!stat.isFile() || stat.size < 4 || stat.size > PLAYER_PACKAGE_LIMIT) continue;
+        const handle = await open(
+          path,
+          constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+        );
+        let id: unknown;
+        try {
+          const prefix = Buffer.alloc(4);
+          if ((await handle.read(prefix, 0, 4, 0)).bytesRead !== 4) continue;
+          const size = prefix.readUInt32BE(0);
+          if (!size || size > 65536 || size + 4 > stat.size) continue;
+          const header = Buffer.alloc(size);
+          if ((await handle.read(header, 0, size, 4)).bytesRead !== size) continue;
+          id = JSON.parse(header.toString()).manifest?.id;
+        } finally {
+          await handle.close();
+        }
+        if (id !== entry.id) continue;
+        const bytes = await readRegular(this.directory, item.name, PLAYER_PACKAGE_LIMIT);
+        verifyCatalogPlayerPackage(entry, bytes);
+        return bytes;
+      } catch {
+        // A matching identifier is only a hint. The complete pinned package must verify.
+      }
+    }
+    return null;
   }
 
   private retain(snapshot: PlayerCatalogSnapshot, file: string, bytes: Buffer) {

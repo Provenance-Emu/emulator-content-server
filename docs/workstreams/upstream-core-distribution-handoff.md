@@ -198,5 +198,28 @@ Twenty-nine focused server/cache tests and twenty-seven web unit tests passed.
 Svelte checking and the web build passed. A muted headless Chromium flow verified
 recommended installation, partial failure, stable navigation and bulk removal.
 The broader local phone and authorization browser cases encountered fixture-setup
-timeouts under host load. The desktop scenario reached its final state before its
+timeouts under host load. The desktop scenario reached its final state and exceeded its
 overall deadline. Browser pages and fixture servers were cleaned up.
+
+## Upstream nightly replacement recovery
+
+Studio's failed recommended batch was traced to replacement of the mutable
+upstream files. The Nestopia and Snes9x loaders had each grown by 440 bytes.
+Seventeen reviewed packages were restored to Studio's cache and verified through
+its installed runtime. All seventeen normal cache reads passed with network
+access disabled.
+
+The [recovery receipt](../operations/upstream-archive-recovery-2026-11-07.json)
+binds two official dated archives to all fifty existing pinned runtime pairs.
+The server can recover available profiles through shared, bounded preparation,
+a dedicated extractor and a separate verified raw-resource cache. Package-cache
+capacity or contention permits verified recovery to continue. Metadata-only
+catalog edits can reuse fully verified older packages. First-use archive costs
+and cache limits are documented in the
+[cache guide](../operations/browser-core-cache.md).
+
+One hundred focused server tests and all 374 web unit tests passed. Svelte checks,
+changed-file Biome, fixture/secret scanning, boundaries and whitespace checks
+passed. Independent review cleared the storage and concurrency changes. A
+production deployment recovered a generated archive through its packaged child,
+worker and WebAssembly dependency, including the carried license materials.

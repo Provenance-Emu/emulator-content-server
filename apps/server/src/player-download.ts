@@ -54,7 +54,7 @@ export async function downloadCatalogPlayer(entry: TrustedPlayer): Promise<Buffe
   if (!entry.available)
     throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
   if (entry.upstream) {
-    const { manifest, resources } = checkedUpstream(entry);
+    const { resources } = checkedUpstream(entry);
     const files: Buffer[] = [];
     for (const resource of resources) {
       const bytes = await downloadPlayer(resource.url, resource.sizeBytes, 'upstream');
@@ -62,23 +62,29 @@ export async function downloadCatalogPlayer(entry: TrustedPlayer): Promise<Buffe
         throw new DomainError('invalid-request', 400, 'Emulator download checksum mismatch');
       files.push(bytes);
     }
-    const header = Buffer.from(
-      JSON.stringify({
-        manifest,
-        files: resources.map((resource) => ({ name: resource.file, size: resource.sizeBytes })),
-      }),
-    );
-    if (header.length > 65536)
-      throw new DomainError('invalid-request', 400, 'Emulator header exceeds limit');
-    const prefix = Buffer.alloc(4);
-    prefix.writeUInt32BE(header.length);
-    const bytes = Buffer.concat([prefix, header, ...files]);
-    verifyCatalogPlayerPackage(entry, bytes);
-    return bytes;
+    return buildUpstreamPlayerPackage(entry, files);
   }
   if (!entry.url || !entry.sha256)
     throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
   const bytes = await downloadPlayer(entry.url, entry.downloadBytes ?? 0, 'package');
+  verifyCatalogPlayerPackage(entry, bytes);
+  return bytes;
+}
+
+/** Assemble only catalog-pinned resource bytes, including recovered official archive members. */
+export function buildUpstreamPlayerPackage(entry: TrustedPlayer, files: Buffer[]): Buffer {
+  const { manifest, resources } = checkedUpstream(entry);
+  const header = Buffer.from(
+    JSON.stringify({
+      manifest,
+      files: resources.map((resource) => ({ name: resource.file, size: resource.sizeBytes })),
+    }),
+  );
+  if (header.length > 65536)
+    throw new DomainError('invalid-request', 400, 'Emulator header exceeds limit');
+  const prefix = Buffer.alloc(4);
+  prefix.writeUInt32BE(header.length);
+  const bytes = Buffer.concat([prefix, header, ...files]);
   verifyCatalogPlayerPackage(entry, bytes);
   return bytes;
 }
@@ -177,7 +183,12 @@ async function downloadPlayer(
         url = new URL(location, url).href;
         continue;
       }
-      if (!response.ok || !response.body) throw new Error('Emulator download unavailable');
+      if (!response.ok || !response.body)
+        throw new DomainError(
+          'invalid-request',
+          400,
+          `Emulator download is unavailable (HTTP ${response.status})`,
+        );
       const chunks: Buffer[] = [];
       let total = 0;
       const reader = response.body.getReader();
@@ -188,18 +199,34 @@ async function downloadPlayer(
           total += value.byteLength;
           if (total > size) {
             await reader.cancel();
-            throw new Error('Emulator download exceeds limit');
+            throw new DomainError(
+              'invalid-request',
+              400,
+              'The upstream emulator download changed and does not match its pinned size. Its replacement was not installed.',
+            );
           }
           chunks.push(Buffer.from(value));
         }
       } finally {
         reader.releaseLock();
       }
-      if (total !== size) throw new Error('Incomplete emulator download');
+      if (total !== size)
+        throw new DomainError(
+          'invalid-request',
+          400,
+          'The upstream emulator download was incomplete or changed its pinned size. Refresh emulators and retry.',
+        );
       return Buffer.concat(chunks, total);
     }
     throw new Error('Too many redirects');
-  } catch {
+  } catch (error) {
+    if (error instanceof DomainError) throw error;
+    if (controller.signal.aborted)
+      throw new DomainError(
+        'invalid-request',
+        400,
+        'The emulator download timed out. Refresh emulators and retry.',
+      );
     throw new DomainError(
       'invalid-request',
       400,

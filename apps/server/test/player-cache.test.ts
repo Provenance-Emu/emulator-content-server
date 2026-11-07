@@ -210,7 +210,7 @@ test('independent cache instances cannot overwrite a published version', async (
   assert.equal((await readdir(f.directory)).length, 2);
 });
 
-test('provenance-only catalog updates preserve offline reuse through the older pinned snapshot', async (t) => {
+test('provenance-only catalog updates reuse verified older packages and retain both receipts', async (t) => {
   const f = await fixture(t);
   const generated = online(t);
   const bytes = await downloadCatalogPlayer(generated.entry);
@@ -254,14 +254,14 @@ test('provenance-only catalog updates preserve offline reuse through the older p
   offline(t);
   const restarted = new PlayerPackageCache(f.directory);
   assert.deepEqual(await restarted.download(oldSnapshot, oldEntry.id), bytes);
-  await assert.rejects(restarted.download(updatedSnapshot, updatedEntry.id));
+  assert.deepEqual(await restarted.download(updatedSnapshot, updatedEntry.id), bytes);
   const urls: string[] = [];
   const refreshed = t.mock.method(globalThis, 'fetch', async (url: string) => {
     urls.push(url);
     return new Response(bytes);
   });
   assert.deepEqual(await restarted.download(updatedSnapshot, updatedEntry.id), bytes);
-  assert.deepEqual(urls, [updatedEntry.url]);
+  assert.deepEqual(urls, []);
   refreshed.mock.restore();
   for (const snapshot of [oldSnapshot, updatedSnapshot]) {
     const receipt = JSON.parse(
@@ -273,4 +273,24 @@ test('provenance-only catalog updates preserve offline reuse through the older p
       bytes,
     );
   }
+});
+
+test('a metadata-only catalog update reuses an older verified cache package offline', async (t) => {
+  const f = await fixture(t);
+  const generated = online(t);
+  const original = await f.cache.download(
+    createPlayerCatalogSnapshot([generated.entry]),
+    generated.entry.id,
+  );
+  generated.mocked.mock.restore();
+  const updated = structuredClone(generated.entry);
+  updated.description = 'New source evidence for the same pinned runtime';
+  const snapshot = createPlayerCatalogSnapshot([updated]);
+  offline(t);
+  assert.deepEqual(
+    await new PlayerPackageCache(f.directory).download(snapshot, updated.id),
+    original,
+  );
+  const names = await readdir(f.directory);
+  assert.equal(names.filter((name) => name.endsWith('.ecsplayer')).length, 2);
 });

@@ -54,15 +54,18 @@ serialized. Activation checks the current installed IDs again: if another
 request installs the same ID while the download is pending, the catalog install
 returns a conflict and preserves that installation, its firmware and settings.
 Catalog preparation has its own queue through activation, so downloaded packages
-cannot accumulate in memory behind a slow settings write or installation. Only
-one catalog request per manager prepares a package at a time; subsequent requests
-can retry after failures. Preflight ordering with earlier removals is preserved.
+cannot accumulate in memory behind a slow settings write or installation. Up to
+three catalog requests per manager prepare packages concurrently; each reservation
+is held through serialized activation. Subsequent requests can retry after failures.
+Preflight ordering with earlier removals is preserved.
 
 Each manager captures a version-1 immutable catalog snapshot. Its SHA-256
 identity covers canonical JSON for every entry, including matched resource
 hashes/sizes, runtime manifest and retained upstream core-info/license/firmware
-metadata. A package's cache key covers its complete entry, so changed URLs,
-pins or runtime metadata cannot silently select an older manifest. Receipts
+metadata. A package's primary cache key covers its complete entry. After a
+metadata-only catalog change, the server can reuse another cached package only after its entire
+manifest, resource sizes and hashes verify against the newly selected entry.
+Receipts
 are `catalog-<snapshot-sha256>.json`; packages are
 `player-<entry-sha256>.ecsplayer`. Snapshot receipts describe the curated catalog,
 not a claim that every listed artifact has been downloaded or game-qualified.
@@ -123,3 +126,35 @@ The [2026-11-05 source audit](./core-source-audit-2026-11-05.md) supplies exact
 legacy runtime reconstruction records and named source/SDK notice inventories.
 Its catalog linkage uses the existing version-1 receipt shape. Source and build
 references retain their pinned bytes independently of the package URL.
+
+## Recover pinned files after upstream nightly replacement
+
+The upstream web host replaces its nightly files. A changed size or checksum
+continues to fail verification. For available catalog entries with known resource
+pins, the server can recover the same bytes from two reviewed official dated archives. The
+[archive verification receipt](./upstream-archive-recovery-2026-11-07.json) records
+full archive hashes and exact matches for all 100 pinned resource files.
+
+Recovery downloads each required archive once and extracts its selected members
+in one pass. The archives use a solid compression block. The initial fallback
+can therefore download about 775 MB, or about 1.6 GB when PlayStation's separate
+archive is also needed. The settings page displays this possibility. Later
+installs reuse verified local resources.
+
+The raw recovery cache has a separate 340 MiB bound. Existing package retention
+keeps its 512 MiB bound. Recovery prunes obsolete managed raw generations while
+preserving the package cache. Archive staging is removed after preparation.
+Allow about 2 GiB of free disk space for a cold recovery. Preparation is
+serialized across processes, and its lock is released if a process exits.
+
+Extraction runs in a dedicated Node child with a 256 MiB WebAssembly heap cap,
+64 MiB JavaScript old-generation limits per isolate and a three-minute deadline.
+Archive downloads have
+a ten-minute deadline. Every selected output must match its pinned name, size
+and SHA-256 before package assembly. The same complete package verifier protects
+installation, including recovery when optional package retention is full or busy.
+
+The production dependency carries the extractor's License.txt. Its source and
+build recipe are pinned to the npm release's Git revision.
+[7z-wasm 1.2.0 source](https://github.com/use-strict/7z-wasm/tree/521d2cf93f5964f4e77b01049e19f1b29305c454),
+[build recipe](https://github.com/use-strict/7z-wasm/blob/521d2cf93f5964f4e77b01049e19f1b29305c454/build_in_docker.sh).
