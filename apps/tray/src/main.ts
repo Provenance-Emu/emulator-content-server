@@ -2,7 +2,7 @@ import '@ecs/web/app.css';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { mount } from 'svelte';
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { createDesktopSelection } from './lib/application';
 import { createServiceControl } from './lib/service';
 import { insideTauri, installTray } from './lib/tray';
@@ -28,6 +28,35 @@ const service = createServiceControl(
 let refresh: (() => Promise<void>) | null = null;
 const trayFailure = writable<string | null>(null);
 
+const cliTools = writable({ busy: false, message: '', failure: false });
+const installCliTools =
+  native && /Mac/.test(navigator.platform)
+    ? async () => {
+        if (get(cliTools).busy) return;
+        cliTools.set({
+          busy: true,
+          message: 'Downloading and verifying CLI tools…',
+          failure: false,
+        });
+        try {
+          const pathConfigured = await invoke<boolean>('install_cli_tools');
+          cliTools.set({
+            busy: false,
+            message: pathConfigured
+              ? 'Installed ecs and ecs-plugins. Open a new Terminal window to use them.'
+              : 'Installed ecs and ecs-plugins. Add ~/.local/bin to your shell PATH to use them.',
+            failure: false,
+          });
+        } catch (error) {
+          cliTools.set({
+            busy: false,
+            message: error instanceof Error ? error.message : String(error),
+            failure: true,
+          });
+        }
+      }
+    : undefined;
+
 mount(Panel, {
   target,
   props: {
@@ -35,6 +64,8 @@ mount(Panel, {
     service,
     selection,
     trayFailure,
+    cliTools,
+    installCliTools,
     canOpen: () => void showLibrary(),
     openBrowser: () => void openExternal(watch.interfaceUrl),
   },
@@ -42,7 +73,7 @@ mount(Panel, {
 
 // Native menu requests must never delay the bundled status window.
 if (native) {
-  void installTray(watch, service)
+  void installTray(watch, service, installCliTools)
     .then(async (update) => {
       refresh = update;
       await update();

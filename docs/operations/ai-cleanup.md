@@ -8,7 +8,9 @@ selection still matching the application receipt and expires after 30 days.
 
 ## Run the native host
 
-Use Node 22.22.2 and the matching `ecs-plugins` build. Provision a workflow host
+On Apple Silicon, choose **Install CLI Tools** from the Emulation Server menu
+bar icon and open a new Terminal window. A standalone server archive also
+includes an `ecs-plugins` launcher and its Node runtime. Provision a workflow host
 from an authenticated owner session using `POST /api/v1/workflow-hosts`. Enroll
 its one-time token through `POST /api/v1/workflow-workers/enroll`. Save the returned
 service token in an owner-only file, outside the host-state directory. Host

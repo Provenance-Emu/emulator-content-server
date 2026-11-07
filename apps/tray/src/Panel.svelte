@@ -11,6 +11,8 @@
     service,
     selection,
     trayFailure,
+    cliTools,
+    installCliTools,
     canOpen,
     openBrowser,
   }: {
@@ -18,6 +20,8 @@
     service: ServiceControl;
     selection: DesktopSelection;
     trayFailure: Readable<string | null>;
+    cliTools: Readable<{ busy: boolean; message: string; failure: boolean }>;
+    installCliTools?: () => Promise<void>;
     canOpen: () => void;
     openBrowser: () => void;
   } = $props();
@@ -101,6 +105,20 @@
       {/if}
     {/if}
   </section>
+
+  {#if installCliTools}
+    <section>
+      <h2>Command-line tools</h2>
+      <p class="dim">Use <code>ecs</code> and <code>ecs-plugins</code> in Terminal.</p>
+      <button type="button" disabled={$cliTools.busy} onclick={() => void installCliTools?.()}>Install CLI Tools</button>
+      {#if $cliTools.message}
+        <p role={$cliTools.failure ? 'alert' : 'status'} class:problem={$cliTools.failure}>{$cliTools.message}</p>
+        {#if !$cliTools.busy && !$cliTools.failure}
+          <p class="dim">For an open zsh or Bash window, run <code>export PATH="$HOME/.local/bin:$PATH"</code>.</p>
+        {/if}
+      {/if}
+    </section>
+  {/if}
 
   {#if desk}{#key watch.context?.key}<Access {desk} origin={watch.origin} />{/key}{/if}
 </main>

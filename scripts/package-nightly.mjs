@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmod, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { bundle } from './bundle.mjs';
+import { bundle, deployPackage } from './bundle.mjs';
 
 const platform =
   process.platform === 'darwin'
@@ -27,6 +27,8 @@ const name = `Emulation-Server-${tag.replace(/^v/, '')}-${target}`;
 const stage = resolve('dist/nightly', name);
 // Hoisted deployment avoids absolute Windows junctions and extraction privileges.
 await bundle(join(stage, 'server'), 'inherit', { portable: true });
+await deployPackage('@ecs/plugin-host', join(stage, 'plugins'), 'inherit', { portable: true });
+await copyFile('LICENSE', join(stage, 'plugins', 'LICENSE'));
 await mkdir(join(stage, 'runtime'));
 await copyFile(
   process.execPath,
@@ -40,15 +42,21 @@ const license = resolve(
 );
 await copyFile(license, join(stage, 'runtime', 'LICENSE'));
 await copyFile('docs/operations/nightly-builds.md', join(stage, 'INSTALL.md'));
-await writeFile(
-  join(stage, 'ecs'),
-  '#!/bin/sh\nECS_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$ECS_HOME/runtime/node" "$ECS_HOME/server/dist/src/supervise.js" "$@"\n',
-  { mode: 0o755 },
-);
-await writeFile(
-  join(stage, 'ecs.cmd'),
-  '@echo off\r\n"%~dp0runtime\\node.exe" "%~dp0server\\dist\\src\\supervise.js" %*\r\n',
-);
+for (const [command, entry] of [
+  ['ecs', 'server/dist/src/supervise.js'],
+  ['ecs-plugins', 'plugins/dist/src/main.js'],
+]) {
+  await writeFile(
+    join(stage, command),
+    '#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1\n' +
+      `exec "$root/runtime/node" "$root/${entry}" "$@"\n`,
+    { mode: 0o755 },
+  );
+  await writeFile(
+    join(stage, `${command}.cmd`),
+    `@echo off\r\n"%~dp0runtime\\node.exe" "%~dp0${entry.replaceAll('/', '\\')}" %*\r\n`,
+  );
+}
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const metadata = {
   channel: tag === 'nightly' ? 'nightly' : 'release',

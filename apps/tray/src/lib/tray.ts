@@ -28,6 +28,7 @@ export function insideTauri(): boolean {
 export async function installTray(
   watch: ServerWatch,
   service: ServiceControl,
+  installCliTools?: () => Promise<void>,
 ): Promise<() => Promise<void>> {
   const window = getCurrentWindow();
   const status = await MenuItem.new({ text: watch.summary, enabled: false });
@@ -66,6 +67,20 @@ export async function installTray(
       else void window.show().then(() => window.setFocus());
     },
   });
+  const cliItems = installCliTools
+    ? [
+        await MenuItem.new({
+          text: 'Install CLI Tools…',
+          action: () => {
+            void window
+              .show()
+              .then(() => window.setFocus())
+              .catch(() => {});
+            void installCliTools();
+          },
+        }),
+      ]
+    : [];
   const quit = await MenuItem.new({ text: 'Quit', action: () => void exit(0) });
   const menu = await Menu.new({
     items: [
@@ -79,6 +94,7 @@ export async function installTray(
       startService,
       stopService,
       serviceDetails,
+      ...cliItems,
       await PredefinedMenuItem.new({ item: 'Separator' }),
       quit,
     ],
