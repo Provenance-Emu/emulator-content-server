@@ -214,11 +214,19 @@ fn install_startup_menu(app: &tauri::App) -> tauri::Result<()> {
         None::<&str>,
     )?;
     let quit = MenuItem::with_id(app, "startup-quit", "Quit", true, None::<&str>)?;
+    let cli = MenuItem::with_id(
+        app,
+        "startup-cli-tools",
+        "Install CLI Tools…",
+        setup::available(),
+        None::<&str>,
+    )?;
     let menu = Menu::with_items(
         app,
         &[
             &library,
             &status,
+            &cli,
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
@@ -235,6 +243,35 @@ fn install_startup_menu(app: &tauri::App) -> tauri::Result<()> {
 }
 
 fn startup_menu_action(app: &tauri::AppHandle, id: &str) {
+    if id == "startup-cli-tools" {
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            let home = handle
+                .path()
+                .home_dir()
+                .map_err(|_| "Your home folder is unavailable.".to_string());
+            let result = match home {
+                Ok(home) => tauri::async_runtime::spawn_blocking(move || cli_tools::install(&home))
+                    .await
+                    .unwrap_or_else(|_| Err("CLI tools installation could not finish.".into())),
+                Err(error) => Err(error),
+            };
+            let (message, kind) = match result {
+                Ok(true) => ("Installed ecs and ecs-plugins. Open a new Terminal window to use them.".to_string(),
+                    tauri_plugin_dialog::MessageDialogKind::Info),
+                Ok(false) => ("Installed ecs and ecs-plugins in ~/.local/bin. Add that folder to your shell PATH.".to_string(),
+                    tauri_plugin_dialog::MessageDialogKind::Info),
+                Err(error) => (error, tauri_plugin_dialog::MessageDialogKind::Error),
+            };
+            handle
+                .dialog()
+                .message(message)
+                .title("Install CLI Tools")
+                .kind(kind)
+                .show(|_| {});
+        });
+        return;
+    }
     let label = match id {
         "startup-library" => "library",
         "startup-status" => "status",

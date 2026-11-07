@@ -5,24 +5,10 @@ use serde::Deserialize;
 
 const ARCHIVE: &str = "Emulation-Server-nightly-macos-arm64.tar.gz";
 const ARCHIVE_ROOT: &str = "Emulation-Server-nightly-macos-arm64";
-const RELEASE: &str =
-    "https://api.github.com/repos/Provenance-Emu/emulator-content-server/releases/tags/nightly";
 const DOWNLOAD: &str =
     "https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly";
 const MAX_ARCHIVE: u64 = 512 * 1024 * 1024;
 
-#[derive(Deserialize)]
-struct Asset {
-    name: String,
-    size: u64,
-    digest: Option<String>,
-}
-#[derive(Deserialize)]
-struct Release {
-    tag_name: String,
-    draft: bool,
-    assets: Vec<Asset>,
-}
 #[derive(Deserialize, PartialEq, Eq)]
 struct Build {
     id: String,
@@ -50,31 +36,25 @@ fn hex(value: &str, bytes: usize) -> bool {
             .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
 }
 
-fn verify_release(release: &Release, manifest: &Manifest) -> Result<u64, String> {
+fn verify_release(checksum: &str, manifest: &Manifest) -> Result<(), String> {
     let build = &manifest.build;
-    let error = || "The nightly server download could not be verified. Try again shortly.".into();
-    if release.draft
-        || release.tag_name != "nightly"
-        || manifest.archive != ARCHIVE
+    let mut fields = checksum.split_whitespace();
+    if manifest.archive != ARCHIVE
         || build.platform != "macos"
         || build.arch != "arm64"
         || build.channel != "nightly"
         || !hex(&build.id, 32)
         || !hex(&build.sha, 20)
         || !hex(&manifest.sha256, 32)
+        || fields.next() != Some(&manifest.sha256)
+        || fields.next() != Some(ARCHIVE)
+        || fields.next().is_some()
     {
-        return Err(error());
+        return Err(
+            "The nightly manifest and release checksum did not agree. Try again shortly.".into(),
+        );
     }
-    let mut candidates = release.assets.iter().filter(|asset| asset.name == ARCHIVE);
-    let asset = candidates.next().ok_or_else(error)?;
-    if candidates.next().is_some()
-        || asset.size == 0
-        || asset.size > MAX_ARCHIVE
-        || asset.digest.as_deref() != Some(&format!("sha256:{}", manifest.sha256))
-    {
-        return Err(error());
-    }
-    Ok(asset.size)
+    Ok(())
 }
 
 pub fn available() -> bool {
@@ -155,25 +135,23 @@ impl Download {
     pub(crate) fn extract(&self) -> Result<(std::path::PathBuf, String), String> {
         use std::fs;
         let scratch = &self.0;
-        let release_file = scratch.join("release.json");
         let manifest_file = scratch.join("update.json");
-        fetch(RELEASE, &release_file, 1024 * 1024)?;
-        fetch(
-            &format!("{DOWNLOAD}/ecs-update-macos-arm64.json"),
-            &manifest_file,
-            4096,
-        )?;
-        let release: Release = json(&release_file, 1024 * 1024)?;
+        let checksum_file = scratch.join("checksums.txt");
+        // Direct release downloads work without consuming the GitHub API quota.
+        fetch("ecs-update-macos-arm64.json", &manifest_file, 4096)?;
+        fetch("SHA256SUMS-server-macos-arm64.txt", &checksum_file, 4096)?;
         let manifest: Manifest = json(&manifest_file, 4096)?;
-        let bytes = verify_release(&release, &manifest)?;
+        let checksum = String::from_utf8(read_bounded(&checksum_file, 4096)?)
+            .map_err(|_| "Invalid nightly checksum file.")?;
+        verify_release(&checksum, &manifest)?;
 
         let archive = scratch.join(ARCHIVE);
-        fetch(&format!("{DOWNLOAD}/{ARCHIVE}"), &archive, bytes)?;
+        fetch(ARCHIVE, &archive, MAX_ARCHIVE)?;
         let checksum = run("/usr/bin/shasum", &["-a", "256", path(&archive)?], 90)?;
         if fs::metadata(&archive)
             .map_err(|_| "Could not inspect the server archive.")?
             .len()
-            != bytes
+            > MAX_ARCHIVE
             || checksum.split_whitespace().next() != Some(&manifest.sha256)
         {
             return Err("The downloaded server archive did not match its checksum.".into());
@@ -212,14 +190,13 @@ fn path(path: &std::path::Path) -> Result<&str, String> {
         .ok_or_else(|| "The installation path cannot be represented.".into())
 }
 
-fn fetch(url: &str, file: &std::path::Path, max: u64) -> Result<(), String> {
-    run(
+fn fetch(asset: &str, file: &std::path::Path, max: u64) -> Result<(), String> {
+    let result = service::command_with_timeout(
         "/usr/bin/curl",
         &[
             "--disable",
             "--fail",
             "--silent",
-            "--show-error",
             "--location",
             "--proto",
             "=https",
@@ -229,19 +206,38 @@ fn fetch(url: &str, file: &std::path::Path, max: u64) -> Result<(), String> {
             "15",
             "--max-time",
             "180",
+            "--retry",
+            "2",
+            "--retry-max-time",
+            "180",
             "--max-filesize",
             &max.to_string(),
             "--output",
             path(file)?,
-            url,
+            "--write-out",
+            "%{http_code}",
+            &format!("{DOWNLOAD}/{asset}"),
         ],
-        190,
+        std::time::Duration::from_secs(190),
     )
-    .map(|_| ())
-    .map_err(|_| "Could not download the verified nightly server from GitHub.".into())
+    .map_err(|_| format!("Could not download {asset} from GitHub."))?;
+    if result.code != 0 {
+        let status = result.stdout.trim();
+        return Err(
+            if status.len() == 3
+                && status.starts_with(['4', '5'])
+                && status.bytes().all(|b| b.is_ascii_digit())
+            {
+                format!("GitHub returned HTTP {status} when downloading {asset}.")
+            } else {
+                format!("Could not download {asset} from GitHub.")
+            },
+        );
+    }
+    Ok(())
 }
 
-fn json<T: serde::de::DeserializeOwned>(file: &std::path::Path, limit: u64) -> Result<T, String> {
+fn read_bounded(file: &std::path::Path, limit: u64) -> Result<Vec<u8>, String> {
     use std::io::Read;
     let mut bytes = Vec::new();
     std::fs::File::open(file)
@@ -250,7 +246,12 @@ fn json<T: serde::de::DeserializeOwned>(file: &std::path::Path, limit: u64) -> R
     if bytes.len() as u64 > limit {
         return Err("The server build information exceeded its size limit.".into());
     }
-    serde_json::from_slice(&bytes).map_err(|_| "Invalid server build information.".into())
+    Ok(bytes)
+}
+
+fn json<T: serde::de::DeserializeOwned>(file: &std::path::Path, limit: u64) -> Result<T, String> {
+    serde_json::from_slice(&read_bounded(file, limit)?)
+        .map_err(|_| "Invalid server build information.".into())
 }
 
 fn run(program: &str, args: &[&str], seconds: u64) -> Result<String, String> {
@@ -267,7 +268,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn requires_the_exact_nightly_platform_and_current_github_digest() {
+    fn requires_the_exact_nightly_platform_and_matching_release_checksum() {
         let mut manifest = Manifest {
             build: Build {
                 id: "a".repeat(64),
@@ -279,20 +280,14 @@ mod tests {
             archive: ARCHIVE.into(),
             sha256: "c".repeat(64),
         };
-        let mut release = Release {
-            tag_name: "nightly".into(),
-            draft: false,
-            assets: vec![Asset {
-                name: ARCHIVE.into(),
-                size: 1024,
-                digest: Some(format!("sha256:{}", manifest.sha256)),
-            }],
-        };
-        assert_eq!(verify_release(&release, &manifest), Ok(1024));
+        let checksum = format!("{}  {ARCHIVE}\n", manifest.sha256);
+        assert_eq!(verify_release(&checksum, &manifest), Ok(()));
+        assert!(verify_release(&format!("{checksum}{checksum}"), &manifest).is_err());
+        assert!(verify_release(&checksum.replace(ARCHIVE, "other.tar.gz"), &manifest).is_err());
         manifest.build.arch = "x64".into();
-        assert!(verify_release(&release, &manifest).is_err());
+        assert!(verify_release(&checksum, &manifest).is_err());
         manifest.build.arch = "arm64".into();
-        release.assets[0].digest = Some(format!("sha256:{}", "d".repeat(64)));
-        assert!(verify_release(&release, &manifest).is_err());
+        manifest.sha256 = "d".repeat(64);
+        assert!(verify_release(&checksum, &manifest).is_err());
     }
 }
