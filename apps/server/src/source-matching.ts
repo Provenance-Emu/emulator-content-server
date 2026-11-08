@@ -3,8 +3,7 @@ import { join } from 'node:path';
 import { type Actor, DomainError } from '@ecs/domain';
 import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
-  automaticMatchRank,
-  hasIdentityConflict,
+  automaticFillRank,
   isBuiltinArtworkUrl,
   type MatchCandidate,
   type MatchCompanion,
@@ -370,13 +369,14 @@ export function registerSourceMatching(
         ...(result.result?.problems ?? []),
         ...Array.from(badProviders, (providerId) => ({ providerId, code: 'provider-failed' })),
       ];
-      const candidates = reconcileCandidates(
+      const matched = reconcileCandidates(
         input,
         (result.result?.candidates ?? []).filter((c) => !badProviders.has(c.providerId)),
-      )
+      );
+      const candidates = matched
         .sort(
           (left, right) =>
-            automaticMatchRank(input, right) - automaticMatchRank(input, left) ||
+            automaticFillRank(input, right, matched) - automaticFillRank(input, left, matched) ||
             left.title.localeCompare(right.title, 'en') ||
             (left.url ?? left.fileId ?? left.providerId).localeCompare(
               right.url ?? right.fileId ?? right.providerId,
@@ -740,16 +740,11 @@ export function registerSourceMatching(
           !saved.matches.some((existing) => matchSlot(existing) === matchSlot(candidate)),
       );
       const pendingInput = jobs.get(result.requestId)?.input;
-      const conflicts = pendingInput
-        ? result.candidates.filter((candidate) => hasIdentityConflict(pendingInput, [candidate]))
-        : [];
       const ranked = remaining.map((candidate) => ({
         candidate,
         rank:
-          pendingInput &&
-          !unavailable.has(candidate.id) &&
-          !hasIdentityConflict(pendingInput, conflicts, candidate)
-            ? automaticMatchRank(pendingInput, candidate)
+          pendingInput && !unavailable.has(candidate.id)
+            ? automaticFillRank(pendingInput, candidate, result.candidates)
             : 0,
       }));
       const highest = new Map<string, number>();
@@ -775,8 +770,9 @@ export function registerSourceMatching(
       const candidate =
         pendingInput && systems.size <= 1
           ? preferred.find(
-              ({ candidate }) =>
+              ({ candidate, rank }) =>
                 (slotCounts.get(matchSlot(candidate)) === 1 ||
+                  (candidate.kind === 'metadata' && rank < 1) ||
                   (candidate.kind === 'artwork' &&
                     (candidate.metadata.artworkRole ?? 'front') === 'front')) &&
                 (!candidate.metadata.systemId ||

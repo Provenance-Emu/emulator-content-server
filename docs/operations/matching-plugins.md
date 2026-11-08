@@ -2,19 +2,19 @@
 
 ## Bulk library matching
 
-Open a library and choose **Library tools → Library activity → Find missing artwork and details**. Choose **Matching providers** to include online catalogs or adjust providers. The server owns the work: closing the panel, reloading, signing out or switching devices does not cancel it. Any signed-in owner session can inspect progress, cancel a job, resume remaining work or retry failed/unmatched outcomes. Folder scans and watchers use the same queue.
+Folder scans, watchers and server startup automatically queue missing metadata and artwork using all providers, including online catalogs. **Library tools → Library activity → Find missing artwork and details** can start another pass. The server owns the work: closing the panel, reloading, signing out or switching devices does not cancel it. Any signed-in owner session can inspect progress, cancel a job, resume remaining work or retry failed/unmatched outcomes.
 
 Equivalent active jobs reuse their work. Overlapping scopes with different options are rejected with a clear conflict rather than starting another disk pass. One worker processes bounded pages; the browser loads aggregate progress and 20 results at a time, not the whole collection. Jobs and review acknowledgements persist in SQLite. A running job interrupted by restart becomes **interrupted** and can be resumed; pending queued jobs start normally. Cancellation checks precede file work and catalog publication, preserving the last good folder index.
 
-For local single ROMs or eligible single-ROM ZIPs up to 64 MiB, matching verifies checksums in 64 KiB chunks, with cancellation and file-change checks. Cached hashes are reused only for the same source identity/timestamps. Container hashes do not stand in for inner ROMs. Unique checksum candidates per unsaved category can save automatically. Conflicting systems, ambiguous exact matches and provider failures remain reviewable. Strict matching also keeps filename-only suggestions for review; the optional exact-name policy below can accept unique full-name catalog matches. Existing saved categories are never replaced. A single box cover can also inherit the ROM's verified game identity when its complete canonical title and system agree with a checksum identity and the provider is healthy. Compatible legacy/regional aliases of the same verified ROM do not count as different games; conflicting game/edition facts still require review. This verifies which game the cover belongs to; it does not compare an image hash to the ROM. Other regional/revision suggestions do not prevent one exact canonical cover from being corroborated. Duplicate exact canonical covers, title screens, screenshots and filename-only evidence remain reviewable. Matching covers indexed server-folder games; managed uploads are not currently included.
+For local single ROMs or eligible single-ROM ZIPs up to 64 MiB, matching verifies checksums in 64 KiB chunks, with cancellation and file-change checks. Cached hashes are reused only for the same source identity/timestamps. Container hashes do not stand in for inner ROMs. Verified hashes and serials take priority. When no catalog identity matches, automatic filling chooses the best available name match, tolerating close spelling and edition differences. An uncataloged dump's different checksum alone does not block this fallback. Different systems, conflicting embedded IDs and clear sequel-number differences remain blocked. A name-based tie is resolved deterministically instead of requiring a download click. Saved games use the best available front cover even when its edition or region differs. Existing saved categories are never replaced. Name matches retain name confidence; this does not claim checksum verification. Matching covers indexed server-folder games; managed uploads are not currently included. The stricter workflow evidence policy described below remains available separately.
 
 **Results** filters review, failed, unmatched, saved and skipped outcomes. **Review** refreshes proposals before a save. **Save and next category** advances through unsaved categories; **Save and next game** or **Done reviewing this game** persists the review acknowledgement for other sessions. Failed saves stay pending. **Next unresolved game** leaves the current game unresolved. Retry actions reuse the durable job and recheck current selections rather than overwriting choices made elsewhere.
 
 The former 50,000-entry lookup/run limit is removed. Companion lookup uses indexed normalized folder/stem/extension facts, backfilled for older catalogs without reading ROM bytes. See [shared library jobs](shared-library-jobs.md) for queue behavior, limits and the generated 100,000-file benchmark.
 
 The owner can open a server-folder game and use **Metadata, artwork & patches**.
-Click **Find matches** for local suggestions, or enable **Include online providers**
-for Libretro. A lookup keeps the selected category when it has suggestions and
+Searches include online providers by default and automatically fill eligible missing
+details and artwork. A lookup keeps the selected category when it has suggestions and
 otherwise opens a category containing results. If loading saved choices fails
 temporarily, use **Retry saved matches** inside the game; lookup suggestions are
 kept while saved choices reload. Select **Save** on a candidate to keep one choice
@@ -132,7 +132,9 @@ Do not put secrets in manifests. Provider-specific credential configuration rema
 ## Evidence and artwork roles
 
 `@ecs/plugins/matching` exports `reconcileCandidates(input, candidates)`,
-`automaticEvidence(input, candidate)`, and `classifyArtwork(name, sourceType?)`.
+`automaticEvidence(input, candidate)`, `automaticFillRank(input, candidate, candidates)`,
+and `classifyArtwork(name, sourceType?)`. Automatic library filling uses
+`automaticFillRank`; `automaticEvidence` retains the stricter workflow policy below.
 The server must retain the private input facts and recheck automatic eligibility;
 a provider's `confidence`, `hashVerified`, or other marker is never authority.
 `checksum` describes bytes actually hashed in one explicit representation. A

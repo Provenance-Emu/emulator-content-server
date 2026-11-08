@@ -23,6 +23,8 @@ import {
   artworkGameScore,
   artworkTitleMatches,
   contentStem,
+  nameFallbackKeys,
+  nameFallbackScore,
   nameMatchKeys,
   nameMatchScore,
   normalizeSerial,
@@ -291,12 +293,19 @@ export function createLibretroProvider(
     }
     return entry.match(input);
   }
-  function imagesFor(images: Artwork[], names: string[]): Array<{ image: Artwork; index: number }> {
+  function imagesFor(
+    images: Artwork[],
+    names: string[],
+    allowNames = false,
+  ): Array<{ image: Artwork; index: number }> {
     let buckets = artBuckets.get(images);
     if (!buckets) {
       buckets = new Map();
       images.forEach((image, index) => {
-        for (const key of nameMatchKeys(image.title)) {
+        for (const key of [
+          ...nameMatchKeys(image.title),
+          ...nameFallbackKeys(image.title).map((key) => `fuzzy:${key}`),
+        ]) {
           const indices = buckets?.get(key) ?? [];
           indices.push(index);
           buckets?.set(key, indices);
@@ -308,6 +317,26 @@ export function createLibretroProvider(
     for (const name of names)
       for (const key of nameMatchKeys(name))
         for (const index of buckets.get(key) ?? []) indices.add(index);
+    if (!indices.size && allowNames) {
+      const nearby = new Set<number>();
+      for (const name of names)
+        for (const key of nameFallbackKeys(name))
+          for (const index of buckets.get(`fuzzy:${key}`) ?? []) nearby.add(index);
+      [...nearby]
+        .map((index) => ({
+          index,
+          score: Math.max(
+            0,
+            ...names.map((name) => nameFallbackScore(name, images[index]?.title ?? '')),
+          ),
+        }))
+        .filter((row) => row.score > 0)
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .slice(0, 64)
+        .forEach((row) => {
+          indices.add(row.index);
+        });
+    }
     return [...indices]
       .sort((a, b) => a - b)
       .flatMap((index) => {
@@ -566,16 +595,17 @@ export function createLibretroProvider(
           ...serialArtworkAliases(candidate),
         ]),
       ];
-      const ranked = imagesFor(artworks, names)
+      const ranked = imagesFor(artworks, names, input.allowExactNames)
         .map(({ image, index }) => ({
           image,
           index,
           score: Math.max(
-            ...names.map((name) =>
+            ...names.flatMap((name) => [
               image.kind === 'boxarts'
                 ? artworkGameScore(name, image.title)
                 : nameMatchScore(name, image.title),
-            ),
+              ...(input.allowExactNames ? [nameFallbackScore(name, image.title)] : []),
+            ]),
           ),
         }))
         .filter((row) => row.score > 0)

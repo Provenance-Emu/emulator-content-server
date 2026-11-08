@@ -52,6 +52,7 @@ async function fixture(automaticMatching = false, alternatives = false, coverAlt
   });
   return {
     ...f,
+    matchingPluginsDir: plugins,
     root,
     async dispose() {
       await f.dispose();
@@ -87,6 +88,44 @@ test('a known game automatically uses a cover even when multiple scans have diff
     assert.ok(cover, response.body);
     assert.equal(cover.title, 'Verified game (Europe)');
     assert.equal(cover.contentAvailable, true);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('automatic filling chooses the best name when no catalog hash matches and fills its cover', async () => {
+  const f = await fixture();
+  try {
+    const entry = join(f.matchingPluginsDir ?? '', 'test.fill', 'entry.mjs');
+    await writeFile(
+      entry,
+      `export default {search:async input=>{const file=input.companions.find(f=>f.name.endsWith('.png'));return ['Game (USA)','Game (Europe)'].map((title,i)=>({id:'name-'+i,kind:'metadata',title,confidence:'name',metadata:{systemId:input.systemId,md5:'ffffffffffffffffffffffffffffffff',hashSize:String(input.size)}})).concat([{id:'cover',kind:'artwork',title:'Game (USA)',confidence:'name',fileId:file.id,metadata:{systemId:input.systemId,artworkRole:'front'}}]);}};`,
+    );
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
+    const source = f.catalog.listSources(f.root.id).find((file) => file.kind === 'rom');
+    assert.ok(source);
+    const response = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/sources/${source.id}/matches`,
+      headers: f.auth,
+      payload: {
+        online: true,
+        checksum: true,
+        allowExactNames: true,
+        autoSave: true,
+        providerIds: ['test.fill'],
+      },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    const saved = f.catalog.sourceMatches(source.id).matches;
+    assert.ok(
+      saved.some((match) => match.kind === 'metadata'),
+      response.body,
+    );
+    assert.ok(
+      saved.some((match) => match.kind === 'artwork' && match.contentAvailable),
+      response.body,
+    );
   } finally {
     await f.dispose();
   }

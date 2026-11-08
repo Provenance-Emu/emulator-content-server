@@ -336,3 +336,58 @@ export function artworkGameScore(left: string, right: string): number {
       (a.date === b.date ? 1 : 0)
   );
 }
+
+function looseName(value: string): string {
+  return (facts(value).bases[0] ?? '').replace(/(.{3,})(?:demo|alpha|beta|proto)$/, '$1');
+}
+
+function sequelNumbers(value: string): string {
+  const roman = /(?:^|\s)(i|ii|iii|iv|v|vi|vii|viii|ix|x)$/i
+    .exec(
+      contentStem(value)
+        .replace(/\([^()]*\)|\[[^[\]]*\]/g, '')
+        .trim(),
+    )?.[1]
+    ?.toLowerCase();
+  const numbers: string[] = looseName(value).match(/\d+/g) ?? [];
+  if (roman)
+    numbers.push(
+      String(['', 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'].indexOf(roman)),
+    );
+  return numbers.join(',');
+}
+
+/** Small candidate buckets for filename fallback; titles are still scored before use. */
+export function nameFallbackKeys(value: string): string[] {
+  const base = looseName(value);
+  return base.length >= 4 ? [`prefix:${base.slice(0, 2)}`, `suffix:${base.slice(-2)}`] : [];
+}
+
+/** Best-effort game name preference. Different sequel numbers and generic track names conflict. */
+export function nameFallbackScore(left: string, right: string): number {
+  const a = looseName(left),
+    b = looseName(right);
+  if (!a || !b || a.length > 160 || b.length > 160 || /^(?:track|disc|disk|cd)\d*$/.test(a))
+    return 0;
+  if (sequelNumbers(left) !== sequelNumbers(right)) return 0;
+  if (a === b) return Math.max(80, artworkGameScore(left, right));
+  if (
+    Math.abs(a.length - b.length) > Math.max(a.length, b.length) * 0.35 ||
+    (a.slice(0, 2) !== b.slice(0, 2) && a.slice(-2) !== b.slice(-2))
+  )
+    return 0;
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++)
+      current[j] = Math.min(
+        (current[j - 1] ?? i) + 1,
+        (previous[j] ?? j) + 1,
+        (previous[j - 1] ?? j - 1) + Number(a[i - 1] !== b[j - 1]),
+      );
+    previous = current;
+  }
+  const score =
+    100 * (1 - (previous[b.length] ?? Math.max(a.length, b.length)) / Math.max(a.length, b.length));
+  return score >= 65 ? score : 0;
+}

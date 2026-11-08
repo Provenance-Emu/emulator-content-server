@@ -8,6 +8,8 @@ import {
   artworkTitleMatches,
   compatibleGameTitles,
   contentStem,
+  nameFallbackKeys,
+  nameFallbackScore,
   nameMatchKeys,
   nameMatchScore,
   normalizeSerial,
@@ -386,8 +388,10 @@ export function createLibretroMatcher(
     bucket.add(index);
   };
   snapshot.forEach((record, index) => {
-    for (const name of [record.name, record.title])
+    for (const name of [record.name, record.title]) {
       for (const key of nameMatchKeys(name)) add(`name:${key}`, index);
+      for (const key of nameFallbackKeys(name)) add(`fuzzy:${key}`, index);
+    }
     if (record.systemId)
       for (const alias of [record.name, ...(record.aliases ?? [])])
         add(`alias:${alias.toLowerCase()}`, index);
@@ -421,6 +425,30 @@ export function createLibretroMatcher(
         take(
           `${id.type}:${id.type === 'serial' ? normalizeSerial(id.value) : normalizeSetAlias(id.value)}`,
         );
+    if (!indices.size && input.allowExactNames) {
+      const nearby = new Set<number>();
+      for (const name of [input.name, ...(input.facts?.names ?? [])])
+        for (const key of nameFallbackKeys(name))
+          for (const index of buckets.get(`fuzzy:${key}`) ?? []) nearby.add(index);
+      [...nearby]
+        .map((index) => ({
+          index,
+          score: Math.max(
+            ...[input.name, ...(input.facts?.names ?? [])].map((name) =>
+              Math.max(
+                nameFallbackScore(name, snapshot[index]?.title ?? ''),
+                nameFallbackScore(name, snapshot[index]?.name ?? ''),
+              ),
+            ),
+          ),
+        }))
+        .filter((row) => row.score > 0)
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .slice(0, 64)
+        .forEach((row) => {
+          indices.add(row.index);
+        });
+    }
     return matchEntries(
       input,
       [...indices]
@@ -468,7 +496,11 @@ function matchEntries(
       !proof.matched &&
       !aliasMatch &&
       ![input.name, ...(input.facts?.names ?? [])].some(
-        (name) => nameMatchScore(name, record.name) || nameMatchScore(name, record.title),
+        (name) =>
+          nameMatchScore(name, record.name) ||
+          nameMatchScore(name, record.title) ||
+          (input.allowExactNames &&
+            (nameFallbackScore(name, record.name) || nameFallbackScore(name, record.title))),
       )
     )
       continue;
@@ -504,7 +536,13 @@ function matchEntries(
     }
   }
   return reconcileCandidates(input, found)
-    .sort((a, b) => Number(b.confidence === 'checksum') - Number(a.confidence === 'checksum'))
+    .sort(
+      (a, b) =>
+        Number(b.confidence === 'checksum') - Number(a.confidence === 'checksum') ||
+        (input.allowExactNames
+          ? nameFallbackScore(input.name, b.title) - nameFallbackScore(input.name, a.title)
+          : 0),
+    )
     .slice(0, 30);
 }
 
@@ -948,6 +986,70 @@ export function automaticMatchRank(
       return 1;
   }
   return 0;
+}
+
+/** Automatic filling may use names when no public catalog identity matches the inspected bytes/ID. */
+export function automaticFillRank(
+  input: MatchingInput,
+  candidate: MatchCandidate & { providerId?: string },
+  candidates: readonly MatchCandidate[],
+): number {
+  const proof = assessEvidence(input, candidate.metadata);
+  if (
+    discIdentityConflict(input) ||
+    proof.serialConflict ||
+    input.facts?.identifiers.some(
+      (id) =>
+        id.verified &&
+        id.systemId &&
+        id.systemId !== (input.systemId ?? candidate.metadata.systemId),
+    ) ||
+    (input.systemId &&
+      candidate.metadata.systemId &&
+      input.systemId !== candidate.metadata.systemId) ||
+    candidate.metadata.matchEvidence === 'identity-conflict'
+  )
+    return 0;
+  const strict = automaticMatchRank(input, candidate);
+  if (candidate.kind === 'metadata' && (proof.verifiedHash || proof.verifiedSerial))
+    return proof.verifiedHash ? 4 : 3;
+  if (strict > 0) return strict;
+  if (
+    !input.allowExactNames ||
+    !input.systemId ||
+    candidate.metadata.systemId !== input.systemId ||
+    !(
+      candidate.kind === 'metadata' ||
+      (candidate.kind === 'artwork' &&
+        (candidate.metadata.artworkRole ?? 'front') === 'front' &&
+        candidate.metadata.imageKind !== 'pdf')
+    )
+  )
+    return 0;
+  const identified = candidates.some((row) => {
+    const evidence = assessEvidence(input, row.metadata);
+    return (
+      row.kind === 'metadata' &&
+      !evidence.serialConflict &&
+      (!row.metadata.systemId || row.metadata.systemId === input.systemId) &&
+      (evidence.verifiedHash || evidence.verifiedSerial)
+    );
+  });
+  if (identified) return 0;
+  const names =
+    candidate.kind === 'artwork' && input.selectedMetadata
+      ? [input.selectedMetadata.title]
+      : [input.name, ...(input.facts?.names ?? [])];
+  const score = Math.max(
+    0,
+    ...names.flatMap((name) => [
+      nameFallbackScore(name, candidate.title),
+      ...(candidate.kind === 'metadata' && candidate.metadata.romName
+        ? [nameFallbackScore(name, candidate.metadata.romName)]
+        : []),
+    ]),
+  );
+  return score > 0 ? 0.5 + score / 1000 : 0;
 }
 
 function compatibleMetadata(left: Record<string, string>, right: Record<string, string>): boolean {
