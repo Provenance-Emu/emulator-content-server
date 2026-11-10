@@ -201,11 +201,26 @@ for (const status of [403, 404] as const) {
   });
 }
 
-test('reader settings do not expose emulator management navigation', async ({ page, fixture }) => {
+test('reader settings link to the connected server API docs without exposing emulator management', async ({
+  page,
+  fixture,
+}) => {
   await signIn(page, fixture, true);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Server status', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Emulators', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Interactive API reference' })).toHaveAttribute(
+    'href',
+    `${fixture.origin}/docs/`,
+  );
+  await expect(page.getByRole('link', { name: 'OpenAPI contract' })).toHaveAttribute(
+    'href',
+    `${fixture.origin}/openapi.yaml`,
+  );
+  await expect(page.getByRole('link', { name: 'Project wiki' })).toHaveAttribute(
+    'href',
+    'https://github.com/Provenance-Emu/emulator-content-server/wiki',
+  );
 });
 
 test('native package selection installs through the real owner API and refreshes browser-play choices', async ({

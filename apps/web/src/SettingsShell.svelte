@@ -2,6 +2,7 @@
   import type { ContentClient, Library } from '@ecs/client';
   import type { FolderContext } from './lib/folder-selection';
   import type { ApplicationState } from './lib/application';
+  import { documentationLinks } from './lib/documentation';
   import type { ServerUpdatesView } from './lib/server-updates';
   import { settingsSections, type SettingsSection } from './lib/shell-navigation';
   import SettingsLibraries from './SettingsLibraries.svelte';
@@ -20,7 +21,7 @@
     client, appState, updates, onback, onview, onrejected, context,
     pairingPin = '', onpaired = () => {},
     serverLabel = 'Emulation Server',
-    onrename, onplayerschange, onsignin = () => {}, onsetup,
+    onrename, onplayerschange, onsignin = () => {}, onsetup, onopendocumentation,
     selected = $bindable<SettingsSection>('libraries'),
     libraryId = $bindable(''),
     onselect = () => {},
@@ -40,6 +41,7 @@
     onplayerschange?: () => void | Promise<void>;
     onsignin?: () => void;
     onsetup?: () => void;
+    onopendocumentation?: (href: string) => void;
     selected?: SettingsSection;
     libraryId?: string;
     onselect?: () => void;
@@ -58,6 +60,11 @@
     if (!section) return;
     selected = section.id;
     onselect();
+  }
+  function openDocumentation(event: MouseEvent & { currentTarget: HTMLAnchorElement }) {
+    if (!onopendocumentation) return;
+    event.preventDefault();
+    onopendocumentation(event.currentTarget.href);
   }
 </script>
 
@@ -115,6 +122,15 @@
     {:else}
       <h1>Server status</h1>
       <Status capabilities={appState.capabilities} reachable={appState.reachable === true} />
+      <section aria-labelledby="api-reference-heading">
+        <h2 id="api-reference-heading">API and documentation</h2>
+        <p class="dim">Explore the REST API for this server or read the project guides.</p>
+        <ul>
+          {#each documentationLinks(context.origin) as { href, label } (href)}
+            <li><a {href} target="_blank" rel="noreferrer" onclick={openDocumentation}>{label}</a></li>
+          {/each}
+        </ul>
+      </section>
     {/if}
   </div>
 </div>

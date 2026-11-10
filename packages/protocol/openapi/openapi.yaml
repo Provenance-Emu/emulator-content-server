@@ -3,24 +3,62 @@ info:
   title: Emulator Content Server API
   version: 1.0.0
   summary: Versioned content protocol for emulator libraries.
+  description: |
+    To run requests, open `/docs/` on your ECS server. Sign in to obtain a
+    session token and enter it under Authorize without the Bearer prefix. Device
+    and guest tokens only work within their assigned permissions. Investigator
+    and workflow host operations have separate credentials.
+
+    Example credentials and IDs are placeholders. Replace them with values
+    returned by your own server. Trusted local connections may work without a
+    token according to the server's access policy. Owner actions require the
+    corresponding authority.
 servers:
   - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: Discovery
+  - name: Authentication
+  - name: Access and credentials
+  - name: Libraries and items
+  - name: Uploads and downloads
+  - name: Folders and sources
+  - name: Matching and jobs
+  - name: Players
+  - name: Investigators
+  - name: Workflow review
+  - name: Workflow workers
+  - name: Server and plugins
 paths:
   /health:
     get:
       operationId: getHealth
+      tags: [Discovery]
+      security: []
       responses:
         '200':
           description: Process is serving.
+          content:
+            application/json:
+              example: {"ok": true}
+              schema: {"type": "object", "required": ["ok"], "properties": {"ok": {"type": "boolean", "const": true}}}
   /openapi.yaml:
     get:
       operationId: getOpenApi
+      tags: [Discovery]
+      security: []
       responses:
         '200':
           description: This document.
+          content:
+            application/yaml:
+              schema: {"type": "string"}
   /api/v1/capabilities:
     get:
       operationId: getCapabilities
+      tags: [Discovery]
+      security: []
       responses:
         '200':
           description: Protocol capabilities.
@@ -31,6 +69,7 @@ paths:
   /api/v1/server/updates:
     get:
       operationId: getServerUpdates
+      tags: [Server and plugins]
       description: Signed-in owner only. Server installation and update status.
       responses:
         '200':
@@ -40,11 +79,13 @@ paths:
               schema: { $ref: '#/components/schemas/ServerUpdateStatus' }
     put:
       operationId: configureServerUpdates
+      tags: [Server and plugins]
       description: Signed-in owner only. Select a GitHub server channel and update mode.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"channel": "release", "mode": "manual"}
             schema: { $ref: '#/components/schemas/ServerUpdateSettings' }
       responses:
         '200':
@@ -54,11 +95,13 @@ paths:
               schema: { $ref: '#/components/schemas/ServerUpdateStatus' }
     post:
       operationId: decideServerUpdate
+      tags: [Server and plugins]
       description: Signed-in owner only. Check for updates or act on a specific build.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"action": "check"}
             schema: { $ref: '#/components/schemas/ServerUpdateDecision' }
       responses:
         '200':
@@ -69,6 +112,7 @@ paths:
   /api/v1/plugins:
     get:
       operationId: getPluginManagement
+      tags: [Server and plugins]
       description: Signed-in owner only. Managed native plugins and host health.
       responses:
         '200':
@@ -78,11 +122,13 @@ paths:
               schema: { $ref: '#/components/schemas/PluginManagement' }
     patch:
       operationId: configurePlugin
+      tags: [Server and plugins]
       description: Signed-in owner only. Enable an installed immutable plugin version or disable its package.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"id": "org.ecs.example", "digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "enabled": true}
             schema: { $ref: '#/components/schemas/PluginConfiguration' }
       responses:
         '200':
@@ -93,6 +139,7 @@ paths:
   /api/v1/plugins/defaults:
     post:
       operationId: installDefaultPlugins
+      tags: [Server and plugins]
       description: Signed-in owner only. Install bundled native plugins and provision a scoped local workflow host.
       responses:
         '200':
@@ -103,6 +150,7 @@ paths:
   /api/v1/plugins/doctor:
     post:
       operationId: doctorPlugins
+      tags: [Server and plugins]
       description: Signed-in owner only. Check packages, repair revoked host enrollment and resume the local plugin host.
       responses:
         '200':
@@ -113,6 +161,8 @@ paths:
   /api/v1/player/core:
     get:
       operationId: getPlayerCore
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
       description: Trusted browser core metadata. Requires an admitted actor with read permission.
       responses:
         '200':
@@ -127,9 +177,48 @@ paths:
           description: Read permission required.
         '404':
           description: Browser playback is not configured.
+  /play/cores/{coreId}/loader.js:
+    get:
+      operationId: getPlayerCoreLoader
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
+      description: JavaScript loader named by the trusted browser core descriptor. Requires read permission.
+      parameters:
+        - { name: coreId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: JavaScript loader bytes.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            text/javascript:
+              schema: { type: string, format: binary }
+        '401': { description: Authentication required. }
+        '403': { description: Read permission required. }
+        '404': { description: Browser core is not available. }
+  /play/cores/{coreId}/core.wasm:
+    get:
+      operationId: getPlayerCoreWasm
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
+      description: WebAssembly module named by the trusted browser core descriptor. Requires read permission.
+      parameters:
+        - { name: coreId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: WebAssembly module bytes.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/wasm:
+              schema: { type: string, format: binary }
+        '401': { description: Authentication required. }
+        '403': { description: Read permission required. }
+        '404': { description: Browser core is not available. }
   /api/v1/player/management:
     get:
       operationId: getPlayerManagement
+      tags: [Players]
       description: Owner bearer only. Installed emulators and trusted installation catalog without server paths.
       responses:
         '200':
@@ -142,6 +231,7 @@ paths:
   /api/v1/player/management/install:
     post:
       operationId: installPlayerPackage
+      tags: [Players]
       description: Owner bearer only. Bounded ECS player package with hash-verified data-only manifest and resources. Activates atomically without restart.
       requestBody:
         required: true
@@ -159,6 +249,7 @@ paths:
   /api/v1/player/management/install/{id}:
     post:
       operationId: installCatalogPlayer
+      tags: [Players]
       description: Owner bearer only. Install one pinned trusted catalog entry; arbitrary URLs are not accepted.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -173,10 +264,17 @@ paths:
   /api/v1/player/management/{id}/system/{name}:
     put:
       operationId: installPlayerSystemFile
-      description: Owner bearer only. Add or replace operator-provided awbios.zip on the managed Dreamcast/arcade core. ZIP must contain bios0.ic23 (131072bytes). Shared with admitted players; firmware is never downloaded for the operator.
+      tags: [Players]
+      description: |
+        Owner bearer only. Add or replace an operator-provided system file of
+        1 byte to 32 MiB on a managed emulator with firmware support. Use a
+        portable filename without a trailing period or a reserved name. An
+        `awbios.zip` upload for `org.libretro.parallel-dc` must contain the
+        131,072-byte `bios0.ic23` file. Installed firmware is shared with
+        admitted players.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
-        - { name: name, in: path, required: true, schema: { type: string, pattern: '^awbios\.zip$' } }
+        - { name: name, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$' } }
       requestBody:
         required: true
         content:
@@ -190,9 +288,11 @@ paths:
               schema: { $ref: '#/components/schemas/PlayerManagement' }
         '400': { description: Invalid system-file archive or size. }
         '403': { description: Owner sign-in or managed emulator required. }
+        '404': { description: Emulator is not installed. }
   /api/v1/player/management/{id}:
     patch:
       operationId: configurePlayer
+      tags: [Players]
       description: Owner bearer only. Enable, disable or select the default emulator. Existing sessions keep their loaded bytes.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -200,6 +300,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"enabled": true, "default": true}
             schema: { $ref: '#/components/schemas/PlayerConfiguration' }
       responses:
         '200':
@@ -209,6 +310,7 @@ paths:
               schema: { $ref: '#/components/schemas/PlayerManagement' }
     delete:
       operationId: removePlayer
+      tags: [Players]
       description: Owner bearer only. Remove a managed emulator installation. Operator-configured files are read-only; games and saves are preserved.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -221,6 +323,7 @@ paths:
   /api/v1/player/isolated-sessions:
     post:
       operationId: createPlayerIsolation
+      tags: [Players]
       description: Read bearer required. Local HTTP browser only; actual socket peer, Host, and exact Origin must be loopback. Creates a bounded ten-minute companion listener serving only a fixed first-party bootstrap for an enabled threaded Dolphin profile. No credentials, content, API, or registry resources are served by that listener.
       parameters:
         - { name: Origin, in: header, required: true, schema: { type: string } }
@@ -228,6 +331,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"profileId": "org.libretro.dolphin"}
             schema: { $ref: '#/components/schemas/PlayerIsolationDraft' }
       responses:
         '201':
@@ -243,6 +347,7 @@ paths:
   /api/v1/player/isolated-sessions/{id}:
     delete:
       operationId: closePlayerIsolation
+      tags: [Players]
       description: Close the caller actor's ephemeral local companion. Requires the same read bearer and local HTTP origin policy as creation. Foreign or expired session identifiers are not disclosed.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, pattern: '^[a-f0-9]{48}$' } }
@@ -255,6 +360,8 @@ paths:
   /api/v1/player/profiles:
     get:
       operationId: listPlayerProfiles
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
       description: Browser runtime profiles. Requires read permission.
       responses:
         '200':
@@ -267,6 +374,8 @@ paths:
   /api/v1/player/profiles/{id}:
     get:
       operationId: getPlayerProfile
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
@@ -281,6 +390,8 @@ paths:
   /play/plugins/{id}/loader.js:
     get:
       operationId: getPlayerProfileLoader
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
       description: Authenticated immutable startup snapshot; requires read permission.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -296,6 +407,8 @@ paths:
   /play/plugins/{id}/core.wasm:
     get:
       operationId: getPlayerProfileWasm
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
       description: Authenticated immutable startup snapshot; requires read permission.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -311,6 +424,8 @@ paths:
   /play/plugins/{id}/assets/{name}:
     get:
       operationId: getPlayerProfileAsset
+      tags: [Players]
+      security: [{ bearerAuth: [] }, {}]
       description: Authenticated immutable startup snapshot; requires read permission.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -327,6 +442,8 @@ paths:
   /api/v1/systems:
     get:
       operationId: listSystems
+      tags: [Discovery]
+      security: []
       responses:
         '200':
           description: Known system vocabulary. The catalog is not closed.
@@ -337,36 +454,45 @@ paths:
   /api/v1/auth/bootstrap:
     post:
       operationId: bootstrap
+      tags: [Authentication]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
+            example: {"token": "REPLACE_WITH_BOOTSTRAP_TOKEN", "username": "library-owner", "password": "REPLACE_WITH_NEW_PASSWORD"}
             schema: { $ref: '#/components/schemas/BootstrapRequest' }
       responses:
         '201':
           description: Owner created.
           content:
             application/json:
+              example: {"token": "REPLACE_WITH_RETURNED_SESSION_TOKEN", "tokenType": "Bearer", "userId": "user-demo", "expiresAt": "2026-11-10T20:00:00Z"}
               schema: { $ref: '#/components/schemas/SessionResponse' }
   /api/v1/auth/login:
     post:
       operationId: login
+      tags: [Authentication]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
+            example: {"username": "library-owner", "password": "REPLACE_WITH_PASSWORD"}
             schema: { $ref: '#/components/schemas/LoginRequest' }
       responses:
         '200':
           description: Session created.
           content:
             application/json:
+              example: {"token": "REPLACE_WITH_RETURNED_SESSION_TOKEN", "tokenType": "Bearer", "userId": "user-demo", "expiresAt": "2026-11-10T20:00:00Z"}
               schema: { $ref: '#/components/schemas/SessionResponse' }
         '401': { description: Username or password is incorrect. }
         '429': { description: Too many attempts. }
   /api/v1/auth/logout:
     post:
       operationId: logout
+      tags: [Authentication]
       security: [{ bearerAuth: [] }]
       responses:
         '204':
@@ -374,36 +500,77 @@ paths:
   /api/v1/access:
     get:
       operationId: getAccess
+      tags: [Access and credentials]
+      security: []
       responses:
         '200':
           description: Who may use this server without a token, and whether this connection may.
+          content:
+            application/json:
+              example: {"mode": "token", "subnets": [], "applies": true, "trusted": false, "manages": false}
+              schema: {"$ref": "#/components/schemas/AccessPolicy"}
     put:
       operationId: putAccess
+      tags: [Access and credentials]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"mode": "token", "subnets": []}
+            schema: {"type": "object", "required": ["mode"], "properties": {"mode": {"type": "string", "enum": ["lan", "token", "subnets"]}, "subnets": {"type": "array", "items": {"type": "string"}}}}
       responses:
         '200':
           description: Access rule replaced.
+          content:
+            application/json:
+              example: {"mode": "token", "subnets": [], "applies": true, "trusted": false, "manages": false}
+              schema: {"$ref": "#/components/schemas/AccessPolicy"}
   /api/v1/users:
     get:
       operationId: listUsers
+      tags: [Access and credentials]
       responses:
         '200':
           description: Accounts on this server.
+          content:
+            application/json:
+              schema: {"type": "object", "required": ["items"], "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/User"}}}}
     post:
       operationId: createUser
+      tags: [Access and credentials]
+      parameters:
+        - {"$ref": "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"username": "library-reader", "password": "REPLACE_WITH_NEW_PASSWORD"}
+            schema: {"$ref": "#/components/schemas/UserDraft"}
       responses:
         '201':
           description: User created.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/User"}
   /api/v1/users/{userId}:
     parameters:
       - { name: userId, in: path, required: true, schema: { type: string } }
     patch:
       operationId: setPassword
+      tags: [Access and credentials]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"password": "REPLACE_WITH_NEW_PASSWORD"}
+            schema: {"type": "object", "required": ["password"], "properties": {"password": {"type": "string"}}}
       responses:
         '204':
           description: Password replaced.
   /api/v1/browse:
     get:
       operationId: browseLibrary
+      tags: [Libraries and items]
       security: [{ bearerAuth: [] }, {}]
       description: Bounded authorized collection. Exactly one of libraryId or unassigned=true is required. Unknown systems use systemId=unknown. Authorization and category filtering precede paging. Cursors bind normalized query and actor; changed or vanished anchors require refresh.
       parameters:
@@ -422,6 +589,7 @@ paths:
           description: Authorized page; at most the requested limit. No absolute filesystem paths.
           content:
             application/json:
+              example: {"items": [], "nextCursor": null}
               schema: { $ref: '#/components/schemas/LibraryBrowsePage' }
         '400': { description: Invalid query or cursor. Refresh after a changed anchor. }
         '401': { description: Authentication required. }
@@ -430,6 +598,7 @@ paths:
   /api/v1/browse-libraries:
     get:
       operationId: browseLibraries
+      tags: [Libraries and items]
       security: [{ bearerAuth: [] }, {}]
       description: Libraries discoverable through membership or live readable item grants. canCreateItems reflects current create policy.
       responses:
@@ -437,10 +606,12 @@ paths:
           description: Accessible libraries.
           content:
             application/json:
+              example: {"items": [{"id": "library-demo", "name": "Retro games", "ownerId": "user-demo", "revision": 1, "createdAt": "2026-11-10T19:00:00Z", "canCreateItems": true}], "nextCursor": null}
               schema: { $ref: '#/components/schemas/LibraryList' }
   /api/v1/root-summaries:
     get:
       operationId: rootSummaries
+      tags: [Folders and sources]
       description: Actual owner only. Cached counts and scan/check state; performs no probes or scans. Optional libraryId and unassigned=true filters are exclusive.
       parameters:
         - { name: libraryId, in: query, schema: { type: string } }
@@ -456,6 +627,7 @@ paths:
   /api/v1/libraries/{libraryId}:
     patch:
       operationId: renameLibrary
+      tags: [Libraries and items]
       description: Actual owner only. Renames a library without moving content.
       parameters:
         - { name: libraryId, in: path, required: true, schema: { type: string } }
@@ -464,6 +636,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"name": "Handheld games"}
             schema: { $ref: '#/components/schemas/LibraryDraft' }
       responses:
         '200':
@@ -478,6 +651,7 @@ paths:
   /api/v1/roots/{rootId}/library:
     put:
       operationId: assignRoot
+      tags: [Folders and sources]
       description: Actual owner only. Assigns an unassigned folder in place; idempotent for the same target, rejects moving an assigned folder.
       parameters:
         - { name: rootId, in: path, required: true, schema: { type: string } }
@@ -485,6 +659,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"libraryId": "library-demo"}
             schema: { $ref: '#/components/schemas/RootLibraryAssignment' }
       responses:
         '200':
@@ -498,19 +673,36 @@ paths:
   /api/v1/libraries:
     get:
       operationId: listLibraries
+      tags: [Libraries and items]
+      security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
           description: Visible libraries.
+          content:
+            application/json:
+              example: {"items": [{"id": "library-demo", "name": "Retro games", "ownerId": "user-demo", "revision": 1, "createdAt": "2026-11-10T19:00:00Z", "canCreateItems": true}], "nextCursor": null}
+              schema: {"$ref": "#/components/schemas/LibraryList"}
     post:
       operationId: createLibrary
+      tags: [Libraries and items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"name": "Retro games"}
+            schema: {"$ref": "#/components/schemas/LibraryDraft"}
       responses:
         '201':
           description: Library created.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Library"}
   /api/v1/libraries/{libraryId}/members:
     parameters:
       - { name: libraryId, in: path, required: true, schema: { type: string } }
     get:
       operationId: listLibraryMembers
+      tags: [Libraries and items]
       responses:
         '200':
           description: Library membership metadata, visible to library administrators.
@@ -523,17 +715,26 @@ paths:
       - { name: userId, in: path, required: true, schema: { type: string } }
     put:
       operationId: putMember
+      tags: [Libraries and items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"role": "reader"}
+            schema: {"$ref": "#/components/schemas/MemberDraft"}
       responses:
         '204':
           description: Membership replaced.
     delete:
       operationId: deleteMember
+      tags: [Libraries and items]
       responses:
         '204':
           description: Membership removed.
   /api/v1/items:
     get:
       operationId: listItems
+      tags: [Libraries and items]
       security: [{ bearerAuth: [] }, {}]
       parameters:
         - { name: libraryId, in: query, required: true, schema: { type: string } }
@@ -547,14 +748,27 @@ paths:
               schema: { $ref: '#/components/schemas/ItemList' }
     post:
       operationId: createItem
+      tags: [Libraries and items]
+      parameters:
+        - {"$ref": "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"libraryId": "library-demo", "systemIdentifier": "com.provenance.nes", "title": "Example game"}
+            schema: {"$ref": "#/components/schemas/ItemDraft"}
       responses:
         '201':
           description: Item created.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Item"}
   /api/v1/items/{itemId}:
     parameters:
       - { name: itemId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getItem
+      tags: [Libraries and items]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
@@ -564,11 +778,26 @@ paths:
               schema: { $ref: '#/components/schemas/Item' }
     patch:
       operationId: patchItem
+      tags: [Libraries and items]
+      parameters:
+        - {"$ref": "#/components/parameters/RevisionMatch"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"title": "Example game (revised)"}
+            schema: {"$ref": "#/components/schemas/ItemPatch"}
       responses:
         '200':
           description: Item updated.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Item"}
+        '409': { description: Revision conflict. }
+        '428': { description: Revision validator required. }
     delete:
       operationId: deleteItem
+      tags: [Libraries and items]
       responses:
         '204':
           description: Item deleted.
@@ -577,6 +806,7 @@ paths:
       - { name: itemId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getManifest
+      tags: [Libraries and items]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
@@ -590,25 +820,54 @@ paths:
       - { name: userId, in: path, required: true, schema: { type: string } }
     put:
       operationId: putItemAccess
+      tags: [Libraries and items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"permission": "read"}
+            schema: {"$ref": "#/components/schemas/ItemAccessDraft"}
       responses:
         '204':
           description: Item grant replaced.
     delete:
       operationId: deleteItemAccess
+      tags: [Libraries and items]
       responses:
         '204':
           description: Item grant removed.
   /api/v1/uploads:
     post:
       operationId: createUpload
+      tags: [Uploads and downloads]
+      parameters:
+        - {"$ref": "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"libraryId": "library-demo"}
+            schema: {"type": "object", "required": ["libraryId"], "properties": {"libraryId": {"type": "string"}}}
       responses:
         '201':
           description: Upload session created.
+          content:
+            application/json:
+              example: {"id": "upload-demo", "received": 0, "state": "open"}
+              schema: {"$ref": "#/components/schemas/UploadSession"}
   /api/v1/uploads/{uploadId}/content:
     parameters:
       - { name: uploadId, in: path, required: true, schema: { type: string } }
     put:
       operationId: uploadContent
+      tags: [Uploads and downloads]
+      parameters:
+        - {"$ref": "#/components/parameters/UploadRange"}
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {"type": "string", "format": "binary"}
       responses:
         '204':
           description: Bytes accepted.
@@ -617,23 +876,38 @@ paths:
       - { name: uploadId, in: path, required: true, schema: { type: string } }
     post:
       operationId: completeUpload
+      tags: [Uploads and downloads]
+      parameters:
+        - {"$ref": "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"itemId": "item-demo", "kind": "rom", "displayName": "Example game", "relativePath": "Example.nes", "baseRevision": 1}
+            schema: {"$ref": "#/components/schemas/UploadComplete"}
       responses:
         '201':
           description: Asset committed.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Asset"}
   /api/v1/uploads/{uploadId}:
     parameters:
       - { name: uploadId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getUpload
+      tags: [Uploads and downloads]
       responses:
         '200':
           description: Received byte offset, so an interrupted upload can resume.
           content:
             application/json:
+              example: {"id": "upload-demo", "received": 65536, "state": "open"}
               schema:
                 $ref: '#/components/schemas/UploadSession'
     delete:
       operationId: abortUpload
+      tags: [Uploads and downloads]
       responses:
         '204':
           description: Upload aborted.
@@ -642,11 +916,17 @@ paths:
       - { name: assetId, in: path, required: true, schema: { type: string } }
     get:
       operationId: getFileMetadata
+      tags: [Uploads and downloads]
+      security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
           description: Asset metadata.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Asset"}
     delete:
       operationId: deleteFile
+      tags: [Uploads and downloads]
       responses:
         '204':
           description: Asset deleted.
@@ -655,9 +935,13 @@ paths:
       - { name: assetId, in: path, required: true, schema: { type: string } }
     post:
       operationId: adoptFile
+      tags: [Uploads and downloads]
       responses:
         '200':
           description: The chosen save is now the live file at its path. The bytes it replaced stay beside it.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Asset"}
   /api/v1/files/{assetId}/content:
     parameters:
       - { name: assetId, in: path, required: true, schema: { type: string } }
@@ -666,6 +950,7 @@ paths:
       - { $ref: '#/components/parameters/IfNoneMatch' }
     get:
       operationId: getFileContent
+      tags: [Uploads and downloads]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200': { $ref: '#/components/responses/Content' }
@@ -674,6 +959,7 @@ paths:
         '416': { $ref: '#/components/responses/UnsatisfiableRange' }
     head:
       operationId: headFileContent
+      tags: [Uploads and downloads]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200': { $ref: '#/components/responses/ContentHeaders' }
@@ -685,6 +971,10 @@ paths:
       - { name: assetId, in: path, required: true, schema: { type: string } }
     get:
       operationId: listVirtualEntries
+      tags: [Uploads and downloads]
+      security: [{ bearerAuth: [] }, {}]
+      parameters:
+        - {"name": "entry", "in": "query", "schema": {"type": "string"}, "description": "Optional virtual entry path to inspect."}
       responses:
         '200':
           description: Virtual entries when a format provider exists.
@@ -696,21 +986,33 @@ paths:
     parameters:
       - { name: assetId, in: path, required: true, schema: { type: string } }
       - { name: entryId, in: path, required: true, schema: { type: string } }
+      - { $ref: '#/components/parameters/Range' }
+      - { $ref: '#/components/parameters/IfRange' }
+      - { $ref: '#/components/parameters/IfNoneMatch' }
     get:
       operationId: getVirtualEntryContent
+      tags: [Uploads and downloads]
+      security: [{ bearerAuth: [] }, {}]
       responses:
-        '200':
-          description: Full entry representation.
-        '206':
-          description: Single byte range of the entry.
+        '200': { $ref: '#/components/responses/Content' }
+        '206': { $ref: '#/components/responses/PartialContent' }
+        '304': { description: Representation unchanged. }
+        '416': { $ref: '#/components/responses/UnsatisfiableRange' }
     head:
       operationId: headVirtualEntryContent
+      tags: [Uploads and downloads]
+      security: [{ bearerAuth: [] }, {}]
       responses:
-        '200':
-          description: Entry representation headers.
+        '200': { $ref: '#/components/responses/ContentHeaders' }
+        '206': { $ref: '#/components/responses/PartialContentHeaders' }
+        '304': { description: Representation unchanged. }
+        '416': { $ref: '#/components/responses/UnsatisfiableRange' }
   /api/v1/folders:
     get:
       operationId: browseFolders
+      tags: [Folders and sources]
+      parameters:
+        - {"name": "path", "in": "query", "schema": {"type": "string"}, "description": "Absolute server folder path. Omit to list starting places."}
       responses:
         '200':
           description: Directories inside one folder on the server.
@@ -721,6 +1023,7 @@ paths:
   /api/v1/webdav-credentials:
     get:
       operationId: listWebdavCredentials
+      tags: [Access and credentials]
       description: Account session only. Lists this account's credential metadata, never verifiers.
       responses:
         '200':
@@ -731,11 +1034,13 @@ paths:
                 $ref: '#/components/schemas/WebDavCredentialList'
     post:
       operationId: createWebdavCredential
+      tags: [Access and credentials]
       description: Account session only. Requires enabled WebDAV. Generates a read-only Digest app password shown once, without idempotency caching.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"name": "Media reader", "expiresInSeconds": 86400}
             schema:
               $ref: '#/components/schemas/WebDavCredentialDraft'
       responses:
@@ -753,6 +1058,7 @@ paths:
         schema: { type: string }
     delete:
       operationId: revokeWebdavCredential
+      tags: [Access and credentials]
       description: Account session only. Revokes a credential belonging to this account.
       responses:
         '204':
@@ -760,6 +1066,7 @@ paths:
   /api/v1/storage-locations:
     get:
       operationId: listStorageLocations
+      tags: [Folders and sources]
       description: Owner only. Includes server paths and current online status.
       responses:
         '200':
@@ -770,11 +1077,13 @@ paths:
                 $ref: '#/components/schemas/StorageLocationList'
     post:
       operationId: createStorageLocation
+      tags: [Folders and sources]
       description: Owner only. Initializes blob storage in an existing server folder.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"path": "/srv/ecs-storage", "label": "Secondary drive"}
             schema:
               $ref: '#/components/schemas/StorageLocationDraft'
       responses:
@@ -787,11 +1096,13 @@ paths:
   /api/v1/storage-locations/write-target:
     put:
       operationId: setStorageWriteTarget
+      tags: [Folders and sources]
       description: Owner only. Selects where new bytes are written; null selects Primary.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"id": null}
             schema:
               $ref: '#/components/schemas/StorageWriteTarget'
       responses:
@@ -806,6 +1117,7 @@ paths:
       - { name: locationId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: deleteStorageLocation
+      tags: [Folders and sources]
       description: Owner only. Forgets an unused location without deleting files. The active target or a location holding catalog blobs returns 409.
       responses:
         '204':
@@ -813,6 +1125,7 @@ paths:
   /api/v1/roots:
     get:
       operationId: listContentRoots
+      tags: [Folders and sources]
       responses:
         '200':
           description: Saved content roots.
@@ -822,10 +1135,12 @@ paths:
                 $ref: '#/components/schemas/ContentRootList'
     post:
       operationId: createContentRoot
+      tags: [Folders and sources]
       requestBody:
         required: true
         content:
           application/json:
+            example: {"path": "/srv/roms", "label": "Game files", "libraryId": "library-demo", "watch": false, "organize": false}
             schema:
               $ref: '#/components/schemas/ContentRootDraft'
       responses:
@@ -840,6 +1155,7 @@ paths:
       - { name: rootId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: deleteContentRoot
+      tags: [Folders and sources]
       responses:
         '204':
           description: Content root forgotten.
@@ -848,6 +1164,7 @@ paths:
       - { name: rootId, in: path, required: true, schema: { type: string } }
     post:
       operationId: scanContentRoot
+      tags: [Folders and sources]
       responses:
         '200':
           description: Folder read in place. Bytes stay where they are.
@@ -858,6 +1175,7 @@ paths:
   /api/v1/sources:
     get:
       operationId: listSourceFiles
+      tags: [Folders and sources]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
@@ -869,6 +1187,7 @@ paths:
   /api/v1/matching/plugins:
     get:
       operationId: matchingPlugins
+      tags: [Matching and jobs]
       responses:
         '200':
           description: Owner-only provider and manager registry. Installed modules are not executed by discovery.
@@ -880,6 +1199,7 @@ paths:
       - { name: rootId, in: path, required: true, schema: { type: string } }
     get:
       operationId: folderWatchPolicy
+      tags: [Folders and sources]
       responses:
         '200':
           description: Owner-only watching preference and live status for a registered server folder. Disabled by default. Internal filesystem paths are not exposed.
@@ -888,10 +1208,12 @@ paths:
               schema: { $ref: '#/components/schemas/FolderWatchPolicy' }
     put:
       operationId: setFolderWatchPolicy
+      tags: [Folders and sources]
       requestBody:
         required: true
         content:
           application/json:
+            example: {"enabled": true}
             schema: { $ref: '#/components/schemas/FolderWatchPolicyDraft' }
       responses:
         '200':
@@ -904,6 +1226,7 @@ paths:
       - { name: rootId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceOrganizationPolicy
+      tags: [Folders and sources]
       responses:
         '200':
           description: Owner-only automatic organization policy for a registered source folder. Disabled by default. Internal filesystem paths are not exposed.
@@ -912,10 +1235,12 @@ paths:
               schema: { $ref: '#/components/schemas/SourceOrganizationPolicy' }
     put:
       operationId: setSourceOrganizationPolicy
+      tags: [Folders and sources]
       requestBody:
         required: true
         content:
           application/json:
+            example: {"enabled": true, "planId": "REPLACE_WITH_PREVIEW_ID"}
             schema: { $ref: '#/components/schemas/SourceOrganizationPolicyDraft' }
       responses:
         '200':
@@ -930,10 +1255,12 @@ paths:
       - { name: rootId, in: path, required: true, schema: { type: string } }
     post:
       operationId: previewFolderOrganization
+      tags: [Folders and sources]
       requestBody:
         required: true
         content:
           application/json:
+            example: {"mode": "copy", "targetRootId": "root-demo"}
             schema: { $ref: '#/components/schemas/SourceOrganizationDraft' }
       responses:
         '200':
@@ -948,10 +1275,12 @@ paths:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
     post:
       operationId: previewSourceOrganization
+      tags: [Folders and sources]
       requestBody:
         required: true
         content:
           application/json:
+            example: {"mode": "copy", "targetRootId": "root-demo"}
             schema: { $ref: '#/components/schemas/SourceOrganizationDraft' }
       responses:
         '200':
@@ -966,10 +1295,12 @@ paths:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
     post:
       operationId: applySourceOrganization
+      tags: [Folders and sources]
       requestBody:
         required: true
         content:
           application/json:
+            example: {"planId": "REPLACE_WITH_PREVIEW_ID"}
             schema: { $ref: '#/components/schemas/SourceOrganizationApply' }
       responses:
         '200':
@@ -984,10 +1315,12 @@ paths:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
     post:
       operationId: findSourceMatches
+      tags: [Matching and jobs]
       requestBody:
         required: true
         content:
           application/json:
+            example: {"online": false, "checksum": true, "autoSave": false}
             schema: { $ref: '#/components/schemas/MatchingOptions' }
       responses:
         '200':
@@ -1000,6 +1333,7 @@ paths:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceMatchSelections
+      tags: [Matching and jobs]
       parameters:
         - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false }, description: Include all artwork roles; older clients should keep the default front-only result. }
       responses:
@@ -1010,12 +1344,14 @@ paths:
               schema: { $ref: '#/components/schemas/SourceMatchSelections' }
     put:
       operationId: saveSourceMatch
+      tags: [Matching and jobs]
       parameters:
         - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false }, description: Include all artwork roles in the response; older clients should keep the default front-only result. }
       requestBody:
         required: true
         content:
           application/json:
+            example: {"requestId": "REPLACE_WITH_MATCH_REQUEST_ID", "candidateId": "REPLACE_WITH_CANDIDATE_ID", "expectedRevision": 0}
             schema: { $ref: '#/components/schemas/SourceMatchSelectionDraft' }
       responses:
         '200':
@@ -1031,6 +1367,7 @@ paths:
       - { name: kind, in: path, required: true, schema: { type: string } }
     delete:
       operationId: removeSourceMatch
+      tags: [Matching and jobs]
       parameters:
         - in: header
           name: If-Match
@@ -1051,6 +1388,7 @@ paths:
       - { name: kind, in: path, required: true, schema: { type: string } }
     get:
       operationId: selectedMatchContent
+      tags: [Matching and jobs]
       parameters:
         - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, other] }, description: Artwork role content to retrieve; defaults to front. }
       responses:
@@ -1066,6 +1404,7 @@ paths:
       - { name: candidateId, in: path, required: true, schema: { type: string } }
     get:
       operationId: matchingArtwork
+      tags: [Matching and jobs]
       responses:
         '200':
           description: Owner-authorized raster preview of a candidate in a live matching request. No remote credentials or redirects.
@@ -1081,6 +1420,7 @@ paths:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceGroup
+      tags: [Folders and sources]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
@@ -1093,6 +1433,7 @@ paths:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
     get:
       operationId: sourceBundle
+      tags: [Folders and sources]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200':
@@ -1110,6 +1451,7 @@ paths:
       - { $ref: '#/components/parameters/IfNoneMatch' }
     get:
       operationId: readSourceContent
+      tags: [Folders and sources]
       description: Reads original bytes from a local source without importing it.
       security: [{ bearerAuth: [] }, {}]
       responses:
@@ -1121,6 +1463,7 @@ paths:
         '503': { description: Source storage is offline. }
     head:
       operationId: statSourceContent
+      tags: [Folders and sources]
       security: [{ bearerAuth: [] }, {}]
       responses:
         '200': { $ref: '#/components/responses/ContentHeaders' }
@@ -1132,6 +1475,7 @@ paths:
   /api/v1/changes:
     get:
       operationId: listChanges
+      tags: [Libraries and items]
       security: [{ bearerAuth: [] }, {}]
       parameters:
         - { name: cursor, in: query, schema: { type: string }, description: Exclusive decimal cursor. Start at 0 and use nextCursor verbatim. }
@@ -1142,52 +1486,77 @@ paths:
           description: Change feed.
           content:
             application/json:
+              example: {"changes": [], "nextCursor": "42"}
               schema: { $ref: '#/components/schemas/ChangeList' }
   /api/v1/guest-grants:
     get:
       operationId: listGuestGrants
+      tags: [Access and credentials]
+      parameters:
+        - {"name": "limit", "in": "query", "schema": {"type": "integer"}}
       responses:
         '200':
           description: Guest grants, including revoked ones. The token and its hash are omitted.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/GuestGrantList"}
     post:
       operationId: createGuestGrant
+      tags: [Access and credentials]
+      parameters:
+        - {"$ref": "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"libraryId": "library-demo", "capabilities": ["read"], "expiresInSeconds": 3600}
+            schema: {"$ref": "#/components/schemas/GuestGrantDraft"}
       responses:
         '201':
           description: Guest grant created. The token is returned once.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/GuestGrantCreated"}
   /api/v1/guest-grants/{grantId}:
     parameters:
       - { name: grantId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: revokeGuestGrant
+      tags: [Access and credentials]
       responses:
         '204':
           description: Guest grant revoked.
   /api/v1/device-pairing:
     post:
       operationId: startDevicePairing
-      security: [{}]
+      tags: [Authentication]
+      security: []
       description: Starts a five-minute pairing request when the web UI is enabled. Keep the returned secret on the requesting device. The PIN can be shown to the owner or placed in the fragment of the web UI URL.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"name": "Living room Apple TV"}
             schema: { $ref: '#/components/schemas/DevicePairingDraft' }
       responses:
         '201':
           description: Pending pairing request.
           content:
             application/json:
+              example: {"id": "pairing-demo", "pin": "123456", "secret": "REPLACE_WITH_RETURNED_PAIRING_SECRET", "expiresInSeconds": 300}
               schema: { $ref: '#/components/schemas/DevicePairingChallenge' }
         '404': { description: Pairing is unavailable. }
         '429': { description: Too many pending or recent requests. }
   /api/v1/device-pairing/inspect:
     post:
       operationId: inspectDevicePairing
+      tags: [Authentication]
       description: Owner sign-in required. Resolves a PIN to the device name for explicit approval.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"pin": "123456"}
             schema: { $ref: '#/components/schemas/DevicePairingPIN' }
       responses:
         '200':
@@ -1199,11 +1568,13 @@ paths:
   /api/v1/device-pairing/approve:
     post:
       operationId: approveDevicePairing
+      tags: [Authentication]
       description: Owner sign-in required. Approves only the request inspected under this PIN.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"id": "REPLACE_WITH_PAIRING_ID", "pin": "123456"}
             schema: { $ref: '#/components/schemas/DevicePairingApproval' }
       responses:
         '200':
@@ -1215,12 +1586,14 @@ paths:
   /api/v1/device-pairing/redeem:
     post:
       operationId: redeemDevicePairing
-      security: [{}]
+      tags: [Authentication]
+      security: []
       description: Poll every three seconds with the requesting device's private secret. A successful redemption returns a read-only device token once.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"id": "REPLACE_WITH_PAIRING_ID", "secret": "REPLACE_WITH_PAIRING_SECRET"}
             schema: { $ref: '#/components/schemas/DevicePairingRedemption' }
       responses:
         '200':
@@ -1233,6 +1606,7 @@ paths:
   /api/v1/device-tokens:
     get:
       operationId: listDeviceTokens
+      tags: [Access and credentials]
       responses:
         '200':
           description: Acting user's device token metadata, never hashes or token secrets.
@@ -1241,26 +1615,46 @@ paths:
               schema: { $ref: '#/components/schemas/DeviceTokenList' }
     post:
       operationId: createDeviceToken
+      tags: [Access and credentials]
+      parameters:
+        - {"$ref": "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"name": "Handheld client", "scopes": ["read"], "expiresInSeconds": 86400}
+            schema: {"$ref": "#/components/schemas/DeviceTokenDraft"}
       responses:
         '201':
           description: Device token created.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/DeviceTokenCreated"}
   /api/v1/device-tokens/{tokenId}:
     parameters:
       - { name: tokenId, in: path, required: true, schema: { type: string } }
     delete:
       operationId: revokeDeviceToken
+      tags: [Access and credentials]
       responses:
         '204':
           description: Device token revoked.
   /api/v1/audit:
     get:
       operationId: listAudit
+      tags: [Access and credentials]
+      parameters:
+        - {"name": "limit", "in": "query", "schema": {"type": "integer"}}
       responses:
         '200':
           description: Audit events.
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/AuditList"}
   /api/v1/library-jobs:
     get:
       operationId: listLibraryJobs
+      tags: [Matching and jobs]
       description: Owner-only shared jobs, newest identifier first. Bounded keyset pages.
       parameters:
         - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 99}}
@@ -1273,11 +1667,13 @@ paths:
               schema: {$ref: '#/components/schemas/LibraryJobList'}
     post:
       operationId: createLibraryJob
+      tags: [Matching and jobs]
       description: Owner-only durable scan or matching job. Reuses covering active work with identical options. Partially overlapping work returns 409. Survives request disconnects. No scope selects all registered roots.
       requestBody:
         required: true
         content:
           application/json:
+            example: {"kind": "match", "libraryId": "library-demo", "options": {"online": false, "checksum": true}}
             schema: {$ref: '#/components/schemas/LibraryJobDraft'}
       responses:
         '200':
@@ -1296,6 +1692,7 @@ paths:
       - {name: jobId, in: path, required: true, schema: {type: string}}
     get:
       operationId: getLibraryJob
+      tags: [Matching and jobs]
       description: Owner-only progress aggregates, shared by every session.
       responses:
         '200':
@@ -1308,6 +1705,7 @@ paths:
       - {name: jobId, in: path, required: true, schema: {type: string}}
     get:
       operationId: listLibraryJobItems
+      tags: [Matching and jobs]
       description: Owner-only bounded results for review; sourceId names a root for scan jobs.
       parameters:
         - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 99}}
@@ -1324,6 +1722,7 @@ paths:
       - {name: jobId, in: path, required: true, schema: {type: string}}
     post:
       operationId: cancelLibraryJob
+      tags: [Matching and jobs]
       description: Owner-only cancel from any owner session. Resume continues pending work; completed results are preserved. Interrupted work requires explicit resume.
       responses:
         '200':
@@ -1336,9 +1735,11 @@ paths:
       - {name: jobId, in: path, required: true, schema: {type: string}}
     post:
       operationId: resumeLibraryJob
+      tags: [Matching and jobs]
       requestBody:
         content:
           application/json:
+            example: {"retry": "failed"}
             schema:
               type: object
               properties:
@@ -1356,6 +1757,7 @@ paths:
       - {name: sourceId, in: path, required: true, schema: {type: string}}
     post:
       operationId: reviewLibraryJobItem
+      tags: [Matching and jobs]
       description: Owner-only acknowledgement of a completed result. Shared across sessions; does not select or save any candidate.
       responses:
         '200':
@@ -1366,18 +1768,21 @@ paths:
   /api/v1/investigators:
     get:
       operationId: listInvestigators
+      tags: [Investigators]
       description: "Owner only. List the active investigator grants for this owner."
       security: [{"bearerAuth":[]}]
       responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorList"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
     post:
       operationId: createInvestigator
+      tags: [Investigators]
       description: "Owner only. Return a library-scoped investigator token once."
       security: [{"bearerAuth":[]}]
-      requestBody: {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorDraft"}}}}
+      requestBody: {"required":true,"content":{"application/json":{"example": {"libraryIds": ["library-demo"], "operations": ["inspect", "cleanup"], "ttlSeconds": 3600}, "schema":{"$ref":"#/components/schemas/InvestigatorDraft"}}}}
       responses: {"201":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorCreated"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
   /api/v1/investigators/{credentialId}:
     delete:
       operationId: revokeInvestigator
+      tags: [Investigators]
       description: "Owner only. Revoke a credential and cancel its active investigations."
       security: [{"bearerAuth":[]}]
       parameters: [{"name":"credentialId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
@@ -1385,12 +1790,14 @@ paths:
   /api/v1/investigator/libraries:
     get:
       operationId: listInvestigatorLibraries
+      tags: [Investigators]
       description: "Inspect scope. List live libraries allowed by the grant."
       security: [{"investigatorAuth":[]}]
       responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorLibraryList"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
   /api/v1/investigator/libraries/{libraryId}/sources:
     get:
       operationId: listInvestigatorSources
+      tags: [Investigators]
       description: "Inspect scope. Page through indexed game sources, omitting paths."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"libraryId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"cursor","in":"query","schema":{"type":"string","minLength":1,"maxLength":160}},{"name":"limit","in":"query","schema":{"type":"integer","minimum":1,"maximum":20}}]
@@ -1398,19 +1805,22 @@ paths:
   /api/v1/investigator/diagnostics:
     get:
       operationId: getInvestigatorDiagnostics
+      tags: [Investigators]
       description: "Diagnostics scope. Coarse host liveness and counts of active jobs scoped explicitly to granted libraries."
       security: [{"investigatorAuth":[]}]
       responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorDiagnostics"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
   /api/v1/investigator/runs:
     post:
       operationId: startInvestigatorRun
+      tags: [Investigators]
       description: "Cleanup scope. Start a bounded, local investigation of explicit sources, with no external workflow host or provider."
       security: [{"investigatorAuth":[]}]
-      requestBody: {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunDraft"}}}}
+      requestBody: {"required":true,"content":{"application/json":{"example": {"libraryId": "library-demo", "sourceIds": ["source-demo"]}, "schema":{"$ref":"#/components/schemas/InvestigatorRunDraft"}}}}
       responses: {"201":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
   /api/v1/investigator/runs/{runId}:
     get:
       operationId: getInvestigatorRun
+      tags: [Investigators]
       description: "Cleanup scope. Get the state of a run created with this credential."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
@@ -1418,30 +1828,34 @@ paths:
   /api/v1/investigator/runs/{runId}/cancel:
     post:
       operationId: cancelInvestigatorRun
+      tags: [Investigators]
       description: "Cleanup scope. Stop the investigation and retain its suggestions for owner review."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
-      requestBody: {"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
+      requestBody: {"required":true,"content":{"application/json":{"example": {}, "schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
       responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
   /api/v1/investigator/runs/{runId}/finish:
     post:
       operationId: finishInvestigatorRun
+      tags: [Investigators]
       description: "Cleanup scope. Complete the investigation once all selected sources have been inspected."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
-      requestBody: {"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
+      requestBody: {"required":true,"content":{"application/json":{"example": {}, "schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
       responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
   /api/v1/investigator/runs/{runId}/sources/{sourceId}/inspect:
     post:
       operationId: inspectInvestigatorSource
+      tags: [Investigators]
       description: "Inspect scope. Collect local source facts and candidate evidence in an active investigation."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"sourceId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
-      requestBody: {"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
+      requestBody: {"required":true,"content":{"application/json":{"example": {}, "schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
       responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowCatalogResult"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
   /api/v1/investigator/runs/{runId}/findings:
     get:
       operationId: listInvestigatorFindings
+      tags: [Investigators]
       description: "Inspect scope. Page through findings for sources still in scope."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"cursor","in":"query","schema":{"type":"string","minLength":1,"maxLength":160}},{"name":"limit","in":"query","schema":{"type":"integer","minimum":1,"maximum":20}}]
@@ -1449,6 +1863,7 @@ paths:
   /api/v1/investigator/runs/{runId}/proposals:
     get:
       operationId: listInvestigatorProposals
+      tags: [Investigators]
       description: "Inspect scope. Page through proposal identities and versions for sources still in scope."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"cursor","in":"query","schema":{"type":"string","minLength":1,"maxLength":160}},{"name":"limit","in":"query","schema":{"type":"integer","minimum":1,"maximum":20}}]
@@ -1456,60 +1871,71 @@ paths:
   /api/v1/investigator/runs/{runId}/suggestions:
     post:
       operationId: submitInvestigatorSuggestion
+      tags: [Investigators]
       description: "Suggest scope. Submit one observation backed by ECS evidence. Any resulting proposal requires owner review and apply."
       security: [{"investigatorAuth":[]}]
       parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
-      requestBody: {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorSuggestion"}}}}
+      requestBody: {"required":true,"content":{"application/json":{"example": {"sourceId": "source-demo", "kind": "missing-front-artwork", "reason": "This source has no selected front cover.", "candidateIds": [], "evidenceIds": ["evidence-demo"]}, "schema":{"$ref":"#/components/schemas/InvestigatorSuggestion"}}}}
       responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorSuggestionResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
   /api/v1/workflow-hosts:
     get:
       operationId: "listWorkflowHosts"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostList"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
     post:
       operationId: "createWorkflowHost"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostDraft"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"name": "Local cleanup host"}, "schema": {"$ref": "#/components/schemas/WorkflowHostDraft"}}}}
       responses: {"201": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostCreated"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-hosts/{hostId}:
     delete:
       operationId: "revokeWorkflowHost"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
       parameters: [{"name": "hostId","in": "path","required": true,"schema": {"type": "string"}}]
       responses: {"204": {"description": "Workflow operation result."},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-workers/enroll:
     post:
       operationId: "enrollWorkflowHost"
+      tags: [Workflow workers]
+      security: []
       description: "One-time enrollment using a ten-minute owner-issued secret; returns the worker bearer token once."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowEnrollmentDraft"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"enrollmentToken": "REPLACE_WITH_ENROLLMENT_TOKEN"}, "schema": {"$ref": "#/components/schemas/WorkflowEnrollmentDraft"}}}}
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostEnrolled"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-runs:
     get:
       operationId: "listWorkflowRuns"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
       parameters: [{"name": "cursor","in": "query","schema": {"type": "string"}},{"name": "limit","in": "query","schema": {"type": "integer","minimum": 1,"maximum": 100}},{"name":"libraryId","in":"query","schema":{"type":"string"}},{"name":"rootId","in":"query","schema":{"type":"string"}},{"name":"unassigned","in":"query","schema":{"type":"boolean"}}]
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunList"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
     post:
       operationId: "createWorkflowRun"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunDraft"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"workflowId": "org.ecs.library-cleanup", "workflowDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "hostId": "host-demo", "scope": {"libraryId": "library-demo"}, "options": {"online": false, "checksum": true, "shareImages": false}}, "schema": {"$ref": "#/components/schemas/WorkflowRunDraft"}}}}
       responses: {"201": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."},"503": {"description": "Enroll a workflow host before starting cleanup."}}
   /api/v1/workflow-runs/{runId}:
     get:
       operationId: "getWorkflowRun"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
       parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-runs/{runId}/findings/{findingId}/decision:
     post:
       operationId: "decideWorkflowFinding"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
       parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}},{"name":"findingId","in":"path","required":true,"schema":{"type":"string"}}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowDecision"}}}}
+      requestBody: {required: true, content: {application/json: {"example": {"decision": "keep"}, schema: {$ref: "#/components/schemas/WorkflowDecision"}}}}
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowFindingResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-runs/{runId}/cancel:
     post:
       operationId: "cancelWorkflowRun"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
       parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
       requestBody: { $ref: '#/components/requestBodies/EmptyObject' }
@@ -1517,6 +1943,7 @@ paths:
   /api/v1/workflow-runs/{runId}/resume:
     post:
       operationId: "resumeWorkflowRun"
+      tags: [Workflow review]
       description: "Owner-only workflow management."
       parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
       requestBody: { $ref: '#/components/requestBodies/EmptyObject' }
@@ -1524,36 +1951,48 @@ paths:
   /api/v1/workflow-workers/advertise:
     post:
       operationId: "advertiseWorkflowHost"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Assigned host claim, at most 20 seconds long polling. The lease field is absent when no work is available."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowAdvertisement"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"packages": []}, "schema": {"$ref": "#/components/schemas/WorkflowAdvertisement"}}}}
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHostResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-workers/claim:
     post:
       operationId: "claimWorkflowRun"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Assigned host claim, at most 20 seconds long polling. The lease field is absent when no work is available."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowClaimDraft"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"waitMs": 10000}, "schema": {"$ref": "#/components/schemas/WorkflowClaimDraft"}}}}
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowClaimResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-workers/heartbeat:
     post:
       operationId: "heartbeatWorkflowRun"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Scoped workflow host operation; this credential cannot approve or apply fixes."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowHeartbeatDraft"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"lease": {"runId": "run-demo", "hostId": "host-demo", "fence": 1, "expiresAt": "2026-11-10T20:00:00Z"}}, "schema": {"$ref": "#/components/schemas/WorkflowHeartbeatDraft"}}}}
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowClaimResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-workers/publish:
     post:
       operationId: "publishWorkflowRun"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Scoped workflow host operation; this credential cannot approve or apply fixes."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowPublishDraft"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"lease": {"runId": "run-demo", "hostId": "host-demo", "fence": 1, "expiresAt": "2026-11-10T20:00:00Z"}, "publication": {"sequence": 1, "checkpointRef": "checkpoint-demo", "completedSourceIds": ["source-demo"], "state": "running"}}, "schema": {"$ref": "#/components/schemas/WorkflowPublishDraft"}}}}
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-workers/interrupt:
     post:
       operationId: "interruptWorkflowRun"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Assigned host reports interruption or private-state recovery; never approves or applies fixes."
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowInterruptDraft"}}}}
+      requestBody: {"required": true,"content": {"application/json": {"example": {"lease": {"runId": "run-demo", "hostId": "host-demo", "fence": 1, "expiresAt": "2026-11-10T20:00:00Z"}, "recoveryRequired": false}, "schema": {"$ref": "#/components/schemas/WorkflowInterruptDraft"}}}}
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow lease or state conflict."}}
   /api/v1/workflow-workers/runs/{runId}/work:
     get:
       operationId: "listWorkflowWork"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Scoped workflow host operation; this credential cannot approve or apply fixes."
       parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}},{"name": "cursor","in": "query","schema": {"type": "string"}},{"name": "limit","in": "query","schema": {"type": "integer","minimum": 1,"maximum": 100}}]
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSourceSnapshotList"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
@@ -1561,12 +2000,16 @@ paths:
   /api/v1/workflow-workers/runs/{runId}/sources/{sourceId}/facts:
     get:
       operationId: "getWorkflowSourceFacts"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSourceFacts"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
   /api/v1/workflow-workers/runs/{runId}/sources/{sourceId}/catalog:
     post:
       operationId: "searchWorkflowCatalog"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowCatalogResult"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
@@ -1574,13 +2017,16 @@ paths:
   /api/v1/workflow-workers/runs/{runId}/suggestions:
     post:
       operationId: "submitWorkflowSuggestions"
+      tags: [Workflow workers]
+      security: [{ workflowHostAuth: [] }]
       description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSuggestionResponse"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
-      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowSuggestionsDraft"}}}}
+      requestBody: {"required": true, "content": {"application/json": {"example": {"sourceId": "source-demo", "observations": [{"sourceId": "source-demo", "kind": "missing-front-artwork", "reason": "This source has no selected front cover.", "candidateIds": [], "evidenceIds": ["evidence-demo"]}]}, "schema": {"$ref": "#/components/schemas/WorkflowSuggestionsDraft"}}}}
   /api/v1/workflow-runs/{runId}/findings:
     get:
       operationId: "listWorkflowFindings"
+      tags: [Workflow review]
       description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "cursor", "in": "query", "schema": {"type": "string"}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100}}]
       responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowFindingList"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
@@ -1588,6 +2034,7 @@ paths:
   /api/v1/workflow-runs/{runId}/work:
     get:
       operationId: listWorkflowResults
+      tags: [Workflow review]
       description: Owner-only paginated inspection results, including unresolved sources.
       parameters: [{name: runId, in: path, required: true, schema: {type: string}}, {name: cursor, in: query, schema: {type: string}}, {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100}}]
       responses: {"200": {description: Inspection results., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowSourceSnapshotList"}}}}, "401": {description: Unauthorized.}, "403": {description: Owner required.}, "404": {description: Run unavailable.}}
@@ -1595,24 +2042,28 @@ paths:
   /api/v1/workflow-runs/{runId}/proposals:
     get:
       operationId: "listWorkflowProposals"
+      tags: [Workflow review]
       description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "cursor", "in": "query", "schema": {"type": "string"}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100}}]
       responses: {"200": {"description": "Review snapshot.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowProposalList"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
   /api/v1/workflow-runs/{runId}/sources/{sourceId}/evidence/{evidenceId}:
     get:
       operationId: "getWorkflowEvidence"
+      tags: [Workflow review]
       description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "evidenceId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Review snapshot.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowEvidenceResponse"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
   /api/v1/workflow-runs/{runId}/sources/{sourceId}/artifacts/{artifactId}/metadata:
     get:
       operationId: "getWorkflowArtifactMetadata"
+      tags: [Workflow review]
       description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Review snapshot.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowArtifactResponse"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
   /api/v1/workflow-runs/{runId}/sources/{sourceId}/artifacts/{artifactId}:
     get:
       operationId: "readWorkflowArtifact"
+      tags: [Workflow review]
       description: "Owner-only immutable workflow review data. Artifact and evidence references are scoped to this run and source."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Review snapshot.", "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}, "image/jpeg": {"schema": {"type": "string", "format": "binary"}}, "image/webp": {"schema": {"type": "string", "format": "binary"}}}}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner required."}, "404": {"description": "Scoped review record unavailable."}}
@@ -1620,38 +2071,44 @@ paths:
   /api/v1/workflow-runs/{runId}/approvals:
     post:
       operationId: "approveWorkflowBatch"
+      tags: [Workflow review]
       description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{8,200}$"}}]
       responses: {"201": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApprovalResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
-      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApprovalDraft"}}}}
+      requestBody: {"required": true, "content": {"application/json": {"example": {"runRevision": 1, "proposals": [{"id": "proposal-demo", "version": 1, "digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]}, "schema": {"$ref": "#/components/schemas/WorkflowApprovalDraft"}}}}
   /api/v1/workflow-approvals/{approvalId}:
     get:
       operationId: "getWorkflowApproval"
+      tags: [Workflow review]
       description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
       parameters: [{"name": "approvalId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApprovalResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
   /api/v1/workflow-approvals/{approvalId}/apply:
     post:
       operationId: "applyWorkflowApproval"
+      tags: [Workflow review]
       description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
       parameters: [{"name": "approvalId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationBatchResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
-      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationDraft"}}}}
+      requestBody: {"required": true, "content": {"application/json": {"example": {"applicationId": "application-demo"}, "schema": {"$ref": "#/components/schemas/WorkflowApplicationDraft"}}}}
   /api/v1/workflow-applications/{applicationId}:
     get:
       operationId: "getWorkflowApplicationBatch"
+      tags: [Workflow review]
       description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
       parameters: [{"name": "applicationId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationBatchResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
   /api/v1/workflow-runs/{runId}/applications:
     get:
       operationId: "listWorkflowApplications"
+      tags: [Workflow review]
       description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "cursor", "in": "query", "schema": {"type": "string"}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100}}]
       responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationList"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
   /api/v1/workflow-applications/{applicationId}/sources/{sourceId}/undo:
     post:
       operationId: "undoWorkflowApplication"
+      tags: [Workflow review]
       description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
       parameters: [{"name": "applicationId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
@@ -1664,7 +2121,12 @@ components:
       content:
         application/json:
           schema: { type: object, maxProperties: 0 }
+          example: {}
   securitySchemes:
+    workflowHostAuth:
+      type: http
+      scheme: bearer
+      description: Scoped workflow host token returned by enrollment. Use it for assigned work, never owner approval.
     investigatorAuth:
       type: http
       scheme: bearer
@@ -1674,11 +2136,31 @@ components:
       scheme: bearer
       description: Session, device or guest token. Some reads also allow tokenless access under the server's network policy.
   parameters:
+    RevisionMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Revision ETag from the current item.
+      schema: { type: string }
+      example: '"rev-1"'
+    UploadRange:
+      name: Content-Range
+      in: header
+      description: Byte offset and total length for a resumable upload chunk.
+      schema: { type: string }
+      example: bytes 0-65535/131072
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Client-generated key. Reuse the same key and request body when retrying.
+      schema: { type: string }
+      example: example-upload-001
     Range:
       name: Range
       in: header
       description: Single byte range, such as bytes=0-65535.
       schema: { type: string }
+      example: bytes=0-65535
     IfRange:
       name: If-Range
       in: header
@@ -2081,7 +2563,7 @@ components:
         label: { type: string }
         libraryId: { type: [string, 'null'] }
         watch: { type: boolean, description: Explicitly enable automatic watching for the new folder. }
-        organize: { type: boolean, description: Explicitly enable in-place organization of ROMs, archives and complete disc groups on future match saves. }
+        organize: { type: boolean, description: 'Explicitly enable in-place organization of ROMs, archives and complete disc groups on future match saves.' }
     ContentRootScan:
       type: object
       required: [rootId, medium, online, count]

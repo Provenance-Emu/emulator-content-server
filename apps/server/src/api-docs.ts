@@ -21,6 +21,9 @@ const init = `SwaggerUIBundle({
   dom_id: '#swagger-ui',
   url: '/openapi.yaml',
   deepLinking: true,
+  docExpansion: 'none',
+  defaultModelsExpandDepth: -1,
+  filter: true,
   persistAuthorization: false,
   validatorUrl: null
 });`;

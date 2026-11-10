@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { parse } from 'yaml';
 import {
   decodeCursor,
   encodeCursor,
@@ -13,6 +14,7 @@ import {
   isCompatibleMajor,
   loadOpenApi,
   missingContractOperations,
+  openApiFile,
   parseChangeCursor,
   parseSingleRange,
   problem,
@@ -106,4 +108,29 @@ test('OpenAPI contains every v1 operation and matches the committed surface', ()
   const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as typeof current;
   assert.deepEqual(findBreakingChanges(baseline, current), []);
   assert.deepEqual(current, baseline);
+});
+
+test('Swagger groups every operation and has authored examples for JSON request bodies', () => {
+  type RequestBody = { $ref?: string; content?: Record<string, { example?: unknown }> };
+  type Operation = { operationId?: string; tags?: string[]; requestBody?: RequestBody };
+  const document = parse(readFileSync(openApiFile(), 'utf8')) as {
+    paths: Record<string, Record<string, Operation>>;
+    tags: { name: string }[];
+    components: { requestBodies: Record<string, RequestBody> };
+  };
+  const groups = new Set(document.tags.map(({ name }) => name));
+  for (const path of Object.values(document.paths)) {
+    for (const operation of Object.values(path)) {
+      if (!operation.operationId) continue;
+      const { operationId, tags, requestBody } = operation;
+      assert.ok(tags?.length && tags.every((tag) => groups.has(tag)), operationId);
+      const body = requestBody?.$ref
+        ? document.components.requestBodies[requestBody.$ref.split('/').at(-1) ?? '']
+        : requestBody;
+      const json = body?.content?.['application/json'];
+      if (json) assert.ok(Object.hasOwn(json, 'example'), operationId);
+    }
+  }
+  // A documented mutation with no body cannot be exercised in Swagger UI.
+  assert.ok(document.paths['/api/v1/items']?.post?.requestBody?.content?.['application/json']);
 });

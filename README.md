@@ -74,7 +74,7 @@ Owners can open **Settings → Folder watching** for a registered server folder 
 
 ## REST API and client SDKs
 
-Open [Swagger UI](http://127.0.0.1:8473/docs/) on a running server or download its [OpenAPI contract](http://127.0.0.1:8473/openapi.yaml). The [client integration guide](docs/protocol/client-integration.md) covers browsing and downloading games, getting started with iOS and Virtual Jaguar, and generating SDKs for nine language targets.
+Browse the public [REST API reference](https://provenance-emu.com/emulator-content-server/) and [project wiki](https://github.com/Provenance-Emu/emulator-content-server/wiki). To try requests against your own ECS instance, open its [Swagger UI](http://127.0.0.1:8473/docs/) or download its [OpenAPI contract](http://127.0.0.1:8473/openapi.yaml). The [client integration guide](docs/protocol/client-integration.md) covers browsing and downloading games, getting started with iOS and Virtual Jaguar, and generating SDKs for nine language targets.
 
 ## Verify
 

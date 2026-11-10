@@ -245,6 +245,7 @@
             onpaired={() => { pairingPin = ''; }}
             onsignin={() => { signingIn = true; drawer = false; }}
             onsetup={() => { guide = $application.owner ? 'host' : 'join'; }}
+            onopendocumentation={context.openDocumentation}
             serverLabel={context.label}
             onplayerschange={async () => { await application.revalidate(); playerEpoch++; }}
             client={context.client}

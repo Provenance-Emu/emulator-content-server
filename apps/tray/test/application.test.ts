@@ -102,6 +102,28 @@ test('player URLs resolve at the selected server and never allow external creden
   }
 });
 
+test('desktop documentation opens the selected server reference and project wiki only', () => {
+  const f = fixture();
+  const context = createDesktopContext(profile('https://a.test:8473'), f.dependencies);
+  const expected = [
+    'https://a.test:8473/docs/',
+    'https://a.test:8473/openapi.yaml',
+    'https://github.com/Provenance-Emu/emulator-content-server/wiki',
+  ];
+  context.sessions.save(session);
+  for (const href of expected) context.openDocumentation(href);
+  for (const href of [
+    'https://b.test/docs/',
+    'https://a.test:8473/docs/?token=secret',
+    'https://a.test:8473/ui/',
+    'https://user:password@a.test:8473/docs/',
+    'https://github.com/another-project/wiki',
+  ]) {
+    assert.throws(() => context.openDocumentation(href), /documentation link is unavailable/);
+  }
+  assert.deepEqual(f.opened, expected);
+});
+
 test('saved servers survive a restart and switching preserves each origin’s own sign-in', () => {
   const f = fixture();
   const a = profile('https://a.test');

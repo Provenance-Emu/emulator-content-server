@@ -3,7 +3,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { openApiFile } from '@ecs/protocol';
+import { extractSurface, loadOpenApi, openApiFile } from '@ecs/protocol';
+import type { HTTPMethods } from 'fastify';
 import { openServer } from '../src/index.js';
 
 test('API-only servers serve Swagger UI and the bundled contract', async () => {
@@ -30,6 +31,11 @@ test('API-only servers serve Swagger UI and the bundled contract', async () => {
     const contract = await server.app.inject('/openapi.yaml');
     assert.equal(contract.statusCode, 200);
     assert.equal(contract.body, await readFile(openApiFile(), 'utf8'));
+    for (const operation of extractSurface(loadOpenApi()).paths) {
+      const [method, url] = operation.split(' ');
+      assert.ok(method && url);
+      assert.ok(server.app.hasRoute({ method: method as HTTPMethods, url }), operation);
+    }
   } finally {
     await server.close();
     await rm(dir, { recursive: true, force: true });

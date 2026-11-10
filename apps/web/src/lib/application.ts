@@ -19,6 +19,7 @@ export interface ServerContext {
   client: ContentClient;
   sessions: SessionStore;
   openPlayer(relativeHref: string): void;
+  openDocumentation?(href: string): void;
 }
 
 export interface ApplicationState {

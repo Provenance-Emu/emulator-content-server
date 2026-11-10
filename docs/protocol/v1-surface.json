@@ -82,6 +82,8 @@
     "GET /api/v1/workflow-workers/runs/:runId/work",
     "GET /health",
     "GET /openapi.yaml",
+    "GET /play/cores/:coreId/core.wasm",
+    "GET /play/cores/:coreId/loader.js",
     "GET /play/plugins/:id/assets/:name",
     "GET /play/plugins/:id/core.wasm",
     "GET /play/plugins/:id/loader.js",

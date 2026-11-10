@@ -1,6 +1,7 @@
 import { ContentClient } from '@ecs/client';
 import { type Readable, writable } from 'svelte/store';
 import type { ServerContext } from '../../../web/src/lib/application.js';
+import { documentationLinks } from '../../../web/src/lib/documentation.js';
 import { createSessionStore } from '../../../web/src/lib/session.js';
 
 export interface DesktopProfile {
@@ -11,6 +12,7 @@ export interface DesktopProfile {
 }
 export interface DesktopContext extends ServerContext {
   readonly profile: Readonly<DesktopProfile>;
+  openDocumentation(href: string): void;
 }
 export interface DesktopEnvironment {
   storage?: Storage;
@@ -129,6 +131,11 @@ export function createDesktopContext(
     },
     openPlayer(href) {
       void openExternal(playerUrl(origin, href));
+    },
+    openDocumentation(href) {
+      if (!documentationLinks(origin).some((link) => link.href === href))
+        throw new Error('The documentation link is unavailable.');
+      void openExternal(href);
     },
   };
 }

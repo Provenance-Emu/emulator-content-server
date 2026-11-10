@@ -1,6 +1,6 @@
 # Connect an emulator to Emulation Server
 
-Open `/docs/` on the server, for example [the local API reference](http://127.0.0.1:8473/docs/). Swagger UI reads `/openapi.yaml` from that same server, so the reference tracks the installed build. The [contract on main](https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/packages/protocol/openapi/openapi.yaml) tracks development. Pin a commit or use the installed server's contract when generating a client for a specific build.
+Browse the [public Swagger reference](https://provenance-emu.com/emulator-content-server/) for current examples. To make requests, open `/docs/` on the server, for example [the local API reference](http://127.0.0.1:8473/docs/). Swagger UI reads `/openapi.yaml` from that same server, so the reference tracks the installed build. The [contract on main](https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/packages/protocol/openapi/openapi.yaml) tracks development. Pin a commit or use the installed server's contract when generating a client for a specific build.
 
 The contract uses OpenAPI 3.1.2. OpenAPI 3.2.1 is the newer specification, but the pinned generator cannot validate this contract as 3.2.1. The wire API is still `/api/v1`. See the [OpenAPI specification versions](https://spec.openapis.org/oas/) and [protocol versioning](versioning.md).
 
