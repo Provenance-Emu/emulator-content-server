@@ -9,7 +9,7 @@
   "dependencies": {
     "@ecs/client": "workspace:*",
     "@modelcontextprotocol/server": "2.4.0",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@ecs/server": "workspace:*",
