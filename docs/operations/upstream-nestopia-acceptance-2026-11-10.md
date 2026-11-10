@@ -26,11 +26,24 @@ closed the browser page and temporary server and removed their test data.
 The profile declares `saveCompletion: none`. The player disclosed that
 synchronized saves were unavailable and hid the battery and state save
 controls. This check covers generated iNES playback, keyboard input, and
-audio sample generation. UNIF, FDS, commercial titles, save persistence,
-and other browsers remain outside this result. The
+audio sample generation. FDS, commercial titles, save persistence, and
+other browsers remain outside this result. The
 [reconstruction report](./upstream-reconstructions-2026-11-06.md) separately
 records Nestopia's exact runtime reconstruction and the remaining provenance
 questions.
+
+## UNIF follow-up
+
+A second cold install on the same browser and platform passed the iNES test
+again, then passed the same palette and input checks with the generated
+program wrapped in an NROM-128 UNIF image. The UNIF version keeps its counter
+in console RAM, so it can run on boards without cartridge RAM. Both `.unif`
+and `.unf` passed with the same 24,654-byte image, whose SHA-256 is
+`df87e1c04ada5c6f14b4dd77571d347e6260a6aefcf04040066c7203dcbc925b`.
+Both extensions produced the same before/after canvas hashes as iNES, and
+each produced more than 90 Web Audio buffers with peak sample magnitude 0.223.
+The [pinned Nestopia UNIF reader](https://github.com/libretro/nestopia/blob/ad2e7419b00c0c7c16267f6f328a542fccfed335/source/core/NstCartridgeUnif.cpp)
+defines the container fields used by the generated fixture.
 
 ## Reproduction
 

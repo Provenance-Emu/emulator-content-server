@@ -60,7 +60,9 @@ and their independent expected IDs for offline reuse of older cache entries.
    all WASMs embed the same frontend Clang identity. Complete source/build mappings
    remain unverified for all 50 because exact SDK/container inputs, working-tree
    changes, flags, dependencies and applicable source/notices remain unbound.
-   Public historical job trace requests returned HTTP 401.
+   Public historical job trace requests returned HTTP 401. The
+   [November 10 mismatch follow-up](../operations/upstream-mismatch-follow-up-2026-11-10.md)
+   records function-reference evidence for all 11 FBNeo candidate pairs.
 2. The [component notice audit](../operations/component-notice-audit-2026-11-06.md)
    records 43 modern and 15 legacy component scopes, full bounded input scans and
    335 selected SDK archive members across all ten custom builds. New instrumented
@@ -74,8 +76,8 @@ and their independent expected IDs for offline reuse of older cache entries.
 3. Gameplay qualification remains separate from factory startup and source
    reconstruction. PCSX's generated content acceptance covers EXE, ISO and Mode 2
    CHD. The [Nestopia playback check](../operations/upstream-nestopia-acceptance-2026-11-10.md)
-   covers archive recovery, generated iNES video, keyboard input and audio sample
-   generation. Its catalog profile disables synchronized saves. Other formats,
+   covers archive recovery, generated iNES and UNIF video, keyboard input and
+   audio sample generation. Its catalog profile disables synchronized saves. FDS,
    commercial compatibility and additional cores retain their own qualification scopes.
 
 Direct upstream distribution plus verified local retention continues to supply

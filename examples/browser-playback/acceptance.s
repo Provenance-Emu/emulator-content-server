@@ -1,5 +1,14 @@
 ; Original public-domain acceptance program written for this test.
 ; Battery counter changes palette on A press; pulse audio always active.
+; UNIF NROM boards can lack cartridge RAM. The format probe keeps its
+; counter in console RAM and does not depend on any cartridge save support.
+.ifdef VOLATILE_COUNTER
+counter = $01
+marker = $02
+.else
+counter = $6000
+marker = $6001
+.endif
 .segment "HEADER"
 .byte $4e,$45,$53,$1a,1,1,$02,0,0,0,0,0,0,0,0,0
 .segment "CODE"
@@ -17,13 +26,15 @@ wait1: bit $2002
  bpl wait1
 wait2: bit $2002
  bpl wait2
- lda $6001
+.ifndef VOLATILE_COUNTER
+ lda marker
  cmp #$a7
  beq ready
+.endif
  lda #1
- sta $6000
+ sta counter
  lda #$a7
- sta $6001
+ sta marker
 ready:
  lda #0
  sta $00
@@ -51,13 +62,13 @@ wait: bit $2002
  stx $00
  cpx #0
  beq palette
- inc $6000
+ inc counter
 palette:
  lda #$3f
  sta $2006
  lda #0
  sta $2006
- lda $6000
+ lda counter
  and #$0f
  ora #$20
  sta $2007
