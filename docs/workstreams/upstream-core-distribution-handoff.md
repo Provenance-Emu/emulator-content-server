@@ -73,8 +73,10 @@ and their independent expected IDs for offline reuse of older cache entries.
    remain open. Compiler input and archive selection precede code elimination.
 3. Gameplay qualification remains separate from factory startup and source
    reconstruction. PCSX's generated content acceptance covers EXE, ISO and Mode 2
-   CHD. Other formats, commercial compatibility, audio/input and save behavior
-   retain their individual qualification scopes.
+   CHD. The [Nestopia playback check](../operations/upstream-nestopia-acceptance-2026-11-10.md)
+   covers archive recovery, generated iNES video, keyboard input and audio sample
+   generation. Its catalog profile disables synchronized saves. Other formats,
+   commercial compatibility and additional cores retain their own qualification scopes.
 
 Direct upstream distribution plus verified local retention continues to supply
 compatible pairs. Existing custom exceptions have individual documented runtime
