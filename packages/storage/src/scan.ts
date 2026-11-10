@@ -25,7 +25,11 @@ export interface ScannedFile {
  */
 export async function inspectRoot(
   rootPath: string,
-  options: { pinnedRoot?: boolean; signal?: AbortSignal } = {},
+  options: {
+    pinnedRoot?: boolean;
+    signal?: AbortSignal;
+    previousGroups?: ReadonlyMap<string, readonly string[]>;
+  } = {},
 ): Promise<{
   medium: Medium;
   online: boolean;
@@ -40,7 +44,7 @@ export async function inspectRoot(
   const files: ScannedFile[] = [];
   await walk(root, root, probe.medium, files, new Set<string>(), options.signal);
   options.signal?.throwIfAborted();
-  await groupDiscs(root, files, options.signal);
+  await groupDiscs(root, files, options.signal, options.previousGroups);
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   return { medium: probe.medium, online: true, files };
 }

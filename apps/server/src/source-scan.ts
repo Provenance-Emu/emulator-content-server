@@ -26,6 +26,12 @@ export async function scanRoot(
     try {
       const inspected = await inspectRoot(registered.path, {
         pinnedRoot: true,
+        previousGroups: new Map(
+          catalog
+            .listSources(root.id)
+            .filter((file) => file.groupMembers?.length)
+            .map((file) => [file.relativePath, file.groupMembers ?? []]),
+        ),
         ...(signal ? { signal } : {}),
       });
       if (inspected.online)

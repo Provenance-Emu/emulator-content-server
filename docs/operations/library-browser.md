@@ -161,6 +161,8 @@ CUE/BIN, M3U multi-disc playlists, GDI track sets and CCD/IMG/SUB companions app
 
 Missing, malformed, cyclic, escaping, unavailable or oversized descriptors remain visible with a group error; unrelated files are never hidden to complete an invalid set. Fix the files and rescan. Former group members become standalone again if a later scan no longer groups them. Existing clients may keep using individual source IDs and content endpoints.
 
+NAOMI and NAOMI 2 collections can store a ZIP primary beside a directory with the same stem, for example `cart.zip` and `cart/gdrom.chd`. After scanning, the ZIP appears once in Games with its CHD members. The group API returns the ZIP first and preserves that relative layout for clients such as iFly. Download every required member into staging before publishing the imported game. Known companions that disappear remain required across rescans and produce a group error. Reconnecting the files and rescanning restores the set. A newly seen ZIP without companions can be a cartridge game, so clients with GD-ROM metadata must also verify the expected CHD name. A CHD whose known ZIP is missing remains an error entry.
+
 ## Optional file organization and moved files
 
 Game details offer **Organize files** to the owner. Leave it unused to keep linked

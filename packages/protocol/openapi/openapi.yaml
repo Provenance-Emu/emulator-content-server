@@ -1422,11 +1422,18 @@ paths:
       operationId: sourceGroup
       tags: [Folders and sources]
       security: [{ bearerAuth: [] }, {}]
+      description: Scanned disc-set members with portable relative paths. NAOMI and NAOMI 2 ZIP primaries include CHDs in the matching ZIP-stem directory. Check error and every member availability before downloading the full set. Cartridge-only ZIPs can remain standalone. Clients with authoritative GD-ROM metadata must verify the expected companion name.
       responses:
         '200':
           description: Cached members of one disc group, authorized individually.
           content:
             application/json:
+              example:
+                sourceId: source-cart
+                error: null
+                files:
+                  - { id: source-cart, name: cart.zip, relativePath: cart.zip, size: 8, availability: local }
+                  - { id: source-gdrom, name: gdrom.chd, relativePath: cart/gdrom.chd, size: 16, availability: local }
               schema: { $ref: '#/components/schemas/SourceGroup' }
   /api/v1/sources/{sourceId}/bundle:
     parameters:

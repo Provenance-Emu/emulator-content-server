@@ -34,6 +34,8 @@ printf 'Authorization: Bearer %s\n' "$ECS_TOKEN" |
 
 Stream large downloads to disk. To resume, send `Range: bytes=<local size>-` and `If-Range` with the saved ETag. Append only on `206` with a matching `Content-Range` start. On `200`, replace the partial file. On `416`, inspect `Content-Range` or request `HEAD` before deciding whether to restart. HTTP problems use `application/problem+json`. Report the request ID when available and keep credentials out of logs.
 
+For NAOMI and NAOMI 2 GD-ROM games, browse `com.provenance.naomi` or `com.provenance.naomi2`, then read `/api/v1/sources/{sourceId}/group`. A scanned `cart.zip` with a `cart/gdrom.chd` companion returns both files in that layout, with the ZIP first. Check `error`, require local availability for every member, and stage both downloads before registering the ZIP. Each member downloads through `/api/v1/sources/{id}/content`. Flycast clients should validate the expected GD-ROM name against their game metadata. Uploaded items use the existing v1 manifest with two required ROM assets, whose `relativePath` values are `cart.zip` and `cart/gdrom.chd`. The server preserves paths supplied on upload and does not infer a missing asset in a newly created item.
+
 ## Pair a device with a TV interface
 
 Try the catalog without an Authorization header first if the user has not supplied a token. The server's network policy determines whether that request can browse. Existing bearer tokens still work.

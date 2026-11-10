@@ -1,5 +1,6 @@
 import { open } from 'node:fs/promises';
 import { posix } from 'node:path';
+import { arcadeGroupEdges } from './arcade-groups.js';
 import { resolveInside } from './paths.js';
 import type { ScannedFile } from './scan.js';
 
@@ -13,8 +14,16 @@ export async function groupDiscs(
   root: string,
   files: ScannedFile[],
   signal?: AbortSignal,
+  previousGroups?: ReadonlyMap<string, readonly string[]>,
 ): Promise<void> {
   signal?.throwIfAborted();
+  const previous = new Map(previousGroups);
+  for (const file of files) {
+    if (file.groupMembers?.length) previous.set(file.relativePath, file.groupMembers);
+    file.groupAnchor = null;
+    file.groupMembers = [];
+    file.groupError = null;
+  }
   const byPath = new Map(files.map((file) => [file.relativePath, file]));
   let foldedPaths: Map<string, string | null> | undefined;
   function indexedPath(target: string): string | null {
@@ -28,12 +37,9 @@ export async function groupDiscs(
     }
     return foldedPaths.get(target.toLowerCase()) ?? null;
   }
-  const edges = new Map<string, string[]>();
+  const edges = arcadeGroupEdges(files, previous);
   for (const file of files) {
     signal?.throwIfAborted();
-    file.groupAnchor = null;
-    file.groupMembers = [];
-    file.groupError = null;
     if (!DESCRIPTORS.has(extension(file.relativePath))) continue;
     try {
       if (file.availability !== 'local')
@@ -98,7 +104,8 @@ export async function groupDiscs(
       groups.set(path, [...members]);
     } catch (error) {
       const file = byPath.get(path);
-      if (file) file.groupError = error instanceof Error ? error.message : 'Invalid disc group.';
+      if (file && !file.groupError)
+        file.groupError = error instanceof Error ? error.message : 'Invalid disc group.';
     }
   }
   // Only top-level playlists/descriptors become collection entries. A shared track can
