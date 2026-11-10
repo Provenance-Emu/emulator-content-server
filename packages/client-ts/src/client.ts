@@ -32,6 +32,8 @@ import type {
   ContentRootList,
   ContentRootScan,
   ContentRootSummaryList,
+  DevicePairingApproved,
+  DevicePairingCandidate,
   DeviceTokenCreated,
   DeviceTokenDraft,
   DeviceTokenList,
@@ -848,6 +850,14 @@ export class ContentClient {
   }
 
   /** Owner-only storage administration. Paths are on the server, not the client. */
+  inspectDevicePairing(pin: string): Promise<DevicePairingCandidate> {
+    return this.post('/api/v1/device-pairing/inspect', { pin });
+  }
+
+  approveDevicePairing(id: string, pin: string): Promise<DevicePairingApproved> {
+    return this.post('/api/v1/device-pairing/approve', { id, pin });
+  }
+
   deviceTokens(): Promise<DeviceTokenList> {
     return this.getJson('/api/v1/device-tokens');
   }

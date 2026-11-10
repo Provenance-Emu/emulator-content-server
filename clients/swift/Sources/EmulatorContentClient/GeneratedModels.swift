@@ -1280,6 +1280,74 @@ public struct DeviceTokenList: Codable, Equatable, Sendable {
     }
 }
 
+public struct DevicePairingDraft: Codable, Equatable, Sendable {
+    public var name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+}
+
+public struct DevicePairingChallenge: Codable, Equatable, Sendable {
+    public var id: String
+    public var pin: String
+    public var secret: String
+    public var expiresInSeconds: Int
+
+    public init(id: String, pin: String, secret: String, expiresInSeconds: Int) {
+        self.id = id
+        self.pin = pin
+        self.secret = secret
+        self.expiresInSeconds = expiresInSeconds
+    }
+}
+
+public struct DevicePairingPIN: Codable, Equatable, Sendable {
+    public var pin: String
+
+    public init(pin: String) {
+        self.pin = pin
+    }
+}
+
+public struct DevicePairingCandidate: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+public struct DevicePairingApproval: Codable, Equatable, Sendable {
+    public var id: String
+    public var pin: String
+
+    public init(id: String, pin: String) {
+        self.id = id
+        self.pin = pin
+    }
+}
+
+public struct DevicePairingApproved: Codable, Equatable, Sendable {
+    public var approved: Bool
+
+    public init(approved: Bool) {
+        self.approved = approved
+    }
+}
+
+public struct DevicePairingRedemption: Codable, Equatable, Sendable {
+    public var id: String
+    public var secret: String
+
+    public init(id: String, secret: String) {
+        self.id = id
+        self.secret = secret
+    }
+}
+
 public struct DeviceTokenDraft: Codable, Equatable, Sendable {
     public var name: String
     public var scopes: [String]

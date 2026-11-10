@@ -30,6 +30,12 @@ printf 'Authorization: Bearer %s\n' "$ECS_TOKEN" |
 
 Stream large downloads to disk. To resume, send `Range: bytes=<local size>-` and `If-Range` with the saved ETag. Append only on `206` with a matching `Content-Range` start. On `200`, replace the partial file. On `416`, inspect `Content-Range` or request `HEAD` before deciding whether to restart. HTTP problems use `application/problem+json`. Report the request ID when available and keep credentials out of logs.
 
+## Pair a device with a TV interface
+
+Try the catalog without an Authorization header first if the user has not supplied a token. The server's network policy determines whether that request can browse. Existing bearer tokens still work.
+
+If sign-in is required, POST a device name to `/api/v1/device-pairing`. Show the six-digit PIN and a QR code for `/ui/?settings=devices#pair=<PIN>` on the configured server. The server owner can scan the QR code or enter the PIN under **Settings → Devices**, review the device, and approve read access. Keep the separate challenge secret on the device. Poll `/api/v1/device-pairing/redeem` with the challenge ID and secret every three seconds. A `202` means approval is pending. A `200` returns a revocable read-only device token once, valid for 90 days. A `404` means the request is unavailable or expired. Pairing requests last five minutes and are cleared on restart.
+
 ## iOS and other Apple apps
 
 For Provenance, iCube and iFly, add the local Swift package at `clients/swift` from a pinned checkout. It provides Codable models and `ContentSync` for the change feed, save adoption and resume requests. The package declares iOS 17, tvOS 17, macOS 14 and visionOS 1 minimums. Use `URLSession` for catalog requests and file downloads. For example, after selecting a server and retrieving its token from Keychain:

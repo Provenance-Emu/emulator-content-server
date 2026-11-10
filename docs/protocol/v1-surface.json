@@ -88,6 +88,10 @@
     "POST /api/v1/auth/bootstrap",
     "POST /api/v1/auth/login",
     "POST /api/v1/auth/logout",
+    "POST /api/v1/device-pairing",
+    "POST /api/v1/device-pairing/approve",
+    "POST /api/v1/device-pairing/inspect",
+    "POST /api/v1/device-pairing/redeem",
     "POST /api/v1/device-tokens",
     "POST /api/v1/files/:assetId/adopt",
     "POST /api/v1/guest-grants",
@@ -1360,6 +1364,74 @@
       ],
       "required": [
         "items"
+      ]
+    },
+    "DevicePairingDraft": {
+      "properties": [
+        "name"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    "DevicePairingChallenge": {
+      "properties": [
+        "expiresInSeconds",
+        "id",
+        "pin",
+        "secret"
+      ],
+      "required": [
+        "expiresInSeconds",
+        "id",
+        "pin",
+        "secret"
+      ]
+    },
+    "DevicePairingPIN": {
+      "properties": [
+        "pin"
+      ],
+      "required": [
+        "pin"
+      ]
+    },
+    "DevicePairingCandidate": {
+      "properties": [
+        "id",
+        "name"
+      ],
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "DevicePairingApproval": {
+      "properties": [
+        "id",
+        "pin"
+      ],
+      "required": [
+        "id",
+        "pin"
+      ]
+    },
+    "DevicePairingApproved": {
+      "properties": [
+        "approved"
+      ],
+      "required": [
+        "approved"
+      ]
+    },
+    "DevicePairingRedemption": {
+      "properties": [
+        "id",
+        "secret"
+      ],
+      "required": [
+        "id",
+        "secret"
       ]
     },
     "DeviceTokenDraft": {

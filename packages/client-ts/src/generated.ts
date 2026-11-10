@@ -639,6 +639,40 @@ export interface DeviceTokenList {
   items: DeviceToken[];
 }
 
+export interface DevicePairingDraft {
+  name: string;
+}
+
+export interface DevicePairingChallenge {
+  id: string;
+  pin: string;
+  secret: string;
+  expiresInSeconds: number;
+}
+
+export interface DevicePairingPIN {
+  pin: string;
+}
+
+export interface DevicePairingCandidate {
+  id: string;
+  name: string;
+}
+
+export interface DevicePairingApproval {
+  id: string;
+  pin: string;
+}
+
+export interface DevicePairingApproved {
+  approved: boolean;
+}
+
+export interface DevicePairingRedemption {
+  id: string;
+  secret: string;
+}
+
 export interface DeviceTokenDraft {
   name: string;
   scopes: string[];

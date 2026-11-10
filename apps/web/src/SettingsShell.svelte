@@ -18,6 +18,7 @@
 
   let {
     client, appState, updates, onback, onview, onrejected, context,
+    pairingPin = '', onpaired = () => {},
     serverLabel = 'Emulation Server',
     onrename, onplayerschange, onsignin = () => {}, onsetup,
     selected = $bindable<SettingsSection>('libraries'),
@@ -26,6 +27,8 @@
     onlibrarychange = () => {},
   }: {
     client: ContentClient;
+    pairingPin?: string;
+    onpaired?: () => void;
     serverLabel?: string;
     appState: ApplicationState;
     updates?: ServerUpdatesView;
@@ -103,7 +106,7 @@
       <h1>Access</h1>
       <Accounts {client} libraries={appState.libraries} {onrejected} onchange={context.onchanged ?? (() => {})} />
       <Grants {client} onchange={() => noted++} />
-    {:else if appState.owner && active === 'devices'}<DeviceTokens {client} {onrejected} />
+    {:else if appState.owner && active === 'devices'}<DeviceTokens {client} {onrejected} {pairingPin} {onpaired} />
     {:else if active === 'webdav'}<WebDav {client} origin={context.origin} {onrejected} />
     {:else if appState.owner && active === 'activity'}
       <h1>Activity</h1>

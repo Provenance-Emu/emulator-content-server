@@ -44,8 +44,7 @@ test('owner creates scoped device tokens, lists without secrets, and revokes acc
     await expect(device.libraries()).rejects.toThrow();
   }
   await page.reload();
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Devices', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Devices', exact: true })).toBeVisible();
   await expect(page.getByLabel('Device access token', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('cell', { name: 'Revoked', exact: true })).toHaveCount(2);
 });
@@ -88,4 +87,45 @@ test('a created token survives list refresh failure and retry never creates a du
   expect(await secret.inputValue()).toBe(original);
   expect(posts).toBe(1);
   expect((await fixture.client.deviceTokens()).items).toHaveLength(1);
+});
+
+test('a scanned TV pairing link survives sign-in and requires explicit approval', async ({
+  page,
+  fixture,
+}) => {
+  async function pairingRequest(path: string, body: object) {
+    return fetch(`${fixture.origin}/api/v1/device-pairing${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  const response = await pairingRequest('', { name: 'Generated Apple TV' });
+  expect(response.status).toBe(201);
+  const { id, pin, secret } = (await response.json()) as {
+    id: string;
+    pin: string;
+    secret: string;
+  };
+  await page.goto(`${fixture.origin}/ui/?settings=devices#pair=${pin}`);
+  await page.getByLabel('Username', { exact: true }).fill('browser-owner');
+  await page.getByLabel('Password', { exact: true }).fill(fixture.password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+
+  await expect(page.getByLabel('Pairing PIN')).toHaveValue(pin);
+  await page.getByRole('button', { name: 'Review device' }).click();
+  await expect(page.getByText('Generated Apple TV', { exact: true })).toBeVisible();
+  expect((await pairingRequest('/redeem', { id, secret })).status).toBe(202);
+  await page.getByRole('button', { name: 'Approve read access' }).click();
+  await expect(page.getByText('Approved. The device can now connect.')).toBeVisible();
+  const redeemed = await pairingRequest('/redeem', { id, secret });
+  expect(redeemed.status).toBe(200);
+  const { token, scopes } = (await redeemed.json()) as { token: string; scopes: string[] };
+  expect(scopes).toEqual(['read']);
+  expect((await new ContentClient(fixture.origin, token).libraries()).items.length).toBeGreaterThan(
+    0,
+  );
+  expect(page.url()).not.toContain(secret);
+  expect(page.url()).not.toContain('#pair=');
 });

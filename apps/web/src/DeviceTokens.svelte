@@ -4,8 +4,14 @@
   import { explain } from './lib/problems';
   import FormField from './components/FormField.svelte';
   import InlineNotice from './components/InlineNotice.svelte';
+  import PairDevice from './PairDevice.svelte';
 
-  let { client, onrejected }: { client: ContentClient; onrejected: (status: 401 | 403) => void } = $props();
+  let { client, onrejected, pairingPin = '', onpaired = () => {} }: {
+    client: ContentClient;
+    onrejected: (status: 401 | 403) => void;
+    pairingPin?: string;
+    onpaired?: () => void;
+  } = $props();
   let devices = $state<DeviceToken[]>([]);
   let issued = $state<DeviceTokenCreated | null>(null);
   let name = $state('');
@@ -66,6 +72,7 @@
 </script>
 
 <h1>Devices</h1>
+<PairDevice {client} initialPin={pairingPin} onpaired={() => { onpaired(); void load(); }} />
 <p>Give an app a separate token for your account. Tokens follow your library access and can be revoked without signing out your other apps.</p>
 {#if loaded}
   {#if devices.length}<div class="table-scroll"><table>

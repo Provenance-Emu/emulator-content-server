@@ -1162,6 +1162,74 @@ paths:
       responses:
         '204':
           description: Guest grant revoked.
+  /api/v1/device-pairing:
+    post:
+      operationId: startDevicePairing
+      security: [{}]
+      description: Starts a five-minute pairing request when the web UI is enabled. Keep the returned secret on the requesting device. The PIN can be shown to the owner or placed in the fragment of the web UI URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DevicePairingDraft' }
+      responses:
+        '201':
+          description: Pending pairing request.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DevicePairingChallenge' }
+        '404': { description: Pairing is unavailable. }
+        '429': { description: Too many pending or recent requests. }
+  /api/v1/device-pairing/inspect:
+    post:
+      operationId: inspectDevicePairing
+      description: Owner sign-in required. Resolves a PIN to the device name for explicit approval.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DevicePairingPIN' }
+      responses:
+        '200':
+          description: Device awaiting approval.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DevicePairingCandidate' }
+        '404': { description: Pairing expired or unavailable. }
+  /api/v1/device-pairing/approve:
+    post:
+      operationId: approveDevicePairing
+      description: Owner sign-in required. Approves only the request inspected under this PIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DevicePairingApproval' }
+      responses:
+        '200':
+          description: Device approved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DevicePairingApproved' }
+        '404': { description: Pairing expired or unavailable. }
+  /api/v1/device-pairing/redeem:
+    post:
+      operationId: redeemDevicePairing
+      security: [{}]
+      description: Poll every three seconds with the requesting device's private secret. A successful redemption returns a read-only device token once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DevicePairingRedemption' }
+      responses:
+        '200':
+          description: Read-only token for the approved device.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
+        '202': { description: Awaiting owner approval. }
+        '404': { description: Pairing expired, already redeemed, or unavailable. }
   /api/v1/device-tokens:
     get:
       operationId: listDeviceTokens
@@ -2378,6 +2446,47 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/DeviceToken' }
+    DevicePairingDraft:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+    DevicePairingChallenge:
+      type: object
+      required: [id, pin, secret, expiresInSeconds]
+      properties:
+        id: { type: string }
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+        secret: { type: string }
+        expiresInSeconds: { type: integer }
+    DevicePairingPIN:
+      type: object
+      required: [pin]
+      properties:
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+    DevicePairingCandidate:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    DevicePairingApproval:
+      type: object
+      required: [id, pin]
+      properties:
+        id: { type: string }
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+    DevicePairingApproved:
+      type: object
+      required: [approved]
+      properties:
+        approved: { type: boolean }
+    DevicePairingRedemption:
+      type: object
+      required: [id, secret]
+      properties:
+        id: { type: string }
+        secret: { type: string }
     DeviceTokenDraft:
       type: object
       required: [name, scopes]

@@ -48,6 +48,10 @@
   let settingsLibraryId = $state('');
   let pendingLocation: ShellLocation | null = typeof window === 'undefined'
     ? null : readShellLocation(window.location.search);
+  // Retain the scanned code through sign-in, including on a trusted LAN.
+  const pairingFragment = typeof window === 'undefined' ? '' : window.location.hash.slice(1);
+  let pairingPin = $state(new URLSearchParams(pairingFragment).get('pair') ?? '');
+  let pairingOpened = false;
   let authenticated = false;
   let playerEpoch = $state(0);
   let drawer = $state(false);
@@ -70,6 +74,12 @@
       if (pendingLocation) {
         applyLocation(pendingLocation, state);
         pendingLocation = null;
+      }
+      if (state.owner && !pairingOpened && /^[0-9]{6}$/.test(pairingPin)) {
+        pairingOpened = true;
+        settings = true;
+        settingsSection = 'devices';
+        recordLocation(true);
       }
       if (!state.owner) editing = undefined;
       const selected = scope;
@@ -98,7 +108,7 @@
       settingsLibraryId,
     });
     const href = window.location.pathname + search;
-    if (href === window.location.pathname + window.location.search) return;
+    if (href === window.location.pathname + window.location.search && !window.location.hash) return;
     if (replace) window.history.replaceState(null, '', href);
     else window.history.pushState(null, '', href);
   }
@@ -231,6 +241,8 @@
         </div>
         {#if settings}<SettingsShell
             {updates}
+            {pairingPin}
+            onpaired={() => { pairingPin = ''; }}
             onsignin={() => { signingIn = true; drawer = false; }}
             onsetup={() => { guide = $application.owner ? 'host' : 'join'; }}
             serverLabel={context.label}

@@ -57,6 +57,7 @@ import {
   sendSourceContent,
 } from './content.js';
 import type { ServerContext } from './context.js';
+import { registerDevicePairing } from './device-pairing.js';
 import {
   assetDecision,
   itemDecision,
@@ -104,6 +105,7 @@ export function registerRoutes(
   onWatchedFolderAdded: (rootId: string) => void,
 ): void {
   const { catalog } = context;
+  registerDevicePairing(app, context);
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
   const matching = registerSourceMatching(app, context);
