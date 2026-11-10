@@ -13,6 +13,7 @@ apps/tray/src-tauri/gen/
 coverage/
 dist-release/
 clients/swift/.build/
+/.build/
 .swiftpm/
 
 # Browser acceptance artifacts can contain private application state.

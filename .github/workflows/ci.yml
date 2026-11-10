@@ -53,7 +53,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: swift test --package-path clients/swift
+      - run: swift test
 
   docker:
     if: github.event_name == 'workflow_dispatch'

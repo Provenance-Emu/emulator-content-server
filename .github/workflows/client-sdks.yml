@@ -42,8 +42,12 @@ jobs:
           spec=dist/client-sdks/openapi.yaml
           java -jar "$jar" validate -i "$spec"
           for target in typescript-fetch python swift6 objc csharp c cpp-qt-client kotlin java; do
+            options=()
+            # The C template uses `item` as a local JSON variable.
+            if [ "$target" = c ]; then options+=(--model-name-mappings Item=ecs_item); fi
             java -jar "$jar" generate -i "$spec" -g "$target" -o "dist/client-sdks/$target" \
-              --additional-properties hideGenerationTimestamp=true,disallowAdditionalPropertiesIfNotPresent=false
+              --additional-properties hideGenerationTimestamp=true,disallowAdditionalPropertiesIfNotPresent=false \
+              "${options[@]}"
           done
       - uses: actions/upload-artifact@v4
         with:

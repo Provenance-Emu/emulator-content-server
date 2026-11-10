@@ -176,7 +176,7 @@ paths:
       description: Owner bearer only. Add or replace operator-provided awbios.zip on the managed Dreamcast/arcade core. ZIP must contain bios0.ic23 (131072bytes). Shared with admitted players; firmware is never downloaded for the operator.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
-        - { name: name, in: path, required: true, schema: { type: string, enum: [awbios.zip] } }
+        - { name: name, in: path, required: true, schema: { type: string, pattern: '^awbios\.zip$' } }
       requestBody:
         required: true
         content:
@@ -1229,7 +1229,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
         '202': { description: Awaiting owner approval. }
-        '404': { description: Pairing expired, already redeemed, or unavailable. }
+        '404': { description: 'Pairing expired, already redeemed, or unavailable.' }
   /api/v1/device-tokens:
     get:
       operationId: listDeviceTokens
@@ -1414,14 +1414,14 @@ paths:
       operationId: "cancelWorkflowRun"
       description: "Owner-only workflow management."
       parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"type": "object","additionalProperties": false,"required": [],"properties": {}}}}}
+      requestBody: { $ref: '#/components/requestBodies/EmptyObject' }
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-runs/{runId}/resume:
     post:
       operationId: "resumeWorkflowRun"
       description: "Owner-only workflow management."
       parameters: [{"name": "runId","in": "path","required": true,"schema": {"type": "string"}}]
-      requestBody: {"required": true,"content": {"application/json": {"schema": {"type": "object","additionalProperties": false,"required": [],"properties": {}}}}}
+      requestBody: { $ref: '#/components/requestBodies/EmptyObject' }
       responses: {"200": {"description": "Workflow operation result.","content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowRunResponse"}}}},"400": {"description": "Invalid workflow request."},"401": {"description": "Missing, expired or revoked credential."},"403": {"description": "This credential lacks authority for this operation."},"409": {"description": "Workflow scope, lease, sequence or state conflict."}}
   /api/v1/workflow-workers/advertise:
     post:
@@ -1472,7 +1472,7 @@ paths:
       description: "Read-only scoped inspection or review data. Suggestions cannot approve or apply library changes."
       parameters: [{"name": "runId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Workflow inspection or finding data.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowCatalogResult"}}}}, "400": {"description": "Invalid observation or evidence."}, "401": {"description": "Missing or invalid credential."}, "403": {"description": "Credential outside scope."}, "409": {"description": "Source or run changed."}}
-      requestBody: {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": false, "required": [], "properties": {}}}}}
+      requestBody: { $ref: '#/components/requestBodies/EmptyObject' }
   /api/v1/workflow-workers/runs/{runId}/suggestions:
     post:
       operationId: "submitWorkflowSuggestions"
@@ -1557,9 +1557,15 @@ paths:
       description: "Owner-only exact cleanup approval, per-source application receipts and conditional undo. Host and investigator grants cannot call this operation."
       parameters: [{"name": "applicationId", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "sourceId", "in": "path", "required": true, "schema": {"type": "string"}}]
       responses: {"200": {"description": "Exact review or application receipt.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowApplicationResponse"}}}}, "400": {"description": "Invalid review request."}, "401": {"description": "Credential unavailable."}, "403": {"description": "Owner approval authority required."}, "404": {"description": "Review record unavailable."}, "409": {"description": "Source, selection, proposal or undo state changed."}}
-      requestBody: {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": false, "required": [], "properties": {}}}}}
+      requestBody: { $ref: '#/components/requestBodies/EmptyObject' }
 
 components:
+  requestBodies:
+    EmptyObject:
+      required: true
+      content:
+        application/json:
+          schema: { type: object, maxProperties: 0 }
   securitySchemes:
     bearerAuth:
       type: http
@@ -1712,14 +1718,14 @@ components:
         name: { type: string, maxLength: 80 }
         systems:
           type: array
-          items: { type: string, enum: [com.provenance.nes] }
+          items: { type: string, pattern: '^com\.provenance\.nes$' }
         runtime: { type: string, enum: [retroarch-emscripten-esm] }
-        threaded: { type: boolean, enum: [false] }
+        threaded: { type: boolean, not: { const: true }, description: Always false for this runtime. }
         filesystem: { type: string, enum: [memfs] }
         saveCompletion: { type: string, enum: [command-reply-v1] }
         frontendCommit: { type: string, enum: [4d4bfc0fbaacca30d433e5c11b0b2b5242141b66] }
         coreCommit: { type: string, enum: [ac0d00a7fc01166f84c7bac01d1084ebfd2b865e] }
-        emscriptenVersion: { type: string, enum: [3.1.46] }
+        emscriptenVersion: { type: string, pattern: '^3\.1\.46$' }
         contentExtension: { type: string, enum: [nes] }
         maxContentBytes: { type: integer, format: int64, minimum: 1, maximum: 67108864 }
         loader: { $ref: '#/components/schemas/PlayerCoreResource' }
@@ -2946,7 +2952,7 @@ components:
         sourceId: {"type": "string"}
         sha256: {"type": "string"}
         size: {"type": "integer","minimum": 0,"maximum": 2097152}
-        contentType: {"type": "string","enum": ["image/png","image/jpeg","image/webp"]}
+        contentType: { type: string, pattern: '^image/(?:png|jpeg|webp)$' }
         width: {"type": "integer","minimum": 1,"maximum": 16384}
         height: {"type": "integer","minimum": 1,"maximum": 16384}
         attributionJson: {"type": "string","maxLength": 65536}

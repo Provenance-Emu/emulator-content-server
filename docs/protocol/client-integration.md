@@ -38,7 +38,15 @@ If sign-in is required, POST a device name to `/api/v1/device-pairing`. Show the
 
 ## iOS and other Apple apps
 
-For Provenance, iCube and iFly, add the local Swift package at `clients/swift` from a pinned checkout. It provides Codable models and `ContentSync` for the change feed, save adoption and resume requests. The package declares iOS 17, tvOS 17, macOS 14 and visionOS 1 minimums. Use `URLSession` for catalog requests and file downloads. For example, after selecting a server and retrieving its token from Keychain:
+Pin the Emulation Server Swift SDK by adding the repository as a SwiftPM dependency:
+
+```swift
+.package(url: "https://github.com/Provenance-Emu/emulator-content-server.git", exact: "0.1.7-swift.1")
+```
+
+Add `.product(name: "EmulatorContentClient", package: "emulator-content-server")` to the app target's dependencies. Xcode can use the same URL with the **Exact Version** rule. The tag pins the Swift package and the matching OpenAPI contract together. Existing clients that vendor `clients/swift` can continue to use that package path.
+
+The package provides Codable models and `ContentSync` for the change feed, save adoption and resume requests. It declares iOS 17, tvOS 17, macOS 14 and visionOS 1 minimums. Use `URLSession` for catalog requests and file downloads. For example, after selecting a server and retrieving its token from Keychain:
 
 ```swift
 import EmulatorContentClient
@@ -58,7 +66,7 @@ func libraries(server: URL, token: String) async throws -> LibraryList {
 
 ## Virtual Jaguar on Windows, Linux and macOS
 
-Put the server picker, authentication, catalog and download cache in the standalone app's `app/` front end. Its existing HTTP layer uses WinHTTP on Windows and libcurl on Linux and macOS. Use the read flow above to stage the chosen game, then pass its local path to the existing loader. The generated C client below is a libcurl-based option for JSON calls. Keep large file transfers in the app's streaming layer.
+Put the server picker, authentication, catalog and download cache in the standalone app's `app/` front end. Its existing HTTP layer uses WinHTTP on Windows and libcurl on Linux and macOS. Use the read flow above to stage the chosen game, then pass its local path to the existing loader. Use the app's HTTP and JSON handling for catalog calls. The generated C client builds, but its parser rejects required nullable fields such as `nextCursor: null` on the last page. Stream file transfers to disk through the app's HTTP layer.
 
 Browse `com.provenance.jaguar` for cartridges and `com.provenance.jaguarcd` for discs. For an indexed CUE/BIN source, call `GET /api/v1/sources/{sourceId}/group`, check `error`, and download each member by ID into its `relativePath` under one staging directory. Open the staged CUE after all members are present. `/bundle` can download a complete disc group as a ZIP when the client supports safe extraction. CHD content requires support in the local emulator or a compatible server-provided virtual entry.
 
@@ -69,7 +77,7 @@ Install Java 21 and download the pinned [OpenAPI Generator CLI 7.27.0](https://r
 ```sh
 curl --fail --silent --show-error http://127.0.0.1:8473/openapi.yaml -o openapi.yaml
 java -jar openapi-generator.jar validate -i openapi.yaml
-java -jar openapi-generator.jar generate -i openapi.yaml -g swift6 -o sdk/swift
+java -jar openapi-generator.jar generate -i openapi.yaml -g swift6 -o sdk/swift --additional-properties "hideGenerationTimestamp=true,disallowAdditionalPropertiesIfNotPresent=false"
 ```
 
 Replace `-g swift6 -o sdk/swift` with any of these arguments. The same Java commands work from PowerShell.
@@ -81,10 +89,17 @@ Replace `-g swift6 -o sdk/swift` with any of these arguments. The same Java comm
 | Swift | `-g swift6 -o sdk/swift` | Swift 6 package |
 | Objective-C | `-g objc -o sdk/objc` | Objective-C client |
 | C# | `-g csharp -o sdk/csharp` | .NET client |
-| C | `-g c -o sdk/c` | C client using libcurl |
+| C | `-g c -o sdk/c --model-name-mappings Item=ecs_item` | C client using libcurl |
 | C++ | `-g cpp-qt-client -o sdk/cpp` | C++ client using Qt |
 | Kotlin | `-g kotlin -o sdk/kotlin` | Kotlin client |
 | Java | `-g java -o sdk/java` | Java client |
+
+With the platform's libcurl development files installed, build the generated C client with CMake.
+
+```sh
+cmake -S sdk/c -B sdk/c-build -DCMAKE_POLICY_VERSION_MINIMUM=3.10
+cmake --build sdk/c-build --config Release
+```
 
 For any target, `java -jar openapi-generator.jar config-help -g <target>` lists package and transport options. Set the generated client's base URL to the server origin, such as `https://content.example.org`. The generated paths include `/api/v1`. See the [generator catalog](https://openapi-generator.tech/docs/generators/).
 
