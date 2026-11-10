@@ -118,6 +118,90 @@ test('long names remain pageable', async () => {
   }
 });
 
+test('GameCube and Wii folder scans are visible to scoped browse and search', async () => {
+  const f = await libraryFixture();
+  try {
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    const path = join(f.base, 'shared');
+    for (const [folder, name] of [
+      ['Nintendo - GameCube', 'Generated Cube.gcm'],
+      ['Nintendo - Wii', 'Generated Wii.rvz'],
+      ['Nintendo - Wii', 'Generated Wii WIA.wia'],
+      ['NES', 'Generated Unrelated.nes'],
+    ] as const) {
+      await mkdir(join(path, folder), { recursive: true });
+      await writeFile(join(path, folder, name), 'generated');
+    }
+    const root = f.catalog.createContentRoot({
+      path,
+      label: 'shared',
+      libraryId: f.library.id,
+      actorId: f.owner.id,
+    });
+    f.catalog.applyInspection({
+      rootId: root.id,
+      actorId: f.owner.id,
+      online: true,
+      files: [
+        {
+          relativePath: 'Nintendo - Wii/Generated Wii.rvz',
+          displayName: 'Generated Wii.rvz',
+          size: 9,
+          blocks: 1,
+          kind: 'rom',
+          systemId: 'com.provenance.nes',
+          availability: 'local',
+        },
+      ],
+    });
+    const previouslyMisclassified = f.catalog.listSources(root.id)[0];
+    assert.ok(previouslyMisclassified);
+    const scan = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/roots/${root.id}/scan`,
+      headers: f.auth,
+    });
+    assert.equal(scan.statusCode, 200, scan.body);
+    assert.equal(f.catalog.getSource(previouslyMisclassified.id)?.systemId, 'com.provenance.wii');
+
+    const device = await f.app.inject({
+      method: 'POST',
+      url: '/api/v1/device-tokens',
+      headers: f.auth,
+      payload: { name: 'Generated iCube', scopes: ['read'], expiresInSeconds: 3600 },
+    });
+    assert.equal(device.statusCode, 201);
+    const headers = { authorization: `Bearer ${device.json().token}` };
+    const libraries = await f.app.inject({ url: '/api/v1/browse-libraries', headers });
+    assert.equal(libraries.statusCode, 200);
+    assert.ok(libraries.json().items.some((entry: { id: string }) => entry.id === f.library.id));
+
+    const url = `/api/v1/browse?libraryId=${f.library.id}&category=games&systemIds=com.provenance.gamecube,com.provenance.wii`;
+    const page = await f.app.inject({ url, headers });
+    assert.equal(page.statusCode, 200, page.body);
+    assert.deepEqual(
+      page
+        .json()
+        .items.map((row: { source: { name: string; systemId: string } }) => [
+          row.source.name,
+          row.source.systemId,
+        ]),
+      [
+        ['Generated Cube.gcm', 'com.provenance.gamecube'],
+        ['Generated Wii WIA.wia', 'com.provenance.wii'],
+        ['Generated Wii.rvz', 'com.provenance.wii'],
+      ],
+    );
+    const search = await f.app.inject({ url: `${url}&search=Wii%20WIA`, headers });
+    assert.equal(search.statusCode, 200, search.body);
+    assert.equal(search.json().items.length, 1);
+    assert.equal(search.json().items[0].source.name, 'Generated Wii WIA.wia');
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('guest source content rejects known IDs outside read and item scope', async () => {
   const f = await libraryFixture();
   try {

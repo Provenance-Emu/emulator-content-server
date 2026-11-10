@@ -4,6 +4,10 @@ Browse the [public Swagger reference](https://provenance-emu.com/emulator-conten
 
 The contract uses OpenAPI 3.1.2. OpenAPI 3.2.1 is the newer specification, but the pinned generator cannot validate this contract as 3.2.1. The wire API is still `/api/v1`. See the [OpenAPI specification versions](https://spec.openapis.org/oas/) and [protocol versioning](versioning.md).
 
+## Discover a server on the LAN
+
+When the server runs with `--advertise`, browse `_pvcontent._tcp` and resolve the Bonjour service's host and port. TXT provides the server UUID (`id`), protocol major (`v=1`), display name (`name`), operator-declared TLS termination (`tls=0|1`), and bootstrap state at startup (`pair=0|1`). Use normal certificate validation for HTTPS and allow a manual origin when the proxy listens at a different address. Device PIN pairing is available after bootstrap on servers with the web UI. Use the HTTP response to determine whether pairing is needed or available.
+
 ## Browse and download a game
 
 1. An operator sets up the server and adds games by scanning a folder into a library or uploading them. The client can call `GET /api/v1/capabilities` before signing in and check `protocol.major` and feature flags.

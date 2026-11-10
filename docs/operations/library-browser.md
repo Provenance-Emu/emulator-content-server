@@ -153,6 +153,8 @@ The Systems with games bar shows counts across all readable games in the selecte
 
 Scans use the Provenance system/extension catalog snapshot recorded in `packages/protocol/src/rom-systems.ts`, plus nearest folder name hints, including the registered folder's own name. Shared disc/archive extensions such as CUE, BIN, ISO and CHD do not imply PlayStation. A folder named for Jaguar therefore provides a Jaguar hint; an unhinted CUE stays unknown. These are filename/folder hints, not header or hash identification. Rescan an existing folder to update its cached classification. Source files are left in place. Scanning opens only local CUE/M3U/GDI/CCD descriptors up to 64 KiB; it does not open ROM/track bytes or cloud placeholders.
 
+iCube browses games classified as GameCube or Wii in libraries its credential can read. For formats shared by both systems, such as ISO, RVZ and WIA, use separate `GameCube` and `Wii` folders and rescan. If a game is missing from iCube, check that the server's Games view lists it under the right system and that the folder is assigned to a readable library.
+
 ## Disc sets
 
 CUE/BIN, M3U multi-disc playlists, GDI track sets and CCD/IMG/SUB companions appear as one Games entry after scanning. Referenced members stay available in the game detail with individual downloads. Download complete set as ZIP streams a ZIP64 archive in the original relative layout, including descriptors and subchannel files. The server validates each member and rechecks descriptors before downloading. ZIP bundles do not support ranges. Browser native save streams are used when available; other browsers receive a normal Blob download.

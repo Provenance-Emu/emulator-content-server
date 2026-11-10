@@ -11,12 +11,12 @@ const definitions = [
   {
     id: 'com.provenance.gamecube',
     names: ['GameCube', 'GC', 'gamecube'],
-    extensions: ['zip', 'elf', 'iso', 'gcm', 'dol', 'tgc', 'wbfs', 'ciso', 'gcz', 'wad', 'rvz'],
+    extensions: ['zip', 'elf', 'iso', 'gcm', 'dol', 'tgc', 'ciso', 'gcz', 'wad', 'rvz', 'wia'],
   },
   {
     id: 'com.provenance.wii',
     names: ['Wii', 'wii'],
-    extensions: ['zip', 'elf', 'iso', 'gcm', 'dol', 'tgc', 'wbfs', 'ciso', 'gcz', 'wad', 'rvz'],
+    extensions: ['zip', 'elf', 'iso', 'dol', 'tgc', 'wbfs', 'ciso', 'gcz', 'wad', 'rvz', 'wia'],
   },
   {
     id: 'com.provenance.n64',
@@ -516,7 +516,13 @@ export function detectRomSystem(path: string): RomSystemDetection {
           !containers.has(s.alias) &&
           name.includes(` ${s.alias} `),
       )
-      .sort((a, b) => b.alias.length - a.alias.length);
+      // "Nintendo" alone can name the NES, but is also a vendor prefix in folders
+      // such as "Nintendo - Wii". Prefer the console name when both match.
+      .sort(
+        (a, b) =>
+          Number(a.alias === 'nintendo') - Number(b.alias === 'nintendo') ||
+          b.alias.length - a.alias.length,
+      );
     if (hints[0]) {
       hinted = hints[0].id;
       break;
