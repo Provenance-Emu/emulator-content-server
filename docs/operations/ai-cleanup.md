@@ -120,3 +120,5 @@ can remove that marker and is outside the supported restore procedure.
 
 Built-in model/provider connections and the separate inbound MCP adapter remain
 tracked independently. The external-assistant adapter is issue #27.
+
+For an external assistant, see [Connect an MCP investigator](./mcp-investigator.md).

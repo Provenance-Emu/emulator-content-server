@@ -931,6 +931,117 @@ export interface WorkflowFindingResponse {
   finding: WorkflowFinding;
 }
 
+export interface InvestigatorDraft {
+  libraryIds: string[];
+  operations: string[];
+  ttlSeconds: number;
+}
+
+export interface InvestigatorCredential {
+  id: string;
+  libraryIds: string[];
+  operations: string[];
+  expiresAt: string;
+}
+
+export interface InvestigatorCreated {
+  credential: InvestigatorCredential;
+  token: string;
+}
+
+export interface InvestigatorList {
+  items: InvestigatorCredential[];
+}
+
+export interface InvestigatorLibrary {
+  id: string;
+  name: string;
+}
+
+export interface InvestigatorLibraryList {
+  items: InvestigatorLibrary[];
+}
+
+export interface InvestigatorSource {
+  id: string;
+  name: string;
+  systemId: string | null;
+}
+
+export interface InvestigatorSourcePage {
+  items: InvestigatorSource[];
+  nextCursor: string | null;
+}
+
+export interface InvestigatorRunDraft {
+  libraryId: string;
+  sourceIds: string[];
+}
+
+export interface InvestigatorRun {
+  id: string;
+  state: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvestigatorRunResponse {
+  run: InvestigatorRun;
+}
+
+export interface InvestigatorFinding {
+  id: string;
+  sourceId: string;
+  kind: string;
+  evidenceIds: string[];
+  dismissed: boolean;
+  reason: string;
+}
+
+export interface InvestigatorProposal {
+  id: string;
+  sourceId: string;
+  findingId: string;
+  version: number;
+  digest: string;
+  action: string;
+  evidenceClass?: string;
+}
+
+export interface InvestigatorFindingPage {
+  items: InvestigatorFinding[];
+  nextCursor: string | null;
+}
+
+export interface InvestigatorProposalPage {
+  items: InvestigatorProposal[];
+  nextCursor: string | null;
+}
+
+export interface InvestigatorSuggestion {
+  sourceId: string;
+  kind: string;
+  reason: string;
+  candidateIds: string[];
+  evidenceIds: string[];
+}
+
+export interface InvestigatorSuggestionResponse {
+  findings: InvestigatorFinding[];
+  proposals: InvestigatorProposal[];
+}
+
+export interface InvestigatorJobCount {
+  kind: string;
+  state: string;
+  count: number;
+}
+
+export interface InvestigatorDiagnostics {
+  workflowHostRecentlySeen: boolean;
+  jobs: InvestigatorJobCount[];
+}
+
 export interface WorkflowHost {
   packages?: WorkflowPackageSummary[];
   lastSeenAt?: string | null;

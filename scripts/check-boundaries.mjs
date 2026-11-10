@@ -26,6 +26,7 @@ const allowed = {
     '@ecs/webdav',
     '@ecs/plugins',
   ],
+  '@ecs/mcp': ['@ecs/client'],
   '@ecs/plugin-host': ['@ecs/client', '@ecs/plugins', '@ecs/protocol', '@ecs/signing'],
   '@provenance-content/server': [
     '@ecs/auth',
@@ -50,6 +51,7 @@ const locations = {
   '@ecs/web': 'apps/web',
   '@ecs/tray': 'apps/tray',
   '@ecs/server': 'apps/server',
+  '@ecs/mcp': 'apps/mcp',
   '@ecs/plugin-host': 'apps/plugins',
   '@provenance-content/server': 'apps/cli',
 };

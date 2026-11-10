@@ -106,6 +106,7 @@ export class WorkflowRunRepository {
     actorId: string,
     now = Date.now(),
     requestKey?: string,
+    initialState: 'queued' | 'running' = 'queued',
   ): WorkflowRun {
     requireWorkflowOwner(this.db, actorId);
     if (
@@ -115,8 +116,15 @@ export class WorkflowRunRepository {
       workflowError('invalid-request', 400);
     if (
       !this.db
-        .prepare('SELECT id FROM workflow_hosts WHERE id=? AND revoked_at IS NULL')
-        .get(draft.hostId)
+        .prepare(
+          "SELECT id FROM workflow_hosts WHERE id=? AND revoked_at IS NULL AND (id LIKE 'investigator:%')=? AND (?=0 OR owner_id=?)",
+        )
+        .get(
+          draft.hostId,
+          Number(initialState === 'running'),
+          Number(initialState === 'running'),
+          actorId,
+        )
     )
       workflowError('not-found', 404);
     const scope = draft.scope;
@@ -183,7 +191,7 @@ export class WorkflowRunRepository {
         time = new Date(now).toISOString();
       this.db
         .prepare(
-          "INSERT INTO workflow_runs(id,workflow_id,workflow_digest,host_id,actor_id,scope_json,options_json,state,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'queued',?,?)",
+          'INSERT INTO workflow_runs(id,workflow_id,workflow_digest,host_id,actor_id,scope_json,options_json,state,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
         )
         .run(
           id,
@@ -193,6 +201,7 @@ export class WorkflowRunRepository {
           actorId,
           workflowJson(scope),
           workflowJson(draft.options),
+          initialState,
           time,
           time,
         );

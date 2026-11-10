@@ -28,6 +28,12 @@ export const WORKFLOW_STAGING_LIMITS: WorkflowStagingLimits = {
   serverBytes: 1024 * 1024 * 1024,
 };
 
+// Apply current scope before LIMIT so a cursor never depends on a moved source.
+const currentWork = `AND EXISTS (SELECT 1 FROM workflow_work w
+  JOIN live_source_files s ON s.id=w.source_id JOIN content_roots r ON r.id=s.root_id
+  WHERE w.run_id=p.run_id AND w.source_id=p.source_id AND w.library_id IS r.library_id
+  AND w.index_validator=ecs_workflow_stamp(s.root_id,s.relative_path,s.size,s.filesystem_identity,s.mtime_ms))`;
+
 export class WorkflowProposalRepository {
   constructor(
     private readonly db: DatabaseSync,
@@ -431,11 +437,16 @@ export class WorkflowProposalRepository {
       )
       .run(row.fingerprint, actorId, decision, new Date().toISOString());
   }
-  pageFindings(runId: string, cursor?: string, limit = 20): WorkflowPage<WorkflowFinding> {
+  pageFindings(
+    runId: string,
+    cursor?: string,
+    limit = 20,
+    currentOnly = false,
+  ): WorkflowPage<WorkflowFinding> {
     workflowPageLimit(limit);
     const rows = this.db
       .prepare(
-        'SELECT id,finding_json FROM workflow_findings WHERE run_id=? AND id>? ORDER BY id LIMIT ?',
+        `SELECT p.id,p.finding_json FROM workflow_findings p WHERE p.run_id=? AND p.id>? ${currentOnly ? currentWork : ''} ORDER BY p.id LIMIT ?`,
       )
       .all(runId, cursor ?? '', limit + 1) as { id: string; finding_json: string }[];
     return {
@@ -446,11 +457,16 @@ export class WorkflowProposalRepository {
       nextCursor: rows.length > limit ? (rows[limit - 1]?.id ?? null) : null,
     };
   }
-  pageProposals(runId: string, cursor?: string, limit = 20): WorkflowPage<WorkflowProposal> {
+  pageProposals(
+    runId: string,
+    cursor?: string,
+    limit = 20,
+    currentOnly = false,
+  ): WorkflowPage<WorkflowProposal> {
     workflowPageLimit(limit);
     const rows = this.db
       .prepare(
-        'SELECT p.id,p.proposal_json FROM workflow_proposals p WHERE p.run_id=? AND p.id>? AND p.version=(SELECT max(latest.version) FROM workflow_proposals latest WHERE latest.id=p.id) ORDER BY p.id LIMIT ?',
+        `SELECT p.id,p.proposal_json FROM workflow_proposals p WHERE p.run_id=? AND p.id>? AND p.version=(SELECT max(latest.version) FROM workflow_proposals latest WHERE latest.id=p.id) ${currentOnly ? currentWork : ''} ORDER BY p.id LIMIT ?`,
       )
       .all(runId, cursor ?? '', limit + 1) as { id: string; proposal_json: string }[];
     return {

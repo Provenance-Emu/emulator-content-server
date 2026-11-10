@@ -44,6 +44,18 @@ import type {
   GuestGrantCreated,
   GuestGrantDraft,
   GuestGrantList,
+  InvestigatorCreated,
+  InvestigatorDiagnostics,
+  InvestigatorDraft,
+  InvestigatorFindingPage,
+  InvestigatorLibraryList,
+  InvestigatorList,
+  InvestigatorProposalPage,
+  InvestigatorRunDraft,
+  InvestigatorRunResponse,
+  InvestigatorSourcePage,
+  InvestigatorSuggestion,
+  InvestigatorSuggestionResponse,
   Item,
   ItemDraft,
   ItemList,
@@ -223,6 +235,8 @@ export interface UploadRequest {
   onProgress?: (sent: number, total: number) => void;
 }
 
+type InvestigatorPageQuery = { cursor?: string; limit?: number };
+
 export class ContentClient {
   constructor(
     private readonly baseUrl: string,
@@ -301,6 +315,126 @@ export class ContentClient {
       { decision },
     );
   }
+  createInvestigator(draft: InvestigatorDraft): Promise<InvestigatorCreated> {
+    return this.investigatorJson('/api/v1/investigators', undefined, 'POST', draft);
+  }
+  investigators(): Promise<InvestigatorList> {
+    return this.investigatorJson('/api/v1/investigators');
+  }
+  revokeInvestigator(id: string): Promise<void> {
+    return this.investigatorJson(
+      `/api/v1/investigators/${encodeURIComponent(id)}`,
+      undefined,
+      'DELETE',
+    );
+  }
+  investigatorLibraries(signal?: AbortSignal): Promise<InvestigatorLibraryList> {
+    return this.investigatorJson('/api/v1/investigator/libraries', signal);
+  }
+  investigatorSources(
+    libraryId: string,
+    page: InvestigatorPageQuery = {},
+    signal?: AbortSignal,
+  ): Promise<InvestigatorSourcePage> {
+    return this.investigatorJson(
+      investigatorPage(
+        `/api/v1/investigator/libraries/${encodeURIComponent(libraryId)}/sources`,
+        page,
+      ),
+      signal,
+    );
+  }
+  investigatorDiagnostics(signal?: AbortSignal): Promise<InvestigatorDiagnostics> {
+    return this.investigatorJson('/api/v1/investigator/diagnostics', signal);
+  }
+  startInvestigatorRun(
+    draft: InvestigatorRunDraft,
+    signal?: AbortSignal,
+  ): Promise<InvestigatorRunResponse> {
+    return this.investigatorJson('/api/v1/investigator/runs', signal, 'POST', draft);
+  }
+  investigatorRun(id: string, signal?: AbortSignal): Promise<InvestigatorRunResponse> {
+    return this.investigatorJson(investigatorRunPath(id), signal);
+  }
+  cancelInvestigatorRun(id: string, signal?: AbortSignal): Promise<InvestigatorRunResponse> {
+    return this.investigatorJson(`${investigatorRunPath(id)}/cancel`, signal, 'POST', {});
+  }
+  finishInvestigatorRun(id: string, signal?: AbortSignal): Promise<InvestigatorRunResponse> {
+    return this.investigatorJson(`${investigatorRunPath(id)}/finish`, signal, 'POST', {});
+  }
+  inspectInvestigatorSource(
+    runId: string,
+    sourceId: string,
+    signal?: AbortSignal,
+  ): Promise<WorkflowCatalogResult> {
+    return this.investigatorJson(
+      `${investigatorRunPath(runId)}/sources/${encodeURIComponent(sourceId)}/inspect`,
+      signal,
+      'POST',
+      {},
+    );
+  }
+  investigatorFindings(
+    runId: string,
+    page: InvestigatorPageQuery = {},
+    signal?: AbortSignal,
+  ): Promise<InvestigatorFindingPage> {
+    return this.investigatorJson(
+      investigatorPage(`${investigatorRunPath(runId)}/findings`, page),
+      signal,
+    );
+  }
+  investigatorProposals(
+    runId: string,
+    page: InvestigatorPageQuery = {},
+    signal?: AbortSignal,
+  ): Promise<InvestigatorProposalPage> {
+    return this.investigatorJson(
+      investigatorPage(`${investigatorRunPath(runId)}/proposals`, page),
+      signal,
+    );
+  }
+  submitInvestigatorSuggestion(
+    runId: string,
+    draft: InvestigatorSuggestion,
+    signal?: AbortSignal,
+  ): Promise<InvestigatorSuggestionResponse> {
+    return this.investigatorJson(
+      `${investigatorRunPath(runId)}/suggestions`,
+      signal,
+      'POST',
+      draft,
+    );
+  }
+  private async investigatorJson<T>(
+    path: string,
+    abort?: AbortSignal,
+    method = 'GET',
+    body?: object,
+  ): Promise<T> {
+    const signal = this.requestSignal(abort);
+    const response = await fetch(this.url(path), {
+      method,
+      redirect: 'error',
+      headers: { ...this.headers(), ...(body ? { 'content-type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      signal,
+    });
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new ContentError(response.status, null);
+    }
+    if (response.status === 204) return undefined as T;
+    const parts: Uint8Array[] = [];
+    let size = 0;
+    for await (const part of chunks(response.body, signal)) {
+      size += part.byteLength;
+      if (size > 128 * 1024) throw new RangeError('Investigator response exceeded 128 KiB');
+      parts.push(part);
+    }
+    return JSON.parse(new TextDecoder().decode(concat(parts, size))) as T;
+  }
+
   workflowHosts(): Promise<{ items: WorkflowHost[] }> {
     return this.getJson('/api/v1/workflow-hosts');
   }
@@ -1734,6 +1868,17 @@ export class ContentClient {
     if (this.token) headers.authorization = `Bearer ${this.token}`;
     return headers;
   }
+}
+
+function investigatorRunPath(id: string): string {
+  return `/api/v1/investigator/runs/${encodeURIComponent(id)}`;
+}
+
+function investigatorPage(path: string, query: InvestigatorPageQuery): string {
+  const params = new URLSearchParams();
+  if (query.cursor !== undefined) params.set('cursor', query.cursor);
+  if (query.limit !== undefined) params.set('limit', String(query.limit));
+  return `${path}?${params}`;
 }
 
 class DownloadChangedError extends Error {}

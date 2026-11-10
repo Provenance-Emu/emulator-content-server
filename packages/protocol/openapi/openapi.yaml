@@ -1363,6 +1363,104 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/LibraryJobResponse'}
+  /api/v1/investigators:
+    get:
+      operationId: listInvestigators
+      description: "Owner only. List the active investigator grants for this owner."
+      security: [{"bearerAuth":[]}]
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorList"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+    post:
+      operationId: createInvestigator
+      description: "Owner only. Return a library-scoped investigator token once."
+      security: [{"bearerAuth":[]}]
+      requestBody: {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorDraft"}}}}
+      responses: {"201":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorCreated"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
+  /api/v1/investigators/{credentialId}:
+    delete:
+      operationId: revokeInvestigator
+      description: "Owner only. Revoke a credential and cancel its active investigations."
+      security: [{"bearerAuth":[]}]
+      parameters: [{"name":"credentialId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
+      responses: {"204":{"description":"Operation succeeded."},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+  /api/v1/investigator/libraries:
+    get:
+      operationId: listInvestigatorLibraries
+      description: "Inspect scope. List live libraries allowed by the grant."
+      security: [{"investigatorAuth":[]}]
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorLibraryList"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+  /api/v1/investigator/libraries/{libraryId}/sources:
+    get:
+      operationId: listInvestigatorSources
+      description: "Inspect scope. Page through indexed game sources, omitting paths."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"libraryId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"cursor","in":"query","schema":{"type":"string","minLength":1,"maxLength":160}},{"name":"limit","in":"query","schema":{"type":"integer","minimum":1,"maximum":20}}]
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorSourcePage"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+  /api/v1/investigator/diagnostics:
+    get:
+      operationId: getInvestigatorDiagnostics
+      description: "Diagnostics scope. Coarse host liveness and counts of active jobs scoped explicitly to granted libraries."
+      security: [{"investigatorAuth":[]}]
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorDiagnostics"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+  /api/v1/investigator/runs:
+    post:
+      operationId: startInvestigatorRun
+      description: "Cleanup scope. Start a bounded, local investigation of explicit sources, with no external workflow host or provider."
+      security: [{"investigatorAuth":[]}]
+      requestBody: {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunDraft"}}}}
+      responses: {"201":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
+  /api/v1/investigator/runs/{runId}:
+    get:
+      operationId: getInvestigatorRun
+      description: "Cleanup scope. Get the state of a run created with this credential."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+  /api/v1/investigator/runs/{runId}/cancel:
+    post:
+      operationId: cancelInvestigatorRun
+      description: "Cleanup scope. Stop the investigation and retain its suggestions for owner review."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
+      requestBody: {"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
+  /api/v1/investigator/runs/{runId}/finish:
+    post:
+      operationId: finishInvestigatorRun
+      description: "Cleanup scope. Complete the investigation once all selected sources have been inspected."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
+      requestBody: {"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorRunResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
+  /api/v1/investigator/runs/{runId}/sources/{sourceId}/inspect:
+    post:
+      operationId: inspectInvestigatorSource
+      description: "Inspect scope. Collect local source facts and candidate evidence in an active investigation."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"sourceId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
+      requestBody: {"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"properties":{}}}}}
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowCatalogResult"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
+  /api/v1/investigator/runs/{runId}/findings:
+    get:
+      operationId: listInvestigatorFindings
+      description: "Inspect scope. Page through findings for sources still in scope."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"cursor","in":"query","schema":{"type":"string","minLength":1,"maxLength":160}},{"name":"limit","in":"query","schema":{"type":"integer","minimum":1,"maximum":20}}]
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorFindingPage"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+  /api/v1/investigator/runs/{runId}/proposals:
+    get:
+      operationId: listInvestigatorProposals
+      description: "Inspect scope. Page through proposal identities and versions for sources still in scope."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}},{"name":"cursor","in":"query","schema":{"type":"string","minLength":1,"maxLength":160}},{"name":"limit","in":"query","schema":{"type":"integer","minimum":1,"maximum":20}}]
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorProposalPage"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."}}
+  /api/v1/investigator/runs/{runId}/suggestions:
+    post:
+      operationId: submitInvestigatorSuggestion
+      description: "Suggest scope. Submit one observation backed by ECS evidence. Any resulting proposal requires owner review and apply."
+      security: [{"investigatorAuth":[]}]
+      parameters: [{"name":"runId","in":"path","required":true,"schema":{"type":"string","minLength":1,"maxLength":200}}]
+      requestBody: {"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorSuggestion"}}}}
+      responses: {"200":{"description":"Operation succeeded.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/InvestigatorSuggestionResponse"}}}},"400":{"description":"Invalid request."},"401":{"description":"Missing, invalid, expired or revoked credential."},"403":{"description":"The credential lacks this operation."},"404":{"description":"Resource is unavailable in this scope."},"409":{"description":"The scope, run state or source changed."},"429":{"description":"Operation is busy or quota was reached."}}
   /api/v1/workflow-hosts:
     get:
       operationId: "listWorkflowHosts"
@@ -1567,6 +1665,10 @@ components:
         application/json:
           schema: { type: object, maxProperties: 0 }
   securitySchemes:
+    investigatorAuth:
+      type: http
+      scheme: bearer
+      description: Short-lived investigator token scoped to specified libraries and operations.
     bearerAuth:
       type: http
       scheme: bearer
@@ -2825,6 +2927,155 @@ components:
       required: [finding]
       properties:
         finding: {$ref: '#/components/schemas/WorkflowFinding'}
+    InvestigatorDraft:
+      type: object
+      additionalProperties: false
+      required: ["libraryIds","operations","ttlSeconds"]
+      properties:
+        libraryIds: {"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"maxItems":20,"minItems":1,"uniqueItems":true}
+        operations: {"type":"array","items":{"type":"string","enum":["inspect","cleanup","suggest","diagnostics"]},"maxItems":4,"minItems":1,"uniqueItems":true}
+        ttlSeconds: {"type":"integer","minimum":60,"maximum":86400}
+    InvestigatorCredential:
+      type: object
+      additionalProperties: false
+      required: ["id","libraryIds","operations","expiresAt"]
+      properties:
+        id: {"type":"string","minLength":1,"maxLength":200}
+        libraryIds: {"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"maxItems":20,"minItems":1,"uniqueItems":true}
+        operations: {"type":"array","items":{"type":"string","enum":["inspect","cleanup","suggest","diagnostics"]},"maxItems":4,"minItems":1,"uniqueItems":true}
+        expiresAt: {"type":"string","format":"date-time"}
+    InvestigatorCreated:
+      type: object
+      additionalProperties: false
+      required: ["credential","token"]
+      properties:
+        credential: {"$ref":"#/components/schemas/InvestigatorCredential"}
+        token: {"type":"string","minLength":1,"maxLength":100}
+    InvestigatorList:
+      type: object
+      additionalProperties: false
+      required: ["items"]
+      properties:
+        items: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorCredential"},"maxItems":32}
+    InvestigatorLibrary:
+      type: object
+      additionalProperties: false
+      required: ["id","name"]
+      properties:
+        id: {"type":"string","minLength":1,"maxLength":200}
+        name: {"type":"string","minLength":1,"maxLength":200}
+    InvestigatorLibraryList:
+      type: object
+      additionalProperties: false
+      required: ["items"]
+      properties:
+        items: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorLibrary"},"maxItems":20}
+    InvestigatorSource:
+      type: object
+      additionalProperties: false
+      required: ["id","name","systemId"]
+      properties:
+        id: {"type":"string","minLength":1,"maxLength":200}
+        name: {"type":"string","minLength":1,"maxLength":4096}
+        systemId: {"type":["string","null"]}
+    InvestigatorSourcePage:
+      type: object
+      additionalProperties: false
+      required: ["items","nextCursor"]
+      properties:
+        items: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorSource"},"maxItems":20}
+        nextCursor: {"type":["string","null"]}
+    InvestigatorRunDraft:
+      type: object
+      additionalProperties: false
+      required: ["libraryId","sourceIds"]
+      properties:
+        libraryId: {"type":"string","minLength":1,"maxLength":200}
+        sourceIds: {"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"maxItems":100,"minItems":1,"uniqueItems":true}
+    InvestigatorRun:
+      type: object
+      additionalProperties: false
+      required: ["id","state","createdAt","updatedAt"]
+      properties:
+        id: {"type":"string","minLength":1,"maxLength":200}
+        state: {"type":"string","enum":["queued","running","interrupted","completed","cancelled","failed","recovery-required"]}
+        createdAt: {"type":"string","minLength":1,"maxLength":40}
+        updatedAt: {"type":"string","minLength":1,"maxLength":40}
+    InvestigatorRunResponse:
+      type: object
+      additionalProperties: false
+      required: ["run"]
+      properties:
+        run: {"$ref":"#/components/schemas/InvestigatorRun"}
+    InvestigatorFinding:
+      type: object
+      additionalProperties: false
+      required: ["id","sourceId","kind","evidenceIds","dismissed","reason"]
+      properties:
+        id: {"type":"string","minLength":1,"maxLength":200}
+        sourceId: {"type":"string","minLength":1,"maxLength":200}
+        kind: {"type":"string","enum":["identity-conflict","suspected-mismatch","missing-front-artwork","questionable-front-artwork","unavailable-selected-artwork"]}
+        evidenceIds: {"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"maxItems":5}
+        dismissed: {"type":"boolean"}
+        reason: {"type":"string","minLength":1,"maxLength":512}
+    InvestigatorProposal:
+      type: object
+      additionalProperties: false
+      required: ["id","sourceId","findingId","version","digest","action"]
+      properties:
+        id: {"type":"string","minLength":1,"maxLength":200}
+        sourceId: {"type":"string","minLength":1,"maxLength":200}
+        findingId: {"type":"string","minLength":1,"maxLength":200}
+        version: {"type":"integer","minimum":1}
+        digest: {"type":"string","minLength":1,"maxLength":64}
+        action: {"type":"string","enum":["replace-metadata","replace-system","replace-front-artwork"]}
+        evidenceClass: {"type":"string","enum":["verified-source","saved-selection","filename","local","unverified"]}
+    InvestigatorFindingPage:
+      type: object
+      additionalProperties: false
+      required: ["items","nextCursor"]
+      properties:
+        items: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorFinding"},"maxItems":20}
+        nextCursor: {"type":["string","null"]}
+    InvestigatorProposalPage:
+      type: object
+      additionalProperties: false
+      required: ["items","nextCursor"]
+      properties:
+        items: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorProposal"},"maxItems":20}
+        nextCursor: {"type":["string","null"]}
+    InvestigatorSuggestion:
+      type: object
+      additionalProperties: false
+      required: ["sourceId","kind","reason","candidateIds","evidenceIds"]
+      properties:
+        sourceId: {"type":"string","minLength":1,"maxLength":200}
+        kind: {"type":"string","enum":["identity-conflict","suspected-mismatch","missing-front-artwork","questionable-front-artwork","unavailable-selected-artwork"]}
+        reason: {"type":"string","minLength":1,"maxLength":512}
+        candidateIds: {"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"maxItems":1}
+        evidenceIds: {"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"maxItems":5,"minItems":1}
+    InvestigatorSuggestionResponse:
+      type: object
+      additionalProperties: false
+      required: ["findings","proposals"]
+      properties:
+        findings: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorFinding"},"maxItems":1}
+        proposals: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorProposal"},"maxItems":1}
+    InvestigatorJobCount:
+      type: object
+      additionalProperties: false
+      required: ["kind","state","count"]
+      properties:
+        kind: {"type":"string","enum":["scan","match"]}
+        state: {"type":"string","enum":["queued","running","interrupted"]}
+        count: {"type":"integer","minimum":1}
+    InvestigatorDiagnostics:
+      type: object
+      additionalProperties: false
+      required: ["workflowHostRecentlySeen","jobs"]
+      properties:
+        workflowHostRecentlySeen: {"type":"boolean"}
+        jobs: {"type":"array","items":{"$ref":"#/components/schemas/InvestigatorJobCount"},"maxItems":6}
     WorkflowHost:
       type: object
       additionalProperties: false

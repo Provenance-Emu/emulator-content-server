@@ -35,8 +35,10 @@ export function validateWorkflowSuggestion(value: unknown, knownEvidence: Readon
 export function createWorkflowEvidenceService(
   context: ServerContext,
   matching: SourceMatchingService,
+  investigatorGuard?: (run: WorkflowRun, sourceId: string) => void,
 ) {
   function scoped(run: WorkflowRun, sourceId: string): Actor & { kind: 'user' } {
+    investigatorGuard?.(run, sourceId);
     if (run.state !== 'running')
       throw new DomainError('workflow-state-conflict', 409, 'This inspection run is not active');
     if (!context.catalog.workflowRuns.sourceSnapshot(run.id, sourceId))
@@ -74,9 +76,10 @@ export function createWorkflowEvidenceService(
   async function facts(run: WorkflowRun, sourceId: string): Promise<WorkflowSourceFacts> {
     const actor = scoped(run, sourceId);
     const file = await localSource(context, actor, sourceId);
+    const sourceValidator = workflowHash((await sourceMetadata(file.path, sourceId)).etag);
+    investigatorGuard?.(run, sourceId);
     const source = visibleSource(context, actor, sourceId);
     const selected = context.catalog.sourceMatches(sourceId);
-    const sourceValidator = workflowHash((await sourceMetadata(file.path, sourceId)).etag);
     function contentAvailable(match: (typeof selected.matches)[number]): boolean {
       if (
         match.kind !== 'artwork' ||
@@ -140,10 +143,12 @@ export function createWorkflowEvidenceService(
         continue;
       try {
         await matching.validateInspection(actor, payload.inspection.stamps);
-        return payload.result;
       } catch {
         /* Changed companions require a new immutable inspection. */
+        continue;
       }
+      investigatorGuard?.(run, sourceId);
+      return payload.result;
     }
     const inspection = await matching.inspect(
       actor,
@@ -152,6 +157,7 @@ export function createWorkflowEvidenceService(
         online: run.options.online,
         checksum: run.options.checksum,
         allowExactNames: true,
+        ...(investigatorGuard ? { bundledLocalOnly: true } : {}),
         ...(run.options.providerIds ? { providerIds: run.options.providerIds } : {}),
       },
       signal,
@@ -300,21 +306,33 @@ export function createWorkflowEvidenceService(
         return { ...payload, candidate };
       });
       for (const id of observation.candidateIds) {
-        if (
-          !observation.evidenceIds.some((evidenceId) => {
-            const receipt = context.catalog.workflowProposals.getEvidence(
-              run.id,
-              sourceId,
-              evidenceId,
-            );
-            return receipt && JSON.parse(receipt.payloadJson).candidate?.id === id;
-          })
-        )
+        const candidate = observation.evidenceIds
+          .map((evidenceId) =>
+            context.catalog.workflowProposals.getEvidence(run.id, sourceId, evidenceId),
+          )
+          .map(
+            (receipt) =>
+              receipt &&
+              (JSON.parse(receipt.payloadJson) as Partial<WorkflowCandidateRecord>).candidate,
+          )
+          .find((value) => value?.id === id);
+        if (!candidate)
           throw new DomainError(
             'invalid-request',
             400,
             'Candidate is not supported by this observation',
           );
+        if (investigatorGuard) {
+          const findingAboutIdentity = ['identity-conflict', 'suspected-mismatch'].includes(
+            observation.kind,
+          );
+          if (findingAboutIdentity === (candidate.kind === 'artwork'))
+            throw new DomainError(
+              'invalid-request',
+              400,
+              'Candidate does not address this observation',
+            );
+        }
       }
       return {
         ...observation,
@@ -359,6 +377,7 @@ export function createWorkflowEvidenceService(
             },
             matching,
             signal,
+            () => investigatorGuard?.(run, sourceId),
           ),
         );
       }
@@ -380,6 +399,7 @@ export function createWorkflowEvidenceService(
         ),
       );
     }
+    investigatorGuard?.(run, sourceId);
     return { findings, proposals: materialized };
   }
   return { facts, search, suggest };

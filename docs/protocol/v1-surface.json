@@ -3,6 +3,7 @@
     "DELETE /api/v1/device-tokens/:tokenId",
     "DELETE /api/v1/files/:assetId",
     "DELETE /api/v1/guest-grants/:grantId",
+    "DELETE /api/v1/investigators/:credentialId",
     "DELETE /api/v1/items/:itemId",
     "DELETE /api/v1/items/:itemId/access/:userId",
     "DELETE /api/v1/libraries/:libraryId/members/:userId",
@@ -27,6 +28,13 @@
     "GET /api/v1/files/:assetId/entries/:entryId/content",
     "GET /api/v1/folders",
     "GET /api/v1/guest-grants",
+    "GET /api/v1/investigator/diagnostics",
+    "GET /api/v1/investigator/libraries",
+    "GET /api/v1/investigator/libraries/:libraryId/sources",
+    "GET /api/v1/investigator/runs/:runId",
+    "GET /api/v1/investigator/runs/:runId/findings",
+    "GET /api/v1/investigator/runs/:runId/proposals",
+    "GET /api/v1/investigators",
     "GET /api/v1/items",
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/manifest",
@@ -95,6 +103,12 @@
     "POST /api/v1/device-tokens",
     "POST /api/v1/files/:assetId/adopt",
     "POST /api/v1/guest-grants",
+    "POST /api/v1/investigator/runs",
+    "POST /api/v1/investigator/runs/:runId/cancel",
+    "POST /api/v1/investigator/runs/:runId/finish",
+    "POST /api/v1/investigator/runs/:runId/sources/:sourceId/inspect",
+    "POST /api/v1/investigator/runs/:runId/suggestions",
+    "POST /api/v1/investigators",
     "POST /api/v1/items",
     "POST /api/v1/libraries",
     "POST /api/v1/library-jobs",
@@ -1917,6 +1931,227 @@
       ],
       "required": [
         "finding"
+      ]
+    },
+    "InvestigatorDraft": {
+      "properties": [
+        "libraryIds",
+        "operations",
+        "ttlSeconds"
+      ],
+      "required": [
+        "libraryIds",
+        "operations",
+        "ttlSeconds"
+      ]
+    },
+    "InvestigatorCredential": {
+      "properties": [
+        "expiresAt",
+        "id",
+        "libraryIds",
+        "operations"
+      ],
+      "required": [
+        "expiresAt",
+        "id",
+        "libraryIds",
+        "operations"
+      ]
+    },
+    "InvestigatorCreated": {
+      "properties": [
+        "credential",
+        "token"
+      ],
+      "required": [
+        "credential",
+        "token"
+      ]
+    },
+    "InvestigatorList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "InvestigatorLibrary": {
+      "properties": [
+        "id",
+        "name"
+      ],
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "InvestigatorLibraryList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "InvestigatorSource": {
+      "properties": [
+        "id",
+        "name",
+        "systemId"
+      ],
+      "required": [
+        "id",
+        "name",
+        "systemId"
+      ]
+    },
+    "InvestigatorSourcePage": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "InvestigatorRunDraft": {
+      "properties": [
+        "libraryId",
+        "sourceIds"
+      ],
+      "required": [
+        "libraryId",
+        "sourceIds"
+      ]
+    },
+    "InvestigatorRun": {
+      "properties": [
+        "createdAt",
+        "id",
+        "state",
+        "updatedAt"
+      ],
+      "required": [
+        "createdAt",
+        "id",
+        "state",
+        "updatedAt"
+      ]
+    },
+    "InvestigatorRunResponse": {
+      "properties": [
+        "run"
+      ],
+      "required": [
+        "run"
+      ]
+    },
+    "InvestigatorFinding": {
+      "properties": [
+        "dismissed",
+        "evidenceIds",
+        "id",
+        "kind",
+        "reason",
+        "sourceId"
+      ],
+      "required": [
+        "dismissed",
+        "evidenceIds",
+        "id",
+        "kind",
+        "reason",
+        "sourceId"
+      ]
+    },
+    "InvestigatorProposal": {
+      "properties": [
+        "action",
+        "digest",
+        "evidenceClass",
+        "findingId",
+        "id",
+        "sourceId",
+        "version"
+      ],
+      "required": [
+        "action",
+        "digest",
+        "findingId",
+        "id",
+        "sourceId",
+        "version"
+      ]
+    },
+    "InvestigatorFindingPage": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "InvestigatorProposalPage": {
+      "properties": [
+        "items",
+        "nextCursor"
+      ],
+      "required": [
+        "items",
+        "nextCursor"
+      ]
+    },
+    "InvestigatorSuggestion": {
+      "properties": [
+        "candidateIds",
+        "evidenceIds",
+        "kind",
+        "reason",
+        "sourceId"
+      ],
+      "required": [
+        "candidateIds",
+        "evidenceIds",
+        "kind",
+        "reason",
+        "sourceId"
+      ]
+    },
+    "InvestigatorSuggestionResponse": {
+      "properties": [
+        "findings",
+        "proposals"
+      ],
+      "required": [
+        "findings",
+        "proposals"
+      ]
+    },
+    "InvestigatorJobCount": {
+      "properties": [
+        "count",
+        "kind",
+        "state"
+      ],
+      "required": [
+        "count",
+        "kind",
+        "state"
+      ]
+    },
+    "InvestigatorDiagnostics": {
+      "properties": [
+        "jobs",
+        "workflowHostRecentlySeen"
+      ],
+      "required": [
+        "jobs",
+        "workflowHostRecentlySeen"
       ]
     },
     "WorkflowHost": {

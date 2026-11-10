@@ -74,6 +74,7 @@ import {
   stringList,
   withIdempotency,
 } from './http.js';
+import { registerInvestigatorRoutes } from './investigator-routes.js';
 import { registerLibraryBrowse } from './library-browse.js';
 import { enqueueRootScan, registerLibraryJobs } from './library-jobs.js';
 import { accessView } from './local-access.js';
@@ -115,6 +116,7 @@ export function registerRoutes(
   registerWorkflowWorkerRoutes(app, context);
   registerWorkflowEvidence(app, context, matching);
   registerWorkflowApprovals(app, context);
+  registerInvestigatorRoutes(app, context, matching);
 
   const uploadMutations = new Set<string>();
   async function mutateUpload<T>(

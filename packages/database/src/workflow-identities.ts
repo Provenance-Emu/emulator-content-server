@@ -58,7 +58,9 @@ export class WorkflowIdentityRepository {
   listHosts(): WorkflowHost[] {
     return (
       this.db
-        .prepare('SELECT * FROM workflow_hosts ORDER BY created_at,id')
+        .prepare(
+          "SELECT * FROM workflow_hosts WHERE id NOT LIKE 'investigator:%' ORDER BY created_at,id",
+        )
         .all() as unknown as HostRow[]
     ).map(summary);
   }

@@ -9,6 +9,13 @@ export {
   type UploadRecord,
   type WebDavCredentialRecord,
 } from './catalog.js';
+export {
+  type InvestigatorOperation,
+  type InvestigatorPrincipal,
+  InvestigatorRepository,
+  investigatorHostId,
+  investigatorOperations,
+} from './investigators.js';
 export type {
   BrowsePosition,
   BrowseRecord,

@@ -29,6 +29,7 @@ This repository is the emulator content server. Keep changes inside the package 
 | `packages/signing` | IPA inspection, profile reading, what a signed build may be called |
 | `packages/plugins` | Plugin manifests, connector ports, AltStore feeds, player and signer plans |
 | `apps/plugins` | `ecs-plugins` host. Separate process from the content server |
+| `apps/mcp` | `ecs-mcp` stdio adapter over the scoped investigator API |
 | `examples/plugins` | Sample feeds and connectors other developers copy |
 | `apps/tray` | Tauri menu-bar status, one application for macOS, Windows, and Linux |
 | `docs/workstreams` | Follow-on briefs. Do not implement those briefs in an unrelated PR |

@@ -136,6 +136,7 @@ export async function stageWorkflowArtwork(
   receipt: WorkflowCandidateRecord,
   matching: Pick<SourceMatchingService, 'validateInspection' | 'readResource'>,
   signal: AbortSignal,
+  guard?: () => void,
 ): Promise<WorkflowArtifact> {
   const candidate = receipt.candidate;
   if (candidate.kind !== 'artwork' || (candidate.metadata.artworkRole ?? 'front') !== 'front')
@@ -181,6 +182,7 @@ export async function stageWorkflowArtwork(
     attributionJson,
     expiresAt: null,
   };
+  guard?.();
   return context.catalog.workflowProposals.stageArtifact(
     artifact,
     bytes,
@@ -194,6 +196,7 @@ export async function materializeCleanupProposal(
   value: CleanupProposalDraft,
   matching: Pick<SourceMatchingService, 'validateInspection' | 'readResource'>,
   signal: AbortSignal,
+  guard?: () => void,
 ): Promise<WorkflowProposal> {
   let draft: CleanupProposalDraft;
   try {
@@ -281,6 +284,7 @@ export async function materializeCleanupProposal(
       );
   }
   await validateCurrent();
+  guard?.();
   const id = workflowHash([run.id, draft.sourceId, finding.id, draft.action, candidate.id]);
   const existing = context.catalog.workflowProposals.getProposal(id);
   if (
@@ -292,10 +296,11 @@ export async function materializeCleanupProposal(
   await matching.validateInspection(actor, record.stamps);
   const artifact =
     kind === 'artwork'
-      ? await stageWorkflowArtwork(context, run, draft.sourceId, record, matching, signal)
+      ? await stageWorkflowArtwork(context, run, draft.sourceId, record, matching, signal, guard)
       : null;
   signal.throwIfAborted();
   await validateCurrent();
+  guard?.();
   const snapshot: SourceMatchRecord = {
     id: candidate.id,
     providerId: candidate.providerId,

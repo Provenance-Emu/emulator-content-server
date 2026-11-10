@@ -186,6 +186,7 @@ export async function buildApp(
     bodyLimit: 1024 * 1024,
   });
   app.decorateRequest('actor', null);
+  app.decorateRequest('investigator', null);
   app.decorateRequest('workflowPrincipal', null);
   if (startup) {
     app.addHook('onRequest', async (_request, reply) => {
@@ -233,6 +234,14 @@ export async function buildApp(
     request.actor = null;
     request.workflowPrincipal = null;
     const header = request.headers.authorization;
+    if (request.routeOptions.url?.startsWith('/api/v1/investigator/')) {
+      const token = /^Bearer\s+(\S+)$/.exec(header ?? '')?.[1];
+      const investigator = token && context.catalog.investigators.authenticate(hashToken(token));
+      if (!investigator)
+        throw new DomainError('unauthorized', 401, 'Investigator token is invalid or expired');
+      request.investigator = investigator;
+      return;
+    }
     if (header) {
       const match = /^Bearer\s+(\S+)$/.exec(header);
       if (!match?.[1]) throw new DomainError('unauthorized', 401, 'Bearer token is required');
@@ -290,6 +299,7 @@ export async function buildApp(
   const collectWorkflowArtifacts = () => {
     if (startup && !startup.acceptingRequests()) return;
     try {
+      context.catalog.investigators.expireRuns();
       context.catalog.workflowProposals.collectWorkflowArtifacts();
     } catch {
       app.log.warn('Workflow artifact collection deferred');

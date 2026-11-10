@@ -81,11 +81,13 @@ export function matchBody(value: unknown): {
   };
 }
 
+type InspectionOptions = ReturnType<typeof matchBody> & { bundledLocalOnly?: boolean };
+
 export interface SourceMatchingService {
   inspect(
     actor: Actor & { kind: 'user' },
     sourceId: string,
-    options: ReturnType<typeof matchBody>,
+    options: InspectionOptions,
     signal: AbortSignal,
   ): Promise<MatchingInspection>;
   validateInspection(actor: Actor, stamps: Record<string, string>): Promise<void>;
@@ -147,10 +149,13 @@ export function registerSourceMatching(
   app.addHook('preClose', async () => {
     abort.abort();
     jobs.clear();
-    await closeMatchingWorkers({
-      ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
-      catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
-    });
+    const catalogCacheDirectory = join(context.dataDir, 'cache', 'matching-catalogs');
+    await Promise.all([
+      closeMatchingWorkers({ catalogCacheDirectory }),
+      ...(context.matchingPluginsDir
+        ? [closeMatchingWorkers({ directory: context.matchingPluginsDir, catalogCacheDirectory })]
+        : []),
+    ]);
   });
   async function plugins(): Promise<MatchingPluginDescription[]> {
     if (pluginList && pluginList.expires >= Date.now()) return pluginList.plugins;
@@ -198,7 +203,7 @@ export function registerSourceMatching(
   function match(
     actor: Actor & { kind: 'user' },
     sourceId: string,
-    options: ReturnType<typeof matchBody>,
+    options: InspectionOptions,
     signal: AbortSignal,
   ) {
     visibleSource(context, actor, sourceId);
@@ -220,7 +225,7 @@ export function registerSourceMatching(
   async function executeMatch(
     actor: Actor & { kind: 'user' },
     sourceId: string,
-    options: ReturnType<typeof matchBody>,
+    options: InspectionOptions,
     signal: AbortSignal,
   ) {
     const source = visibleSource(context, actor, sourceId);
@@ -228,7 +233,7 @@ export function registerSourceMatching(
       throw new DomainError('matching-busy', 429, 'Matching is busy. Try again shortly.');
     active++;
     try {
-      const available = await plugins();
+      const available = options.bundledLocalOnly ? [] : await plugins();
       if (
         options.providerIds?.some(
           (id) => !available.some((p) => p.id === id && p.kind === 'provider'),
@@ -250,7 +255,7 @@ export function registerSourceMatching(
       const input: MatchingInput = {
         name: source.displayName,
         systemId: source.systemId,
-        online: options.online,
+        online: !options.bundledLocalOnly && options.online,
         ...(options.allowExactNames ? { allowExactNames: true } : {}),
         companions: [],
         ...(selected && selectedSystem && (!source.systemId || selectedSystem === source.systemId)
@@ -353,9 +358,17 @@ export function registerSourceMatching(
           operation: 'match',
           catalogCacheDirectory: join(context.dataDir, 'cache', 'matching-catalogs'),
           input,
-          ...(context.matchingPluginsDir ? { directory: context.matchingPluginsDir } : {}),
-          ...(options.providerIds ? { providerIds: options.providerIds } : {}),
-          ...(options.managerId ? { managerId: options.managerId } : {}),
+          ...(!options.bundledLocalOnly && context.matchingPluginsDir
+            ? { directory: context.matchingPluginsDir }
+            : {}),
+          ...(options.bundledLocalOnly
+            ? { providerIds: ['org.ecs.local'] }
+            : options.providerIds
+              ? { providerIds: options.providerIds }
+              : {}),
+          ...(!options.bundledLocalOnly && options.managerId
+            ? { managerId: options.managerId }
+            : {}),
         },
         { signal },
       );

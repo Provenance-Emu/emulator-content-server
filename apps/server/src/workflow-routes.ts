@@ -159,6 +159,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, context: ServerCont
           503,
           'Connect a workflow host before starting cleanup',
         );
+      context.catalog.investigators.expireRuns();
       const key = request.headers['idempotency-key'];
       const run = context.catalog.workflowRuns.createRun(
         input,

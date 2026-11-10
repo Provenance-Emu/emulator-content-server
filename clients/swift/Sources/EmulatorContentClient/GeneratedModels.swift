@@ -1864,6 +1864,228 @@ public struct WorkflowFindingResponse: Codable, Equatable, Sendable {
     }
 }
 
+public struct InvestigatorDraft: Codable, Equatable, Sendable {
+    public var libraryIds: [String]
+    public var operations: [String]
+    public var ttlSeconds: Int
+
+    public init(libraryIds: [String], operations: [String], ttlSeconds: Int) {
+        self.libraryIds = libraryIds
+        self.operations = operations
+        self.ttlSeconds = ttlSeconds
+    }
+}
+
+public struct InvestigatorCredential: Codable, Equatable, Sendable {
+    public var id: String
+    public var libraryIds: [String]
+    public var operations: [String]
+    public var expiresAt: String
+
+    public init(id: String, libraryIds: [String], operations: [String], expiresAt: String) {
+        self.id = id
+        self.libraryIds = libraryIds
+        self.operations = operations
+        self.expiresAt = expiresAt
+    }
+}
+
+public struct InvestigatorCreated: Codable, Equatable, Sendable {
+    public var credential: InvestigatorCredential
+    public var token: String
+
+    public init(credential: InvestigatorCredential, token: String) {
+        self.credential = credential
+        self.token = token
+    }
+}
+
+public struct InvestigatorList: Codable, Equatable, Sendable {
+    public var items: [InvestigatorCredential]
+
+    public init(items: [InvestigatorCredential]) {
+        self.items = items
+    }
+}
+
+public struct InvestigatorLibrary: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+public struct InvestigatorLibraryList: Codable, Equatable, Sendable {
+    public var items: [InvestigatorLibrary]
+
+    public init(items: [InvestigatorLibrary]) {
+        self.items = items
+    }
+}
+
+public struct InvestigatorSource: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var systemId: String?
+
+    public init(id: String, name: String, systemId: String? = nil) {
+        self.id = id
+        self.name = name
+        self.systemId = systemId
+    }
+}
+
+public struct InvestigatorSourcePage: Codable, Equatable, Sendable {
+    public var items: [InvestigatorSource]
+    public var nextCursor: String?
+
+    public init(items: [InvestigatorSource], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct InvestigatorRunDraft: Codable, Equatable, Sendable {
+    public var libraryId: String
+    public var sourceIds: [String]
+
+    public init(libraryId: String, sourceIds: [String]) {
+        self.libraryId = libraryId
+        self.sourceIds = sourceIds
+    }
+}
+
+public struct InvestigatorRun: Codable, Equatable, Sendable {
+    public var id: String
+    public var state: String
+    public var createdAt: String
+    public var updatedAt: String
+
+    public init(id: String, state: String, createdAt: String, updatedAt: String) {
+        self.id = id
+        self.state = state
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct InvestigatorRunResponse: Codable, Equatable, Sendable {
+    public var run: InvestigatorRun
+
+    public init(run: InvestigatorRun) {
+        self.run = run
+    }
+}
+
+public struct InvestigatorFinding: Codable, Equatable, Sendable {
+    public var id: String
+    public var sourceId: String
+    public var kind: String
+    public var evidenceIds: [String]
+    public var dismissed: Bool
+    public var reason: String
+
+    public init(id: String, sourceId: String, kind: String, evidenceIds: [String], dismissed: Bool, reason: String) {
+        self.id = id
+        self.sourceId = sourceId
+        self.kind = kind
+        self.evidenceIds = evidenceIds
+        self.dismissed = dismissed
+        self.reason = reason
+    }
+}
+
+public struct InvestigatorProposal: Codable, Equatable, Sendable {
+    public var id: String
+    public var sourceId: String
+    public var findingId: String
+    public var version: Int
+    public var digest: String
+    public var action: String
+    public var evidenceClass: String?
+
+    public init(id: String, sourceId: String, findingId: String, version: Int, digest: String, action: String, evidenceClass: String? = nil) {
+        self.id = id
+        self.sourceId = sourceId
+        self.findingId = findingId
+        self.version = version
+        self.digest = digest
+        self.action = action
+        self.evidenceClass = evidenceClass
+    }
+}
+
+public struct InvestigatorFindingPage: Codable, Equatable, Sendable {
+    public var items: [InvestigatorFinding]
+    public var nextCursor: String?
+
+    public init(items: [InvestigatorFinding], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct InvestigatorProposalPage: Codable, Equatable, Sendable {
+    public var items: [InvestigatorProposal]
+    public var nextCursor: String?
+
+    public init(items: [InvestigatorProposal], nextCursor: String? = nil) {
+        self.items = items
+        self.nextCursor = nextCursor
+    }
+}
+
+public struct InvestigatorSuggestion: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var kind: String
+    public var reason: String
+    public var candidateIds: [String]
+    public var evidenceIds: [String]
+
+    public init(sourceId: String, kind: String, reason: String, candidateIds: [String], evidenceIds: [String]) {
+        self.sourceId = sourceId
+        self.kind = kind
+        self.reason = reason
+        self.candidateIds = candidateIds
+        self.evidenceIds = evidenceIds
+    }
+}
+
+public struct InvestigatorSuggestionResponse: Codable, Equatable, Sendable {
+    public var findings: [InvestigatorFinding]
+    public var proposals: [InvestigatorProposal]
+
+    public init(findings: [InvestigatorFinding], proposals: [InvestigatorProposal]) {
+        self.findings = findings
+        self.proposals = proposals
+    }
+}
+
+public struct InvestigatorJobCount: Codable, Equatable, Sendable {
+    public var kind: String
+    public var state: String
+    public var count: Int
+
+    public init(kind: String, state: String, count: Int) {
+        self.kind = kind
+        self.state = state
+        self.count = count
+    }
+}
+
+public struct InvestigatorDiagnostics: Codable, Equatable, Sendable {
+    public var workflowHostRecentlySeen: Bool
+    public var jobs: [InvestigatorJobCount]
+
+    public init(workflowHostRecentlySeen: Bool, jobs: [InvestigatorJobCount]) {
+        self.workflowHostRecentlySeen = workflowHostRecentlySeen
+        self.jobs = jobs
+    }
+}
+
 public struct WorkflowHost: Codable, Equatable, Sendable {
     public var packages: [WorkflowPackageSummary]?
     public var lastSeenAt: String?

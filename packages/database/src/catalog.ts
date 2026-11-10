@@ -16,6 +16,7 @@ import {
   type SourceAvailability,
   type SourceFileRecord,
 } from '@ecs/domain';
+import { InvestigatorRepository } from './investigators.js';
 import {
   type BrowsePosition,
   type BrowseRecord,
@@ -171,6 +172,7 @@ export class CatalogDatabase {
   readonly libraryJobs: LibraryJobRepository;
   readonly workflowRuns: WorkflowRunRepository;
   readonly workflowProposals: WorkflowProposalRepository;
+  readonly investigators: InvestigatorRepository;
   readonly workflowIdentities: WorkflowIdentityRepository;
   readonly workflowApplications: WorkflowApplicationRepository;
   private readonly db: DatabaseSync;
@@ -206,6 +208,7 @@ export class CatalogDatabase {
       this.libraryJobs = new LibraryJobRepository(this.db);
       this.workflowRuns = new WorkflowRunRepository(this.db);
       this.workflowProposals = new WorkflowProposalRepository(this.db);
+      this.investigators = new InvestigatorRepository(this.db);
       this.workflowIdentities = new WorkflowIdentityRepository(this.db);
       this.workflowApplications = new WorkflowApplicationRepository(
         this.db,
