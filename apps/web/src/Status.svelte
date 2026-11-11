@@ -40,9 +40,16 @@
     </p>
     <ul class="tags">
       {#each features as [name, on] (name)}
-        <li class:on>{name}</li>
+        <li class:on>{name}{#if !on} <span class="dim">off</span>{/if}</li>
       {/each}
     </ul>
+    {#if !capabilities.features.webdav}
+      <p class="dim">
+        WebDAV is off because the server was started without it. Start it with
+        <code>--webdav</code>, or reinstall the background service with
+        <code>ecs service install --webdav</code>, to browse the library from Finder or a file manager.
+      </p>
+    {/if}
   {:else}
     <p class="dim">Waiting for the server to answer.</p>
   {/if}

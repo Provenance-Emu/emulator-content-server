@@ -1,6 +1,6 @@
 # Web design language
 
-Emulation Server is a compact utility for people finding and organizing their games. Keep the charcoal surfaces, muted text, blue selection, plain labels, and native buttons. Use readable system fonts, modest headings, and left-click/touch actions. Avoid making settings feel like a landing page.
+Emulation Server is a compact utility for people finding and organizing their games. Keep the quiet surfaces, muted text, blue selection, plain labels, and native buttons. The blue is the Provenance app blue; the dark theme uses charcoal surfaces and the light theme uses white panels on a pale grey canvas. Use readable system fonts, modest headings, and left-click/touch actions. Avoid making settings feel like a landing page.
 
 ## Global customization
 
@@ -16,6 +16,16 @@ Emulation Server is a compact utility for people finding and organizing their ga
 | Shape | `--border-width`, `--radius-sm`, `--radius-control`, `--radius-panel`, `--radius-dialog` |
 | Controls | `--control-height-touch`, `--control-height-desktop`, `--control-padding-block`, `--control-padding-inline` |
 | Focus and motion | `--focus-width`, `--focus-offset`, `--focus-color`, `--motion-control` |
+
+### Light and dark
+
+The colour tokens have a dark set and a light set. With no choice saved the page follows the system (`prefers-color-scheme`). **Appearance** in the sidebar saves `light` or `dark` in `localStorage` under `ecs.theme`, and `lib/theme.ts` sets `data-theme` on the root element before the app mounts; the tray entry points call the same function. The light values are written twice in `app.css`, once inside the media query and once under `:root[data-theme="light"]`. Change both together.
+
+Never write a colour in a component. Covers and placeholders use `--color-artwork-*`, highlighted panels use `--color-feature*`, and cautions use `--color-warning`. The player page has its own stylesheet and stays dark.
+
+### Collection toolbar
+
+One row: search, **Filter & sort**, and the Grid/List switch. Filters open as a panel over the grid on wide screens and inline below 1000px, so opening them does not push the games down. System chips and active-filter chips are 1.75rem pills for a mouse and full touch height on any coarse pointer. Add a new filter inside `.collection-option-fields`, not to the row.
 
 Existing `--ink`, `--ink-dim`, `--paper`, `--panel`, `--line`, `--accent`, and `--warn` are compatibility aliases. Prefer semantic tokens in new components. Apply theme overrides to `:root`; scoped overrides can directly use the compatibility names where old components need them.
 

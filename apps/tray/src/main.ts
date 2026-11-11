@@ -1,4 +1,5 @@
 import '@ecs/web/app.css';
+import { applyTheme, readTheme } from '@ecs/web/lib/theme';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { mount } from 'svelte';
@@ -9,6 +10,8 @@ import { insideTauri, installTray } from './lib/tray';
 import { ServerWatch } from './lib/watch.svelte';
 import { openExternal, showLibrary } from './lib/windows';
 import Panel from './Panel.svelte';
+
+applyTheme(readTheme());
 
 const target = document.getElementById('app');
 if (!target) throw new Error('The page is missing its mount point');

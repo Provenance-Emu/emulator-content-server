@@ -4,7 +4,10 @@ import App from './App.svelte';
 import type { ServerContext } from './lib/application';
 import { createSessionStore } from './lib/session';
 import { readShellLocation, shellLocationSearch } from './lib/shell-navigation';
+import { applyTheme, readTheme } from './lib/theme';
 import './app.css';
+
+applyTheme(readTheme());
 
 const target = document.getElementById('app');
 if (!target) throw new Error('The page is missing its mount point');

@@ -15,6 +15,7 @@
   import SetupGuide from './SetupGuide.svelte';
   import { readSetupProgress, type SetupMode } from './lib/setup-progress';
   import SettingsShell from './SettingsShell.svelte';
+  import ThemePicker from './components/ThemePicker.svelte';
   import ServerUpdatePrompt from './ServerUpdatePrompt.svelte';
   import Modal from './components/Modal.svelte';
   let {
@@ -345,6 +346,7 @@
         >
           Sign out
         </button>{:else}<p class="dim">This network allows access without a password.</p><button type="button" onclick={() => { signingIn = true; drawer = false; }}>Sign in</button>{/if}
+      <ThemePicker />
     </div>
   </nav>
 {/snippet}

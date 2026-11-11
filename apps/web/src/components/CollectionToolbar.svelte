@@ -40,7 +40,7 @@
     }}
   >
     <label class="search-field">
-      Search collection
+      <span class="visually-hidden">Search collection</span>
       <input type="search" bind:value={search} placeholder="Find a game by name" />
     </label>
     <button type="submit">Search</button>
@@ -82,33 +82,34 @@
           <option value="name_desc">Name Z–A</option>
         </select>
       </label>
-      <fieldset class="view-switch">
-        <legend>Collection view</legend>
-        {#each ['grid', 'list'] as view}<label>
-            <input
-              type="radio"
-              name="collection-view"
-              value={view}
-              checked={filters.view === view}
-              onchange={() => onchange({ view: view as 'grid' | 'list' })}
-            />
-            {view === 'grid' ? 'Grid' : 'List'}
-          </label>{/each}
-      </fieldset>
     </div>
   </details>
+  <fieldset class="view-switch">
+    <legend>Collection view</legend>
+    {#each ['grid', 'list'] as view}<label>
+        <input
+          type="radio"
+          name="collection-view"
+          value={view}
+          checked={filters.view === view}
+          onchange={() => onchange({ view: view as 'grid' | 'list' })}
+        />
+        {view === 'grid' ? 'Grid' : 'List'}
+      </label>{/each}
+  </fieldset>
   {#if filters.search || filters.systemId || filters.systemIds.length || filters.rootId}
     <div class="active-filters" aria-label="Active collection filters">
       {#if filters.search}<button class="filter-chip" type="button" aria-label="Remove search filter" onclick={() => onchange({ search: '' })}>“{filters.search}” <span aria-hidden="true">×</span></button>{/if}
       {#each filters.systemIds as id}<button class="filter-chip" type="button" aria-label={`Remove ${systemLabel(id, systems)} filter`} onclick={() => onchange({ systemId: '', systemIds: filters.systemIds.filter(value => value !== id) })}>{systemLabel(id, systems)} <span aria-hidden="true">×</span></button>{/each}
       {#if filters.systemId && !filters.systemIds.includes(filters.systemId)}<button class="filter-chip" type="button" aria-label={`Remove ${systemLabel(filters.systemId, systems)} filter`} onclick={() => onchange({ systemId: '' })}>{systemLabel(filters.systemId, systems)} <span aria-hidden="true">×</span></button>{/if}
       {#if filters.rootId}<button class="filter-chip" type="button" aria-label="Remove folder filter" onclick={() => onchange({ rootId: '' })}>{folders.find(folder => folder.root.id === filters.rootId)?.root.label ?? 'Folder'} <span aria-hidden="true">×</span></button>{/if}
+      <button
+        type="button"
+        class="text-button"
+        onclick={() => onchange({ search: '', systemId: '', systemIds: [], rootId: '' })}
+      >
+        Clear filters
+      </button>
     </div>
   {/if}
-  {#if filters.search || filters.systemId || filters.systemIds.length || filters.rootId}<button
-      type="button"
-      onclick={() => onchange({ search: '', systemId: '', systemIds: [], rootId: '' })}
-    >
-      Clear filters
-    </button>{/if}
 </div>

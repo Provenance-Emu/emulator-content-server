@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./lib/problems": "./src/lib/problems.ts",
+    "./lib/theme": "./src/lib/theme.ts",
     "./*": "./src/*"
   },
   "scripts": {
