@@ -21,5 +21,6 @@ The foundation in this repository is the contract, storage, access control, and 
 | [Sync](sync.md) | Devices converge without losing a save |
 | [Plugins](../operations/plugins.md) | Connectors, feeds, player, signer, and JIT in a separate process |
 | [Adversarial validation](adversarial-validation.md) | Fuzz and security regression pack |
+| [Library experience](library-experience.md) | Covers and details for apps, one scans screen, trash, QR pairing, remote storage |
 
 Signing, JIT activation, and IPA distribution stay out of the content server process, database, and capability document. They may live in this repository as a separate app. See [ADR 0006](../architecture/decisions/0006-sideload-colocation.md).
