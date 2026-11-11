@@ -36,6 +36,19 @@ Stream large downloads to disk. To resume, send `Range: bytes=<local size>-` and
 
 For NAOMI and NAOMI 2 GD-ROM games, browse `com.provenance.naomi` or `com.provenance.naomi2`, then read `/api/v1/sources/{sourceId}/group`. A scanned `cart.zip` with a `cart/gdrom.chd` companion returns both files in that layout, with the ZIP first. Check `error`, require local availability for every member, and stage both downloads before registering the ZIP. Each member downloads through `/api/v1/sources/{id}/content`. Flycast clients should validate the expected GD-ROM name against their game metadata. Uploaded items use the existing v1 manifest with two required ROM assets, whose `relativePath` values are `cart.zip` and `cart/gdrom.chd`. The server preserves paths supplied on upload and does not infer a missing asset in a newly created item.
 
+## Show a library with covers
+
+A game grid needs one request per page and no ROM downloads. Each `source` row in a `GET /api/v1/browse` page carries what a card shows:
+
+- `title`: the matched game name. Fall back to `name`, the file name.
+- `systemId`, `size`, `availability`: for the subtitle and for greying out a game whose drive is offline.
+- `artworkPath`: present when a front cover is saved (`artworkAvailable` is also `true`). It is a server-relative path; `GET` it with the same Authorization header. The response has an `ETag` and `Cache-Control: private, no-cache`, so keep the image on disk and send `If-None-Match` next time; an unchanged cover answers `304` with no body.
+- `details`: optional `publisher`, `developer`, `year`, `genre`, `region`, `language`, `description`. Fields are absent until a match is saved, so lay the card out without them.
+
+`systemCounts` on the page gives the per-system totals for a sidebar. Poll `GET /api/v1/changes` to learn that the library changed instead of re-reading every page.
+
+Covers are returned at their stored size (up to 8 MB, usually far smaller). Downscale on the device and cache the result. The Authorization header is required, so configure the image loader with a request modifier; a bare URL loader such as `AsyncImage` cannot fetch a cover.
+
 ## Pair a device with a TV interface
 
 Try the catalog without an Authorization header first if the user has not supplied a token. The server's network policy determines whether that request can browse. Existing bearer tokens still work.

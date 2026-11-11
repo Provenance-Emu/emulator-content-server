@@ -704,8 +704,10 @@
     "SourceFile": {
       "properties": [
         "artworkAvailable",
+        "artworkPath",
         "availability",
         "contentPath",
+        "details",
         "groupError",
         "groupFileCount",
         "id",
@@ -730,6 +732,18 @@
         "size",
         "systemId"
       ]
+    },
+    "SourceDetails": {
+      "properties": [
+        "description",
+        "developer",
+        "genre",
+        "language",
+        "publisher",
+        "region",
+        "year"
+      ],
+      "required": []
     },
     "MatchingPlugin": {
       "properties": [

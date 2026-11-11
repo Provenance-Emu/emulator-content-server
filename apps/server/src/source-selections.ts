@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto';
 import type { Actor, AssetKind, SourceMatchRecord } from '@ecs/domain';
 import { DomainError } from '@ecs/domain';
 import type { MatchCandidate } from '@ecs/plugins/matching';
-import { validateSystemIdentifier } from '@ecs/protocol';
+import { etagMatches, strongEtag, validateSystemIdentifier } from '@ecs/protocol';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { canSeeSource } from './content.js';
 import type { ServerContext } from './context.js';
@@ -186,7 +187,13 @@ export function registerSourceSelections(
       throw new DomainError('not-found', 404, 'Selected content not found');
     const bytes = context.catalog.sourceMatchContent(sourceId, kind, role);
     if (!bytes) throw new DomainError('not-found', 404, 'Selected content not found');
-    reply.header('cache-control', 'private, no-store');
+    // Access is decided above on every request; the validator only saves resending unchanged bytes.
+    const etag = strongEtag(createHash('sha256').update(bytes).digest('hex'));
+    reply.header('cache-control', 'private, no-cache');
+    reply.header('etag', etag);
+    const conditional = request.headers['if-none-match'];
+    if (etagMatches(typeof conditional === 'string' ? conditional : undefined, etag))
+      return reply.code(304).send();
     reply.header('x-content-type-options', 'nosniff');
     reply.header(
       'content-disposition',

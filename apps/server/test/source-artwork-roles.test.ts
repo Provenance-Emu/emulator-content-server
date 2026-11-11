@@ -77,6 +77,21 @@ test('artwork roles save independently, old clients see front only, and PDF manu
     );
     const front = await f.app.inject({ url: `${url}/selections/artwork/content`, headers: f.auth });
     assert.deepEqual(front.rawPayload, image);
+    // A cover is revalidated, never re-downloaded: clients keep it and ask whether it changed.
+    const etag = String(front.headers.etag);
+    assert.match(etag, /^"[0-9a-f]{64}"$/);
+    assert.equal(front.headers['cache-control'], 'private, no-cache');
+    const unchanged = await f.app.inject({
+      url: `${url}/selections/artwork/content`,
+      headers: { ...f.auth, 'if-none-match': etag },
+    });
+    assert.equal(unchanged.statusCode, 304);
+    assert.equal(unchanged.rawPayload.length, 0);
+    const other = await f.app.inject({
+      url: `${url}/selections/artwork/content?artworkRole=manual`,
+      headers: { ...f.auth, 'if-none-match': etag },
+    });
+    assert.notEqual(other.statusCode, 304);
     const bad = await f.app.inject({
       url: `${url}/selections/artwork/content?artworkRole=wrong`,
       headers: f.auth,

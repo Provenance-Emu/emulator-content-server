@@ -20,6 +20,7 @@ export const sourceTitleSql = `COALESCE((SELECT json_extract(sm.selection_json,'
 export const sourceSystemSql = `COALESCE((SELECT NULLIF(json_extract(sm.selection_json,'$.metadata.systemId'),'') FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind IN ('rom','metadata') AND NULLIF(json_extract(sm.selection_json,'$.metadata.systemId'),'') IS NOT NULL ORDER BY CASE sm.kind WHEN 'rom' THEN 0 ELSE 1 END LIMIT 1),s.system_id)`;
 export const sourceMatchColumns = `
   (SELECT json_extract(sm.selection_json,'$.title') FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind='metadata') AS matched_title,
+  (SELECT json_extract(sm.selection_json,'$.metadata') FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind='metadata') AS matched_metadata,
   ${sourceSystemSql} AS matched_system_id,
   EXISTS(SELECT 1 FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind='artwork' AND sm.artwork_role='front' AND sm.content IS NOT NULL) AS saved_artwork`;
 

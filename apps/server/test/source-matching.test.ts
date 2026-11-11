@@ -169,6 +169,9 @@ test('selected matches persist, revise safely, and retain original source files'
     assert.equal(browse.json().items[0]?.name, 'Selected title');
     assert.equal(browse.json().items[0]?.source.name, 'Game.j64');
     assert.equal(browse.json().items[0]?.source.artworkAvailable, true);
+    // A client draws the card from the list row alone: cover address and readable details.
+    assert.equal(browse.json().items[0]?.source.artworkPath, `${url}/selections/artwork/content`);
+    assert.deepEqual(browse.json().items[0]?.source.details, { publisher: 'Homebrew' });
     const { openServer } = await import('../src/index.js');
     await f.close();
     const reopened = await openServer({ dataDir: join(f.base, 'data') });

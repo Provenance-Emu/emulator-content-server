@@ -291,9 +291,21 @@ export interface SourceFile {
   medium: string;
   title?: string;
   artworkAvailable?: boolean;
+  artworkPath?: string;
+  details?: SourceDetails;
   groupFileCount?: number;
   groupError?: string | null;
   contentPath: string;
+}
+
+export interface SourceDetails {
+  publisher?: string;
+  developer?: string;
+  year?: string;
+  genre?: string;
+  region?: string;
+  language?: string;
+  description?: string;
 }
 
 export interface MatchingPlugin {

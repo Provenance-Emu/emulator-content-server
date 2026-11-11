@@ -259,7 +259,13 @@ export function registerLibraryBrowse(
         libraryId: source.libraryId,
         name: source.displayName,
         ...(source.title ? { title: source.title } : {}),
-        ...(source.artworkAvailable ? { artworkAvailable: true } : {}),
+        ...(source.artworkAvailable
+          ? {
+              artworkAvailable: true,
+              artworkPath: `/api/v1/sources/${source.id}/matches/selections/artwork/content`,
+            }
+          : {}),
+        ...(source.details ? { details: source.details } : {}),
         kind: source.kind,
         size,
         systemId: source.systemId,

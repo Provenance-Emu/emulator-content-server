@@ -2595,9 +2595,24 @@ components:
         medium: { type: string }
         title: { type: string }
         artworkAvailable: { type: boolean }
+        artworkPath:
+          type: string
+          description: Present with artworkAvailable. Authenticated GET for the saved front cover; send If-None-Match with the returned ETag to revalidate.
+        details: { $ref: '#/components/schemas/SourceDetails' }
         groupFileCount: { type: integer, minimum: 0, maximum: 512 }
         groupError: { type: [string, 'null'] }
         contentPath: { type: string }
+    SourceDetails:
+      type: object
+      description: Saved game details for display. Every field is optional and absent until a match is saved.
+      properties:
+        publisher: { type: string }
+        developer: { type: string }
+        year: { type: string }
+        genre: { type: string }
+        region: { type: string }
+        language: { type: string }
+        description: { type: string, maxLength: 2000 }
     MatchingPlugin:
       type: object
       required: [id, name, kind, capabilities, network]

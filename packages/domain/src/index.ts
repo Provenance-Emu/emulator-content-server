@@ -41,6 +41,16 @@ export type SourceArtworkRole =
   | 'screenshot'
   | 'other';
 
+export interface SourceDetails {
+  publisher?: string;
+  developer?: string;
+  year?: string;
+  genre?: string;
+  region?: string;
+  language?: string;
+  description?: string;
+}
+
 export interface SourceFileRecord {
   id: string;
   rootId: string;
@@ -54,6 +64,7 @@ export interface SourceFileRecord {
   availability: SourceAvailability;
   title?: string;
   artworkAvailable?: boolean;
+  details?: SourceDetails;
   groupAnchor?: string | null;
   groupMembers?: string[];
   groupError?: string | null;

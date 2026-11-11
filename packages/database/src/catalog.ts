@@ -14,6 +14,7 @@ import {
   type LibraryRecord,
   type LibraryRole,
   type SourceAvailability,
+  type SourceDetails,
   type SourceFileRecord,
 } from '@ecs/domain';
 import { InvestigatorRepository } from './investigators.js';
@@ -3162,6 +3163,7 @@ type SourceRow = {
   matched_title?: string | null;
   matched_system_id?: string | null;
   saved_artwork?: number;
+  matched_metadata?: string | null;
   id: string;
   root_id: string;
   library_id: string | null;
@@ -3179,6 +3181,34 @@ type SourceRow = {
   mtime_ms: number | null;
 };
 
+const DETAIL_KEYS = [
+  'publisher',
+  'developer',
+  'year',
+  'genre',
+  'region',
+  'language',
+  'description',
+] as const;
+
+/** The details a person reads on a game card; match evidence stays on the selections route. */
+function sourceDetails(json: string | null | undefined): { details?: SourceDetails } {
+  if (!json) return {};
+  let metadata: unknown;
+  try {
+    metadata = JSON.parse(json);
+  } catch {
+    return {};
+  }
+  if (!metadata || typeof metadata !== 'object') return {};
+  const details: SourceDetails = {};
+  for (const key of DETAIL_KEYS) {
+    const value = (metadata as Record<string, unknown>)[key];
+    if (typeof value === 'string' && value.trim()) details[key] = value.trim().slice(0, 2000);
+  }
+  return Object.keys(details).length ? { details } : {};
+}
+
 function mapSource(row: SourceRow): SourceFileRecord {
   return {
     id: row.id,
@@ -3192,6 +3222,7 @@ function mapSource(row: SourceRow): SourceFileRecord {
     systemId: row.matched_system_id === undefined ? row.system_id : row.matched_system_id,
     ...(row.matched_title ? { title: row.matched_title } : {}),
     ...(row.saved_artwork ? { artworkAvailable: true } : {}),
+    ...sourceDetails(row.matched_metadata),
     availability: row.availability as SourceAvailability,
     groupAnchor: row.group_anchor,
     groupMembers: JSON.parse(row.group_members_json),

@@ -572,11 +572,13 @@ public struct SourceFile: Codable, Equatable, Sendable {
     public var medium: String
     public var title: String?
     public var artworkAvailable: Bool?
+    public var artworkPath: String?
+    public var details: SourceDetails?
     public var groupFileCount: Int?
     public var groupError: String?
     public var contentPath: String
 
-    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, title: String? = nil, artworkAvailable: Bool? = nil, groupFileCount: Int? = nil, groupError: String? = nil, contentPath: String) {
+    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, title: String? = nil, artworkAvailable: Bool? = nil, artworkPath: String? = nil, details: SourceDetails? = nil, groupFileCount: Int? = nil, groupError: String? = nil, contentPath: String) {
         self.id = id
         self.rootId = rootId
         self.libraryId = libraryId
@@ -588,9 +590,31 @@ public struct SourceFile: Codable, Equatable, Sendable {
         self.medium = medium
         self.title = title
         self.artworkAvailable = artworkAvailable
+        self.artworkPath = artworkPath
+        self.details = details
         self.groupFileCount = groupFileCount
         self.groupError = groupError
         self.contentPath = contentPath
+    }
+}
+
+public struct SourceDetails: Codable, Equatable, Sendable {
+    public var publisher: String?
+    public var developer: String?
+    public var year: String?
+    public var genre: String?
+    public var region: String?
+    public var language: String?
+    public var description: String?
+
+    public init(publisher: String? = nil, developer: String? = nil, year: String? = nil, genre: String? = nil, region: String? = nil, language: String? = nil, description: String? = nil) {
+        self.publisher = publisher
+        self.developer = developer
+        self.year = year
+        self.genre = genre
+        self.region = region
+        self.language = language
+        self.description = description
     }
 }
 
