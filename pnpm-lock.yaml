@@ -73,6 +73,28 @@ importers:
         specifier: workspace:*
         version: link:../../packages/signing
 
+  apps/romm:
+    dependencies:
+      '@ecs/client':
+        specifier: workspace:*
+        version: link:../../packages/client-ts
+      '@ecs/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@ecs/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      fastify:
+        specifier: 5.12.6
+        version: 5.12.6
+    devDependencies:
+      '@ecs/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@ecs/server':
+        specifier: workspace:*
+        version: link:../server
+
   apps/server:
     dependencies:
       7z-wasm:

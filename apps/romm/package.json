@@ -1,0 +1,16 @@
+{
+  "name": "@ecs/romm-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ecs/client": "workspace:*",
+    "@ecs/protocol": "workspace:*",
+    "@ecs/storage": "workspace:*",
+    "fastify": "5.12.6"
+  },
+  "devDependencies": {
+    "@ecs/auth": "workspace:*",
+    "@ecs/server": "workspace:*"
+  }
+}

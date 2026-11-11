@@ -27,6 +27,7 @@ const allowed = {
     '@ecs/plugins',
   ],
   '@ecs/mcp': ['@ecs/client'],
+  '@ecs/romm-gateway': ['@ecs/client', '@ecs/protocol', '@ecs/storage'],
   '@ecs/plugin-host': ['@ecs/client', '@ecs/plugins', '@ecs/protocol', '@ecs/signing'],
   '@provenance-content/server': [
     '@ecs/auth',
@@ -52,6 +53,7 @@ const locations = {
   '@ecs/tray': 'apps/tray',
   '@ecs/server': 'apps/server',
   '@ecs/mcp': 'apps/mcp',
+  '@ecs/romm-gateway': 'apps/romm',
   '@ecs/plugin-host': 'apps/plugins',
   '@provenance-content/server': 'apps/cli',
 };

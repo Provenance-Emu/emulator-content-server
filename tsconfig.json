@@ -14,6 +14,7 @@
     { "path": "apps/server" },
     { "path": "apps/cli" },
     { "path": "apps/plugins" },
-    { "path": "apps/mcp" }
+    { "path": "apps/mcp" },
+    { "path": "apps/romm" }
   ]
 }
