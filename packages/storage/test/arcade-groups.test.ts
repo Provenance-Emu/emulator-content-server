@@ -35,6 +35,22 @@ test('cartridge ZIPs stay standalone and Dreamcast files are not grouped as NAOM
   );
 });
 
+test('MAME ZIPs group only same-system CHDs in the matching set directory', async () => {
+  const mame = 'com.provenance.mame';
+  const files = [
+    row('collection/game.zip', mame),
+    row('collection/game/disc.chd', mame),
+    row('collection/game/other-system.chd'),
+    row('collection/game/nested/another.chd', mame),
+    row('collection/parent.zip', mame),
+    row('collection/unrelated/disc.chd', mame),
+  ];
+  await groupDiscs('/unused', files);
+  assert.deepEqual(files[0]?.groupMembers, ['collection/game.zip', 'collection/game/disc.chd']);
+  assert.equal(files[1]?.groupAnchor, 'collection/game.zip');
+  assert.ok(files.slice(2).every((file) => !file.groupMembers?.length && !file.groupAnchor));
+});
+
 test('a missing previously scanned GD-ROM stays required across rescans', async () => {
   const files = [row('cart.zip')];
   const previous = new Map([['cart.zip', ['cart.zip', 'cart/gdrom.chd']]]);

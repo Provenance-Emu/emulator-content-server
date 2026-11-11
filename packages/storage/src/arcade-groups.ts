@@ -1,10 +1,10 @@
 import { posix } from 'node:path';
 import type { ScannedFile } from './scan.js';
 
-const systems = new Set(['com.provenance.naomi', 'com.provenance.naomi2']);
+const systems = new Set(['com.provenance.mame', 'com.provenance.naomi', 'com.provenance.naomi2']);
 const isArcade = (file: ScannedFile) => file.kind === 'rom' && systems.has(file.systemId ?? '');
 
-/** Flycast looks beside cart.zip for cart/<gdrom>.chd. These are path hints only. */
+/** MAME and Flycast look beside set.zip for set/<disc>.chd. These are path hints only. */
 export function arcadeGroupEdges(
   files: ScannedFile[],
   previous: ReadonlyMap<string, readonly string[]>,
@@ -70,16 +70,16 @@ export function arcadeGroupEdges(
       edges.set(primary.relativePath, paths);
       for (const child of candidates) child.groupAnchor = primary.relativePath;
       if (paths.length > 511) primary.groupError = 'Disc group has too many members.';
-      else if (ambiguous) primary.groupError = 'Arcade GD-ROM has ambiguous filename casing.';
+      else if (ambiguous) primary.groupError = 'Arcade CHD has ambiguous filename casing.';
       else if (paths.some((path) => !byPath.has(path)))
-        primary.groupError = 'A required arcade GD-ROM is missing. Reconnect it and rescan.';
+        primary.groupError = 'A required arcade CHD is missing. Reconnect it and rescan.';
       else if (
         paths.some((path) => {
           const member = byPath.get(path);
           return !member || !isArcade(member) || member.systemId !== primary.systemId;
         })
       )
-        primary.groupError = 'An arcade GD-ROM has incompatible file or system metadata.';
+        primary.groupError = 'An arcade CHD has incompatible file or system metadata.';
       else if (
         primary.availability !== 'local' ||
         paths.some((path) => byPath.get(path)?.availability !== 'local')

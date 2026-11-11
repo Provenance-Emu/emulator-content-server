@@ -77,6 +77,69 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(transport.recorded[0].url?.path, "/api/v1/uploads/up")
     }
 
+    func testSaveUploadUsesTheSelectedServerAndItsCommittedOffset() async throws {
+        let endpoint = URL(string: "https://second.example:8443")!
+        let transport = ScriptedTransport([
+            (201, #"{"id":"up","received":0,"state":"open"}"#),
+            (200, #"{"id":"up","received":2,"state":"open"}"#),
+            (204, ""),
+            (201, #"{"id":"copy","itemId":"remote-item","kind":"battery_save","displayName":"battery.sav","relativePath":"battery.sav","sha256":"abc","size":4,"md5":null,"crc":null,"shareable":true,"revision":1,"createdAt":"t","updatedAt":"t","conflictOf":"live"}"#),
+        ])
+        let sync = ContentSync(baseURL: endpoint, token: "second-token", transport: transport)
+        let session = try await sync.createUpload(libraryId: "remote-library", idempotencyKey: "create")
+        let offset = try await sync.receivedOffset(uploadId: session.id)
+        let chunk = Data([0, 255])
+        try await sync.uploadChunk(uploadId: session.id, bytes: chunk, offset: offset, totalBytes: 4)
+        let metadata = UploadComplete(
+            itemId: "remote-item", kind: "battery_save", displayName: "battery.sav",
+            relativePath: "battery.sav", baseRevision: 3
+        )
+        let asset = try await sync.completeUpload(uploadId: session.id, metadata: metadata, idempotencyKey: "complete")
+
+        XCTAssertEqual(asset.conflictOf, "live")
+        let requests = transport.recorded
+        XCTAssertEqual(requests.map(\.httpMethod), ["POST", "GET", "PUT", "POST"])
+        XCTAssertEqual(requests.compactMap { $0.url?.path }, [
+            "/api/v1/uploads", "/api/v1/uploads/up", "/api/v1/uploads/up/content", "/api/v1/uploads/up/complete",
+        ])
+        for request in requests {
+            XCTAssertEqual(request.url?.host, endpoint.host)
+            XCTAssertEqual(request.url?.port, endpoint.port)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer second-token")
+        }
+        XCTAssertEqual(requests[0].value(forHTTPHeaderField: "Idempotency-Key"), "create")
+        XCTAssertEqual(try JSONDecoder().decode([String: String].self, from: XCTUnwrap(requests[0].httpBody)), [
+            "libraryId": "remote-library",
+        ])
+        XCTAssertEqual(requests[2].value(forHTTPHeaderField: "Content-Range"), "bytes 2-3/4")
+        XCTAssertEqual(requests[2].value(forHTTPHeaderField: "Content-Type"), "application/octet-stream")
+        XCTAssertEqual(requests[2].httpBody, chunk)
+        XCTAssertEqual(requests[3].value(forHTTPHeaderField: "Idempotency-Key"), "complete")
+        XCTAssertEqual(try JSONDecoder().decode(UploadComplete.self, from: XCTUnwrap(requests[3].httpBody)), metadata)
+    }
+
+    func testInvalidChunkRangeFailsBeforeTransport() async throws {
+        let transport = ScriptedTransport([])
+        let sync = ContentSync(baseURL: base, token: "device-token", transport: transport)
+        do {
+            try await sync.uploadChunk(uploadId: "up", bytes: Data([1]), offset: Int64.max, totalBytes: Int64.max)
+            XCTFail("an invalid byte range must throw")
+        } catch let failure as SyncFailure {
+            XCTAssertEqual(failure.status, 0)
+        }
+        XCTAssertTrue(transport.recorded.isEmpty)
+    }
+
+    func testManifestSuppliesTheItemRevisionForAnUpload() async throws {
+        let transport = ScriptedTransport([
+            (200, #"{"version":1,"itemId":"remote-item","revision":3,"files":[]}"#),
+        ])
+        let sync = ContentSync(baseURL: base, token: "device-token", transport: transport)
+        let manifest = try await sync.manifest(itemId: "remote-item")
+        XCTAssertEqual(manifest.revision, 3)
+        XCTAssertEqual(transport.recorded[0].url?.path, "/api/v1/items/remote-item/manifest")
+    }
+
     func testARefusalSurfacesTheProblemTitleWithoutTheToken() async throws {
         let transport = ScriptedTransport([
             (409, #"{"title":"Only a save can be chosen"}"#),

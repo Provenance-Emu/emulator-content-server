@@ -123,8 +123,8 @@ test('disc staging paths share a contained common directory and omit unrelated s
   }
 });
 
-test('NAOMI ZIP and CHD stay one game with Flycast paths and recover after a missing disc returns', async () => {
-  for (const name of ['Naomi', 'Naomi 2']) {
+test('NAOMI, NAOMI 2, and MAME keep arcade ZIP and CHD paths and recover missing members', async () => {
+  for (const name of ['Naomi', 'Naomi 2', 'MAME']) {
     const f = await libraryFixture();
     try {
       const path = join(f.base, 'arcade');

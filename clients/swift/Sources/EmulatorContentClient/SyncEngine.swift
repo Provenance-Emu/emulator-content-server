@@ -29,7 +29,7 @@ public struct SyncFailure: Error, Equatable, Sendable {
     }
 }
 
-/// The app-neutral sync calls: the change feed, choosing a save, and the requests that resume a transfer.
+/// App-neutral calls for the change feed, save uploads, conflict adoption, and resumable downloads.
 ///
 /// Bytes stay with the caller. This type builds the request and reads the JSON, and a download body is
 /// left on the response the caller opens, so the same code serves a phone and a television.
@@ -85,6 +85,46 @@ public struct ContentSync: Sendable {
         try await send(SyncRequests.adopt(baseURL: baseURL, token: token, assetId: assetId))
     }
 
+    /// Starts an upload in a library. Reuse the key when retrying the same creation request.
+    public func createUpload(libraryId: String, idempotencyKey: String? = nil) async throws -> UploadSession {
+        let request = try SyncRequests.jsonUpload(
+            baseURL: baseURL, token: token, path: "/api/v1/uploads",
+            body: ["libraryId": libraryId], idempotencyKey: idempotencyKey
+        )
+        return try await send(request)
+    }
+
+    /// Writes a nonempty chunk at the server's committed offset.
+    public func uploadChunk(uploadId: String, bytes: Data, offset: Int64, totalBytes: Int64) async throws {
+        let byteCount = Int64(bytes.count)
+        guard offset >= 0, offset <= totalBytes, byteCount > 0, byteCount <= totalBytes - offset else {
+            throw SyncFailure(status: 0, message: "Invalid upload chunk range")
+        }
+        var request = SyncRequests.authorized(
+            baseURL: baseURL, token: token, path: "/api/v1/uploads/\(uploadId)/content"
+        )
+        request.httpMethod = "PUT"
+        request.httpBody = bytes
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.setValue("bytes \(offset)-\(offset + byteCount - 1)/\(totalBytes)", forHTTPHeaderField: "Content-Range")
+        _ = try await responseBody(for: request)
+    }
+
+    /// Lists the item's files and returns the item revision used to complete an upload.
+    public func manifest(itemId: String) async throws -> Manifest {
+        try await send(SyncRequests.authorized(baseURL: baseURL, token: token, path: "/api/v1/items/\(itemId)/manifest"))
+    }
+
+    /// Commits using the last item revision the caller observed in this server's manifest.
+    /// The returned asset can be a conflict copy. Reuse the key and metadata when retrying.
+    public func completeUpload(uploadId: String, metadata: UploadComplete, idempotencyKey: String? = nil) async throws -> Asset {
+        let request = try SyncRequests.jsonUpload(
+            baseURL: baseURL, token: token, path: "/api/v1/uploads/\(uploadId)/complete",
+            body: metadata, idempotencyKey: idempotencyKey
+        )
+        return try await send(request)
+    }
+
     /// The offset the server has committed for an upload, which is where a retry continues.
     public func receivedOffset(uploadId: String) async throws -> Int64 {
         let session: UploadSession = try await send(
@@ -105,12 +145,17 @@ public struct ContentSync: Sendable {
     }
 
     private func send<T: Decodable>(_ request: URLRequest) async throws -> T {
+        let data = try await responseBody(for: request)
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    private func responseBody(for request: URLRequest) async throws -> Data {
         let (data, response) = try await transport.data(for: request)
         guard (200 ..< 300).contains(response.statusCode) else {
             let title = (try? JSONDecoder().decode(ProblemTitle.self, from: data))?.title
             throw SyncFailure(status: response.statusCode, message: title ?? "Content request failed")
         }
-        return try JSONDecoder().decode(T.self, from: data)
+        return data
     }
 }
 
@@ -151,7 +196,18 @@ public enum SyncRequests {
         return request
     }
 
-    private static func authorized(baseURL: URL, token: String, path: String) -> URLRequest {
+    fileprivate static func jsonUpload<Body: Encodable>(
+        baseURL: URL, token: String, path: String, body: Body, idempotencyKey: String?
+    ) throws -> URLRequest {
+        var request = authorized(baseURL: baseURL, token: token, path: path)
+        request.httpMethod = "POST"
+        request.httpBody = try JSONEncoder().encode(body)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        return request
+    }
+
+    fileprivate static func authorized(baseURL: URL, token: String, path: String) -> URLRequest {
         let url = URL(string: path, relativeTo: baseURL) ?? baseURL
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
