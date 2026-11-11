@@ -1694,6 +1694,17 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/LibraryJobResponse'}
         '409': {description: Overlapping shared work already exists.}
+  /api/v1/library-jobs/overview:
+    get:
+      operationId: getLibraryOverview
+      tags: [Matching and jobs]
+      description: Owner-only. Per saved folder, how many games have details and a cover, and what the automatic fill last decided. Counts come from the catalog; no file is read.
+      responses:
+        '200':
+          description: Library status.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LibraryOverview'}
   /api/v1/library-jobs/{jobId}:
     parameters:
       - {name: jobId, in: path, required: true, schema: {type: string}}
@@ -3285,6 +3296,37 @@ components:
         createdAt: {type: string}
         updatedAt: {type: string}
         interruptedCount: {type: integer}
+        providerFailures:
+          type: integer
+          minimum: 1
+          description: Games in a match job whose lookup sources could not all be reached. Absent when none.
+    LibraryOverview:
+      type: object
+      required: [automaticMatching, folders]
+      properties:
+        automaticMatching: {type: boolean, description: Whether the server fills missing details and covers after a scan.}
+        folders: {type: array, items: {$ref: '#/components/schemas/LibraryOverviewFolder'}}
+    LibraryOverviewFolder:
+      type: object
+      required: [rootId, label, libraryId, games, withDetails, withCover, unavailable, automatic]
+      properties:
+        rootId: {type: string}
+        label: {type: string}
+        libraryId: {type: [string, 'null']}
+        games: {type: integer, minimum: 0}
+        withDetails: {type: integer, minimum: 0}
+        withCover: {type: integer, minimum: 0}
+        unavailable: {type: integer, minimum: 0, description: Games whose file was offline or not downloaded when last seen.}
+        automatic:
+          type: object
+          required: [state]
+          properties:
+            state:
+              type: string
+              enum: [none, waiting, queued, complete, unchanged]
+              description: none - not checked since the server started. waiting - will be checked when current work finishes. queued - a match job was started. complete - nothing is missing. unchanged - games are still missing details but nothing changed since the last attempt.
+            checkedAt: {type: string}
+            jobId: {type: string}
     LibraryJobResponse:
       type: object
       required: [job]

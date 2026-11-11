@@ -1634,8 +1634,9 @@ public struct LibraryJob: Codable, Equatable, Sendable {
     public var createdAt: String
     public var updatedAt: String
     public var interruptedCount: Int
+    public var providerFailures: Int?
 
-    public init(id: String, kind: String, scope: LibraryJobScope, options: MatchingOptions, state: String, total: Int, processed: Int, saved: Int, review: Int, unmatched: Int, failed: Int, skipped: Int, currentSourceId: String? = nil, error: String? = nil, createdAt: String, updatedAt: String, interruptedCount: Int) {
+    public init(id: String, kind: String, scope: LibraryJobScope, options: MatchingOptions, state: String, total: Int, processed: Int, saved: Int, review: Int, unmatched: Int, failed: Int, skipped: Int, currentSourceId: String? = nil, error: String? = nil, createdAt: String, updatedAt: String, interruptedCount: Int, providerFailures: Int? = nil) {
         self.id = id
         self.kind = kind
         self.scope = scope
@@ -1653,6 +1654,39 @@ public struct LibraryJob: Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.interruptedCount = interruptedCount
+        self.providerFailures = providerFailures
+    }
+}
+
+public struct LibraryOverview: Codable, Equatable, Sendable {
+    public var automaticMatching: Bool
+    public var folders: [LibraryOverviewFolder]
+
+    public init(automaticMatching: Bool, folders: [LibraryOverviewFolder]) {
+        self.automaticMatching = automaticMatching
+        self.folders = folders
+    }
+}
+
+public struct LibraryOverviewFolder: Codable, Equatable, Sendable {
+    public var rootId: String
+    public var label: String
+    public var libraryId: String?
+    public var games: Int
+    public var withDetails: Int
+    public var withCover: Int
+    public var unavailable: Int
+    public var automatic: [String: String]
+
+    public init(rootId: String, label: String, libraryId: String? = nil, games: Int, withDetails: Int, withCover: Int, unavailable: Int, automatic: [String: String]) {
+        self.rootId = rootId
+        self.label = label
+        self.libraryId = libraryId
+        self.games = games
+        self.withDetails = withDetails
+        self.withCover = withCover
+        self.unavailable = unavailable
+        self.automatic = automatic
     }
 }
 

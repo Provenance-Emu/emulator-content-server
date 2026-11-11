@@ -43,6 +43,7 @@
     "GET /api/v1/library-jobs",
     "GET /api/v1/library-jobs/:jobId",
     "GET /api/v1/library-jobs/:jobId/items",
+    "GET /api/v1/library-jobs/overview",
     "GET /api/v1/matching/plugins",
     "GET /api/v1/player/core",
     "GET /api/v1/player/management",
@@ -1698,6 +1699,7 @@
         "kind",
         "options",
         "processed",
+        "providerFailures",
         "review",
         "saved",
         "scope",
@@ -1725,6 +1727,38 @@
         "total",
         "unmatched",
         "updatedAt"
+      ]
+    },
+    "LibraryOverview": {
+      "properties": [
+        "automaticMatching",
+        "folders"
+      ],
+      "required": [
+        "automaticMatching",
+        "folders"
+      ]
+    },
+    "LibraryOverviewFolder": {
+      "properties": [
+        "automatic",
+        "games",
+        "label",
+        "libraryId",
+        "rootId",
+        "unavailable",
+        "withCover",
+        "withDetails"
+      ],
+      "required": [
+        "automatic",
+        "games",
+        "label",
+        "libraryId",
+        "rootId",
+        "unavailable",
+        "withCover",
+        "withDetails"
       ]
     },
     "LibraryJobResponse": {

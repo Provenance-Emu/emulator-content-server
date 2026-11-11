@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { PROVIDERS_FAILED_REASON } from '@ecs/database';
 import { type Actor, DomainError } from '@ecs/domain';
 import { normalizeCheats } from '@ecs/plugins/cheats';
 import {
@@ -899,9 +900,7 @@ export function registerSourceMatching(
           ? 'saved'
           : 'unmatched';
     let reason =
-      discConflict ??
-      warning ??
-      (result.problems.length ? 'Some matching providers failed; retry this game.' : null);
+      discConflict ?? warning ?? (result.problems.length ? PROVIDERS_FAILED_REASON : null);
     if (!reason && status === 'review') {
       const metadata = primary.filter((candidate) => candidate.kind === 'metadata');
       reason =

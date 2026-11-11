@@ -825,6 +825,23 @@ export interface LibraryJob {
   createdAt: string;
   updatedAt: string;
   interruptedCount: number;
+  providerFailures?: number;
+}
+
+export interface LibraryOverview {
+  automaticMatching: boolean;
+  folders: LibraryOverviewFolder[];
+}
+
+export interface LibraryOverviewFolder {
+  rootId: string;
+  label: string;
+  libraryId: string | null;
+  games: number;
+  withDetails: number;
+  withCover: number;
+  unavailable: number;
+  automatic: Record<string, unknown>;
 }
 
 export interface LibraryJobResponse {

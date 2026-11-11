@@ -101,6 +101,21 @@ export function registerLibraryJobs(
   }
   const pendingArtwork = new Map<string, string>();
   const lastAutomatic = new Map<string, { signature: string; queuedAt: number }>();
+  // What the automatic fill last decided for a folder, so the interface can say it instead of staying silent.
+  const automatic = new Map<
+    string,
+    { state: 'queued' | 'complete' | 'unchanged'; checkedAt: string; jobId?: string }
+  >();
+  const decided = (
+    rootId: string,
+    state: 'queued' | 'complete' | 'unchanged',
+    jobId = automatic.get(rootId)?.jobId,
+  ) =>
+    automatic.set(rootId, {
+      state,
+      checkedAt: new Date().toISOString(),
+      ...(jobId ? { jobId } : {}),
+    });
   function fillMissingDetails() {
     if (closing || !context.automaticMatching) return;
     for (const [rootId, actorId] of pendingArtwork) {
@@ -108,6 +123,7 @@ export function registerLibraryJobs(
       const actor = context.catalog.actorForUser(actorId);
       if (!root || actor?.kind !== 'user' || !actor.isOwner) {
         pendingArtwork.delete(rootId);
+        automatic.delete(rootId);
         continue;
       }
       const sources = context.catalog.listSources(rootId);
@@ -141,6 +157,7 @@ export function registerLibraryJobs(
         (previous?.signature === signature && Date.now() - previous.queuedAt < 15 * 60_000)
       ) {
         pendingArtwork.delete(rootId);
+        decided(rootId, missing.length ? 'unchanged' : 'complete');
         continue;
       }
       try {
@@ -151,10 +168,10 @@ export function registerLibraryJobs(
           actorId,
           missing.map((source) => source.id),
         );
-        if (!result.reused) {
-          lastAutomatic.set(rootId, { signature, queuedAt: Date.now() });
-          pendingArtwork.delete(rootId);
-        }
+        // A job that already covers this folder is doing the same work; stop asking for another.
+        if (!result.reused) lastAutomatic.set(rootId, { signature, queuedAt: Date.now() });
+        pendingArtwork.delete(rootId);
+        decided(rootId, 'queued', result.job.id);
       } catch (error) {
         if (!(error instanceof DomainError) || error.code !== 'library-job-conflict') throw error;
       }
@@ -408,6 +425,35 @@ export function registerLibraryJobs(
     return {
       jobs: jobs.slice(0, limit).map(visible),
       nextCursor: jobs.length > limit ? (jobs[limit - 1]?.id ?? null) : null,
+    };
+  });
+  app.get('/api/v1/library-jobs/overview', async (request, reply) => {
+    requireOwner(request, 'Only the server owner can view library status');
+    reply.header('cache-control', 'private, no-store');
+    return {
+      automaticMatching: context.automaticMatching === true,
+      folders: context.catalog.listContentRoots().map((root) => {
+        const games = context.catalog
+          .listSources(root.id)
+          .filter(
+            (source) =>
+              source.kind === 'rom' &&
+              !(source.groupAnchor && source.groupAnchor !== source.relativePath),
+          );
+        const last = automatic.get(root.id);
+        return {
+          rootId: root.id,
+          label: root.label,
+          libraryId: root.libraryId,
+          games: games.length,
+          withDetails: games.filter((source) => source.title).length,
+          withCover: games.filter((source) => source.artworkAvailable).length,
+          unavailable: games.filter((source) => source.availability !== 'local').length,
+          automatic: pendingArtwork.has(root.id)
+            ? { state: 'waiting' }
+            : (last ?? { state: 'none' }),
+        };
+      }),
     };
   });
   app.get('/api/v1/library-jobs/:jobId', async (request, reply) => {

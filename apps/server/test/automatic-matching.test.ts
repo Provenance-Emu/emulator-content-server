@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { setTimeout as pause } from 'node:timers/promises';
+import { PROVIDERS_FAILED_REASON } from '@ecs/database';
 import Fastify from 'fastify';
 import type { ServerContext } from '../src/context.js';
 import { registerLibraryJobs } from '../src/library-jobs.js';
@@ -327,6 +328,91 @@ test('concurrent automatic searches share their writes and preserve a single sel
     for (const response of responses) assert.equal(response.statusCode, 200, response.body);
     assert.equal(f.catalog.sourceMatches(source.id).revision, 2);
     assert.equal(f.catalog.sourceMatches(source.id).matches.length, 2);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('the overview reports what the automatic fill did for a folder and counts provider outages', async () => {
+  const f = await fixture();
+  const worker = Fastify();
+  worker.addHook('onRequest', async (request) => {
+    (request as unknown as { actor: unknown }).actor = f.actor;
+  });
+  registerLibraryJobs(worker, { catalog: f.catalog, automaticMatching: true } as ServerContext, {
+    async autoMatch(_actor, sourceId) {
+      f.catalog.saveSourceMatch(
+        sourceId,
+        f.catalog.sourceMatches(sourceId).revision,
+        'metadata',
+        {
+          id: 'metadata',
+          providerId: 'test.fill',
+          kind: 'metadata',
+          title: 'Generated game',
+          confidence: 'checksum',
+          metadata: {},
+          originKind: null,
+          contentAvailable: false,
+          contentType: null,
+          fileName: null,
+          updatedAt: new Date().toISOString(),
+        },
+        null,
+        f.owner.id,
+      );
+      // Details were saved, but one lookup source could not be reached.
+      return { status: 'saved', saved: 1, suggestions: 0, error: PROVIDERS_FAILED_REASON };
+    },
+  });
+  await worker.ready();
+  try {
+    const overview = async () =>
+      (await worker.inject({ url: '/api/v1/library-jobs/overview' })).json();
+    assert.equal((await overview()).automaticMatching, true);
+    assert.equal((await overview()).folders[0].games, 0);
+    const scan = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/roots/${f.root.id}/scan`,
+      headers: f.auth,
+    });
+    assert.equal(scan.statusCode, 200, scan.body);
+    await waitFor(() =>
+      f.catalog.libraryJobs
+        .list(10)
+        .some((job) => job.kind === 'match' && job.state === 'completed'),
+    );
+    const folder = (await overview()).folders[0];
+    assert.deepEqual(
+      { ...folder, automatic: folder.automatic.state },
+      {
+        rootId: f.root.id,
+        label: 'Games',
+        libraryId: f.library.id,
+        games: 1,
+        withDetails: 1,
+        withCover: 0,
+        unavailable: 0,
+        automatic: 'queued',
+      },
+    );
+    const job = (
+      await worker.inject({ url: `/api/v1/library-jobs/${folder.automatic.jobId}` })
+    ).json().job;
+    assert.equal(job.kind, 'match');
+    assert.equal(job.providerFailures, 1);
+  } finally {
+    await worker.close();
+    await f.dispose();
+  }
+});
+
+test('the overview says automatic matching is off when the server runs without it', async () => {
+  const f = await fixture(false);
+  try {
+    const overview = await f.app.inject({ url: '/api/v1/library-jobs/overview', headers: f.auth });
+    assert.equal(overview.json().automaticMatching, false);
+    assert.equal(overview.json().folders[0].automatic.state, 'none');
   } finally {
     await f.dispose();
   }

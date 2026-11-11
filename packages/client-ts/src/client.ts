@@ -68,6 +68,7 @@ import type {
   LibraryJobResponse,
   LibraryList,
   LibraryMemberList,
+  LibraryOverview,
   Manifest,
   MatchingOptions,
   MatchingPluginList,
@@ -1059,6 +1060,9 @@ export class ContentClient {
   }
   libraryJob(id: string): Promise<LibraryJobResponse> {
     return this.getJson(`/api/v1/library-jobs/${encodeURIComponent(id)}`);
+  }
+  libraryOverview(): Promise<LibraryOverview> {
+    return this.getJson('/api/v1/library-jobs/overview');
   }
   libraryJobs(query: { limit?: number; cursor?: string } = {}): Promise<LibraryJobList> {
     const search = new URLSearchParams();

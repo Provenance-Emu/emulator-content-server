@@ -110,6 +110,8 @@ export type {
   LibraryList,
   LibraryMember,
   LibraryMemberList,
+  LibraryOverview,
+  LibraryOverviewFolder,
   Manifest,
   ManifestFile,
   MatchingAutomaticResult,

@@ -29,6 +29,7 @@ export {
   type LibraryJobRecord,
   LibraryJobRepository,
   type LibraryJobScope,
+  PROVIDERS_FAILED_REASON,
 } from './library-jobs.js';
 export { MIGRATIONS, type Migration, pendingMigrations, SCHEMA_VERSION } from './schema.js';
 export {

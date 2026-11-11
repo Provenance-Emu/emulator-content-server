@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 import { DomainError } from '@ecs/domain';
 
+/** Stored as a job item's reason when a lookup source could not be reached for that game. */
+export const PROVIDERS_FAILED_REASON = 'Some matching providers failed; retry this game.';
+
 export interface LibraryJobScope {
   rootId?: string;
   libraryId?: string;
@@ -40,6 +43,8 @@ export interface LibraryJobRecord {
   createdAt: string;
   updatedAt: string;
   interruptedCount: number;
+  /** Games in a match job whose lookup sources could not all be reached. Absent when zero. */
+  providerFailures?: number;
 }
 interface Row
   extends Pick<
@@ -67,6 +72,14 @@ export class LibraryJobRepository {
     if (!row) return null;
     const { total, processed, saved, review, unmatched, failed, skipped } = row;
     const counts = { total, processed, saved, review, unmatched, failed, skipped };
+    const providerFailures =
+      row.kind === 'match'
+        ? (
+            this.db
+              .prepare('SELECT count(*) AS n FROM library_job_items WHERE job_id=? AND error=?')
+              .get(id, PROVIDERS_FAILED_REASON) as { n: number }
+          ).n
+        : 0;
     return {
       id: row.id,
       kind: row.kind,
@@ -79,6 +92,7 @@ export class LibraryJobRepository {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       interruptedCount: row.interrupted_count,
+      ...(providerFailures ? { providerFailures } : {}),
     };
   }
   list(limit = 25, before?: string): LibraryJobRecord[] {
