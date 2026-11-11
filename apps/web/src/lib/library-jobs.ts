@@ -2,7 +2,7 @@ import type {
   ContentClient,
   LibraryJob,
   LibraryJobItem,
-  LibraryScope,
+  LibraryJobScope,
   MatchingOptions,
 } from '@ecs/client';
 import { ContentError } from '@ecs/client';
@@ -20,7 +20,7 @@ export function createLibraryJobs(
     | 'resumeLibraryJob'
     | 'reviewLibraryJobItem'
   >,
-  scope: LibraryScope,
+  scope: LibraryJobScope,
   hooks: { changed?: () => void; rejected?: (status: 401 | 403) => void } = {},
 ) {
   let current: {

@@ -1622,3 +1622,85 @@ button.secondary {
   width: 100%;
   min-width: 0;
 }
+
+/* Scans and details */
+.scan-automatic {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.scan-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.scan-totals > div {
+  flex: 1 1 8rem;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+}
+.scan-totals dt {
+  color: var(--ink-dim);
+  font-size: var(--text-small);
+}
+.scan-totals dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.scan-folders td {
+  vertical-align: top;
+}
+.scan-folders td:nth-child(n + 2):nth-child(-n + 4),
+.scan-folders th:nth-child(n + 2):nth-child(-n + 4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.scan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.scan-actions button {
+  white-space: nowrap;
+}
+/* A phone reads each folder as a short card instead of a squeezed table. */
+@media (max-width: 760px) {
+  .scan-folders thead {
+    display: none;
+  }
+  .scan-folders,
+  .scan-folders tbody,
+  .scan-folders tr,
+  .scan-folders td {
+    display: block;
+    padding-right: 0;
+  }
+  .scan-folders tr {
+    padding: var(--space-3) 0;
+    border-top: var(--border-width) solid var(--line);
+  }
+  .scan-folders td {
+    border: 0;
+    padding-block: var(--space-1);
+  }
+  .scan-folders td[data-label] {
+    display: inline-block;
+    margin-right: var(--space-4);
+    text-align: left;
+    font-size: var(--text-label);
+  }
+  .scan-folders td[data-label]::before {
+    content: attr(data-label) " ";
+    color: var(--ink-dim);
+  }
+  .scan-actions {
+    justify-content: flex-start;
+  }
+}
+

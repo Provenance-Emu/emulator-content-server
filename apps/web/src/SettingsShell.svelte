@@ -6,6 +6,8 @@
   import type { ServerUpdatesView } from './lib/server-updates';
   import { settingsSections, type SettingsSection } from './lib/shell-navigation';
   import SettingsLibraries from './SettingsLibraries.svelte';
+  import ScansAndDetails from './ScansAndDetails.svelte';
+  import type { ServerContext } from './lib/application';
   import StorageSettings from './StorageSettings.svelte';
   import Grants from './Grants.svelte';
   import Accounts from './Accounts.svelte';
@@ -18,7 +20,7 @@
   import ServerUpdateSettings from './ServerUpdateSettings.svelte';
 
   let {
-    client, appState, updates, onback, onview, onrejected, context,
+    client, appState, updates, onback, onview, onrejected, context, server,
     pairingPin = '', onpaired = () => {},
     serverLabel = 'Emulation Server',
     onrename, onplayerschange, onsignin = () => {}, onsetup, onopendocumentation,
@@ -37,6 +39,7 @@
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
     context: FolderContext;
+    server?: ServerContext;
     onrename: (library: Library) => void;
     onplayerschange?: () => void | Promise<void>;
     onsignin?: () => void;
@@ -103,6 +106,9 @@
       {client} libraries={appState.libraries} invalidation={appState.invalidation}
       {onview} {onrejected} {context} {onrename}
       bind:libraryId onlibrarychange={onlibrarychange}
+    />{:else if appState.owner && active === 'scans' && server}<ScansAndDetails
+      context={server} libraries={appState.libraries} {onrejected}
+      onchanged={() => void context.onchanged?.()}
     />{:else if appState.owner && active === 'storage'}<StorageSettings
       {client} {context} onchange={() => noted++}
       onmanagefolders={() => choose('libraries')}

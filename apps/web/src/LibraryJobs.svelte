@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { LibraryScope, MatchingPlugin, LibraryJobItem, Library, ContentRootSummary, LibraryJobScope } from '@ecs/client';
+  import type { MatchingPlugin, LibraryJobItem, Library, ContentRootSummary, LibraryJobScope, LibraryOverviewFolder, LibraryJob } from '@ecs/client';
   import { onMount, untrack } from 'svelte';
   import type { ServerContext } from './lib/application';
   import { createLibraryJobs } from './lib/library-jobs';
@@ -9,7 +9,13 @@
   import MatchingPanel from './MatchingPanel.svelte';
   import LibraryCleanup from './LibraryCleanup.svelte';
   let cleanup=$state(false),cleanupButton:HTMLButtonElement|undefined=$state();
-  let {context,scope,onchanged,libraries=[],roots=[]}:{context:ServerContext;scope:LibraryScope;onchanged:()=>void;libraries?:Library[];roots?:ContentRootSummary[]}=$props();
+  let {context,scope,onchanged,libraries=[],roots=[],folders=[]}:{context:ServerContext;scope:LibraryJobScope;onchanged:()=>void;libraries?:Library[];roots?:ContentRootSummary[];folders?:LibraryOverviewFolder[]}=$props();
+  // Cleanup proposals belong to one library; the all-libraries view leaves them out.
+  const cleanupScope=$derived(scope.libraryId?{libraryId:scope.libraryId}:scope.unassigned?{unassigned:true as const}:null);
+  const rootLabel=(id:string)=>roots.find(row=>row.root.id===id)?.root.label??folders.find(folder=>folder.rootId===id)?.label;
+  const stateText:Record<LibraryJob['state'],string>={queued:'Waiting',running:'Working',completed:'Finished',failed:'Stopped with a problem',cancelled:'Cancelled',interrupted:'Paused'};
+  // Open on what needs attention; a clean job shows everything instead of an empty review list.
+  const startFilter=(job:LibraryJob|undefined)=>!job?'review':job.review?'review':job.failed?'failed':job.unmatched?'unmatched':'';
   const controller=untrack(()=>createLibraryJobs(context.client,scope,{changed:onchanged}));
   let plugins=$state<MatchingPlugin[]>([]),providerIds=$state<string[]>([]),online=$state(true),allowExactNames=$state(true),managerId=$state('org.ecs.matches');
   let registryFailure=$state<string|null>(null),ready=$state(false),reviewing=$state<LibraryJobItem|null>(null);
@@ -19,11 +25,11 @@
   const active=$derived(selected&&['queued','running'].includes(selected.state));
   const canMatch=$derived(ready&&plugins.some(p=>p.kind==='provider'&&providerIds.includes(p.id)&&(!p.network||online)));
   function scopeName(selected:LibraryJobScope){
-    if(selected.rootId)return roots.find(row=>row.root.id===selected.rootId)?.root.label??'Saved folder';
+    if(selected.rootId)return rootLabel(selected.rootId)??'Saved folder';
     if(selected.libraryId)return libraries.find(library=>library.id===selected.libraryId)?.name??'Library';
     return selected.unassigned?'Unassigned folders':'All libraries';
   }
-  function itemName(item:LibraryJobItem){return item.source?.name??roots.find(row=>row.root.id===item.sourceId)?.root.label??'Unavailable source';}
+  function itemName(item:LibraryJobItem){return item.source?.name??rootLabel(item.sourceId)??'Unavailable source';}
   let live=false,registryLoading=$state(false);
   onMount(()=>{live=true;controller.connect();void loadProviders();return()=>{live=false;controller.dispose();};});
   async function loadProviders(){
@@ -35,7 +41,9 @@
     }catch(error){if(live){registryFailure=explain(error);ready=false;}}
     finally{if(live)registryLoading=false;}
   }
-  async function choose(id:string){reviewing=null;await controller.choose(id);await controller.filter(filter);}
+  async function choose(id:string){reviewing=null;filter=startFilter($controller.jobs.find(job=>job.id===id));await controller.choose(id);await controller.filter(filter);}
+  let opened='';
+  $effect(()=>{const job=selected;if(job&&job.id!==opened&&!['queued','running'].includes(job.state)){opened=job.id;const next=startFilter(job);if(next!==untrack(()=>filter)){filter=next;void controller.filter(next);}}});
   async function start(kind:'scan'|'match',refreshCatalogs=false){reviewing=null;await controller.start(kind,kind==='match'?{online,...(providerIds.length===plugins.filter(p=>p.kind==='provider').length?{}:{providerIds}),...(managerId==='org.ecs.matches'?{}:{managerId}),checksum:true,allowExactNames,...(refreshCatalogs?{refreshCatalogs:true}:{})}:{});await controller.filter(filter);}
   async function nextReview(done:boolean) {
     if(!reviewing||reviewBusy)return;
@@ -51,13 +59,13 @@
   }
 </script>
 
-{#if cleanup}
-<LibraryCleanup {context} {scope} {onchanged} onclose={()=>{cleanup=false;queueMicrotask(()=>cleanupButton?.focus());}} />
+{#if cleanup&&cleanupScope}
+<LibraryCleanup {context} scope={cleanupScope} {onchanged} onclose={()=>{cleanup=false;queueMicrotask(()=>cleanupButton?.focus());}} />
 {:else}
 <div class="matching-page">
 <p class="dim">Library work runs on the server and is shared across sessions. You can return while a job is running.</p>
 <div class="matching-primary-actions" aria-label="Start library work">
-  <button type="button" bind:this={cleanupButton} onclick={()=>cleanup=true}>Review library cleanup</button>
+  {#if cleanupScope}<button type="button" bind:this={cleanupButton} onclick={()=>cleanup=true}>Review library cleanup</button>{/if}
   <button type="button" class="primary" disabled={$controller.loading||!canMatch} onclick={()=>void start('match')}>Find missing artwork and details</button>
   <button type="button" disabled={$controller.loading} onclick={()=>void start('scan')}>Scan saved folders</button>
 </div>
@@ -67,7 +75,7 @@
 </div></details>
 {#if $controller.jobs.length}
   <label class="matching-field">Server activity<select value={$controller.selectedId??''} onchange={event=>void choose(event.currentTarget.value)}>
-    {#each $controller.jobs as job(job.id)}<option value={job.id}>{scopeName(job.scope)} · {job.kind==='scan'?'Folder scan':'Artwork and metadata'} · {job.state} · {job.processed}/{job.total} · {new Date(job.createdAt).toLocaleString()}</option>{/each}
+    {#each $controller.jobs as job(job.id)}<option value={job.id}>{scopeName(job.scope)} · {job.kind==='scan'?'Folder scan':'Details and covers'} · {stateText[job.state]} · {job.processed}/{job.total} · {new Date(job.createdAt).toLocaleString()}</option>{/each}
   </select></label>
   {#if $controller.nextJobsCursor}<button type="button" class="matching-quiet-action" disabled={$controller.loading} onclick={()=>void controller.older()}>Load older activity</button>{/if}
 {:else}<p>No library jobs yet.</p>{/if}
@@ -78,12 +86,13 @@
   <section aria-label="Library job progress">
     {#if selected.kind==='match'}<p class="dim">{selected.options.allowExactNames?'Exact filename fallback was enabled for this job.':'This job uses verified ROM or disc IDs for automatic selections.'}</p>{/if}
     {#if selected.options.refreshCatalogs&&selected.state==='running'&&selected.processed===0&&!selected.currentSourceId}<p role="status">Preparing verified hosted catalogs…</p>{/if}
-    <div class="matching-progress-heading"><strong role="status">{selected.state}</strong><span>{selected.processed.toLocaleString()} of {selected.total.toLocaleString()} checked</span></div>
+    <div class="matching-progress-heading"><strong role="status">{stateText[selected.state]}</strong><span>{selected.processed.toLocaleString()} of {selected.total.toLocaleString()} checked</span></div>
     <progress class="matching-progress" max={Math.max(1,selected.total)} value={selected.processed} aria-label="Library job progress"></progress>
     <div class="matching-stat-row" aria-label="Job results">
       <span>{selected.saved.toLocaleString()} saved</span><span>{selected.review.toLocaleString()} need review</span><span>{selected.unmatched.toLocaleString()} unmatched</span><span>{selected.failed.toLocaleString()} failed</span><span>{selected.skipped.toLocaleString()} skipped</span>
     </div>
     {#if selected.error}<p class="problem">{selected.error}</p>{/if}
+    {#if selected.providerFailures}<p class="problem" role="status">An online source could not be reached for {selected.providerFailures.toLocaleString()} {selected.providerFailures===1?'game':'games'}, so results may be incomplete. Check the server's internet connection, then retry.</p>{/if}
     <div class="matching-actions">
       {#if active}<button type="button" disabled={$controller.loading} onclick={()=>void controller.cancel(selected.id)}>Cancel job</button>
       {:else if ['cancelled','interrupted','failed'].includes(selected.state)}<button type="button" disabled={$controller.loading} onclick={()=>void controller.resume(selected.id)}>Resume remaining work</button>{/if}

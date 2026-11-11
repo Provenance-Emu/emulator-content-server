@@ -1,5 +1,6 @@
 export const settingsSections = [
   { id: 'libraries', label: 'Libraries', group: 'Collection' },
+  { id: 'scans', label: 'Scans & details', group: 'Collection' },
   { id: 'storage', label: 'Storage', group: 'Collection' },
   { id: 'emulators', label: 'Emulators', group: 'Collection' },
   { id: 'plugins', label: 'Plugins', group: 'Server' },

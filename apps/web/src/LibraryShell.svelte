@@ -248,6 +248,7 @@
             onsetup={() => { guide = $application.owner ? 'host' : 'join'; }}
             onopendocumentation={context.openDocumentation}
             serverLabel={context.label}
+            server={context}
             onplayerschange={async () => { await application.revalidate(); playerEpoch++; }}
             client={context.client}
             appState={$application}

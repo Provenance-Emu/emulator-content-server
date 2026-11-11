@@ -51,7 +51,7 @@ test('owner sessions share a server job across close/reopen and persist explicit
     job.id,
   );
   await expect(panel.getByText('external.nes', { exact: true })).toBeVisible();
-  await expect(panel.getByRole('status')).toContainText('completed');
+  await expect(panel.getByRole('status')).toContainText('Finished');
   await panel.getByRole('button', { name: 'Close Library activity', exact: true }).click();
   panel = await openActivity(page);
   await expect(panel.getByRole('combobox', { name: 'Server activity', exact: true })).toHaveValue(
