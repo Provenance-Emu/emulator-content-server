@@ -42,9 +42,9 @@ GET /api/roms/42/content/Example.j64
 GET /assets/romm/ecs/42/cover
 ```
 
-Each browse row includes numeric `id`, `platform_id`, `platform_slug`, display name, and the Manic download filename `fs_name`. `fs_size_bytes` is present for single files. The generated archive size is unspecified. `path_cover_large` is present when a cover is available. It serves the original image and supports authenticated revalidation. This gateway does not generate thumbnails.
+Each browse row includes numeric `id`, `platform_id`, `platform_slug`, display name, and the Manic download filename `fs_name`. `fs_size_bytes` is present for single files. The generated archive size is unspecified. When a cover is available, `path_cover_small` uses the RomM resource prefix and `path_cover_large` keeps the existing gateway route. Both serve the original image and support authenticated revalidation.
 
-Libraries are visited in ID order. Within each library the ECS browse order is used. As in the original Manic API, a nonterminal page can omit `total`. The gateway still walks ECS cursors to translate a legacy offset. Native clients can use ECS cursor paging directly when offsets are unnecessary. The gateway retains its filename-based single-file and grouped ZIP download behavior. Direct connections to real RomM should use the upstream RomM contract for pagination and individual file downloads.
+Libraries are visited in ID order. Within each library the ECS browse order is used. As in the original Manic API, a nonterminal page can omit `total`. A caller that requires an exact count can pass `with_total=true`. This walks the full filtered catalog and costs more than fetching a single page. The gateway also walks ECS cursors to translate a legacy offset. Native clients can use ECS cursor paging directly when offsets are unnecessary. The gateway retains its filename-based single-file and grouped ZIP download behavior. Direct connections to real RomM should use the upstream RomM contract for pagination and individual file downloads.
 
 ## Optional companions
 

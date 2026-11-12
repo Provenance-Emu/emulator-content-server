@@ -38,6 +38,7 @@ interface Rom {
   platform_id: number;
   platform_slug: string;
   platform_display_name: string;
+  path_cover_small?: string;
   path_cover_large?: string;
 }
 
@@ -85,7 +86,12 @@ function rom(entry: IndexEntry, name: string, size?: number): Rom {
     platform_id: system.id,
     platform_slug: system.slug,
     platform_display_name: system.name,
-    ...(entry.artwork ? { path_cover_large: `/assets/romm/ecs/${entry.id}/cover` } : {}),
+    ...(entry.artwork
+      ? {
+          path_cover_small: `/assets/romm/resources/ecs/${entry.id}/cover`,
+          path_cover_large: `/assets/romm/ecs/${entry.id}/cover`,
+        }
+      : {}),
   };
 }
 
@@ -197,18 +203,19 @@ async function browseRom(
   ecs: Upstream,
   index: IdIndex,
   row: LibraryBrowseEntry,
+  allocateId: boolean,
 ): Promise<Rom | null> {
   if (!row.systemId || validateSystemIdentifier(row.systemId)) return null;
   const common = { ecsId: row.id, system: row.systemId, title: row.name };
+  const entryFor = (kind: IndexEntry['kind'], artwork: boolean): IndexEntry => {
+    const entry = { ...common, kind, artwork: Number(artwork) };
+    return allocateId ? index.assign(entry) : { ...entry, id: 0 };
+  };
   if (row.entityType === 'source' && row.source) {
     const source = row.source;
     if (source.availability !== 'local' || source.groupError) return null;
     const archive = (source.groupFileCount ?? 0) > 1;
-    const entry = index.assign({
-      ...common,
-      kind: 'source',
-      artwork: Number(Boolean(source.artworkAvailable)),
-    });
+    const entry = entryFor('source', Boolean(source.artworkAvailable));
     return rom(
       entry,
       archive ? archiveName(source.name) : source.name,
@@ -222,11 +229,7 @@ async function browseRom(
       (summary.romFileCount < 1 || summary.romFileCount > 512 || summary.requiresSystemFiles)
     )
       return null;
-    const entry = index.assign({
-      ...common,
-      kind: 'item',
-      artwork: Number(Boolean(row.previewAsset)),
-    });
+    const entry = entryFor('item', Boolean(row.previewAsset));
     if (summary) {
       if (summary.romFileCount > 1) return rom(entry, archiveName(entry.title));
       if (summary.filename !== undefined) return rom(entry, summary.filename, summary.sizeBytes);
@@ -312,6 +315,7 @@ export function openGateway(options: { origin: string; indexPath: string }) {
     const query = request.query as Record<string, unknown>;
     const limit = number(query.limit, 50, 250, 1);
     const offset = number(query.offset, 0, 100_000);
+    const withTotal = query.with_total === 'true';
     const search = query.search_term ?? '';
     if (typeof search !== 'string' || [...search].length > 256)
       throw new GatewayError(400, 'Invalid search term.');
@@ -345,7 +349,7 @@ export function openGateway(options: { origin: string; indexPath: string }) {
         libraryId,
         category: 'games',
         search,
-        limit: String(Math.min(100, offset + limit + 1)),
+        limit: String(withTotal ? 100 : Math.min(100, offset + limit + 1)),
         includeRomDownload: 'true',
       });
       if (systems) params.set('systemIds', systems.join(','));
@@ -353,10 +357,13 @@ export function openGateway(options: { origin: string; indexPath: string }) {
       for (;;) {
         const page = await ecs.json<LibraryBrowsePage>(`browse?${params}`);
         for (const row of page.items) {
-          const entry = await browseRom(ecs, index, row);
+          const entry = await browseRom(ecs, index, row, seen >= offset && items.length < limit);
           if (!entry || seen++ < offset) continue;
           // Manic reads until a short page. One extra result proves there is another page.
-          if (items.length === limit) return { items, limit, offset };
+          if (items.length === limit) {
+            if (!withTotal) return { items, limit, offset };
+            continue;
+          }
           items.push(entry);
         }
         if (!page.nextCursor) break;
@@ -442,21 +449,23 @@ export function openGateway(options: { origin: string; indexPath: string }) {
       );
     },
   });
-  app.route({
-    method: ['GET', 'HEAD'],
-    url: '/assets/romm/ecs/:id/cover',
-    async handler(request, reply) {
-      const ecs = new Upstream(origin, request, reply);
-      const { id } = request.params as { id: string };
-      const entry = index.find(number(id, 0, Number.MAX_SAFE_INTEGER, 1));
-      const cover =
-        entry.kind === 'source'
-          ? sourcePath(entry.ecsId, 'matches/selections/artwork/content')
-          : (await resolve(ecs, entry)).cover;
-      if (!cover) throw new GatewayError(404, 'Artwork not found.');
-      return relay(ecs, cover, request, reply, { revalidate: true });
-    },
-  });
+  for (const url of ['/assets/romm/ecs/:id/cover', '/assets/romm/resources/ecs/:id/cover']) {
+    app.route({
+      method: ['GET', 'HEAD'],
+      url,
+      async handler(request, reply) {
+        const ecs = new Upstream(origin, request, reply);
+        const { id } = request.params as { id: string };
+        const entry = index.find(number(id, 0, Number.MAX_SAFE_INTEGER, 1));
+        const cover =
+          entry.kind === 'source'
+            ? sourcePath(entry.ecsId, 'matches/selections/artwork/content')
+            : (await resolve(ecs, entry)).cover;
+        if (!cover) throw new GatewayError(404, 'Artwork not found.');
+        return relay(ecs, cover, request, reply, { revalidate: true });
+      },
+    });
+  }
   // Manic requests these during import even when no saves exist. Write methods remain absent.
   for (const path of ['/api/saves', '/api/states', '/api/play-sessions']) {
     app.get(path, async (request, reply) => {

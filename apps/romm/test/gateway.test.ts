@@ -359,6 +359,14 @@ test('Jaguar browse request counts across cart and CD libraries', async (t) => {
   assert.equal(deep.items[0].platform_slug, 'jaguarcd');
   assert.ok(calls.every((call) => !call.path.endsWith('/manifest')));
   assert.ok(calls.length <= 5);
+  const exactTotal = await observe(
+    'gateway explicit total',
+    gateway,
+    `/api/roms?platform_ids=${cartId},${cdId}&limit=100&with_total=true`,
+  );
+  assert.equal(exactTotal.items.length, 100);
+  assert.equal(exactTotal.total, 140);
+  assert.ok(calls.every((call) => !call.path.endsWith('/manifest')));
   legacyBrowse = true;
   const fallback = await observe(
     'gateway against legacy browse',
@@ -456,6 +464,8 @@ test('Jaguar browse request counts across cart and CD libraries', async (t) => {
   assert.equal(local.platform_slug, 'jaguar');
   const coverPath = `/assets/romm/ecs/${local.id}/cover`;
   assert.equal(local.path_cover_large, coverPath);
+  const smallCover = `/assets/romm/resources/ecs/${local.id}/cover`;
+  assert.equal(local.path_cover_small, smallCover);
   calls.length = 0;
   const image = await gateway.inject({ url: coverPath, headers: allowed });
   assert.deepEqual(image.rawPayload, cover);
@@ -464,6 +474,7 @@ test('Jaguar browse request counts across cart and CD libraries', async (t) => {
     ['/api/v1/sources/:sourceId/matches/selections/:kind/content'],
   );
   assert.equal(image.headers['cache-control'], 'private, no-cache');
+  assert.deepEqual((await gateway.inject({ url: smallCover, headers: allowed })).rawPayload, cover);
   const conditional = { 'if-none-match': image.headers.etag };
   assert.equal(
     (await gateway.inject({ url: coverPath, headers: { ...allowed, ...conditional } })).statusCode,
