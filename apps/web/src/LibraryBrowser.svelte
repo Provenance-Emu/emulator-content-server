@@ -383,6 +383,7 @@
       controller={detail}
       onauthorization={rejectUploadAccess}
       selectedSource={$browser.active?.source??null}
+      gameCompanions={$application.capabilities?.features.gameCompanions === true}
       {owner}
       {context}
       {playerCore}

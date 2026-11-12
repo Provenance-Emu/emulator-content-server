@@ -61,3 +61,30 @@ test('saved matches reject duplicate roles and invalid artwork role names', asyn
     /Invalid saved match/,
   );
 });
+
+test('source companions reject content URLs outside the source identity', async (t) => {
+  const original = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = original;
+  });
+  const id = 'a'.repeat(64);
+  globalThis.fetch = async () =>
+    Response.json({
+      supportedKinds: ['patch'],
+      items: [
+        {
+          id,
+          kind: 'patch',
+          required: false,
+          filename: 'translation.bps',
+          sizeBytes: 20,
+          sha256: id,
+          contentPath: 'https://another.example/patch',
+        },
+      ],
+    });
+  await assert.rejects(
+    new ContentClient('https://example.test').sourceCompanions('source/id'),
+    /Invalid game companions/,
+  );
+});

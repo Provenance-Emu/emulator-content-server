@@ -14,6 +14,7 @@
   import SourceOrganization from './SourceOrganization.svelte';
   import Upload from './Upload.svelte';
   import Modal from './components/Modal.svelte';
+  import SavedPatches from './components/SavedPatches.svelte';
   let {
     controller,
     context,
@@ -21,6 +22,7 @@
     systems,
     owner,
     selectedSource,
+    gameCompanions = false,
     refreshing = false,
     onrefresh,
     onback,
@@ -34,6 +36,7 @@
     systems: SystemSummary[];
     owner: boolean;
     selectedSource:SourceFile|null;
+    gameCompanions?: boolean;
     refreshing?: boolean;
     onrefresh: () => void;
     onback: () => void;
@@ -47,6 +50,7 @@
   let disposed = false;
   let groupDownloading=$state(false);
   let groupFailure=$state<string|null>(null);
+  let patchRevision = $state(0);
   onDestroy(() => {
     disposed = true;
   });
@@ -107,6 +111,7 @@
     if (await controller.adopt()) onchanged();
   }
   const play = $derived($controller.source ? sourcePlayHref(playerCore, $controller.source) : null);
+  const showPatches = $derived(gameCompanions && $controller.source?.kind === 'rom');
 </script>
 
 <button type="button" class="back-button" onclick={onback}>Back to collection</button>
@@ -132,7 +137,7 @@
     <button
       type="button"
       disabled={saving || refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
-      onclick={onrefresh}
+      onclick={() => { patchRevision++; onrefresh(); }}
     >
       Refresh details
     </button>
@@ -205,7 +210,10 @@
     Downloading {$controller.reading.received} bytes{#if $controller.reading.total !== null}
       of {$controller.reading.total}{/if}
   </p>{/if}
-{#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} {onchanged} sourceId={selectedSource.id} sourceName={selectedSource.name} />
+{#if showPatches && $controller.source}{#key `${context.key}:${$controller.source.id}:${patchRevision}`}
+  <SavedPatches client={context.client} sourceId={$controller.source.id} {onauthorization} />
+{/key}{/if}
+{#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} onchanged={() => { patchRevision++; onchanged(); }} showLegacyPatchDownload={!showPatches} sourceId={selectedSource.id} sourceName={selectedSource.name} />
 {#if selectedSource.kind==='rom'}<SourceOrganization {context} {owner} sourceRootId={selectedSource.rootId} sourceId={selectedSource.id} libraryId={selectedSource.libraryId} onchanged={()=>{onchanged();onrefresh();}} />{/if}
 {/key}{/if}
 {#if upload && uploadTarget}<Modal

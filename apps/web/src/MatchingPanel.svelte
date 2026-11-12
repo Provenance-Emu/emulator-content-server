@@ -9,7 +9,7 @@
   import FormField from './components/FormField.svelte';
   import MatchMetadata from './components/MatchMetadata.svelte';
   import {artworkRoles,roleOf,matchSlot,matchLabel} from './lib/matching-slots';
-  let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void}=$props();
+  let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy,showLegacyPatchDownload=true}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void;showLegacyPatchDownload?:boolean}=$props();
   const controller=untrack(()=>createMatching(context.client,sourceId));
   let plugins=$state<MatchingPlugin[]>([]);
   let providerIds=$state<string[]>([]);
@@ -100,7 +100,7 @@
         {:else}<MatchMetadata metadata={selected.metadata} />{/if}
         {#if selected.kind==='cheats'}<p class="dim">All codes in the saved file are disabled. Choose compatible codes in your player.</p>{/if}
         {#if selected.kind==='artwork'&&roleOf(selected)!=='front'&&selected.contentType?.startsWith('image/')&&!$controller.savedArtworkByRole[roleOf(selected)]}<button type="button" onclick={()=>void controller.previewSaved(roleOf(selected))}>Preview {matchLabel(selected)}</button>{/if}
-        {#if selected.contentAvailable}<button type="button" onclick={()=>void downloadSaved(selected.kind,selected.fileName??'selected',selected.kind==='artwork'?roleOf(selected):undefined)}>Download {matchLabel(selected)}</button>{/if}
+        {#if selected.contentAvailable && (selected.kind!=='patch' || showLegacyPatchDownload)}<button type="button" onclick={()=>void downloadSaved(selected.kind,selected.fileName??'selected',selected.kind==='artwork'?roleOf(selected):undefined)}>Download {matchLabel(selected)}</button>{/if}
         {#if owner}<button type="button" disabled={!!$controller.saving||$controller.loading||$controller.savedLoadFailed||$controller.savedLoading} onclick={()=>void remove(matchSlot(selected))}>Remove saved {matchLabel(selected)}</button>{/if}
       </article>
     {/each}</div>

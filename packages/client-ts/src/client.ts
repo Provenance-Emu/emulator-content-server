@@ -27,6 +27,7 @@ import type {
   AuditList,
   Capabilities,
   ChangeList,
+  CompanionList,
   ContentRoot,
   ContentRootDraft,
   ContentRootList,
@@ -41,6 +42,7 @@ import type {
   FolderOrganizationPreview,
   FolderWatchPolicy,
   FolderWatchPolicyDraft,
+  GameCompanion,
   GuestGrantCreated,
   GuestGrantDraft,
   GuestGrantList,
@@ -1217,6 +1219,56 @@ export class ContentClient {
     });
   }
 
+  async sourceCompanions(id: string, signal?: AbortSignal): Promise<CompanionList> {
+    const path = `/api/v1/sources/${encodeURIComponent(id)}/companions`;
+    const result = await this.getJson<CompanionList>(path, 'error', signal);
+    if (
+      !result ||
+      !Array.isArray(result.supportedKinds) ||
+      !Array.isArray(result.items) ||
+      result.items.length > 32 ||
+      result.items.some(
+        (file) =>
+          !file ||
+          !validCompanion(file) ||
+          !result.supportedKinds.includes(file.kind) ||
+          typeof file.required !== 'boolean' ||
+          typeof file.filename !== 'string' ||
+          !file.filename ||
+          file.filename.length > 512 ||
+          file.contentPath !== `${path}/${file.id}/content` ||
+          (file.base !== undefined &&
+            (!file.base ||
+              typeof file.base.crc32 !== 'string' ||
+              !/^[a-f0-9]{8}$/.test(file.base.crc32) ||
+              !Number.isSafeInteger(file.base.sizeBytes) ||
+              file.base.sizeBytes < 0)),
+      ) ||
+      new Set(result.items.map((file) => file.id)).size !== result.items.length
+    )
+      throw new Error('Invalid game companions');
+    return result;
+  }
+
+  async collectSourcePatch(
+    sourceId: string,
+    patch: GameCompanion,
+    signal?: AbortSignal,
+  ): Promise<CollectedAsset> {
+    if (patch.kind !== 'patch' || !validCompanion(patch) || patch.sizeBytes > 2 * 1024 * 1024)
+      throw new Error('Invalid saved patch');
+    const result = await this.collectPath(
+      `/api/v1/sources/${encodeURIComponent(sourceId)}/companions/${patch.id}/content`,
+      { maxBytes: patch.sizeBytes, signal: this.requestSignal(signal) },
+    );
+    if (
+      result.bytes.byteLength !== patch.sizeBytes ||
+      (await sha256Bytes(result.bytes)) !== patch.sha256
+    )
+      throw new Error('The patch did not match its advertised SHA-256 and size.');
+    return result;
+  }
+
   folderWatchPolicy(rootId: string): Promise<FolderWatchPolicy> {
     return this.getJson(`/api/v1/roots/${encodeURIComponent(rootId)}/watching-policy`);
   }
@@ -1876,6 +1928,16 @@ export class ContentClient {
 
 function investigatorRunPath(id: string): string {
   return `/api/v1/investigator/runs/${encodeURIComponent(id)}`;
+}
+
+function validCompanion(file: GameCompanion): boolean {
+  return (
+    typeof file.id === 'string' &&
+    /^[a-f0-9]{64}$/.test(file.id) &&
+    file.id === file.sha256 &&
+    Number.isSafeInteger(file.sizeBytes) &&
+    file.sizeBytes > 0
+  );
 }
 
 function investigatorPage(path: string, query: InvestigatorPageQuery): string {
