@@ -25,7 +25,8 @@ test('folder setup offers both defaults and folder settings preview the organiza
   expect((await fixture.client.folderWatchPolicy(root.id)).enabled).toBe(true);
   expect((await fixture.client.sourceOrganizationPolicy(root.id)).enabled).toBe(false);
 
-  await page.getByRole('button', { name: 'Automatic organization for Generated games' }).click();
+  await page.getByRole('button', { name: 'Open Scans & details', exact: true }).click();
+  await page.getByRole('button', { name: 'Organization settings for Generated games' }).click();
   const policy = page.getByRole('dialog', { name: 'Automatic organization', exact: true });
   await policy.getByRole('button', { name: 'Preview automatic organization', exact: true }).click();
   await expect(policy.getByText('NES/generated/generated.nes', { exact: true })).toBeVisible();

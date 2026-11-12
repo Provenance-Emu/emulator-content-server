@@ -438,6 +438,22 @@ export const MIGRATIONS: readonly Migration[] = [
   `,
   },
   { version: 21, sql: WORKFLOW_SQL },
+  {
+    version: 22,
+    sql: `
+      ALTER TABLE library_jobs ADD COLUMN targeted INTEGER NOT NULL DEFAULT 0 CHECK(targeted IN (0,1));
+      CREATE TABLE automatic_match_attempts (
+        source_id TEXT PRIMARY KEY REFERENCES source_files(id) ON DELETE CASCADE,
+        evidence TEXT NOT NULL,
+        retry_at INTEGER NOT NULL
+      );
+      CREATE TABLE source_lookup_hints (
+        source_id TEXT PRIMARY KEY REFERENCES source_files(id) ON DELETE CASCADE,
+        title TEXT,
+        system_id TEXT
+      );
+    `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

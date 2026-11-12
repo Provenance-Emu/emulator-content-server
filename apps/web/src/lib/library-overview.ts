@@ -25,21 +25,30 @@ export function missingCount(folder: LibraryOverviewFolder): number {
 
 /** One plain sentence for what the server did on its own, so a quiet folder is never ambiguous. */
 export function automaticText(enabled: boolean, folder: LibraryOverviewFolder): string {
-  if (!folder.games) return 'No games found yet. Scan this folder.';
-  if (!enabled) return 'Automatic matching is off.';
+  if (!folder.games) return 'No indexed games yet.';
+  if (!enabled) return 'Automatic lookup is off.';
   const missing = missingCount(folder);
-  switch (folder.automatic.state) {
-    case 'waiting':
-      return 'Queued. Starts when current work finishes.';
-    case 'queued':
-      return missing
-        ? 'Looked for details and covers. Some games still need review.'
-        : 'Details and covers found automatically.';
-    case 'complete':
-      return 'Nothing missing.';
+  if (!missing) return 'All games have details and a cover.';
+  const { state, jobState, processed, total, providerFailures, failed, unmatched, review } =
+    folder.automatic;
+  if (jobState === 'running')
+    return `Looking up details and covers · ${processed} of ${total} checked.`;
+  if (jobState === 'interrupted' || jobState === 'failed')
+    return 'Lookup stopped. Open activity to see what happened.';
+  if (jobState === 'queued' || state === 'waiting') return 'Lookup queued.';
+  if (typeof providerFailures === 'number' && providerFailures > 0)
+    return `Catalog lookups failed for ${providerFailures.toLocaleString()} games in the last batch.`;
+  if (typeof failed === 'number' && failed > 0)
+    return 'Some lookups failed. Open activity to retry.';
+  if (typeof review === 'number' && review > 0) return 'Some matches need review.';
+  if (typeof unmatched === 'number' && unmatched > 0)
+    return 'Some games had no match in the last batch.';
+  switch (state) {
     case 'unchanged':
-      return 'Some games still need details. Nothing has changed since the last try.';
+      return 'Waiting for new file or game information, or a scheduled retry.';
+    case 'queued':
+      return 'Open activity for lookup results.';
     default:
-      return missing ? 'Not checked since the server started.' : 'Nothing missing.';
+      return 'Details or covers are missing.';
   }
 }

@@ -3,6 +3,18 @@ import { posix } from 'node:path';
 export const companionDirectory = (path: string): string => posix.dirname(path);
 export const companionExtension = (name: string): string =>
   posix.extname(name).slice(1).toLowerCase();
+export const companionDirectories = [
+  'artwork',
+  'boxart',
+  'covers',
+  'manual',
+  'manuals',
+  'discs',
+  'screenshots',
+  'patches',
+  'metadata',
+  'cheats',
+] as const;
 export const gameStem = (name: string): string =>
   name
     .replace(/\.[^.]+$/, '')
@@ -29,18 +41,7 @@ export function companionSelection(rootId: string, relativePath: string, checksu
   const directory = companionDirectory(relativePath);
   const directories = [
     directory,
-    ...[
-      'artwork',
-      'boxart',
-      'covers',
-      'manual',
-      'manuals',
-      'discs',
-      'screenshots',
-      'patches',
-      'metadata',
-      'cheats',
-    ].map((name) => posix.join(directory, name)),
+    ...companionDirectories.map((name) => posix.join(directory, name)),
   ];
   const values: string[] = [];
   const branches: string[] = [];

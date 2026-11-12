@@ -242,9 +242,9 @@ test('saved unscanned folders have a visible scan action in an empty library', a
   });
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
-  await expect(page.getByText('Your saved folders need a scan')).toBeVisible();
+  await expect(page.getByText('Waiting for the first file check')).toBeVisible();
   fixture.requests.length = 0;
-  await page.getByRole('button', { name: 'Scan saved folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Check files now', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open generated.nes', exact: true })).toBeVisible();
   expect(fixture.requests.filter((r) => r === `POST /api/v1/roots/${root.id}/scan`)).toHaveLength(
     1,
@@ -298,8 +298,13 @@ test('linking keeps a failed scan visible and retry never registers again', asyn
   await prompt.getByRole('button', { name: 'Open library', exact: true }).click();
   await page.unroute('**/api/v1/roots/*/scan');
   fixture.requests.length = 0;
-  await page.getByLabel('Manage library', { exact: true }).click();
-  await page.getByRole('button', { name: 'Scan folders for games', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Scans & details', exact: true }).click();
+  await page.getByRole('button', { name: 'Check files in External folder', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Server activity' })).toContainText(
+    'External folder · Folder scan · Finished',
+  );
+  await page.getByRole('button', { name: 'Back to library', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open external.nes', exact: true })).toBeVisible();
   expect(fixture.requests.filter((r) => /^(PUT|POST) .*\/(roots|library)$/.test(r))).toHaveLength(
     0,

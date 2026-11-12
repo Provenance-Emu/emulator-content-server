@@ -9,14 +9,14 @@
   import MatchingPanel from './MatchingPanel.svelte';
   import LibraryCleanup from './LibraryCleanup.svelte';
   let cleanup=$state(false),cleanupButton:HTMLButtonElement|undefined=$state();
-  let {context,scope,onchanged,libraries=[],roots=[],folders=[]}:{context:ServerContext;scope:LibraryJobScope;onchanged:()=>void;libraries?:Library[];roots?:ContentRootSummary[];folders?:LibraryOverviewFolder[]}=$props();
+  let {context,scope,onchanged,libraries=[],roots=[],folders=[],initialJobId}:{context:ServerContext;scope:LibraryJobScope;onchanged:()=>void;libraries?:Library[];roots?:ContentRootSummary[];folders?:LibraryOverviewFolder[];initialJobId?:string}=$props();
   // Cleanup proposals belong to one library; the all-libraries view leaves them out.
   const cleanupScope=$derived(scope.libraryId?{libraryId:scope.libraryId}:scope.unassigned?{unassigned:true as const}:null);
   const rootLabel=(id:string)=>roots.find(row=>row.root.id===id)?.root.label??folders.find(folder=>folder.rootId===id)?.label;
   const stateText:Record<LibraryJob['state'],string>={queued:'Waiting',running:'Working',completed:'Finished',failed:'Stopped with a problem',cancelled:'Cancelled',interrupted:'Paused'};
   // Open on what needs attention; a clean job shows everything instead of an empty review list.
   const startFilter=(job:LibraryJob|undefined)=>!job?'review':job.review?'review':job.failed?'failed':job.unmatched?'unmatched':'';
-  const controller=untrack(()=>createLibraryJobs(context.client,scope,{changed:onchanged}));
+  const controller=untrack(()=>createLibraryJobs(context.client,scope,{changed:onchanged,initialJobId}));
   let plugins=$state<MatchingPlugin[]>([]),providerIds=$state<string[]>([]),online=$state(true),allowExactNames=$state(true),managerId=$state('org.ecs.matches');
   let registryFailure=$state<string|null>(null),ready=$state(false),reviewing=$state<LibraryJobItem|null>(null);
   let filter=$state('review');
@@ -63,11 +63,10 @@
 <LibraryCleanup {context} scope={cleanupScope} {onchanged} onclose={()=>{cleanup=false;queueMicrotask(()=>cleanupButton?.focus());}} />
 {:else}
 <div class="matching-page">
-<p class="dim">Library work runs on the server and is shared across sessions. You can return while a job is running.</p>
+<p class="dim">File checks update the library from disk. Lookups fill details and covers. Both run on the server, so you can leave while they work.</p>
 <div class="matching-primary-actions" aria-label="Start library work">
-  {#if cleanupScope}<button type="button" bind:this={cleanupButton} onclick={()=>cleanup=true}>Review library cleanup</button>{/if}
   <button type="button" class="primary" disabled={$controller.loading||!canMatch} onclick={()=>void start('match')}>Find missing artwork and details</button>
-  <button type="button" disabled={$controller.loading} onclick={()=>void start('scan')}>Scan saved folders</button>
+  <button type="button" disabled={$controller.loading} onclick={()=>void start('scan')}>Check folder files</button>
 </div>
 <details class="matching-disclosure matching-secondary-actions"><summary>More library actions</summary><div class="matching-disclosure-content matching-actions">
   <button type="button" disabled={$controller.loading||!canMatch||!online} onclick={()=>void start('match',true)}>Update catalogs and find matches</button>
@@ -126,6 +125,7 @@
     <div class="matching-actions"><button type="button" onclick={()=>void controller.first()}>First page</button><button type="button" disabled={!$controller.nextCursor} onclick={()=>void controller.next()}>Next results</button></div>
   {/if}
 {/if}
+  {#if cleanupScope}<div class="matching-actions"><button type="button" bind:this={cleanupButton} onclick={()=>cleanup=true}>Review library cleanup</button></div>{/if}
 </div>
 
 <style>

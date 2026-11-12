@@ -330,7 +330,7 @@ export async function buildApp(
   registerFolderWatchRoutes(app, context, folderWatcher);
   registerWebDav(app, context);
   registerApiDocs(app);
-  registerRoutes(app, context, (rootId) => folderWatcher.reconcile(rootId));
+  registerRoutes(app, context, (rootId) => folderWatcher.reconcile(rootId), startup?.activated);
   registerPluginManagement(app, context, pluginManagement);
   registerPlayerManagement(app, context);
   registerPlayerIsolation(app, context);

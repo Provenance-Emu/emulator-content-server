@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -414,6 +414,150 @@ test('the overview says automatic matching is off when the server runs without i
     assert.equal(overview.json().automaticMatching, false);
     assert.equal(overview.json().folders[0].automatic.state, 'none');
   } finally {
+    await f.dispose();
+  }
+});
+
+test('new evidence queues only the affected game, even after the worker restarts', async () => {
+  const f = await fixture();
+  const called: string[] = [];
+  const scan = () =>
+    f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
+  const start = async () => {
+    const worker = Fastify();
+    registerLibraryJobs(worker, { catalog: f.catalog, automaticMatching: true } as ServerContext, {
+      async autoMatch(_actor, id) {
+        called.push(f.catalog.getSource(id)?.displayName ?? '');
+        return { status: 'unmatched', saved: 0, suggestions: 0, error: null };
+      },
+    });
+    await worker.ready();
+    return worker;
+  };
+  const done = (count: number) =>
+    waitFor(
+      () =>
+        f.catalog.libraryJobs
+          .list(100)
+          .filter((job) => job.kind === 'match' && job.state === 'completed').length === count,
+    );
+  let worker: ReturnType<typeof Fastify> | undefined;
+  try {
+    worker = await start();
+    assert.equal((await scan()).statusCode, 200);
+    await done(1);
+    assert.deepEqual(called, ['Game.nes']);
+    await worker.close();
+    worker = await start();
+    await writeFile(join(f.root.path, 'New.nes'), Buffer.from([8, 7, 6]));
+    assert.equal((await scan()).statusCode, 200);
+    await done(2);
+    assert.deepEqual(called, ['Game.nes', 'New.nes']);
+    await writeFile(join(f.root.path, 'Game.json'), '{"title":"More evidence"}');
+    assert.equal((await scan()).statusCode, 200);
+    await done(3);
+    assert.deepEqual(called, ['Game.nes', 'New.nes', 'Game.nes']);
+    await rename(join(f.root.path, 'New.nes'), join(f.root.path, 'Renamed.nes'));
+    assert.equal((await scan()).statusCode, 200);
+    await done(4);
+    assert.deepEqual(called, ['Game.nes', 'New.nes', 'Game.nes', 'Renamed.nes']);
+    const source = f.catalog.listSources(f.root.id).find((file) => file.displayName === 'Game.nes');
+    assert.ok(source);
+    const hint = (title: string, revision: number) =>
+      f.app.inject({
+        method: 'PUT',
+        url: `/api/v1/sources/${source.id}/matches/lookup-hints`,
+        headers: { ...f.auth, 'if-match': `"rev-${revision}"` },
+        payload: { title, systemId: 'com.provenance.nes' },
+      });
+    const saved = await hint('Corrected game', 0);
+    assert.equal(saved.statusCode, 200, saved.body);
+    assert.deepEqual(saved.json().lookupHints, {
+      title: 'Corrected game',
+      systemId: 'com.provenance.nes',
+    });
+    assert.equal((await hint('Stale edit', 0)).statusCode, 409);
+    await done(5);
+    assert.deepEqual(called, ['Game.nes', 'New.nes', 'Game.nes', 'Renamed.nes', 'Game.nes']);
+    await writeFile(
+      join(f.matchingPluginsDir, 'test.fill', 'entry.mjs'),
+      `export default {search(input) {
+        if (input.systemId !== 'com.provenance.nes' || !input.facts?.names.includes('Corrected game'))
+          throw new Error('Lookup hints missing');
+        return [{ id: 'hinted', kind: 'metadata', title: 'Corrected game', confidence: 'name',
+          metadata: { systemId: input.systemId } }];
+      }};`,
+    );
+    const lookup = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/sources/${source.id}/matches`,
+      headers: f.auth,
+      payload: { online: true, checksum: false, providerIds: ['test.fill'] },
+    });
+    assert.equal(lookup.statusCode, 200, lookup.body);
+    assert.deepEqual(lookup.json().problems, []);
+    assert.equal(lookup.json().candidates[0]?.title, 'Corrected game');
+    const evidence = f.catalog.libraryJobs.automaticMatchEvidence(source.id);
+    assert.ok(evidence);
+    f.catalog.libraryJobs.recordAutomaticMatch(source.id, evidence, Date.now() - 1);
+    assert.deepEqual(f.catalog.libraryJobs.automaticCandidates(f.root.id, 50, 0), []);
+    assert.deepEqual(
+      f.catalog.libraryJobs.automaticCandidates(f.root.id, 50, Date.now()).map(({ id }) => id),
+      [source.id],
+    );
+  } finally {
+    await worker?.close();
+    await f.dispose();
+  }
+});
+
+test('folder registration checks files without a client scan and watcher checks can resume after restart', async () => {
+  const f = await fixture();
+  const worker = Fastify();
+  const interrupted = f.catalog.libraryJobs.create(
+    'scan',
+    { rootId: f.root.id },
+    { online: false, checksum: false },
+    f.owner.id,
+  ).job;
+  f.catalog.libraryJobs.state(interrupted.id, 'running');
+  registerLibraryJobs(worker, { catalog: f.catalog, automaticMatching: true } as ServerContext, {
+    async autoMatch() {
+      return { status: 'unmatched', saved: 0, suggestions: 0, error: null };
+    },
+  });
+  try {
+    await worker.ready();
+    assert.equal(f.catalog.libraryJobs.get(interrupted.id)?.state, 'interrupted');
+    const retried = await f.app.inject({
+      method: 'POST',
+      url: `/api/v1/roots/${f.root.id}/scan`,
+      headers: f.auth,
+    });
+    assert.equal(retried.statusCode, 200, retried.body);
+    assert.equal(f.catalog.libraryJobs.get(interrupted.id)?.state, 'completed');
+
+    const path = join(f.base, 'Another folder');
+    await mkdir(path);
+    await writeFile(join(path, 'Generated.nes'), Buffer.from([1, 2, 3, 4]));
+    const added = await f.app.inject({
+      method: 'POST',
+      url: '/api/v1/roots',
+      headers: f.auth,
+      payload: { label: 'Another folder', path, libraryId: f.library.id },
+    });
+    assert.equal(added.statusCode, 201, added.body);
+    const rootId = added.json().id;
+    await waitFor(() => f.catalog.listSources(rootId).length === 1);
+    await waitFor(() =>
+      f.catalog.libraryJobs
+        .list(100)
+        .some(
+          (job) => job.kind === 'match' && job.scope.rootId === rootId && job.state === 'completed',
+        ),
+    );
+  } finally {
+    await worker.close();
     await f.dispose();
   }
 });

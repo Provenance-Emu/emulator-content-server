@@ -434,7 +434,13 @@ export interface SourceMatchSelections {
   automaticOrganization?: AutomaticOrganizationOutcome;
   sourceId: string;
   revision: number;
+  lookupHints?: SourceLookupHints;
   matches: SavedSourceMatch[];
+}
+
+export interface SourceLookupHints {
+  title: string | null;
+  systemId: string | null;
 }
 
 export interface SourceMatchSelectionDraft {

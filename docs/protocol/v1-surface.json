@@ -162,6 +162,7 @@
     "PUT /api/v1/roots/:rootId/organization-policy",
     "PUT /api/v1/roots/:rootId/watching-policy",
     "PUT /api/v1/server/updates",
+    "PUT /api/v1/sources/:sourceId/matches/lookup-hints",
     "PUT /api/v1/sources/:sourceId/matches/selections",
     "PUT /api/v1/storage-locations/write-target",
     "PUT /api/v1/uploads/:uploadId/content"
@@ -971,6 +972,7 @@
     "SourceMatchSelections": {
       "properties": [
         "automaticOrganization",
+        "lookupHints",
         "matches",
         "revision",
         "sourceId"
@@ -979,6 +981,16 @@
         "matches",
         "revision",
         "sourceId"
+      ]
+    },
+    "SourceLookupHints": {
+      "properties": [
+        "systemId",
+        "title"
+      ],
+      "required": [
+        "systemId",
+        "title"
       ]
     },
     "SourceMatchSelectionDraft": {

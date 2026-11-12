@@ -66,7 +66,7 @@
       if (live()) {
         if (Object.keys(get(folders).scanFailures).length) {
           linkedLibrary = target;
-          failure = 'Folders linked, but some could not be scanned. Open the library and retry Scan folders for games from Library tools.';
+          failure = 'Folders linked, but some could not be scanned. Go to Settings → Scans & details and choose Check files for the folder.';
         } else onview('', target);
       }
     } finally { if (!disposed) busy = false; }

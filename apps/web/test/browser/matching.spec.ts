@@ -17,7 +17,7 @@ test('library activity keeps its main actions and live progress visible on a pho
     actions.getByRole('button', { name: 'Find missing artwork and details', exact: true }),
   ).toBeVisible();
   await expect(
-    actions.getByRole('button', { name: 'Scan saved folders', exact: true }),
+    actions.getByRole('button', { name: 'Check folder files', exact: true }),
   ).toBeVisible();
   await expect(actions.locator('button')).toHaveCount(2);
   for (const button of await actions.getByRole('button').all()) {
@@ -35,6 +35,30 @@ test('library activity keeps its main actions and live progress visible on a pho
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+});
+
+test('an owner can save title and system lookup hints for an indexed game', async ({
+  page,
+  fixture,
+}) => {
+  await fixture.legacy();
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
+  await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await panel.getByText('Improve lookup', { exact: true }).click();
+  await panel.getByRole('textbox', { name: 'Game title for lookup' }).fill('Generated title');
+  await panel.getByRole('textbox', { name: 'System identifier' }).fill('com.provenance.nes');
+  await panel.getByRole('button', { name: 'Save lookup hints' }).click();
+  await expect(panel.getByRole('status').filter({ hasText: 'Lookup hints saved.' })).toBeVisible();
+  const source = (await fixture.client.sources()).items.find(
+    (item) => item.name === 'external.nes',
+  );
+  expect(source).toBeTruthy();
+  expect((await fixture.client.sourceSelections(source?.id ?? '')).lookupHints).toEqual({
+    title: 'Generated title',
+    systemId: 'com.provenance.nes',
+  });
 });
 
 for (const bulk of [false, true])
@@ -376,6 +400,16 @@ test('automatic Copy needs preview opt-in, runs on saves, and can be disabled fr
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
   const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await page.route('**/api/v1/sources/*/matches', (route) =>
+    route.continue({
+      postData: JSON.stringify({
+        ...route.request().postDataJSON(),
+        autoSave: false,
+        online: false,
+        providerIds: ['org.ecs.local'],
+      }),
+    }),
+  );
   await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
   await matching.getByRole('button', { name: 'Save metadata', exact: true }).click();
   const organization = page.getByRole('region', { name: 'Organize original file', exact: true });
@@ -400,7 +434,7 @@ test('automatic Copy needs preview opt-in, runs on saves, and can be disabled fr
     matching.getByRole('button', { name: 'Remove saved front cover', exact: true }),
   ).toBeVisible();
   const copies = (await fixture.client.sources()).items.filter(
-    (source) => source.rootId === target.id,
+    (source) => source.rootId === target.id && source.kind === 'rom',
   );
   expect(copies).toHaveLength(1);
   expect(
@@ -409,11 +443,14 @@ test('automatic Copy needs preview opt-in, runs on saves, and can be disabled fr
       .sort(),
   ).toEqual(['artwork', 'metadata']);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Scans & details', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Automatic organization for External folder', exact: true })
+    .getByRole('button', { name: 'Organization settings for External folder', exact: true })
     .click();
   const policy = page.getByRole('dialog', { name: 'Automatic organization', exact: true });
-  await expect(policy.getByRole('status')).toContainText('Automatic Copy is enabled');
+  await expect(policy.getByRole('status')).toHaveText(
+    'Automatic copy to Automatic destination is on.',
+  );
   await policy
     .getByRole('button', { name: 'Turn off automatic organization', exact: true })
     .click();
@@ -455,6 +492,16 @@ test('automatic Move waits for local artwork review and preserves the game and b
     .getByRole('button', { name: 'Confirm automatic Move for this source folder', exact: true })
     .click();
   const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  await page.route('**/api/v1/sources/*/matches', (route) =>
+    route.continue({
+      postData: JSON.stringify({
+        ...route.request().postDataJSON(),
+        autoSave: false,
+        online: false,
+        providerIds: ['org.ecs.local'],
+      }),
+    }),
+  );
   await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
   await matching.getByRole('button', { name: 'Save metadata', exact: true }).click();
   await expect(
@@ -477,8 +524,9 @@ test('automatic Move waits for local artwork review and preserves the game and b
       .sort(),
   ).toEqual(['artwork', 'metadata']);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Scans & details', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Automatic organization for External folder', exact: true })
+    .getByRole('button', { name: 'Organization settings for External folder', exact: true })
     .click();
   const policy = page.getByRole('dialog', { name: 'Automatic organization', exact: true });
   await policy

@@ -6,7 +6,7 @@ import { etagMatches, strongEtag, validateSystemIdentifier } from '@ecs/protocol
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { canSeeSource } from './content.js';
 import type { ServerContext } from './context.js';
-import { requireActor, requireOwner, requireRevision } from './http.js';
+import { jsonObject, requireActor, requireOwner, requireRevision } from './http.js';
 import { visibleSource } from './source-groups.js';
 import { runAutomaticOrganization } from './source-organization.js';
 
@@ -35,12 +35,20 @@ export function registerSourceSelections(
   app: FastifyInstance,
   context: ServerContext,
   dependencies: Dependencies,
+  onIdentityChanged?: (rootId: string, sourceId: string) => void,
 ): void {
   function state(actor: Actor, sourceId: string, allArtwork = false) {
     const source = visibleSource(context, actor, sourceId);
     const saved = context.catalog.sourceMatches(sourceId);
     return {
       ...saved,
+      ...(actor.kind === 'user' &&
+      actor.isOwner &&
+      !actor.localTrust &&
+      actor.scopes.includes('admin') &&
+      source.kind === 'rom'
+        ? { lookupHints: context.catalog.sourceLookupHints(sourceId) }
+        : {}),
       matches: saved.matches
         .filter(
           (match) =>
@@ -57,6 +65,56 @@ export function registerSourceSelections(
       (request.params as { sourceId: string }).sourceId,
       includeArtworkRoles(request),
     );
+  });
+  app.put('/api/v1/sources/:sourceId/matches/lookup-hints', async (request, reply) => {
+    const actor = requireOwner(request, 'Only the server owner can change lookup hints');
+    const { sourceId } = request.params as { sourceId: string };
+    const source = visibleSource(context, actor, sourceId);
+    if (source.kind !== 'rom' || (source.groupAnchor && source.groupAnchor !== source.relativePath))
+      throw new DomainError(
+        'invalid-request',
+        400,
+        'Lookup hints belong to the game or its group entry.',
+      );
+    const body = jsonObject(request.body);
+    if (
+      Object.keys(body).some((key) => key !== 'title' && key !== 'systemId') ||
+      (body.title !== null && typeof body.title !== 'string') ||
+      (body.systemId !== null && typeof body.systemId !== 'string')
+    )
+      throw new DomainError(
+        'invalid-request',
+        400,
+        'Supply a title and system identifier or null for either.',
+      );
+    const title =
+      typeof body.title === 'string' ? body.title.trim().normalize('NFC') || null : null;
+    const systemId = typeof body.systemId === 'string' ? body.systemId.trim() || null : null;
+    if (
+      (title &&
+        (title.length > 160 ||
+          [...title].some((char) => {
+            const code = char.charCodeAt(0);
+            return code < 32 || code === 127;
+          }))) ||
+      (systemId && validateSystemIdentifier(systemId))
+    )
+      throw new DomainError(
+        'invalid-request',
+        400,
+        'Enter a title of up to 160 characters and a valid system identifier.',
+      );
+    if (
+      context.catalog.setSourceLookupHints(
+        sourceId,
+        requireRevision(request),
+        { title, systemId },
+        actor.userId,
+      )
+    )
+      onIdentityChanged?.(source.rootId, sourceId);
+    reply.header('cache-control', 'private, no-store');
+    return state(actor, sourceId, includeArtworkRoles(request));
   });
 
   function selectedPatch(actor: Actor, sourceId: string) {
@@ -116,7 +174,7 @@ export function registerSourceSelections(
   app.put('/api/v1/sources/:sourceId/matches/selections', async (request, reply) => {
     const actor = requireOwner(request, 'Only the server owner can save matches');
     const sourceId = (request.params as { sourceId: string }).sourceId;
-    visibleSource(context, actor, sourceId);
+    const source = visibleSource(context, actor, sourceId);
     const body = request.body as {
       requestId?: unknown;
       candidateId?: unknown;
@@ -208,6 +266,8 @@ export function registerSourceSelections(
           ),
         )
       : undefined;
+    if (candidate.kind === 'metadata' || candidate.kind === 'rom')
+      onIdentityChanged?.(context.catalog.getSource(sourceId)?.rootId ?? source.rootId, sourceId);
     reply.header('cache-control', 'private, no-store');
     return {
       ...state(actor, sourceId, includeArtworkRoles(request)),

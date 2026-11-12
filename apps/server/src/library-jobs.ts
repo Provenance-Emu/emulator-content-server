@@ -1,5 +1,10 @@
 import { setTimeout as pause } from 'node:timers/promises';
-import type { CatalogDatabase, LibraryJobRecord, LibraryJobScope } from '@ecs/database';
+import {
+  type CatalogDatabase,
+  type LibraryJobRecord,
+  type LibraryJobScope,
+  PROVIDERS_FAILED_REASON,
+} from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import type { FastifyInstance } from 'fastify';
 import { canSeeRoot } from './content.js';
@@ -22,6 +27,8 @@ const queues = new WeakMap<
   {
     scan(root: { id: string; path: string }, actorId: string): Promise<ScanResult>;
     stop(): Promise<void>;
+    checkDetails(rootId: string, sourceId: string): void;
+    index(rootId: string, actorId: string): void;
   }
 >();
 export async function enqueueRootScan(
@@ -36,14 +43,32 @@ export async function stopLibraryJobs(catalog: CatalogDatabase): Promise<void> {
   await queues.get(catalog)?.stop();
 }
 
+export function checkSourceDetails(
+  catalog: CatalogDatabase,
+  rootId: string,
+  sourceId: string,
+): void {
+  queues.get(catalog)?.checkDetails(rootId, sourceId);
+}
+export function indexNewRoot(catalog: CatalogDatabase, rootId: string, actorId: string): void {
+  queues.get(catalog)?.index(rootId, actorId);
+}
+
+const automaticBatch = 50;
+const idleCheckInterval = 5 * 60_000;
+const normalRetry = 48 * 60 * 60_000;
+const failedRetry = 60 * 60_000;
+const automaticOptions = { online: true, checksum: true, allowExactNames: true };
+
 /** One server-owned disk/CPU worker. HTTP connections never own its lifetime. */
 export function registerLibraryJobs(
   app: FastifyInstance,
   context: ServerContext,
   matching: Pick<SourceMatchingService, 'autoMatch' | 'prepareCatalogs'>,
+  activation?: Promise<void>,
 ): void {
   const repository = context.catalog.libraryJobs;
-  repository.recover();
+  let started = false;
   let running: Promise<void> | null = null;
   let current: { id: string; abort: AbortController } | null = null;
   let closing = false;
@@ -99,16 +124,17 @@ export function registerLibraryJobs(
     waiters.delete(id);
     scanOutcomes.delete(id);
   }
-  const pendingArtwork = new Map<string, string>();
-  const lastAutomatic = new Map<string, { signature: string; queuedAt: number }>();
+  const pendingDetails = new Map<string, { actorId: string; afterPath?: string }>();
+  const idleChecks = new Set<string>();
+  let idleTimer: NodeJS.Timeout | undefined;
   // What the automatic fill last decided for a folder, so the interface can say it instead of staying silent.
   const automatic = new Map<
     string,
-    { state: 'queued' | 'complete' | 'unchanged'; checkedAt: string; jobId?: string }
+    { state: 'queued' | 'unchanged'; checkedAt: string; jobId?: string }
   >();
   const decided = (
     rootId: string,
-    state: 'queued' | 'complete' | 'unchanged',
+    state: 'queued' | 'unchanged',
     jobId = automatic.get(rootId)?.jobId,
   ) =>
     automatic.set(rootId, {
@@ -116,69 +142,59 @@ export function registerLibraryJobs(
       checkedAt: new Date().toISOString(),
       ...(jobId ? { jobId } : {}),
     });
+  function ownerId() {
+    return context.catalog.listUsers().find((user) => user.isOwner)?.id;
+  }
   function fillMissingDetails() {
     if (closing || !context.automaticMatching) return;
-    for (const [rootId, actorId] of pendingArtwork) {
-      const root = context.catalog.getContentRoot(rootId);
+    for (const [rootId, { actorId, afterPath }] of pendingDetails) {
+      pendingDetails.delete(rootId);
+      const retryDue = idleChecks.delete(rootId);
       const actor = context.catalog.actorForUser(actorId);
-      if (!root || actor?.kind !== 'user' || !actor.isOwner) {
-        pendingArtwork.delete(rootId);
+      if (!context.catalog.getContentRoot(rootId) || actor?.kind !== 'user' || !actor.isOwner) {
         automatic.delete(rootId);
         continue;
       }
-      const sources = context.catalog.listSources(rootId);
-      const missing = sources.filter((source) => {
-        if (
-          source.kind !== 'rom' ||
-          source.availability !== 'local' ||
-          source.groupError ||
-          (source.groupAnchor && source.groupAnchor !== source.relativePath)
-        )
-          return false;
-        const saved = context.catalog.sourceMatches(source.id).matches;
-        return (
-          !saved.some((match) => match.kind === 'metadata') ||
-          !saved.some(
-            (match) => match.kind === 'artwork' && (match.artworkRole ?? 'front') === 'front',
-          )
-        );
-      });
-      const signature = JSON.stringify(
-        sources.map((source) => [
-          source.id,
-          source.relativePath,
-          source.size,
-          context.catalog.sourceInspectionIdentity(source.id),
-        ]),
-      );
-      const previous = lastAutomatic.get(rootId);
-      if (
-        !missing.length ||
-        (previous?.signature === signature && Date.now() - previous.queuedAt < 15 * 60_000)
-      ) {
-        pendingArtwork.delete(rootId);
-        decided(rootId, missing.length ? 'unchanged' : 'complete');
+      const changed = repository.automaticCandidates(rootId, automaticBatch, 0, afterPath);
+      const candidates =
+        !changed.length && retryDue
+          ? repository.automaticCandidates(rootId, automaticBatch, Date.now())
+          : changed;
+      if (!candidates.length) {
+        decided(rootId, 'unchanged');
         continue;
       }
       try {
         const result = repository.create(
           'match',
           { rootId },
-          { online: true, checksum: true, allowExactNames: true },
+          automaticOptions,
           actorId,
-          missing.map((source) => source.id),
+          candidates.map(({ id }) => id),
         );
-        // A job that already covers this folder is doing the same work; stop asking for another.
-        if (!result.reused) lastAutomatic.set(rootId, { signature, queuedAt: Date.now() });
-        pendingArtwork.delete(rootId);
         decided(rootId, 'queued', result.job.id);
+        if (changed.length === automaticBatch || (changed.length && retryDue)) {
+          pendingDetails.set(rootId, { actorId, afterPath: changed.at(-1)?.relativePath });
+          if (retryDue) idleChecks.add(rootId);
+        }
+        return;
       } catch (error) {
         if (!(error instanceof DomainError) || error.code !== 'library-job-conflict') throw error;
       }
     }
   }
+  function scheduleIdleChecks() {
+    const owner = ownerId();
+    if (!owner) return;
+    for (const root of context.catalog.listContentRoots()) {
+      pendingDetails.set(root.id, { actorId: owner });
+      idleChecks.add(root.id);
+    }
+    wake();
+  }
   async function stop(): Promise<void> {
     closing = true;
+    clearInterval(idleTimer);
     current?.abort.abort();
     await running;
     for (const id of waiters.keys()) notify(id);
@@ -186,6 +202,33 @@ export function registerLibraryJobs(
   }
   queues.set(context.catalog, {
     stop,
+    checkDetails(rootId, sourceId) {
+      if (closing || !context.automaticMatching) return;
+      try {
+        const owner = ownerId();
+        if (!owner) return;
+        if (!repository.automaticCandidates(rootId, 1, 0, '', sourceId).length) return;
+        pendingDetails.set(rootId, { actorId: owner });
+        if (!halted) {
+          const { job } = repository.create('match', { rootId }, automaticOptions, owner, [
+            sourceId,
+          ]);
+          decided(rootId, 'queued', job.id);
+        }
+      } catch (error) {
+        if (!(error instanceof DomainError) || error.code !== 'library-job-conflict') halt();
+      }
+      wake();
+    },
+    index(rootId, actorId) {
+      if (closing || halted || !context.automaticMatching) return;
+      try {
+        repository.create('scan', { rootId }, { online: false, checksum: false }, actorId);
+        wake();
+      } catch {
+        app.log.warn('Could not queue the initial folder check');
+      }
+    },
     async scan(root, actorId) {
       requireWritableWorker();
       const result = repository.create(
@@ -194,6 +237,7 @@ export function registerLibraryJobs(
         { online: false, checksum: false },
         actorId,
       );
+      if (result.job.state === 'interrupted') repository.resume(result.job.id);
       // Retain the typed outcome for every caller sharing this job, even after
       // notification releases the queue's transient bookkeeping.
       const outcome = scanOutcome(result.job.id, root.id);
@@ -225,7 +269,7 @@ export function registerLibraryJobs(
     },
   });
   function wake(): void {
-    if (closing || halted || running) return;
+    if (!started || closing || halted || running) return;
     running = work()
       .catch(() => halt())
       .finally(() => {
@@ -240,11 +284,17 @@ export function registerLibraryJobs(
   }
   async function work(): Promise<void> {
     while (!closing) {
-      fillMissingDetails();
-      const next = repository.next();
+      let next = repository.next();
+      if (!next) {
+        fillMissingDetails();
+        next = repository.next();
+      }
       if (!next) return;
+      if (next.targeted && next.job.scope.rootId)
+        decided(next.job.scope.rootId, 'queued', next.job.id);
       const abort = new AbortController();
       current = { id: next.job.id, abort };
+      let yielded = false;
       try {
         const actor = context.catalog.actorForUser(next.actorId);
         if (actor?.kind !== 'user' || (next.job.kind === 'match' && !actor.isOwner))
@@ -264,7 +314,22 @@ export function registerLibraryJobs(
           if (!entries.length) break;
           for (const entry of entries) {
             abort.signal.throwIfAborted();
+            if (next.targeted && repository.foregroundQueued()) {
+              yielded = true;
+              break;
+            }
             repository.current(next.job.id, entry.sourceId);
+            const options = next.job.options;
+            const evidence =
+              context.automaticMatching &&
+              next.job.kind === 'match' &&
+              options.online &&
+              options.checksum &&
+              options.allowExactNames &&
+              !options.providerIds &&
+              !options.managerId
+                ? repository.automaticMatchEvidence(entry.sourceId)
+                : undefined;
             try {
               if (next.job.kind === 'scan') {
                 const root = context.catalog.getContentRoot(entry.sourceId);
@@ -284,8 +349,10 @@ export function registerLibraryJobs(
                   const result = await scanRoot(context.catalog, root, next.actorId, abort.signal);
                   repository.saveScanResult(next.job.id, root.id, result);
                   repository.finishItem(next.job.id, { ...entry, status: 'saved' });
-                  if (context.automaticMatching && actor.isOwner && result.online)
-                    pendingArtwork.set(root.id, actor.userId);
+                  if (context.automaticMatching && result.online) {
+                    const owner = actor.isOwner ? actor.userId : ownerId();
+                    if (owner) pendingDetails.set(root.id, { actorId: owner });
+                  }
                 }
               } else {
                 if (!context.catalog.getSource(entry.sourceId))
@@ -294,22 +361,30 @@ export function registerLibraryJobs(
                     status: 'skipped',
                     error: 'Source was removed.',
                   });
-                else
-                  repository.finishItem(next.job.id, {
-                    sourceId: entry.sourceId,
-                    ...(await matching.autoMatch(
-                      actor,
+                else {
+                  const outcome = await matching.autoMatch(
+                    actor,
+                    entry.sourceId,
+                    options,
+                    abort.signal,
+                  );
+                  if (evidence)
+                    repository.recordAutomaticMatch(
                       entry.sourceId,
-                      next.job.options,
-                      abort.signal,
-                    )),
-                  });
+                      evidence,
+                      Date.now() +
+                        (outcome.error === PROVIDERS_FAILED_REASON ? failedRetry : normalRetry),
+                    );
+                  repository.finishItem(next.job.id, { sourceId: entry.sourceId, ...outcome });
+                }
               }
             } catch (error) {
               if (abort.signal.aborted) throw error;
               // A storage outage is queue-wide, not a failed ROM. Leave the
               // current item pending and do not hammer the remaining library.
               if (storageUnavailable(error)) throw error;
+              if (evidence)
+                repository.recordAutomaticMatch(entry.sourceId, evidence, Date.now() + failedRetry);
               if (error instanceof DomainError && error.code === 'root-busy') {
                 await pause(100, undefined, { signal: abort.signal });
                 continue;
@@ -329,8 +404,10 @@ export function registerLibraryJobs(
             // Yield between files so cancellation and other clients are serviced on fast disks.
             await new Promise<void>((resolve) => setImmediate(resolve));
           }
+          if (yielded) break;
         }
-        if (!closing && !abort.signal.aborted) repository.state(next.job.id, 'completed');
+        if (!closing && !abort.signal.aborted)
+          repository.state(next.job.id, yielded ? 'queued' : 'completed');
       } catch (error) {
         if (storageUnavailable(error)) halt();
         try {
@@ -358,14 +435,30 @@ export function registerLibraryJobs(
       if (halted) return;
     }
   }
-  app.addHook('onReady', async () => {
+  function start() {
+    if (closing) return;
+    repository.recover();
+    started = true;
     if (context.automaticMatching) {
-      const owner = context.catalog.listUsers().find((user) => user.isOwner);
-      if (owner)
-        for (const root of context.catalog.listContentRoots())
-          pendingArtwork.set(root.id, owner.id);
+      scheduleIdleChecks();
+      idleTimer = setInterval(() => {
+        if (closing || running || halted) return;
+        try {
+          scheduleIdleChecks();
+        } catch {
+          halt();
+        }
+      }, idleCheckInterval);
+      idleTimer.unref();
     }
     wake();
+  }
+  app.addHook('onReady', async () => {
+    if (activation) {
+      void activation.then(start).catch(() => {
+        if (!closing) halt();
+      });
+    } else start();
   });
   app.addHook('preClose', stop);
   app.post('/api/v1/library-jobs', async (request, reply) => {
@@ -411,6 +504,8 @@ export function registerLibraryJobs(
         actor.userId,
       ),
     );
+    if (result.job.kind === 'scan' && result.job.state === 'interrupted')
+      result.job = repository.resume(result.job.id);
     reply.header('cache-control', 'private, no-store');
     reply.code(result.reused ? 200 : 202);
     wake();
@@ -433,25 +528,36 @@ export function registerLibraryJobs(
     return {
       automaticMatching: context.automaticMatching === true,
       folders: context.catalog.listContentRoots().map((root) => {
-        const games = context.catalog
-          .listSources(root.id)
-          .filter(
-            (source) =>
-              source.kind === 'rom' &&
-              !(source.groupAnchor && source.groupAnchor !== source.relativePath),
-          );
         const last = automatic.get(root.id);
+        const stoppedJobId = repository.stoppedMatch(root.id, root.libraryId);
+        const jobId = last?.jobId ?? stoppedJobId;
+        const job = jobId ? repository.get(jobId) : null;
+        const details = job
+          ? {
+              jobState: visible(job).state,
+              processed: job.processed,
+              total: job.total,
+              review: job.review,
+              unmatched: job.unmatched,
+              failed: job.failed,
+              providerFailures: job.providerFailures ?? 0,
+            }
+          : {};
         return {
           rootId: root.id,
           label: root.label,
           libraryId: root.libraryId,
-          games: games.length,
-          withDetails: games.filter((source) => source.title).length,
-          withCover: games.filter((source) => source.artworkAvailable).length,
-          unavailable: games.filter((source) => source.availability !== 'local').length,
-          automatic: pendingArtwork.has(root.id)
-            ? { state: 'waiting' }
-            : (last ?? { state: 'none' }),
+          ...repository.coverage(root.id),
+          automatic: {
+            ...(last ?? {}),
+            state:
+              pendingDetails.has(root.id) && job?.state !== 'running'
+                ? 'waiting'
+                : (last?.state ?? 'none'),
+            ...(jobId ? { jobId } : {}),
+            ...(stoppedJobId ? { stoppedJobId } : {}),
+            ...details,
+          },
         };
       }),
     };

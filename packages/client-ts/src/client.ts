@@ -86,6 +86,7 @@ import type {
   SessionResponse,
   SourceFileList,
   SourceGroup,
+  SourceLookupHints,
   SourceMatches,
   SourceMatchSelections,
   SourceOrganizationDraft,
@@ -1126,15 +1127,32 @@ export class ContentClient {
     return this.selectionRequest(
       id,
       { method: 'DELETE', headers: { 'if-match': `"rev-${revision}"` }, signal },
-      `/${encodeURIComponent(kind)}${query.size ? `?${query}` : ''}`,
+      `selections/${encodeURIComponent(kind)}${query.size ? `?${query}` : ''}`,
+    );
+  }
+  async saveSourceLookupHints(
+    id: string,
+    hints: SourceLookupHints,
+    revision: number,
+    signal?: AbortSignal,
+  ): Promise<SourceMatchSelections> {
+    return this.selectionRequest(
+      id,
+      {
+        method: 'PUT',
+        headers: { 'if-match': `"rev-${revision}"` },
+        body: JSON.stringify(hints),
+        signal,
+      },
+      'lookup-hints',
     );
   }
   private async selectionRequest(
     id: string,
     init: RequestInit,
-    suffix = '',
+    path = 'selections',
   ): Promise<SourceMatchSelections> {
-    const url = this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches/selections${suffix}`);
+    const url = this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches/${path}`);
     url.searchParams.set('includeArtworkRoles', 'true');
     const response = await fetch(url, {
       ...init,

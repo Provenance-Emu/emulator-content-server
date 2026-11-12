@@ -56,7 +56,6 @@
   const browser = untrack(() => createLibraryBrowser(context.client, null));
   const authEpoch = untrack(() => get(application).authEpoch);
   let bulkOpen = $state(false);
-  let workTitle = $state('Library activity');
   let disposed = false;
   // Keep controller identity intact for stale-instance and authorization-loss guards.
   let detail = $state.raw<DetailController | null>(null);
@@ -408,10 +407,7 @@
           <div class="library-management-actions">
             {#if owner}
               <button type="button" onclick={() => onsettings({ section: 'libraries', libraryId: scope && 'libraryId' in scope ? scope.libraryId : undefined })}>Folders</button>
-              <button type="button" onclick={() => { workTitle = 'Match games'; bulkOpen = true; }}>Match games</button>
-              <button type="button" onclick={() => { workTitle = 'Library activity'; bulkOpen = true; }}>Library activity</button>
-              <button type="button" disabled={!folders.length || !!$folderAdder?.busy} onclick={()=>void scanSavedFolders()}>Scan folders for games</button>
-              <button type="button" onclick={() => onsettings({ section: 'libraries', libraryId: scope && 'libraryId' in scope ? scope.libraryId : undefined })}>Library settings</button>{/if}
+              <button type="button" onclick={() => (bulkOpen = true)}>Library activity</button>{/if}
             <button type="button" disabled={$browser.loading} onclick={refreshCollection}>Refresh</button>
           </div>
         </details>
@@ -419,7 +415,7 @@
     </header>
     {#if owner && !$browser.loading && !$browser.items.length && !filtered}<UnassignedFolders client={context.client} context={folderContext} {libraries} preferredLibraryId={scope && 'libraryId' in scope ? scope.libraryId : ''} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
     {#if owner && folders.some(row=>!row.lastScanAt) && scope && 'libraryId' in scope}
-      <section class="scan-needed" aria-label="Saved folders need scanning"><h2>Your saved folders need a scan</h2><p>Scan these folders to show their games in this library. Files stay in place. Artwork and game details can be found afterwards with Match library.</p><button type="button" disabled={!!$folderAdder?.busy} onclick={()=>void scanSavedFolders()}>{$folderAdder?.busy ? 'Scanning folders…' : 'Scan saved folders'}</button></section>
+      <section class="scan-needed" aria-label="Folders waiting for a file check"><h2>Waiting for the first file check</h2><p>The server checks added folders and looks up details and covers separately. Check files now if the folder was added with automatic work disabled.</p><button type="button" disabled={!!$folderAdder?.busy} onclick={()=>void scanSavedFolders()}>{$folderAdder?.busy ? 'Checking files…' : 'Check files now'}</button></section>
     {/if}
     <CategoryTabs
       selected={$browser.filters.category}
@@ -495,7 +491,7 @@
     {#if $folderAdder?.notice}<p role="status">{$folderAdder.notice}</p>{/if}
     {#if owner && !addingFolder && (folderSelectionFailure || $folderAdder?.failure)}<p class="problem" role="alert">{folderSelectionFailure || $folderAdder?.failure}</p>{/if}
   {/if}
-  {#if bulkOpen && owner && scope}<Modal title={workTitle} onclose={() => { bulkOpen = false; refreshCollection(); }}>
+  {#if bulkOpen && owner && scope}<Modal title="Library activity" onclose={() => { bulkOpen = false; refreshCollection(); }}>
     <LibraryJobs {context} {scope} {libraries} roots={folders} onchanged={refreshCollection} />
   </Modal>{/if}
   {#if scope && 'libraryId' in scope && ((addChoices && canAdd) || (upload && canCreate) || (addingFolder && owner))}<Modal

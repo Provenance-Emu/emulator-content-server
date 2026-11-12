@@ -2,6 +2,7 @@ import {
   type ContentClient,
   ContentError,
   type MatchingOptions,
+  type SourceLookupHints,
   type SourceMatches,
   type SourceMatchSelections,
 } from '@ecs/client';
@@ -28,6 +29,7 @@ export interface MatchingController extends Readable<MatchingState> {
   preview(id: string): Promise<void>;
   save(id: string): Promise<boolean>;
   remove(kind: string): Promise<boolean>;
+  saveLookupHints(hints: SourceLookupHints): Promise<boolean>;
   previewSaved(role: string): Promise<void>;
   clear(): void;
   invalidate(): void;
@@ -248,6 +250,38 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
   }
   return {
     subscribe: store.subscribe,
+    async saveLookupHints(hints) {
+      if (
+        disposed ||
+        denied ||
+        current.loading ||
+        current.savedLoading ||
+        current.savedLoadFailed ||
+        current.saving ||
+        !current.saved
+      )
+        return false;
+      const run = epoch;
+      update({ saving: 'lookup-hints', failure: null });
+      try {
+        const saved = await client.saveSourceLookupHints(
+          sourceId,
+          hints,
+          current.saved.revision,
+          lifetime.signal,
+        );
+        if (!live(run)) return false;
+        clearResults();
+        await showSaved(saved, run);
+        return live(run);
+      } catch (error) {
+        if (live(run)) failure(error);
+        if (live(run)) update({ savedLoadFailed: true });
+        return false;
+      } finally {
+        if (live(run)) update({ saving: null });
+      }
+    },
     async load() {
       if (disposed || denied || current.savedLoading || current.saving || current.loading) return;
       const run = epoch;

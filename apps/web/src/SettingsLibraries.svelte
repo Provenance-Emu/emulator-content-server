@@ -10,6 +10,7 @@
     libraries,
     invalidation,
     onview,
+    onmaintenance,
     onrejected,
     context, onrename,
     mode = 'libraries',
@@ -21,6 +22,7 @@
     invalidation: number;
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
+    onmaintenance: () => void;
     mode?: 'libraries' | 'folders';
     libraryId?: string;
     onlibrarychange?: () => void;
@@ -83,6 +85,7 @@
   <div class="actions">
     {#if selectedLibrary && mode === 'libraries'}<button type="button" aria-label={`Rename ${selectedLibrary.name}`} onclick={() => onrename(selectedLibrary)}>Rename library</button>{/if}
     <button type="button" disabled={loading} onclick={() => void load()}>Refresh summaries</button>
+    <button type="button" onclick={onmaintenance}>Open Scans &amp; details</button>
   </div>
 </header>
 {#if failure}<p class="problem" role="alert">{failure}</p>{/if}

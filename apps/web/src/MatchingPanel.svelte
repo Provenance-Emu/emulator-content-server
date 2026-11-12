@@ -22,6 +22,9 @@
   let ready=$state(false);
   let disposed=false;
   let savedReady:Promise<void>=Promise.resolve();
+  let lookupTitle = $state<string | undefined>();
+  let lookupSystem = $state<string | undefined>();
+  let lookupNotice = $state(false);
   let category=$state('metadata');
   let page=$state(0);
   let artworkFilter=$state('all');
@@ -50,6 +53,18 @@
   }
   onDestroy(()=>{disposed=true;controller.dispose();});
   async function save(id:string){if(await controller.save(id))onchanged();}
+  async function saveLookupHints() {
+    const saved = get(controller).saved?.lookupHints;
+    lookupNotice = false;
+    if (await controller.saveLookupHints({
+      title: (lookupTitle ?? saved?.title ?? '').trim() || null,
+      systemId: (lookupSystem ?? saved?.systemId ?? '').trim() || null,
+    })) {
+      lookupTitle = lookupSystem = undefined;
+      lookupNotice = true;
+      onchanged();
+    }
+  }
   function nextCategory(exclude?:string){
     const state=get(controller);
     return state.result?.candidates.find(c=>matchSlot(c)!==exclude&&!state.saved?.matches.some(m=>matchSlot(m)===matchSlot(c)))?.kind;
@@ -109,6 +124,18 @@
   {#if failure||$controller.failure}<p role="alert" class="problem">{failure ?? $controller.failure}</p>{/if}
   {#if registryFailure}<p role="alert" class="problem">{registryFailure}</p><button type="button" disabled={registryLoading} onclick={()=>void loadPlugins()}>Retry matching providers</button>{/if}
   {#if owner}
+  {#if $controller.saved?.lookupHints}
+    <details class="matching-disclosure">
+      <summary>Improve lookup</summary>
+      <form class="matching-disclosure-content matching-fields" onsubmit={(event) => { event.preventDefault(); void saveLookupHints(); }}>
+        <p>Give the server a better title or system for this game. Changed hints trigger another lookup when automatic lookup is on.</p>
+        <label>Game title for lookup<input maxlength="160" value={lookupTitle ?? $controller.saved.lookupHints.title ?? ''} oninput={(event) => { lookupNotice = false; lookupTitle = event.currentTarget.value; }} /></label>
+        <label>System identifier<input maxlength="120" placeholder="com.provenance.nes" value={lookupSystem ?? $controller.saved.lookupHints.systemId ?? ''} oninput={(event) => { lookupNotice = false; lookupSystem = event.currentTarget.value; }} /></label>
+        <button type="submit" disabled={$controller.loading || $controller.savedLoading || $controller.savedLoadFailed || !!$controller.saving}>Save lookup hints</button>
+        {#if lookupNotice}<p role="status">Lookup hints saved.</p>{/if}
+      </form>
+    </details>
+  {/if}
   <h2>Find metadata, artwork, patches & cheats</h2>
   <p class="dim">Search local and online providers, then save unique verified, exact-title, and local companion matches automatically. Fuzzy alternatives and conflicting identities stay available for review. Saved artwork is downloaded and kept with the game.</p>
   <div class="matching-actions" aria-label="Matching actions">

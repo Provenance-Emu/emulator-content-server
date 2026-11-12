@@ -5,8 +5,6 @@
   import { createLibraryFolders } from './lib/library-folders';
   import { chooseFolder, type FolderContext, type FolderSelection } from './lib/folder-selection';
   import { explain } from './lib/problems';
-  import FolderOrganizationPolicy from './FolderOrganizationPolicy.svelte';
-  import FolderWatchPolicy from './FolderWatchPolicy.svelte';
   import FolderSummaryRows from './components/FolderSummaryRows.svelte';
   import Modal from './components/Modal.svelte';
   import FolderPicker from './FolderPicker.svelte';
@@ -20,8 +18,6 @@
   let pickerBusy = $state(false);
   let choosing = $state(false);
   let failure = $state<string | null>(null);
-  let policyRoot = $state<ContentRoot | null>(null);
-  let watchingRoot = $state<ContentRoot | null>(null);
   let disconnect = $state<ContentRoot | null>(null);
   let assignment = $state<ContentRoot | null>(null);
   let libraryId = $state('');
@@ -41,12 +37,9 @@
 </script>
 {#if library}<div class="actions">
   <button bind:this={addButton} type="button" disabled={$folders.busy || choosing || $folders.denied} aria-label={`Add folder to ${library.name}`} onclick={() => void choose()}>Add folder</button>
-  <button type="button" disabled={$folders.busy || $folders.denied || !$folders.summaries.length} aria-label={`Scan ${library.name}`} onclick={() => void folders.scanLibrary()}>Scan library</button>
 </div>{/if}
 <FolderSummaryRows summaries={$folders.summaries} scanFailures={$folders.scanFailures} busy={$folders.busy} {onview}
-  onorganization={root=>policyRoot=root}
-  onwatching={root=>watchingRoot=root}
-  onscan={(id) => void folders.retryScan(id)} onremove={(root) => (disconnect = root)} onassign={(root) => { assignment = root; libraryId = ''; }} />
+  onremove={(root) => (disconnect = root)} onassign={(root) => { assignment = root; libraryId = ''; }} />
 {#if $folders.notice}<p role="status">{$folders.notice}</p>{/if}
 {#if $folders.failure || failure}<p class="problem" role="alert">{$folders.failure || failure}</p>{/if}
 {#if $folders.denied}<button type="button" disabled={$folders.busy} onclick={() => void folders.load(library ? { libraryId: library.id } : { unassigned: true })}>Retry folder access</button>{/if}
@@ -69,12 +62,4 @@
   <button type="button" disabled={$folders.busy} onclick={() => (assignment = null)}>Cancel</button>
   <button type="button" disabled={$folders.busy || !libraryId} onclick={async () => { if (assignment && await folders.assign(assignment.id, libraryId)) assignment = null; }}>Assign folder</button>
   {#if $folders.failure}<p class="problem" role="alert">{$folders.failure}</p>{/if}
-</Modal>{/if}
-
-{#if policyRoot}<Modal title="Automatic organization" onclose={()=>policyRoot=null}>
-  {#key policyRoot.id}<FolderOrganizationPolicy {client} root={policyRoot} onrejected={context.onrejected} />{/key}
-</Modal>{/if}
-
-{#if watchingRoot}<Modal title="Folder watching" onclose={() => watchingRoot = null}>
-  {#key watchingRoot.id}<FolderWatchPolicy {client} root={watchingRoot} onrejected={context.onrejected} />{/key}
 </Modal>{/if}

@@ -866,13 +866,25 @@ public struct SourceMatchSelections: Codable, Equatable, Sendable {
     public var automaticOrganization: AutomaticOrganizationOutcome?
     public var sourceId: String
     public var revision: Int
+    public var lookupHints: SourceLookupHints?
     public var matches: [SavedSourceMatch]
 
-    public init(automaticOrganization: AutomaticOrganizationOutcome? = nil, sourceId: String, revision: Int, matches: [SavedSourceMatch]) {
+    public init(automaticOrganization: AutomaticOrganizationOutcome? = nil, sourceId: String, revision: Int, lookupHints: SourceLookupHints? = nil, matches: [SavedSourceMatch]) {
         self.automaticOrganization = automaticOrganization
         self.sourceId = sourceId
         self.revision = revision
+        self.lookupHints = lookupHints
         self.matches = matches
+    }
+}
+
+public struct SourceLookupHints: Codable, Equatable, Sendable {
+    public var title: String?
+    public var systemId: String?
+
+    public init(title: String? = nil, systemId: String? = nil) {
+        self.title = title
+        self.systemId = systemId
     }
 }
 

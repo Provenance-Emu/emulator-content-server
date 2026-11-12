@@ -30,21 +30,30 @@ test('totals add every folder and missing counts the larger gap', () => {
 });
 
 test('every automatic state has a plain sentence and never claims work that did not happen', () => {
-  assert.match(automaticText(true, folder({ games: 0 })), /Scan this folder/);
-  assert.equal(automaticText(false, folder()), 'Automatic matching is off.');
-  assert.match(automaticText(true, folder()), /Not checked/);
-  assert.match(automaticText(true, folder({ automatic: { state: 'waiting' } })), /Queued/);
+  assert.equal(automaticText(true, folder({ games: 0 })), 'No indexed games yet.');
+  assert.equal(automaticText(false, folder()), 'Automatic lookup is off.');
+  assert.match(automaticText(true, folder({ automatic: { state: 'waiting' } })), /queued/);
   assert.match(
-    automaticText(true, folder({ automatic: { state: 'queued' } })),
-    /still need review/,
+    automaticText(
+      true,
+      folder({ automatic: { state: 'queued', jobState: 'running', processed: 2, total: 5 } }),
+    ),
+    /2 of 5 checked/,
   );
   assert.match(
-    automaticText(true, folder({ withDetails: 10, withCover: 10, automatic: { state: 'queued' } })),
-    /found automatically/,
+    automaticText(true, folder({ automatic: { state: 'queued', jobState: 'interrupted' } })),
+    /Lookup stopped/,
+  );
+  assert.match(
+    automaticText(true, folder({ automatic: { state: 'unchanged', providerFailures: 3 } })),
+    /failed for 3 games/,
   );
   assert.match(
     automaticText(true, folder({ automatic: { state: 'unchanged' } })),
-    /Nothing has changed/,
+    /scheduled retry/,
   );
-  assert.equal(automaticText(true, folder({ withDetails: 10, withCover: 10 })), 'Nothing missing.');
+  assert.equal(
+    automaticText(true, folder({ withDetails: 10, withCover: 10 })),
+    'All games have details and a cover.',
+  );
 });

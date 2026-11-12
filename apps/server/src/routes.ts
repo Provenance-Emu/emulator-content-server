@@ -76,7 +76,12 @@ import {
 } from './http.js';
 import { registerInvestigatorRoutes } from './investigator-routes.js';
 import { registerLibraryBrowse } from './library-browse.js';
-import { enqueueRootScan, registerLibraryJobs } from './library-jobs.js';
+import {
+  checkSourceDetails,
+  enqueueRootScan,
+  indexNewRoot,
+  registerLibraryJobs,
+} from './library-jobs.js';
 import { accessView } from './local-access.js';
 import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
@@ -104,13 +109,16 @@ export function registerRoutes(
   app: FastifyInstance,
   context: ServerContext,
   onWatchedFolderAdded: (rootId: string) => void,
+  activation?: Promise<void>,
 ): void {
   const { catalog } = context;
   registerDevicePairing(app, context);
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
-  const matching = registerSourceMatching(app, context);
-  registerLibraryJobs(app, context, matching);
+  const matching = registerSourceMatching(app, context, (rootId, sourceId) =>
+    checkSourceDetails(catalog, rootId, sourceId),
+  );
+  registerLibraryJobs(app, context, matching, activation);
   registerSourceOrganization(app, context);
   registerWorkflowRoutes(app, context);
   registerWorkflowWorkerRoutes(app, context);
@@ -1056,6 +1064,7 @@ export function registerRoutes(
       });
     });
     if (watch === true) onWatchedFolderAdded(root.id);
+    indexNewRoot(catalog, root.id, actor.userId);
     reply.code(201);
     return root;
   });

@@ -1377,6 +1377,29 @@ paths:
               schema: { $ref: '#/components/schemas/SourceMatchSelections' }
         '409':
           description: Revision conflict or source/companion changed since lookup.
+  /api/v1/sources/{sourceId}/matches/lookup-hints:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: saveSourceLookupHints
+      tags: [Matching and jobs]
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string }, example: '"rev-0"' }
+        - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { title: "Example Game (USA)", systemId: "com.provenance.nes" }
+            schema: { $ref: '#/components/schemas/SourceLookupHints' }
+      responses:
+        '200':
+          description: Owner lookup hints saved. Changed hints make the indexed game eligible for automatic lookup when enabled.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceMatchSelections' }
+        '409':
+          description: The matching revision changed. Reload saved matches before editing.
   /api/v1/sources/{sourceId}/matches/selections/{kind}:
     parameters:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
@@ -2856,10 +2879,17 @@ components:
         automaticOrganization: { $ref: '#/components/schemas/AutomaticOrganizationOutcome' }
         sourceId: { type: string }
         revision: { type: integer, minimum: 0 }
+        lookupHints: { $ref: '#/components/schemas/SourceLookupHints' }
         matches:
           type: array
           maxItems: 11
           items: { $ref: '#/components/schemas/SavedSourceMatch' }
+    SourceLookupHints:
+      type: object
+      required: [title, systemId]
+      properties:
+        title: { type: [string, 'null'], maxLength: 160 }
+        systemId: { type: [string, 'null'], maxLength: 120 }
     SourceMatchSelectionDraft:
       type: object
       required: [requestId, candidateId, expectedRevision]
@@ -3429,9 +3459,27 @@ components:
             state:
               type: string
               enum: [none, waiting, queued, complete, unchanged]
-              description: none - not checked since the server started. waiting - will be checked when current work finishes. queued - a match job was started. complete - nothing is missing. unchanged - games are still missing details but nothing changed since the last attempt.
+              description: none - no automatic activity this session. waiting - evaluation is pending. queued - a matching batch was created. complete - nothing is missing. unchanged - no game was eligible for this pass.
             checkedAt: {type: string}
             jobId: {type: string}
+            jobState: {type: string, enum: [queued, running, completed, failed, cancelled, interrupted]}
+            processed: {type: integer, minimum: 0}
+            total: {type: integer, minimum: 0}
+            review: {type: integer, minimum: 0}
+            unmatched: {type: integer, minimum: 0}
+            failed: {type: integer, minimum: 0}
+            providerFailures: {type: integer, minimum: 0}
+            stoppedJobId: {type: string, description: An interrupted matching job covering this folder.}
+          example:
+            state: queued
+            jobId: job-example
+            jobState: running
+            processed: 18
+            total: 50
+            review: 2
+            unmatched: 3
+            failed: 0
+            providerFailures: 1
     LibraryJobResponse:
       type: object
       required: [job]

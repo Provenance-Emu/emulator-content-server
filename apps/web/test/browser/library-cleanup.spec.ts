@@ -5,7 +5,16 @@ test('Scans & details exposes folder policies, scan history and cleanup review',
   page,
   fixture,
 }) => {
-  await fixture.cleanup();
+  const { root } = await fixture.cleanup();
+  const owner = fixture.catalog.listUsers().find((user) => user.isOwner);
+  if (!owner) throw new Error('Missing fixture owner');
+  const { job } = fixture.catalog.libraryJobs.create(
+    'match',
+    { rootId: root.id },
+    { online: false, checksum: false },
+    owner.id,
+  );
+  fixture.catalog.libraryJobs.state(job.id, 'interrupted', 'Server stopped during lookup.');
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Scans & details', exact: true }).click();
@@ -21,7 +30,13 @@ test('Scans & details exposes folder policies, scan history and cleanup review',
   await expect(organization.getByRole('status')).toContainText('Automatic organization is off');
   await page.keyboard.press('Escape');
 
-  await page.getByRole('button', { name: 'Scan Cleanup games', exact: true }).click();
+  await page.getByRole('button', { name: 'Review stopped lookup', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Server activity' })).toHaveValue(job.id);
+  await expect(
+    page.getByRole('button', { name: 'Resume remaining work', exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Check files in Cleanup games', exact: true }).click();
   const scanHistory = page.getByRole('combobox', { name: 'Server activity' });
   await expect(scanHistory).toContainText('Cleanup games · Folder scan · Finished');
 

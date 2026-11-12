@@ -104,7 +104,7 @@
       <button type="button" class="primary" onclick={onsignin}>Sign in to continue</button>
     {:else if appState.owner && active === 'libraries'}<SettingsLibraries
       {client} libraries={appState.libraries} invalidation={appState.invalidation}
-      {onview} {onrejected} {context} {onrename}
+      {onview} {onrejected} {context} {onrename} onmaintenance={() => choose('scans')}
       bind:libraryId onlibrarychange={onlibrarychange}
     />{:else if appState.owner && active === 'scans' && server}<ScansAndDetails
       context={server} libraries={appState.libraries} {onrejected}

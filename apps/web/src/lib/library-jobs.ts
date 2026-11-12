@@ -21,7 +21,11 @@ export function createLibraryJobs(
     | 'reviewLibraryJobItem'
   >,
   scope: LibraryJobScope,
-  hooks: { changed?: () => void; rejected?: (status: 401 | 403) => void } = {},
+  hooks: {
+    changed?: () => void;
+    rejected?: (status: 401 | 403) => void;
+    initialJobId?: string;
+  } = {},
 ) {
   let current: {
     jobs: LibraryJob[];
@@ -33,7 +37,7 @@ export function createLibraryJobs(
     failure: string | null;
   } = {
     jobs: [],
-    selectedId: null,
+    selectedId: hooks.initialJobId ?? null,
     items: [],
     nextCursor: null,
     nextJobsCursor: null,

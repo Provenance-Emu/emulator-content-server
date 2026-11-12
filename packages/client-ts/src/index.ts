@@ -143,6 +143,7 @@ export type {
   SourceFileList,
   SourceGroup,
   SourceGroupFile,
+  SourceLookupHints,
   SourceMatches,
   SourceMatchSelectionDraft,
   SourceMatchSelections,

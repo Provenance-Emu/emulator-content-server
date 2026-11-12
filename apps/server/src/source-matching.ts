@@ -126,6 +126,7 @@ export interface MatchingInspection {
 export function registerSourceMatching(
   app: FastifyInstance,
   context: ServerContext,
+  onIdentityChanged?: (rootId: string, sourceId: string) => void,
 ): SourceMatchingService {
   type Job = {
     sourceId: string;
@@ -135,6 +136,7 @@ export function registerSourceMatching(
     stamps: Map<string, string>;
     identityStamps: Map<string, string>;
     input: MatchingInput;
+    lookupHints: { title: string | null; systemId: string | null };
   };
   const jobs = new Map<string, Job>();
   const inflight = new Map<string, Promise<Awaited<ReturnType<typeof executeMatch>>>>();
@@ -251,15 +253,17 @@ export function registerSourceMatching(
         /* Offline lookups can show filename hints, but cannot be saved as current. */
       }
       const selectedState = context.catalog.sourceMatches(source.id);
+      const lookupHints = context.catalog.sourceLookupHints(source.id);
       const selected = selectedState.matches.find((match) => match.kind === 'metadata');
-      const selectedSystem = selected?.metadata.systemId ?? source.systemId;
+      const systemId = lookupHints.systemId ?? source.systemId;
+      const selectedSystem = selected?.metadata.systemId ?? systemId;
       const input: MatchingInput = {
         name: source.displayName,
-        systemId: source.systemId,
+        systemId,
         online: !options.bundledLocalOnly && options.online,
         ...(options.allowExactNames ? { allowExactNames: true } : {}),
         companions: [],
-        ...(selected && selectedSystem && (!source.systemId || selectedSystem === source.systemId)
+        ...(selected && selectedSystem && (!systemId || selectedSystem === systemId)
           ? {
               selectedMetadata: {
                 id: selected.id,
@@ -354,6 +358,17 @@ export function registerSourceMatching(
           if (crc) input.crc32 = crc.value;
         }
       }
+      if (lookupHints.title) {
+        input.facts ??= {
+          version: 1,
+          pluginIds: [],
+          hashes: [],
+          identifiers: [],
+          names: [],
+          warnings: [],
+        };
+        input.facts.names = [...new Set([lookupHints.title, ...input.facts.names])].slice(0, 32);
+      }
       const result = await matchingJob(
         {
           operation: 'match',
@@ -413,6 +428,7 @@ export function registerSourceMatching(
         stamps,
         identityStamps,
         input,
+        lookupHints,
       });
       return { sourceId: source.id, requestId, plugins: result.plugins, candidates, problems };
     } catch (error) {
@@ -457,6 +473,13 @@ export function registerSourceMatching(
         ),
       ],
       async validate(actor: Actor) {
+        const hints = context.catalog.sourceLookupHints(sourceId);
+        if (hints.title !== job.lookupHints.title || hints.systemId !== job.lookupHints.systemId)
+          throw new DomainError(
+            'matching-selection-changed',
+            409,
+            'Lookup hints changed. Find matches again before saving.',
+          );
         if (
           candidate.kind === 'artwork' &&
           candidate.metadata.matchEvidence === 'saved-selection'
@@ -627,7 +650,7 @@ export function registerSourceMatching(
       reply?.raw.removeListener('close', disconnect);
     }
   }
-  registerSourceSelections(app, context, { proposal, resource });
+  registerSourceSelections(app, context, { proposal, resource }, onIdentityChanged);
   app.get(
     '/api/v1/sources/:sourceId/matches/:requestId/artwork/:candidateId',
     async (request, reply) => {
@@ -713,7 +736,10 @@ export function registerSourceMatching(
     signal: AbortSignal,
   ): Promise<AutomaticOutcome> {
     const key = `${actor.userId}\0${sourceId}`;
-    const optionKey = JSON.stringify(options);
+    const optionKey = JSON.stringify({
+      options,
+      hints: context.catalog.sourceLookupHints(sourceId),
+    });
     const previous = automaticRequests.get(key);
     if (previous?.options === optionKey) return previous.promise;
     const execute = () => executeAutomaticMatch(actor, sourceId, options, signal);

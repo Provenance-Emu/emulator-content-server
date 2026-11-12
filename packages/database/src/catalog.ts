@@ -1817,6 +1817,48 @@ export class CatalogDatabase {
     if (!this.getSource(sourceId)) throw new DomainError('not-found', 404, 'Source file not found');
     return sourceMatches(this.db, sourceId);
   }
+  sourceLookupHints(sourceId: string): { title: string | null; systemId: string | null } {
+    return (
+      this.one<{ title: string | null; systemId: string | null }>(
+        'SELECT title,system_id AS systemId FROM source_lookup_hints WHERE source_id=?',
+        sourceId,
+      ) ?? { title: null, systemId: null }
+    );
+  }
+
+  setSourceLookupHints(
+    sourceId: string,
+    expectedRevision: number,
+    hints: { title: string | null; systemId: string | null },
+    actorId: string,
+  ): boolean {
+    return this.transaction(() => {
+      const source = this.getSource(sourceId);
+      if (!source) throw new DomainError('not-found', 404, 'Source file not found');
+      const revision = sourceMatches(this.db, sourceId).revision;
+      if (revision !== expectedRevision)
+        throw new DomainError(
+          'matching-conflict',
+          409,
+          'Game lookup information changed. Reload it and try again.',
+        );
+      const current = this.sourceLookupHints(sourceId);
+      if (current.title === hints.title && current.systemId === hints.systemId) return false;
+      if (hints.title || hints.systemId)
+        this.db
+          .prepare(`INSERT INTO source_lookup_hints(source_id,title,system_id) VALUES(?,?,?)
+          ON CONFLICT(source_id) DO UPDATE SET title=excluded.title,system_id=excluded.system_id`)
+          .run(sourceId, hints.title, hints.systemId);
+      else this.db.prepare('DELETE FROM source_lookup_hints WHERE source_id=?').run(sourceId);
+      this.db
+        .prepare(`INSERT INTO source_match_state(source_id,revision) VALUES(?,?)
+        ON CONFLICT(source_id) DO UPDATE SET revision=excluded.revision`)
+        .run(sourceId, revision + 1);
+      this.insertAudit(actorId, 'update-source-lookup-hints', 'source', sourceId, {});
+      return true;
+    });
+  }
+
   saveSourceMatch(
     sourceId: string,
     expectedRevision: number,
