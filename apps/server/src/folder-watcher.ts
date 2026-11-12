@@ -3,6 +3,12 @@ import type { CatalogDatabase } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { enqueueRootScan } from './library-jobs.js';
 
+// macOS's FSEvents setup can block in a synchronous open on mounted volumes.
+// Keep those volumes on the scanner's async polling path.
+export function usesVolumePolling(path: string, platform = process.platform): boolean {
+  return platform === 'darwin' && path.startsWith('/Volumes/');
+}
+
 export interface FolderWatchStatus {
   state: 'off' | 'watching' | 'polling' | 'offline' | 'scanning' | 'error';
   lastScanAt?: string;
@@ -96,6 +102,15 @@ export class FolderWatcher {
   }
 
   private attach(folder: WatchedFolder): void {
+    if (usesVolumePolling(folder.rootPath)) {
+      if (folder.status.state !== 'offline' && folder.status.state !== 'scanning')
+        folder.status = {
+          ...folder.status,
+          state: 'polling',
+          warning: 'Checking this mounted volume periodically.',
+        };
+      return;
+    }
     const fallback = () => {
       folder.watcher?.close();
       folder.watcher = undefined;
@@ -179,7 +194,9 @@ export class FolderWatcher {
           Date.now() +
           (result.online && folder.watcher
             ? 15 * 60_000
-            : Math.max(30_000, Math.min(5 * 60_000, (Date.now() - started) * 10)));
+            : result.online && usesVolumePolling(folder.rootPath)
+              ? 5 * 60_000
+              : Math.max(30_000, Math.min(5 * 60_000, (Date.now() - started) * 10)));
         folder.status = {
           state: result.online ? (folder.watcher ? 'watching' : 'polling') : 'offline',
           lastScanAt: new Date().toISOString(),
@@ -187,7 +204,9 @@ export class FolderWatcher {
             ? { warning: 'Folder is offline. Retrying every 30 seconds.' }
             : !folder.watcher
               ? {
-                  warning: 'Live notifications unavailable. Checking this folder periodically.',
+                  warning: usesVolumePolling(folder.rootPath)
+                    ? 'Checking this mounted volume periodically.'
+                    : 'Live notifications unavailable. Checking this folder periodically.',
                 }
               : {}),
         };

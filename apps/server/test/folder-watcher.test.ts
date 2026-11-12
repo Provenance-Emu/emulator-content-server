@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { setTimeout as pause } from 'node:timers/promises';
 import { DomainError } from '@ecs/domain';
+import { usesVolumePolling } from '../src/folder-watcher.js';
 import { reserveContentRoots } from '../src/root-mutations.js';
 import { libraryFixture } from './library-fixture.js';
 
@@ -229,4 +230,10 @@ test('healthy watchers audit infrequently instead of rescanning unchanged librar
     t.mock.timers.reset();
     await f.dispose();
   }
+});
+
+test('macOS mounted volumes use polling instead of opening an FSEvents watch', () => {
+  assert.equal(usesVolumePolling('/Volumes/External/ROMs', 'darwin'), true);
+  assert.equal(usesVolumePolling('/Users/owner/ROMs', 'darwin'), false);
+  assert.equal(usesVolumePolling('/Volumes/External/ROMs', 'linux'), false);
 });
