@@ -1,11 +1,15 @@
 <script lang="ts">
-  import type { Library, LibraryOverview } from '@ecs/client';
+  import type { ContentRoot, Library, LibraryOverview, LibraryScope } from '@ecs/client';
   import { ContentError } from '@ecs/client';
   import { onMount } from 'svelte';
   import type { ServerContext } from './lib/application';
   import { automaticText, missingCount, overviewTotals } from './lib/library-overview';
   import { explain } from './lib/problems';
+  import FolderOrganizationPolicy from './FolderOrganizationPolicy.svelte';
+  import FolderWatchPolicy from './FolderWatchPolicy.svelte';
+  import LibraryCleanup from './LibraryCleanup.svelte';
   import LibraryJobs from './LibraryJobs.svelte';
+  import Modal from './components/Modal.svelte';
 
   let {
     context,
@@ -23,6 +27,18 @@
   let failure = $state<string | null>(null);
   let busy = $state('');
   let started = $state(0);
+  let folderPolicy = $state<{
+    kind: 'watch' | 'organization';
+    root: Pick<ContentRoot, 'id' | 'label' | 'libraryId'>;
+  } | null>(null);
+  let cleanupLibrary = $state('');
+  const cleanupScope = $derived<LibraryScope | null>(
+    cleanupLibrary === 'unassigned'
+      ? { unassigned: true }
+      : libraries.some((library) => library.id === cleanupLibrary)
+        ? { libraryId: cleanupLibrary }
+        : null,
+  );
   let live = false;
   const totals = $derived(overviewTotals(overview?.folders ?? []));
   const count = (value: number) => value.toLocaleString();
@@ -74,6 +90,19 @@
   }
 </script>
 
+{#if folderPolicy}
+  <Modal
+    title={folderPolicy.kind === 'watch' ? 'Folder watching' : 'Automatic organization'}
+    onclose={() => (folderPolicy = null)}
+  >
+    {#if folderPolicy.kind === 'watch'}
+      <FolderWatchPolicy client={context.client} root={folderPolicy.root} {onrejected} />
+    {:else}
+      <FolderOrganizationPolicy client={context.client} root={folderPolicy.root} {onrejected} />
+    {/if}
+  </Modal>
+{/if}
+
 <h1>Scans &amp; details</h1>
 <p class="dim">
   A scan finds the games in a folder. The server then looks up each game's name, details, and cover.
@@ -103,6 +132,7 @@
           </thead>
           <tbody>
             {#each overview.folders as folder (folder.rootId)}
+              {@const root = { id: folder.rootId, label: folder.label, libraryId: folder.libraryId }}
               <tr>
                 <td><strong>{folder.label}</strong><small class="dim">{libraryName(folder.libraryId)}</small></td>
                 <td data-label="Games">{count(folder.games)}</td>
@@ -116,6 +146,16 @@
                   <div class="scan-actions">
                     <button type="button" disabled={!!busy} aria-label={`Scan ${folder.label}`} onclick={() => void run('scan', folder.rootId)}>Scan now</button>
                     {#if missingCount(folder)}<button type="button" disabled={!!busy} aria-label={`Find missing details in ${folder.label}`} onclick={() => void run('match', folder.rootId)}>Find missing</button>{/if}
+                    <button
+                      type="button"
+                      aria-label={`Watch settings for ${folder.label}`}
+                      onclick={() => (folderPolicy = { kind: 'watch', root })}
+                    >Watch settings</button>
+                    <button
+                      type="button"
+                      aria-label={`Organization settings for ${folder.label}`}
+                      onclick={() => (folderPolicy = { kind: 'organization', root })}
+                    >Organization</button>
                   </div>
                 </td>
               </tr>
@@ -132,5 +172,20 @@
 {/if}
 <section aria-labelledby="scan-activity-heading">
   <h2 id="scan-activity-heading">Activity and review</h2>
+  <h3>Scans and matching</h3>
   {#key started}<LibraryJobs {context} scope={{}} {libraries} folders={overview?.folders ?? []} {onchanged} />{/key}
+  <h3>Library cleanup</h3>
+  <label class="matching-field">
+    Cleanup library
+    <select bind:value={cleanupLibrary}>
+      <option value="">Choose a library</option>
+      {#each libraries as library (library.id)}
+        <option value={library.id}>{library.name}</option>
+      {/each}
+      <option value="unassigned">Unassigned folders</option>
+    </select>
+  </label>
+  {#if cleanupScope}
+    <LibraryCleanup {context} scope={cleanupScope} {onchanged} />
+  {/if}
 </section>

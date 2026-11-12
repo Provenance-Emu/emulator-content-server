@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { explain } from './lib/problems';
   let { client, root, onrejected }: {
-    client: ContentClient; root: ContentRoot; onrejected?: (status: 401 | 403) => void;
+    client: ContentClient; root: Pick<ContentRoot, 'id' | 'label'>; onrejected?: (status: 401 | 403) => void;
   } = $props();
   let policy = $state<FolderWatchPolicy | null>(null);
   let busy = $state(true);

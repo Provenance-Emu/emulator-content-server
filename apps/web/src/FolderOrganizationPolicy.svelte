@@ -4,7 +4,7 @@
   import { explain } from './lib/problems';
 
   let { client, root, onrejected }: {
-    client: ContentClient; root: ContentRoot; onrejected?: (status: 401 | 403) => void;
+    client: ContentClient; root: Pick<ContentRoot, 'id' | 'label' | 'libraryId'>; onrejected?: (status: 401 | 403) => void;
   } = $props();
   let policy = $state<SourceOrganizationPolicy | null>(null);
   let roots = $state<ContentRoot[]>([]);

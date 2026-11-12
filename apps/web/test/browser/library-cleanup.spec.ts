@@ -1,6 +1,38 @@
 import { ContentClient } from '@ecs/client';
 import { expect, libraryTool, signIn, test } from './fixture.js';
 
+test('Scans & details exposes folder policies, scan history and cleanup review', async ({
+  page,
+  fixture,
+}) => {
+  await fixture.cleanup();
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Scans & details', exact: true }).click();
+  const watch = page.getByRole('button', { name: 'Watch settings for Cleanup games' });
+  await watch.click();
+  const watchDialog = page.getByRole('dialog', { name: 'Folder watching', exact: true });
+  await expect(watchDialog.getByRole('status')).toHaveText('Folder watching is off.');
+  await page.keyboard.press('Escape');
+  await expect(watch).toBeFocused();
+
+  await page.getByRole('button', { name: 'Organization settings for Cleanup games' }).click();
+  const organization = page.getByRole('dialog', { name: 'Automatic organization', exact: true });
+  await expect(organization.getByRole('status')).toContainText('Automatic organization is off');
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: 'Scan Cleanup games', exact: true }).click();
+  const scanHistory = page.getByRole('combobox', { name: 'Server activity' });
+  await expect(scanHistory).toContainText('Cleanup games · Folder scan · Finished');
+
+  await page.getByRole('combobox', { name: 'Cleanup library' }).selectOption(fixture.library.id);
+  await page.getByRole('button', { name: 'Start cleanup inspection', exact: true }).click();
+  await expect(page.getByTestId('cleanup-progress')).toContainText('completed', { timeout: 15000 });
+  await expect(page.getByRole('combobox', { name: 'Cleanup activity' })).toBeVisible();
+  await expect(scanHistory).toBeVisible();
+  await expect(page.getByTestId('cleanup-proposal')).toHaveCount(2);
+});
+
 test('native no-key cleanup reviews a subset, applies once and can undo after reopening', async ({
   page,
   fixture,
@@ -38,7 +70,7 @@ test('native no-key cleanup reviews a subset, applies once and can undo after re
   ).toHaveCount(1);
   await second.close();
   await page.reload();
-  await page.getByRole('button', { name: 'Open library Arcade', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Arcade', exact: true })).toBeVisible();
   await libraryTool(page, 'Library activity');
   await page.getByRole('button', { name: 'Review library cleanup', exact: true }).click();
   await page.getByRole('button', { name: 'Undo saved fixes', exact: true }).click();

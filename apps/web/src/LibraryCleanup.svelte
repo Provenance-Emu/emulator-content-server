@@ -4,7 +4,7 @@
  import type {ServerContext} from './lib/application';
  import {createWorkflowRuns} from './lib/workflow-runs';
  import CleanupProposal from './CleanupProposal.svelte';
- let {context,scope,onchanged,onclose}:{context:ServerContext;scope:LibraryScope;onchanged:()=>void;onclose:()=>void}=$props();
+ let {context,scope,onchanged,onclose}:{context:ServerContext;scope:LibraryScope;onchanged:()=>void;onclose?:()=>void}=$props();
  const controller=untrack(()=>createWorkflowRuns(context.client,scope,{changed:onchanged}));
  let heading:HTMLHeadingElement|undefined=$state(),hostId=$state(''),online=$state(false);
  const hosts=$derived($controller.hosts.filter(h=>h.enrolled&&!h.revokedAt&&h.packages?.some(p=>p.id==='org.ecs.library-cleanup'&&p.kind==='workflow')));
@@ -12,12 +12,14 @@
  const workflow=$derived(host?.packages?.find(p=>p.id==='org.ecs.library-cleanup'&&p.kind==='workflow'));
  const active=$derived($controller.run&&['queued','running'].includes($controller.run.state));
  $effect(()=>{const next=scope;void controller.setScope(next).then(()=>controller.refresh())});
- onMount(()=>{heading?.focus();controller.connect();return()=>controller.dispose()});
+ onMount(()=>{if(onclose)heading?.focus();controller.connect();return()=>controller.dispose()});
  function application(p:WorkflowProposal):WorkflowApplication|undefined{return $controller.applications.find(a=>{try{return JSON.parse(a.resultJson).proposals?.some((r:{id:string;version:number;digest:string})=>r.id===p.id&&r.version===p.version&&r.digest===p.digest)}catch{return false}})}
  async function start(){if(!host||!workflow)return;await controller.start({hostId:host.id,workflowId:workflow.id,workflowDigest:workflow.digest,scope,options:{online,checksum:true,shareImages:false}})}
 </script>
 <section class="matching-page cleanup-page" aria-label="Library cleanup review">
- <div class="matching-progress-heading"><h2 bind:this={heading} tabindex="-1">Library cleanup</h2><button type="button" onclick={onclose}>Close cleanup review</button></div>
+ {#if onclose}
+  <div class="matching-progress-heading"><h2 bind:this={heading} tabindex="-1">Library cleanup</h2><button type="button" onclick={onclose}>Close cleanup review</button></div>
+ {/if}
  <p>Find questionable matches and missing front covers. Inspection creates suggestions. Only the fixes you approve and apply will be saved.</p>
  {#if hosts.length}<label class="matching-field">Workflow host<select bind:value={hostId}>{#each hosts as row}<option value={row.id}>{row.name}</option>{/each}</select></label>{:else}<p>No connected cleanup host. Install the default workflow with <code>ecs-plugins workflows install-defaults</code> and connect its host in settings.</p>{/if}
  <label class="matching-field"><span><input type="checkbox" bind:checked={online} disabled={$controller.loading||!!active} /> Search online catalogs</span></label>
