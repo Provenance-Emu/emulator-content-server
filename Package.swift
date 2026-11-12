@@ -13,6 +13,7 @@ let package = Package(
     ],
     products: [
         .library(name: "EmulatorContentClient", targets: ["EmulatorContentClient"]),
+        .library(name: "RomMClient", targets: ["RomMClient"]),
     ],
     targets: [
         .target(
@@ -23,6 +24,12 @@ let package = Package(
             name: "EmulatorContentClientTests",
             dependencies: ["EmulatorContentClient"],
             path: "clients/swift/Tests/EmulatorContentClientTests"
+        ),
+        .target(name: "RomMClient", path: "clients/romm-swift/Sources/RomMClient"),
+        .testTarget(
+            name: "RomMClientTests",
+            dependencies: ["RomMClient"],
+            path: "clients/romm-swift/Tests/RomMClientTests"
         ),
     ]
 )
