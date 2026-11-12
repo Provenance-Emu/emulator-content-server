@@ -81,6 +81,7 @@ import {
   enqueueRootScan,
   indexNewRoot,
   registerLibraryJobs,
+  rootScanInProgress,
 } from './library-jobs.js';
 import { accessView } from './local-access.js';
 import { reserveContentRoots } from './root-mutations.js';
@@ -1085,16 +1086,18 @@ export function registerRoutes(
     const actor = requireUser(request, 'read');
     const { rootId } = request.params as { rootId: string };
     const root = requireVisibleRoot(catalog, actor, rootId);
-    // This synchronous adapter must reject an existing reservation rather than
-    // wait for a job whose caller may itself be holding that reservation.
-    const releaseRoots = reserveContentRoots(
-      catalog,
-      catalog
-        .listContentRoots()
-        .filter((candidate) => candidate.libraryId === root.libraryId)
-        .map((candidate) => candidate.id),
-    );
-    releaseRoots();
+    // Share a check already owned by the worker. A caller holding an
+    // organization reservation must still fail immediately instead of waiting on itself.
+    if (!rootScanInProgress(catalog, root.libraryId)) {
+      const releaseRoots = reserveContentRoots(
+        catalog,
+        catalog
+          .listContentRoots()
+          .filter((candidate) => candidate.libraryId === root.libraryId)
+          .map((candidate) => candidate.id),
+      );
+      releaseRoots();
+    }
     return enqueueRootScan(catalog, root, actor.userId);
   });
 

@@ -1,7 +1,13 @@
+import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { ServerUpdateDecision, ServerUpdateSettings, ServerUpdateStatus } from '@ecs/protocol';
+import type {
+  ServerUpdateDecision,
+  ServerUpdateHistoryEntry,
+  ServerUpdateSettings,
+  ServerUpdateStatus,
+} from '@ecs/protocol';
 import type { ServerUpdates } from '@ecs/server';
-import { type Build, readJson, writeJson } from './update-files.js';
+import { type Build, isBuild, readJson, readUpdateState, writeJson } from './update-files.js';
 import { findUpdate, stageUpdate, type UpdateCandidate } from './update-release.js';
 
 const checkInterval = 60 * 60_000;
@@ -11,6 +17,20 @@ interface Preferences {
   settings: ServerUpdateSettings;
   skipped: string[];
   snoozed?: { id: string; until: number };
+}
+interface UpdateActivity {
+  history: ServerUpdateHistoryEntry[];
+  lastCheck?: { channel: Build['channel']; at: string };
+}
+
+function validHistoryEntry(entry: ServerUpdateHistoryEntry): boolean {
+  return (
+    !!entry?.build &&
+    typeof entry.build.version === 'string' &&
+    ['release', 'nightly'].includes(entry.build.channel) &&
+    ['installed', 'observed', 'rolled-back'].includes(entry.outcome) &&
+    Number.isFinite(Date.parse(entry.at))
+  );
 }
 
 export class ServerUpdater implements ServerUpdates {
@@ -22,11 +42,19 @@ export class ServerUpdater implements ServerUpdates {
   private readonly abort = new AbortController();
   private saving = false;
   private task?: Promise<void>;
+  private activityWrite = Promise.resolve();
 
   private constructor(
     private readonly directory: string,
     private readonly current: Build,
     private preferences: Preferences,
+    private activity: UpdateActivity,
+    private readonly activation: {
+      at: string;
+      installed: boolean;
+      trial: boolean;
+      failedBuild?: Build;
+    },
     private readonly restart: (id: string) => Promise<void>,
     private readonly source: { find: typeof findUpdate; stage: typeof stageUpdate },
   ) {}
@@ -49,7 +77,43 @@ export class ServerUpdater implements ServerUpdates {
       ['off', 'manual', 'automatic'].includes(settings.mode)
         ? { ...value, settings, skipped: Array.isArray(value.skipped) ? value.skipped : [] }
         : { settings: { channel: current.channel, mode: 'off' }, skipped: [] };
-    const updater = new ServerUpdater(directory, current, preferences, restart, source);
+    const statePath = join(directory, 'state.json');
+    const [saved, state, stateFile] = await Promise.all([
+      readJson(join(directory, 'activity.json')).catch(() => undefined) as Promise<
+        Partial<UpdateActivity> | undefined
+      >,
+      readUpdateState(directory).catch(() => undefined),
+      stat(statePath).catch(() => undefined),
+    ]);
+    const failedBuild = state?.failed
+      ? await readJson(join(directory, 'builds', state.failed, 'BUILD.json')).catch(() => undefined)
+      : undefined;
+    const updater = new ServerUpdater(
+      directory,
+      current,
+      preferences,
+      {
+        history: Array.isArray(saved?.history)
+          ? saved.history.slice(0, 20).filter(validHistoryEntry)
+          : [],
+        ...(saved?.lastCheck && Number.isFinite(Date.parse(saved.lastCheck.at))
+          ? { lastCheck: saved.lastCheck }
+          : {}),
+      },
+      {
+        at:
+          state?.active === current.id && !state.failed && stateFile
+            ? stateFile.mtime.toISOString()
+            : new Date().toISOString(),
+        trial: state?.pending === current.id,
+        installed:
+          state?.pending === current.id ||
+          (state?.active === current.id && !state.failed && !!stateFile),
+        ...(isBuild(failedBuild) ? { failedBuild } : {}),
+      },
+      restart,
+      source,
+    );
     if (unreadable)
       updater.message = 'Update preferences could not be read. Update checks are off.';
     return updater;
@@ -69,12 +133,34 @@ export class ServerUpdater implements ServerUpdates {
         this.phase === 'idle' &&
         Boolean(available && !this.suppressed(available)),
       ...(this.message ? { message: this.message } : {}),
+      ...(this.activity.lastCheck?.channel === settings.channel
+        ? { lastCheckedAt: this.activity.lastCheck.at }
+        : {}),
+      history: this.activity.history,
     };
   }
 
   start(failed?: string): void {
     this.failed = failed;
     if (failed) this.message = 'The last update failed to start. The previous build was restored.';
+    const lastActive = this.activity.history.find((entry) => entry.outcome !== 'rolled-back');
+    if (lastActive?.build.id !== this.current.id) {
+      this.activity.history.unshift({
+        build: publicBuild(this.current),
+        at: this.activation.trial ? new Date().toISOString() : this.activation.at,
+        outcome: this.activation.installed ? 'installed' : 'observed',
+      });
+      this.saveActivity();
+    }
+    const failedBuild = this.activation.failedBuild;
+    if (failedBuild && failedBuild.id === failed && this.activity.history[0]?.build.id !== failed) {
+      this.activity.history.unshift({
+        build: publicBuild(failedBuild),
+        at: this.activation.at,
+        outcome: 'rolled-back',
+      });
+      this.saveActivity();
+    }
     this.check();
     this.timer = setInterval(() => this.check(), checkInterval);
     this.timer.unref();
@@ -84,6 +170,15 @@ export class ServerUpdater implements ServerUpdates {
     clearInterval(this.timer);
     this.abort.abort();
     await this.task;
+    await this.activityWrite;
+  }
+
+  private saveActivity(): void {
+    this.activity.history = this.activity.history.slice(0, 20);
+    const snapshot = structuredClone(this.activity);
+    this.activityWrite = this.activityWrite
+      .then(() => writeJson(join(this.directory, 'activity.json'), snapshot))
+      .catch(() => {});
   }
 
   deferRestart(): void {
@@ -160,6 +255,7 @@ export class ServerUpdater implements ServerUpdates {
       const { mode, channel: selected } = this.preferences.settings;
       if (this.saving || selected !== channel || mode === 'off' || this.abort.signal.aborted)
         return;
+      this.checked(channel);
       this.available = update;
       this.message =
         update?.build.id === this.failed && this.failed !== undefined
@@ -168,13 +264,25 @@ export class ServerUpdater implements ServerUpdates {
       if (mode === 'automatic' && update && !this.suppressed(update.build))
         await this.install(update);
     } catch (error) {
-      if (!this.abort.signal.aborted) this.message = (error as Error).message;
+      if (
+        !this.abort.signal.aborted &&
+        this.preferences.settings.channel === channel &&
+        this.preferences.settings.mode !== 'off'
+      ) {
+        this.checked(channel);
+        this.message = (error as Error).message;
+      }
     } finally {
       if (this.phase === 'checking') {
         this.phase = 'idle';
         if (this.preferences.settings.channel !== channel) this.check();
       }
     }
+  }
+
+  private checked(channel: Build['channel']): void {
+    this.activity.lastCheck = { channel, at: new Date().toISOString() };
+    this.saveActivity();
   }
 
   private async install(update: UpdateCandidate): Promise<void> {
@@ -192,6 +300,6 @@ export class ServerUpdater implements ServerUpdates {
   }
 }
 
-function publicBuild({ id, version, channel }: Build): ServerUpdateStatus['current'] {
-  return { id, version, channel };
+function publicBuild({ id, version, channel, builtAt }: Build): ServerUpdateHistoryEntry['build'] {
+  return { id, version, channel, builtAt };
 }

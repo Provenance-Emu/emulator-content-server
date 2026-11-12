@@ -189,6 +189,7 @@
     },
     "ServerUpdateBuild": {
       "properties": [
+        "builtAt",
         "channel",
         "id",
         "version"
@@ -199,10 +200,24 @@
         "version"
       ]
     },
+    "ServerUpdateHistoryEntry": {
+      "properties": [
+        "at",
+        "build",
+        "outcome"
+      ],
+      "required": [
+        "at",
+        "build",
+        "outcome"
+      ]
+    },
     "ServerUpdateStatus": {
       "properties": [
         "available",
         "current",
+        "history",
+        "lastCheckedAt",
         "message",
         "phase",
         "prompt",

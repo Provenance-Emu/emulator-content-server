@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { ContentClient, Library } from '@ecs/client';
   import type { FolderContext } from './lib/folder-selection';
   import type { ApplicationState } from './lib/application';
@@ -20,7 +21,7 @@
   import ServerUpdateSettings from './ServerUpdateSettings.svelte';
 
   let {
-    client, appState, updates, onback, onview, onrejected, context, server,
+    client, appState, updates, desktopUpdates, onback, onview, onrejected, context, server,
     pairingPin = '', onpaired = () => {},
     serverLabel = 'Emulation Server',
     onrename, onplayerschange, onsignin = () => {}, onsetup, onopendocumentation,
@@ -35,6 +36,7 @@
     serverLabel?: string;
     appState: ApplicationState;
     updates?: ServerUpdatesView;
+    desktopUpdates?: Snippet;
     onback: () => void;
     onrejected: (status: 401 | 403) => void;
     onview: (rootId: string, libraryId: string | null) => void;
@@ -54,7 +56,7 @@
   const visibleSections = $derived(settingsSections.filter(section =>
     section.id === 'webdav'
       ? appState.capabilities?.features.webdav && appState.hasSession
-      : section.id === 'updates' ? appState.owner && appState.hasSession && updates
+      : section.id === 'updates' ? desktopUpdates || (appState.owner && appState.hasSession && updates)
       : appState.owner || section.id === 'status',
   ));
   const active = $derived(visibleSections.some(section => section.id === selected) ? selected : 'status');
@@ -92,7 +94,7 @@
             type="button"
             aria-current={active === section.id ? 'page' : undefined}
             onclick={() => choose(section.id)}
-          >{section.label}</button>{/each}
+          >{section.label}{#if section.id === 'updates' && $updates?.status?.available}<span class="dim"> · Update available</span>{/if}</button>{/each}
         </div>{/if}
       {/each}
     </nav>
@@ -124,7 +126,9 @@
     {:else if appState.owner && active === 'activity'}
       <h1>Activity</h1>
       <Audit {client} {noted} />
-    {:else if updates && active === 'updates'}<ServerUpdateSettings {updates} />
+    {:else if active === 'updates'}<h1>Updates</h1>
+      {#if desktopUpdates}{@render desktopUpdates()}{/if}
+      {#if updates && appState.owner && appState.hasSession}<ServerUpdateSettings {updates} />{/if}
     {:else}
       <h1>Server status</h1>
       <Status capabilities={appState.capabilities} reachable={appState.reachable === true} />

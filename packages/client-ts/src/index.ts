@@ -136,6 +136,7 @@ export type {
   SavedSourceMatch,
   ServerUpdateBuild,
   ServerUpdateDecision,
+  ServerUpdateHistoryEntry,
   ServerUpdateSettings,
   ServerUpdateStatus,
   SessionResponse,

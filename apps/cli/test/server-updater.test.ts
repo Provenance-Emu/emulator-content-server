@@ -5,7 +5,14 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ServerUpdater } from '../src/server-updater.js';
-import { archiveBase, type Build, extension, platform, target } from '../src/update-files.js';
+import {
+  archiveBase,
+  type Build,
+  extension,
+  platform,
+  target,
+  writeJson,
+} from '../src/update-files.js';
 import { findUpdate, stageUpdate, type UpdateCandidate } from '../src/update-release.js';
 
 const installed: Build = {
@@ -33,7 +40,6 @@ const update: UpdateCandidate = {
 
 test('manual decisions persist per build and automatic mode stages a newer build', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'ecs-update-preferences-'));
-  t.after(() => rm(directory, { recursive: true, force: true }));
   let next = update;
   let checks = 0;
   const stages: string[] = [];
@@ -56,12 +62,18 @@ test('manual decisions persist per build and automatic mode stages a newer build
       },
     );
   let controller = await open();
-  t.after(() => controller.stop());
+  t.after(async () => {
+    await controller.stop();
+    await rm(directory, { recursive: true, force: true });
+  });
   controller.start();
   assert.equal(checks, 0);
   assert.equal(controller.status().settings.mode, 'off');
   await controller.configure({ channel: 'nightly', mode: 'manual' });
   assert.equal(controller.status().prompt, true);
+  const lastCheckedAt = controller.status().lastCheckedAt;
+  assert.ok(lastCheckedAt);
+  assert.equal(controller.status().available?.builtAt, newer.builtAt);
   await controller.decide({ action: 'install', buildId: installed.id });
   assert.deepEqual(stages, []);
   await controller.decide({ action: 'later', buildId: newer.id });
@@ -69,6 +81,7 @@ test('manual decisions persist per build and automatic mode stages a newer build
   await controller.stop();
 
   controller = await open();
+  assert.equal(controller.status().lastCheckedAt, lastCheckedAt);
   controller.start();
   await delay(0);
   assert.equal(controller.status().prompt, false);
@@ -83,6 +96,25 @@ test('manual decisions persist per build and automatic mode stages a newer build
   assert.deepEqual(stages, [next.build.id]);
   assert.deepEqual(restarts, [next.build.id]);
   assert.equal(controller.status().phase, 'restarting');
+});
+
+test('history records an activated build once and survives another launcher restart', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'ecs-update-activity-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const open = () => ServerUpdater.open(directory, newer, async () => {});
+  await writeJson(join(directory, 'state.json'), { active: installed.id, pending: newer.id });
+  let updater = await open();
+  await writeJson(join(directory, 'state.json'), { active: newer.id });
+  updater.start();
+  const history = updater.status().history;
+  assert.equal(history?.[0]?.outcome, 'installed');
+  assert.equal(history?.[0]?.build.id, newer.id);
+  assert.ok(Number.isFinite(Date.parse(history?.[0]?.at ?? '')));
+  await updater.stop();
+  updater = await open();
+  updater.start();
+  assert.deepEqual(updater.status().history, history);
+  await updater.stop();
 });
 
 test('release selection ignores unrelated GitHub releases and checks the platform digest', async () => {

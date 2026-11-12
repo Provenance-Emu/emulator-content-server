@@ -12,6 +12,13 @@ export interface ServerUpdateBuild {
   id: string;
   version: string;
   channel: ServerUpdateSettings['channel'];
+  builtAt?: string;
+}
+
+export interface ServerUpdateHistoryEntry {
+  build: ServerUpdateBuild;
+  at: string;
+  outcome: 'installed' | 'observed' | 'rolled-back';
 }
 
 export interface ServerUpdateStatus {
@@ -22,4 +29,6 @@ export interface ServerUpdateStatus {
   phase: 'idle' | 'checking' | 'downloading' | 'restarting';
   prompt: boolean;
   message?: string;
+  lastCheckedAt?: string;
+  history?: ServerUpdateHistoryEntry[];
 }

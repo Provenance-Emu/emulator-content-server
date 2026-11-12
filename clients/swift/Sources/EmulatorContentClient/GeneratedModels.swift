@@ -26,11 +26,25 @@ public struct ServerUpdateBuild: Codable, Equatable, Sendable {
     public var id: String
     public var version: String
     public var channel: String
+    public var builtAt: String?
 
-    public init(id: String, version: String, channel: String) {
+    public init(id: String, version: String, channel: String, builtAt: String? = nil) {
         self.id = id
         self.version = version
         self.channel = channel
+        self.builtAt = builtAt
+    }
+}
+
+public struct ServerUpdateHistoryEntry: Codable, Equatable, Sendable {
+    public var build: ServerUpdateBuild
+    public var at: String
+    public var outcome: String
+
+    public init(build: ServerUpdateBuild, at: String, outcome: String) {
+        self.build = build
+        self.at = at
+        self.outcome = outcome
     }
 }
 
@@ -42,8 +56,10 @@ public struct ServerUpdateStatus: Codable, Equatable, Sendable {
     public var phase: String
     public var prompt: Bool
     public var message: String?
+    public var lastCheckedAt: String?
+    public var history: [ServerUpdateHistoryEntry]?
 
-    public init(supported: Bool, settings: ServerUpdateSettings, current: ServerUpdateBuild? = nil, available: ServerUpdateBuild? = nil, phase: String, prompt: Bool, message: String? = nil) {
+    public init(supported: Bool, settings: ServerUpdateSettings, current: ServerUpdateBuild? = nil, available: ServerUpdateBuild? = nil, phase: String, prompt: Bool, message: String? = nil, lastCheckedAt: String? = nil, history: [ServerUpdateHistoryEntry]? = nil) {
         self.supported = supported
         self.settings = settings
         self.current = current
@@ -51,6 +67,8 @@ public struct ServerUpdateStatus: Codable, Equatable, Sendable {
         self.phase = phase
         self.prompt = prompt
         self.message = message
+        self.lastCheckedAt = lastCheckedAt
+        self.history = history
     }
 }
 

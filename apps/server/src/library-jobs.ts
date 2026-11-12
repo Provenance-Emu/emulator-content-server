@@ -26,6 +26,7 @@ const queues = new WeakMap<
   CatalogDatabase,
   {
     scan(root: { id: string; path: string }, actorId: string): Promise<ScanResult>;
+    scanningLibrary(libraryId: string | null): boolean;
     stop(): Promise<void>;
     checkDetails(rootId: string, sourceId: string): void;
     index(rootId: string, actorId: string): void;
@@ -41,6 +42,9 @@ export async function enqueueRootScan(
 }
 export async function stopLibraryJobs(catalog: CatalogDatabase): Promise<void> {
   await queues.get(catalog)?.stop();
+}
+export function rootScanInProgress(catalog: CatalogDatabase, libraryId: string | null): boolean {
+  return queues.get(catalog)?.scanningLibrary(libraryId) ?? false;
 }
 
 export function checkSourceDetails(
@@ -70,7 +74,7 @@ export function registerLibraryJobs(
   const repository = context.catalog.libraryJobs;
   let started = false;
   let running: Promise<void> | null = null;
-  let current: { id: string; abort: AbortController } | null = null;
+  let current: { id: string; abort: AbortController; scanLibrary?: string | null } | null = null;
   let closing = false;
   let halted = false;
   const interruption =
@@ -202,6 +206,7 @@ export function registerLibraryJobs(
   }
   queues.set(context.catalog, {
     stop,
+    scanningLibrary: (libraryId) => current?.scanLibrary === libraryId,
     checkDetails(rootId, sourceId) {
       if (closing || !context.automaticMatching) return;
       try {
@@ -346,7 +351,16 @@ export function registerLibraryJobs(
                     error: 'Folder was removed.',
                   });
                 else {
-                  const result = await scanRoot(context.catalog, root, next.actorId, abort.signal);
+                  const runningScan = current;
+                  runningScan.scanLibrary = root.libraryId;
+                  const result = await scanRoot(
+                    context.catalog,
+                    root,
+                    next.actorId,
+                    abort.signal,
+                  ).finally(() => {
+                    runningScan.scanLibrary = undefined;
+                  });
                   repository.saveScanResult(next.job.id, root.id, result);
                   repository.finishItem(next.job.id, { ...entry, status: 'saved' });
                   if (context.automaticMatching && result.online) {

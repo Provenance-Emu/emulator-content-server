@@ -6,6 +6,13 @@ import { defineConfig } from 'vite';
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  define: {
+    __ECS_DESKTOP_BUILD__: JSON.stringify(
+      process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_SHA
+        ? { sha: process.env.GITHUB_SHA, builtAt: new Date().toISOString() }
+        : null,
+    ),
+  },
   plugins: [
     svelte(),
     {

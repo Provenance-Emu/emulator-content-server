@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { ServerContext } from './lib/application';
   import type { FolderSelectionAdapter } from './lib/folder-selection';
   import type { SetupMode } from './lib/setup-progress';
@@ -8,8 +9,8 @@
     folderSelection,
     setupCode,
     revealSetupCode,
-    setupGuide, onsetupclose, onchoosecomputer,
-  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void } = $props();
+    setupGuide, onsetupclose, onchoosecomputer, desktopUpdates,
+  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void; desktopUpdates?: Snippet } = $props();
 </script>
 
-{#key context.key}<LibraryShell {context} {folderSelection} {setupCode} {revealSetupCode} {setupGuide} {onsetupclose} {onchoosecomputer} />{/key}
+{#key context.key}<LibraryShell {context} {folderSelection} {setupCode} {revealSetupCode} {setupGuide} {onsetupclose} {onchoosecomputer} {desktopUpdates} />{/key}

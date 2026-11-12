@@ -2334,6 +2334,14 @@ components:
         id: { type: string }
         version: { type: string }
         channel: { type: string, enum: [release, nightly] }
+        builtAt: { type: string, format: date-time }
+    ServerUpdateHistoryEntry:
+      type: object
+      required: [build, at, outcome]
+      properties:
+        build: { $ref: '#/components/schemas/ServerUpdateBuild' }
+        at: { type: string, format: date-time }
+        outcome: { type: string, enum: [installed, observed, rolled-back] }
     ServerUpdateStatus:
       type: object
       required: [supported, settings, phase, prompt]
@@ -2345,6 +2353,11 @@ components:
         phase: { type: string, enum: [idle, checking, downloading, restarting] }
         prompt: { type: boolean }
         message: { type: string }
+        lastCheckedAt: { type: string, format: date-time, description: Last completed update check for the selected channel. }
+        history:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/ServerUpdateHistoryEntry' }
     Problem:
       type: object
       required: [type, title, status]

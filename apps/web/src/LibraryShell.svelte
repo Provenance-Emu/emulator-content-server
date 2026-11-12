@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Library, LibraryScope } from '@ecs/client';
   import { get } from 'svelte/store';
-  import { onDestroy, onMount, untrack } from 'svelte';
+  import { onDestroy, onMount, type Snippet, untrack } from 'svelte';
   import { createApplication, type ApplicationState, type ServerContext } from './lib/application';
   import { createServerUpdates } from './lib/server-updates';
   import type { FolderContext, FolderSelectionAdapter } from './lib/folder-selection';
@@ -23,8 +23,8 @@
     folderSelection,
     setupCode,
     revealSetupCode,
-    setupGuide, onsetupclose, onchoosecomputer,
-  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void } = $props();
+    setupGuide, onsetupclose, onchoosecomputer, desktopUpdates,
+  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void; desktopUpdates?: Snippet } = $props();
   const application = untrack(() => createApplication(context));
   const updates = untrack(() => createServerUpdates(context.client));
   const updateAccess = $derived($application.owner && $application.hasSession ? $application.authEpoch : null);
@@ -125,7 +125,7 @@
     rootId = nextRoot;
     settings = location.settings !== null;
     settingsSection = location.settings ?? 'libraries';
-    if (!state.owner && settingsSection !== 'webdav') settingsSection = 'status';
+    if (!state.owner && settingsSection !== 'webdav' && !(settingsSection === 'updates' && desktopUpdates)) settingsSection = 'status';
     settingsLibraryId = state.libraries.some(library => library.id === location.settingsLibraryId) ? location.settingsLibraryId : '';
     drawer = false;
   }
@@ -241,7 +241,7 @@
           />{/key}
         </div>
         {#if settings}<SettingsShell
-            {updates}
+            {updates} {desktopUpdates}
             {pairingPin}
             onpaired={() => { pairingPin = ''; }}
             onsignin={() => { signingIn = true; drawer = false; }}

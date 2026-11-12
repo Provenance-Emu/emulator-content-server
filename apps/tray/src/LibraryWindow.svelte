@@ -8,8 +8,12 @@
   import { folderAdapterFor, managedProfile, nativeFolders, type ManagedEndpoint } from './lib/folders';
   import type { DesktopContext, DesktopSelection } from './lib/application';
   import { DEFAULT_ORIGIN } from './lib/watch.svelte';
+  import { createDesktopUpdates } from './lib/desktop-updates';
   import { openExternal, showLibrary } from './lib/windows';
   let { selection }: { selection: DesktopSelection } = $props();
+  const appUpdates = createDesktopUpdates();
+  const updateDate = (value: string) => new Date(value).toLocaleString();
+  onMount(appUpdates.start);
   const profiles = untrack(() => selection.profiles);
   function skippedGuide() { try { return localStorage.getItem('ecs.tray.setup.skipped') === '1'; } catch { return false; } }
   let welcome = $state(untrack(() => get(selection) === null && !skippedGuide()));
@@ -180,12 +184,29 @@
 </header>
 {#if $selection && !welcome}
   {#if awaitingManagedVerification}<p class="startup-verification dim" role="status">Checking local service…</p>
-  {:else}<App context={$selection} {folderSelection}
+  {:else}<App context={$selection} {folderSelection} {desktopUpdates}
     setupGuide={guideMode} onsetupclose={() => guideMode = undefined} onchoosecomputer={() => { welcome = true; remote = false; }}
     setupCode={setupCode && setupCode.key === $selection.key ? setupCode.value : undefined}
     revealSetupCode={canSetUpMac && ['127.0.0.1', '[::1]'].includes(new URL($selection.origin).hostname) ? revealSetupCode : undefined}
   />{/if}
 {/if}
+{#snippet desktopUpdates()}
+  <section aria-label="Desktop app updates">
+    <h2>Desktop app updates</h2>
+    {#if appUpdates.installed}
+      <p>Installed build <strong>{appUpdates.installed.sha.slice(0, 12)}</strong> · built <time datetime={appUpdates.installed.builtAt}>{updateDate(appUpdates.installed.builtAt)}</time></p>
+      {#if $appUpdates.checkedAt}<p>Last checked <time datetime={$appUpdates.checkedAt}>{updateDate($appUpdates.checkedAt)}</time></p>{/if}
+      {#if $appUpdates.available}
+        <p role="status"><strong>Desktop update available</strong> · {$appUpdates.available.sha.slice(0, 12)} · published <time datetime={$appUpdates.available.publishedAt}>{updateDate($appUpdates.available.publishedAt)}</time></p>
+      {/if}
+      {#if $appUpdates.error}<p role="status">{$appUpdates.error}</p>{/if}
+      <p>The desktop app checks for new nightly installers while the library window is open.</p>
+    {:else}
+      <p>This build has no release metadata for automatic checks.</p>
+    {/if}
+    <button type="button" onclick={() => void openExternal(appUpdates.release)}>Open desktop downloads</button>
+  </section>
+{/snippet}
 {#snippet connectionForm()}
   <form class:connection-first-run={!$selection} onsubmit={(event) => {
     event.preventDefault();

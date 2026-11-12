@@ -258,7 +258,7 @@ jobs:
             mac_label=$(nightly_asset_label Emulation-Server-nightly-macos-arm64.dmg)
             mac_digest=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/nightly" | jq -r --arg mac_label "$mac_label" '
               .assets[] | select(.name == "Emulation-Server-nightly-macos-arm64.dmg" and
-                ((.label // "") | . == $mac_label or
+                ((.label // "") | . == $mac_label or startswith($mac_label + " [build ") or
                   . == "macOS Apple Silicon · Notarized desktop app (.dmg)" or
                   startswith("macOS tray installer (notarized, "))) | .digest')
             if [[ "$mac_digest" =~ ^sha256:([0-9a-f]{64})$ ]]; then
@@ -270,6 +270,9 @@ jobs:
           assets=()
           for asset in dist-release/all/*; do
             label=$(nightly_asset_label "${asset##*/}")
+            case "$asset" in
+              *.dmg|*.msi|*.deb|*.AppImage) label="$label [build $GITHUB_SHA]" ;;
+            esac
             if [[ -n "$label" ]]; then
               asset="$asset#$label"
             fi

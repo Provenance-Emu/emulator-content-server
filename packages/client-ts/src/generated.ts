@@ -14,6 +14,13 @@ export interface ServerUpdateBuild {
   id: string;
   version: string;
   channel: string;
+  builtAt?: string;
+}
+
+export interface ServerUpdateHistoryEntry {
+  build: ServerUpdateBuild;
+  at: string;
+  outcome: string;
 }
 
 export interface ServerUpdateStatus {
@@ -24,6 +31,8 @@ export interface ServerUpdateStatus {
   phase: string;
   prompt: boolean;
   message?: string;
+  lastCheckedAt?: string;
+  history?: ServerUpdateHistoryEntry[];
 }
 
 export interface Problem {
