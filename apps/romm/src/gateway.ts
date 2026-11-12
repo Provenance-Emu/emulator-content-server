@@ -1,25 +1,31 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import type {
+  CompanionList,
   LibraryBrowseEntry,
   LibraryBrowsePage,
   LibraryList,
   Manifest,
   SourceGroup,
 } from '@ecs/client';
-import { PROVENANCE_SYSTEMS } from '@ecs/protocol';
+import { PROVENANCE_SYSTEMS, validateSystemIdentifier } from '@ecs/protocol';
 import { streamZip } from '@ecs/storage';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import { IdIndex, type IndexEntry } from './ids.js';
 import { type DownloadMember, manicPlaylist } from './playlist.js';
 import { GatewayError, parseOrigin, readable, Upstream } from './upstream.js';
 
-const platforms = PROVENANCE_SYSTEMS.map((system) => ({
-  system: system.identifier,
-  name: system.name,
-  // Independent of catalogue population, listing order and process restarts.
-  id: createHash('sha256').update(system.identifier).digest().readUIntBE(0, 6),
-}));
+function platform(system: string, name = system) {
+  return {
+    system,
+    name,
+    slug: system.split('.').at(-1) ?? system,
+    // Independent of catalogue population, listing order and process restarts.
+    id: createHash('sha256').update(system).digest().readUIntBE(0, 6),
+  };
+}
+
+const platforms = PROVENANCE_SYSTEMS.map((system) => platform(system.identifier, system.name));
 const bySystem = new Map(platforms.map((platform) => [platform.system, platform]));
 const byPlatform = new Map(platforms.map((platform) => [platform.id, platform.system]));
 if (byPlatform.size !== platforms.length) throw new Error('Duplicate platform IDs');
@@ -29,6 +35,8 @@ interface Rom {
   name: string;
   fs_name: string;
   fs_size_bytes?: number;
+  platform_id: number;
+  platform_slug: string;
   platform_display_name: string;
   path_cover_large?: string;
 }
@@ -68,12 +76,15 @@ function archiveName(name: string): string {
 }
 
 function rom(entry: IndexEntry, name: string, size?: number): Rom {
+  const system = bySystem.get(entry.system) ?? platform(entry.system);
   return {
     id: entry.id,
     name: entry.title,
     fs_name: filename(name),
     ...(size === undefined ? {} : { fs_size_bytes: size }),
-    platform_display_name: bySystem.get(entry.system)?.name ?? entry.system,
+    platform_id: system.id,
+    platform_slug: system.slug,
+    platform_display_name: system.name,
     ...(entry.artwork ? { path_cover_large: `/assets/romm/ecs/${entry.id}/cover` } : {}),
   };
 }
@@ -90,6 +101,28 @@ async function libraryIds(ecs: Upstream): Promise<string[]> {
   return (await ecs.json<LibraryList>('browse-libraries')).items
     .map((library) => library.id)
     .sort();
+}
+
+async function visiblePlatforms(ecs: Upstream, libraries: string[]) {
+  const counts = new Map<string, number>();
+  for (const libraryId of libraries) {
+    const params = new URLSearchParams({ libraryId, category: 'games', limit: '1' });
+    const page = await ecs.json<LibraryBrowsePage>(`browse?${params}`);
+    for (const entry of page.systemCounts ?? []) {
+      if (!validateSystemIdentifier(entry.systemId))
+        counts.set(entry.systemId, (counts.get(entry.systemId) ?? 0) + entry.count);
+    }
+  }
+  const extras = [...counts.keys()].filter((system) => !bySystem.has(system)).sort();
+  const usedIds = new Set(byPlatform.keys());
+  return [...platforms, ...extras.map((system) => platform(system))].flatMap((entry) => {
+    const count = counts.get(entry.system);
+    if (!count) return [];
+    if (usedIds.has(entry.id) && byPlatform.get(entry.id) !== entry.system)
+      throw new GatewayError(502, 'Duplicate platform IDs.');
+    usedIds.add(entry.id);
+    return [{ ...entry, rom_count: count }];
+  });
 }
 
 async function resolve(ecs: Upstream, entry: IndexEntry): Promise<Download> {
@@ -165,7 +198,7 @@ async function browseRom(
   index: IdIndex,
   row: LibraryBrowseEntry,
 ): Promise<Rom | null> {
-  if (!row.systemId || !bySystem.has(row.systemId)) return null;
+  if (!row.systemId || validateSystemIdentifier(row.systemId)) return null;
   const common = { ecsId: row.id, system: row.systemId, title: row.name };
   if (row.entityType === 'source' && row.source) {
     const source = row.source;
@@ -183,11 +216,21 @@ async function browseRom(
     );
   }
   if (row.entityType === 'item') {
+    const summary = row.romDownload;
+    if (
+      summary &&
+      (summary.romFileCount < 1 || summary.romFileCount > 512 || summary.requiresSystemFiles)
+    )
+      return null;
     const entry = index.assign({
       ...common,
       kind: 'item',
       artwork: Number(Boolean(row.previewAsset)),
     });
+    if (summary) {
+      if (summary.romFileCount > 1) return rom(entry, archiveName(entry.title));
+      if (summary.filename !== undefined) return rom(entry, summary.filename, summary.sizeBytes);
+    }
     try {
       return (await resolve(ecs, entry)).rom;
     } catch (error) {
@@ -212,14 +255,16 @@ async function relay(
   path: string,
   request: FastifyRequest,
   reply: FastifyReply,
-  archive = false,
+  options: { archive?: boolean; revalidate?: boolean } = {},
 ) {
   const head = request.method === 'HEAD';
   const response = await ecs.get(path, {
     head,
-    headers: archive ? undefined : rangeHeaders(request),
+    headers: options.archive ? undefined : rangeHeaders(request),
   });
   if (!response.ok && ![304, 416].includes(response.status)) await ecs.reject(response);
+  if (options.revalidate && (response.ok || response.status === 304))
+    reply.header('cache-control', 'private, no-cache');
   reply.code(response.status);
   for (const name of ['content-type', 'content-range', 'accept-ranges', 'etag', 'last-modified']) {
     const value = response.headers.get(name);
@@ -257,17 +302,10 @@ export function openGateway(options: { origin: string; indexPath: string }) {
   app.get('/health', async () => ({ status: 'ok', service: 'ecs-romm-gateway' }));
   app.get('/api/platforms', async (request, reply) => {
     const ecs = new Upstream(origin, request, reply);
-    const counts = new Map<string, number>();
-    for (const libraryId of await libraryIds(ecs)) {
-      const params = new URLSearchParams({ libraryId, category: 'games', limit: '1' });
-      const page = await ecs.json<LibraryBrowsePage>(`browse?${params}`);
-      for (const entry of page.systemCounts ?? [])
-        counts.set(entry.systemId, (counts.get(entry.systemId) ?? 0) + entry.count);
-    }
-    return platforms.flatMap((platform) => {
-      const count = counts.get(platform.system);
-      return count ? [{ id: platform.id, name: platform.name, rom_count: count }] : [];
-    });
+    return (await visiblePlatforms(ecs, await libraryIds(ecs))).map(({ system, ...entry }) => ({
+      ...entry,
+      ecs_system_id: system,
+    }));
   });
   app.get('/api/roms', async (request, reply) => {
     const ecs = new Upstream(origin, request, reply);
@@ -278,7 +316,7 @@ export function openGateway(options: { origin: string; indexPath: string }) {
     if (typeof search !== 'string' || [...search].length > 256)
       throw new GatewayError(400, 'Invalid search term.');
     const raw = query.platform_ids ?? query.platform_id;
-    const systems =
+    const platformIds =
       raw === undefined
         ? null
         : [
@@ -286,19 +324,30 @@ export function openGateway(options: { origin: string; indexPath: string }) {
               (Array.isArray(raw) ? raw : [raw]).flatMap((value) => {
                 if (typeof value !== 'string')
                   throw new GatewayError(400, 'Invalid platform selection.');
-                return value.split(',').flatMap((part) => {
-                  const system = byPlatform.get(number(part, 0, Number.MAX_SAFE_INTEGER, 1));
-                  return system ? [system] : [];
-                });
+                return value.split(',').map((part) => number(part, 0, Number.MAX_SAFE_INTEGER, 1));
               }),
             ),
           ];
+    if (platformIds && platformIds.length > 100) throw new GatewayError(400, 'Too many platforms.');
     const libraries = await libraryIds(ecs);
+    const visible = platformIds?.some((id) => !byPlatform.has(id))
+      ? new Map((await visiblePlatforms(ecs, libraries)).map(({ id, system }) => [id, system]))
+      : undefined;
+    const systems = platformIds?.flatMap((id) => {
+      const system = byPlatform.get(id) ?? visible?.get(id);
+      return system ? [system] : [];
+    });
     if (systems?.length === 0) return { items: [], limit, offset, total: 0 };
     const items: Rom[] = [];
     let seen = 0;
     for (const libraryId of libraries) {
-      const params = new URLSearchParams({ libraryId, category: 'games', search, limit: '100' });
+      const params = new URLSearchParams({
+        libraryId,
+        category: 'games',
+        search,
+        limit: String(Math.min(100, offset + limit + 1)),
+        includeRomDownload: 'true',
+      });
       if (systems) params.set('systemIds', systems.join(','));
       const cursors = new Set<string>();
       for (;;) {
@@ -321,6 +370,36 @@ export function openGateway(options: { origin: string; indexPath: string }) {
   });
   const game = (ecs: Upstream, id: unknown) =>
     resolve(ecs, index.find(number(id, 0, Number.MAX_SAFE_INTEGER, 1)));
+  app.get('/api/roms/:id/ecs-companions', async (request, reply) => {
+    const ecs = new Upstream(origin, request, reply);
+    const { id } = request.params as { id: string };
+    const entry = index.find(number(id, 0, Number.MAX_SAFE_INTEGER, 1));
+    const prefix = entry.kind === 'source' ? 'sources' : 'items';
+    const companions = await ecs.json<CompanionList>(
+      `${prefix}/${encodeURIComponent(entry.ecsId)}/companions`,
+    );
+    return {
+      supportedKinds: companions.supportedKinds,
+      items: companions.items.map((item) => ({
+        ...item,
+        contentPath: `/api/roms/${entry.id}/ecs-companions/${encodeURIComponent(item.id)}/content`,
+      })),
+    };
+  });
+  app.get('/api/roms/:id/ecs-companions/:companionId/content', async (request, reply) => {
+    const ecs = new Upstream(origin, request, reply);
+    const { id, companionId } = request.params as { id: string; companionId: string };
+    const entry = index.find(number(id, 0, Number.MAX_SAFE_INTEGER, 1));
+    if (entry.kind !== 'source' || !/^[a-f0-9]{64}$/.test(companionId))
+      throw new GatewayError(404, 'Companion is not available.');
+    return relay(
+      ecs,
+      sourcePath(entry.ecsId, `companions/${companionId}/content`),
+      request,
+      reply,
+      { revalidate: true },
+    );
+  });
   app.get(
     '/api/roms/:id',
     async (request, reply) =>
@@ -349,7 +428,7 @@ export function openGateway(options: { origin: string; indexPath: string }) {
       const members = download.members;
       const playlist = members ? await manicPlaylist(ecs, members, open) : null;
       if (download.path && !playlist)
-        return relay(ecs, download.path, request, reply, download.archive);
+        return relay(ecs, download.path, request, reply, { archive: download.archive });
       reply.type('application/zip').header('accept-ranges', 'none');
       return reply.send(
         streamZip(
@@ -368,9 +447,14 @@ export function openGateway(options: { origin: string; indexPath: string }) {
     url: '/assets/romm/ecs/:id/cover',
     async handler(request, reply) {
       const ecs = new Upstream(origin, request, reply);
-      const { cover } = await game(ecs, (request.params as { id: string }).id);
+      const { id } = request.params as { id: string };
+      const entry = index.find(number(id, 0, Number.MAX_SAFE_INTEGER, 1));
+      const cover =
+        entry.kind === 'source'
+          ? sourcePath(entry.ecsId, 'matches/selections/artwork/content')
+          : (await resolve(ecs, entry)).cover;
       if (!cover) throw new GatewayError(404, 'Artwork not found.');
-      return relay(ecs, cover, request, reply);
+      return relay(ecs, cover, request, reply, { revalidate: true });
     },
   });
   // Manic requests these during import even when no saves exist. Write methods remain absent.

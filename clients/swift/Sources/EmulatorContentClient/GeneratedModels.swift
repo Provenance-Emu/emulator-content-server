@@ -112,8 +112,10 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var webdav: Bool
     public var natTraversal: Bool
     public var webPlayback: Bool?
+    public var romDownloadSummaries: Bool?
+    public var gameCompanions: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -123,6 +125,8 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.webdav = webdav
         self.natTraversal = natTraversal
         self.webPlayback = webPlayback
+        self.romDownloadSummaries = romDownloadSummaries
+        self.gameCompanions = gameCompanions
     }
 }
 
@@ -1521,8 +1525,9 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
     public var source: SourceFile?
     public var parentItem: Item?
     public var previewAsset: Asset?
+    public var romDownload: RomDownloadSummary?
 
-    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil) {
+    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil, romDownload: RomDownloadSummary? = nil) {
         self.entityType = entityType
         self.id = id
         self.name = name
@@ -1535,6 +1540,65 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
         self.source = source
         self.parentItem = parentItem
         self.previewAsset = previewAsset
+        self.romDownload = romDownload
+    }
+}
+
+public struct RomDownloadSummary: Codable, Equatable, Sendable {
+    public var romFileCount: Int
+    public var requiresSystemFiles: Bool
+    public var filename: String?
+    public var sizeBytes: Int64?
+
+    public init(romFileCount: Int, requiresSystemFiles: Bool, filename: String? = nil, sizeBytes: Int64? = nil) {
+        self.romFileCount = romFileCount
+        self.requiresSystemFiles = requiresSystemFiles
+        self.filename = filename
+        self.sizeBytes = sizeBytes
+    }
+}
+
+public struct CompanionList: Codable, Equatable, Sendable {
+    public var supportedKinds: [String]
+    public var items: [GameCompanion]
+
+    public init(supportedKinds: [String], items: [GameCompanion]) {
+        self.supportedKinds = supportedKinds
+        self.items = items
+    }
+}
+
+public struct GameCompanion: Codable, Equatable, Sendable {
+    public var id: String
+    public var kind: String
+    public var required: Bool
+    public var filename: String
+    public var sizeBytes: Int64
+    public var sha256: String
+    public var contentPath: String
+    public var format: String?
+    public var base: CompanionBase?
+
+    public init(id: String, kind: String, required: Bool, filename: String, sizeBytes: Int64, sha256: String, contentPath: String, format: String? = nil, base: CompanionBase? = nil) {
+        self.id = id
+        self.kind = kind
+        self.required = required
+        self.filename = filename
+        self.sizeBytes = sizeBytes
+        self.sha256 = sha256
+        self.contentPath = contentPath
+        self.format = format
+        self.base = base
+    }
+}
+
+public struct CompanionBase: Codable, Equatable, Sendable {
+    public var crc32: String
+    public var sizeBytes: Int64
+
+    public init(crc32: String, sizeBytes: Int64) {
+        self.crc32 = crc32
+        self.sizeBytes = sizeBytes
     }
 }
 

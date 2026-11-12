@@ -584,6 +584,7 @@ paths:
         - { name: sort, in: query, schema: { type: string, enum: [name_asc, name_desc], default: name_asc } }
         - { name: cursor, in: query, schema: { type: string, maxLength: 4096 } }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: includeRomDownload, in: query, schema: { type: boolean, default: false }, example: true, description: Include authorized ROM download summaries on uploaded game rows. Scanned sources retain their existing filename, size and group fields. }
       responses:
         '200':
           description: Authorized page; at most the requested limit. No absolute filesystem paths.
@@ -814,6 +815,21 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Manifest' }
+  /api/v1/items/{itemId}/companions:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: itemCompanions
+      tags: [Libraries and items]
+      security: [{ bearerAuth: [] }, {}]
+      responses:
+        '200':
+          description: Companion capabilities for an authorized uploaded item. Uploaded items currently expose no companion kinds.
+          content:
+            application/json:
+              example: { supportedKinds: [], items: [] }
+              schema: { $ref: '#/components/schemas/CompanionList' }
+        '404': { description: Item unavailable to the caller. }
   /api/v1/items/{itemId}/access/{userId}:
     parameters:
       - { name: itemId, in: path, required: true, schema: { type: string } }
@@ -1415,6 +1431,52 @@ paths:
               schema: { type: string, format: binary }
             image/webp:
               schema: { type: string, format: binary }
+  /api/v1/sources/{sourceId}/companions:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: sourceCompanions
+      tags: [Folders and sources]
+      security: [{ bearerAuth: [] }, {}]
+      responses:
+        '200':
+          description: Authorized optional companions with immutable content identity. Scanned games currently support saved patches.
+          content:
+            application/json:
+              example:
+                supportedKinds: [patch]
+                items:
+                  - id: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    kind: patch
+                    required: false
+                    filename: translation.bps
+                    sizeBytes: 144
+                    sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    format: bps
+                    base: { crc32: '12345678', sizeBytes: 2097152 }
+                    contentPath: /api/v1/sources/source-demo/companions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/content
+              schema: { $ref: '#/components/schemas/CompanionList' }
+        '404': { description: Source unavailable to the caller. }
+  /api/v1/sources/{sourceId}/companions/{id}/content:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+      - { name: id, in: path, required: true, schema: { type: string, pattern: '^[0-9a-f]{64}$' } }
+    get:
+      operationId: sourceCompanionContent
+      tags: [Folders and sources]
+      security: [{ bearerAuth: [] }, {}]
+      parameters:
+        - { name: If-None-Match, in: header, schema: { type: string } }
+      responses:
+        '200':
+          description: Bytes for the current authorized companion with the requested digest.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '304': { description: Authorized bytes match the supplied validator. }
+        '404': { description: Source or companion unavailable, or the selection has changed. }
   /api/v1/sources/{sourceId}/group:
     parameters:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
@@ -2304,6 +2366,8 @@ components:
         webdav: { type: boolean }
         natTraversal: { type: boolean }
         webPlayback: { type: boolean }
+        romDownloadSummaries: { type: boolean, description: Supports the opt-in ROM download summary on browse rows. }
+        gameCompanions: { type: boolean, description: Supports companion discovery and authorized downloads. Inspect supportedKinds on each game. }
     PlayerCoreResource:
       type: object
       required: [url, sha256, sizeBytes]
@@ -3221,6 +3285,47 @@ components:
         source: { $ref: '#/components/schemas/SourceFile' }
         parentItem: { $ref: '#/components/schemas/Item' }
         previewAsset: { $ref: '#/components/schemas/Asset' }
+        romDownload: { $ref: '#/components/schemas/RomDownloadSummary' }
+    RomDownloadSummary:
+      type: object
+      description: Authorized uploaded-item ROM files. The single-file fields are omitted for empty and grouped results. A true requiresSystemFiles flag means this view also exposes a required BIOS or system file.
+      required: [romFileCount, requiresSystemFiles]
+      properties:
+        romFileCount: { type: integer, minimum: 0 }
+        requiresSystemFiles: { type: boolean }
+        filename: { type: string }
+        sizeBytes: { type: integer, format: int64, minimum: 0 }
+    CompanionList:
+      type: object
+      required: [supportedKinds, items]
+      properties:
+        supportedKinds:
+          type: array
+          items: { type: string, enum: [patch, mod, texture_pack] }
+          description: Types implemented for this entity. An empty array means companions are unsupported.
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/GameCompanion' }
+    GameCompanion:
+      type: object
+      required: [id, kind, required, filename, sizeBytes, sha256, contentPath]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [patch, mod, texture_pack], description: Only saved patches are currently served. }
+        required: { type: boolean }
+        filename: { type: string }
+        sizeBytes: { type: integer, format: int64, minimum: 1 }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        contentPath: { type: string }
+        format: { type: string, description: Patch format such as ips, bps, or ups. }
+        base: { $ref: '#/components/schemas/CompanionBase' }
+    CompanionBase:
+      type: object
+      description: Expected input from the patch header. Its absence means a base hash is unavailable.
+      required: [crc32, sizeBytes]
+      properties:
+        crc32: { type: string, pattern: '^[0-9a-f]{8}$' }
+        sizeBytes: { type: integer, format: int64, minimum: 0 }
     LibraryBrowsePage:
       type: object
       required: [items, nextCursor]

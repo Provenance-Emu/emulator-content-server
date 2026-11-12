@@ -39,6 +39,9 @@ All routes below except `/health` take an ECS bearer token. These examples show 
 | GET | `/api/roms/42` | ROM details including its download filename |
 | GET, HEAD | `/api/roms/42/content/Example%20Game.iso` | File or ZIP download |
 | GET, HEAD | `/assets/romm/ecs/42/cover` | Cover bytes when ROM details include a cover path |
+| GET | `/api/roms/42/ecs-companions` | Optional ECS companions and supported kinds |
 | GET | `/api/saves?rom_id=42`, `/api/states?rom_id=42`, `/api/play-sessions?rom_id=42` | Empty lists during browse-and-download testing |
 
 Save sync is pending. For grouped games, verify that Manic carries the RomM ID from the downloaded ZIP to the imported game. Manic currently records that link by download filename and looks it up by imported filename. Its manual uploads request overwrite, so the gateway needs a per-user write identity and revision checks that preserve conflicting bytes. Save states need separate storage by Manic core to keep formats from mixing.
+
+The [Jaguar catalog contract](../protocol/jaguar-catalog.md) covers cartridge and CD filters, lazy artwork, patch downloads, request counts, and the prelaunch update order.

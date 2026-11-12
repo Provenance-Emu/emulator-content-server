@@ -578,6 +578,14 @@ export function registerRoutes(
     };
   });
 
+  app.get('/api/v1/items/:itemId/companions', async (request, reply) => {
+    const actor = requireActor(request);
+    const item = requireItem(catalog, (request.params as { itemId: string }).itemId);
+    itemDecision(catalog, actor, item, 'read');
+    reply.header('cache-control', 'private, no-store');
+    return { supportedKinds: [], items: [] };
+  });
+
   app.put('/api/v1/items/:itemId/access/:userId', async (request, reply) => {
     const actor = requireUser(request, 'admin');
     const { itemId, userId } = request.params as { itemId: string; userId: string };

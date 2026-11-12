@@ -23,6 +23,7 @@ import {
   type BrowseRecord,
   type BrowseSelection,
   browseKeys,
+  browseRomDownloads,
   browseSystemCounts,
   type ContentRootSummaryRecord,
   type RootSummaryFilter,
@@ -648,6 +649,13 @@ export class CatalogDatabase {
       const keys = browseKeys(this.db, input);
       const more = keys.length > input.limit;
       const selected = keys.slice(0, input.limit);
+      const downloads = input.includeRomDownload
+        ? browseRomDownloads(
+            this.db,
+            input,
+            selected.filter((key) => key.entity_type === 'item').map((key) => key.id),
+          )
+        : undefined;
       const items: BrowseRecord[] = selected.map((key) => {
         if (key.entity_type === 'item') {
           const item = this.getItem(key.id);
@@ -656,6 +664,7 @@ export class CatalogDatabase {
             entityType: 'item',
             item,
             previewAsset: key.preview_id ? this.getAsset(key.preview_id) : null,
+            ...(downloads ? { romDownload: downloads.get(item.id) } : {}),
           };
         }
         if (key.entity_type === 'source') {

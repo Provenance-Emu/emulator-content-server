@@ -25,9 +25,21 @@ export interface BrowseSelection {
   sort: 'name_asc' | 'name_desc';
   limit: number;
   position?: BrowsePosition | null;
+  includeRomDownload?: boolean;
+}
+interface RomDownloadSummary {
+  romFileCount: number;
+  requiresSystemFiles: boolean;
+  filename?: string;
+  sizeBytes?: number;
 }
 export type BrowseRecord =
-  | { entityType: 'item'; item: ItemRecord; previewAsset: AssetRecord | null }
+  | {
+      entityType: 'item';
+      item: ItemRecord;
+      previewAsset: AssetRecord | null;
+      romDownload?: RomDownloadSummary;
+    }
   | { entityType: 'asset'; asset: AssetRecord; item: ItemRecord }
   | { entityType: 'source'; source: SourceFileRecord };
 export interface RootSummaryFilter {
@@ -173,4 +185,44 @@ export function browseKeys(
     id: string;
     preview_id: string | null;
   }>;
+}
+
+export function browseRomDownloads(
+  db: DatabaseSync,
+  input: BrowseSelection,
+  itemIds: string[],
+): Map<string, RomDownloadSummary> {
+  const summaries = new Map<string, RomDownloadSummary>(
+    itemIds.map((id) => [id, { romFileCount: 0, requiresSystemFiles: false }]),
+  );
+  if (itemIds.length === 0) return summaries;
+  const restrictedGuest =
+    input.actor.kind === 'guest' && !input.actor.capabilities.includes('share_restricted');
+  const rows = db
+    .prepare(`
+    SELECT item_id, SUM(kind = 'rom') AS rom_count,
+      MAX(CASE WHEN kind = 'rom' THEN relative_path END) AS filename,
+      MAX(CASE WHEN kind = 'rom' THEN size END) AS size_bytes,
+      MAX(kind <> 'rom') AS requires_system_files
+    FROM assets
+    WHERE item_id IN (SELECT value FROM json_each(?)) AND deleted_at IS NULL
+      AND kind IN ('rom', 'bios', 'system_file')
+      AND (? = 0 OR (kind = 'rom' AND shareable = 1))
+    GROUP BY item_id`)
+    .all(JSON.stringify(itemIds), Number(restrictedGuest)) as {
+    item_id: string;
+    rom_count: number;
+    filename: string | null;
+    size_bytes: number | null;
+    requires_system_files: number;
+  }[];
+  for (const row of rows)
+    summaries.set(row.item_id, {
+      romFileCount: row.rom_count,
+      requiresSystemFiles: Boolean(row.requires_system_files),
+      ...(row.rom_count === 1 && row.filename !== null && row.size_bytes !== null
+        ? { filename: row.filename.split('/').at(-1), sizeBytes: row.size_bytes }
+        : {}),
+    });
+  return summaries;
 }

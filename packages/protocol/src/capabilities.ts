@@ -17,6 +17,8 @@ export interface Capabilities {
     webdav: boolean;
     natTraversal: boolean;
     webPlayback?: boolean;
+    romDownloadSummaries?: boolean;
+    gameCompanions?: boolean;
   };
   limits: {
     maxUploadBytes: number;
@@ -49,6 +51,8 @@ export function buildCapabilities(input: {
       webdav: input.webdavEnabled === true,
       natTraversal: false,
       webPlayback: input.webPlayback === true,
+      romDownloadSummaries: true,
+      gameCompanions: true,
     },
     limits: {
       maxUploadBytes: input.maxUploadBytes,

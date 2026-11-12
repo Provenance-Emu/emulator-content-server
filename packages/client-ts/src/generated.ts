@@ -60,6 +60,8 @@ export interface FeatureFlags {
   webdav: boolean;
   natTraversal: boolean;
   webPlayback?: boolean;
+  romDownloadSummaries?: boolean;
+  gameCompanions?: boolean;
 }
 
 export interface PlayerCoreResource {
@@ -766,6 +768,36 @@ export interface LibraryBrowseEntry {
   source?: SourceFile;
   parentItem?: Item;
   previewAsset?: Asset;
+  romDownload?: RomDownloadSummary;
+}
+
+export interface RomDownloadSummary {
+  romFileCount: number;
+  requiresSystemFiles: boolean;
+  filename?: string;
+  sizeBytes?: number;
+}
+
+export interface CompanionList {
+  supportedKinds: string[];
+  items: GameCompanion[];
+}
+
+export interface GameCompanion {
+  id: string;
+  kind: string;
+  required: boolean;
+  filename: string;
+  sizeBytes: number;
+  sha256: string;
+  contentPath: string;
+  format?: string;
+  base?: CompanionBase;
+}
+
+export interface CompanionBase {
+  crc32: string;
+  sizeBytes: number;
 }
 
 export interface LibraryBrowsePage {

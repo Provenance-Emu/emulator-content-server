@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Actor, AssetKind, SourceMatchRecord } from '@ecs/domain';
 import { DomainError } from '@ecs/domain';
-import type { MatchCandidate } from '@ecs/plugins/matching';
+import { type MatchCandidate, patchFingerprint } from '@ecs/plugins/matching';
 import { etagMatches, strongEtag, validateSystemIdentifier } from '@ecs/protocol';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { canSeeSource } from './content.js';
@@ -56,6 +56,61 @@ export function registerSourceSelections(
       requireActor(request),
       (request.params as { sourceId: string }).sourceId,
       includeArtworkRoles(request),
+    );
+  });
+
+  function selectedPatch(actor: Actor, sourceId: string) {
+    const selected = state(actor, sourceId).matches.find(
+      (match) => match.kind === 'patch' && match.contentAvailable && match.contentType,
+    );
+    if (!selected) return null;
+    const bytes = context.catalog.sourceMatchContent(sourceId, 'patch');
+    const fingerprint = bytes && patchFingerprint(bytes);
+    if (!bytes || !fingerprint) return null;
+    return {
+      selected,
+      bytes,
+      fingerprint,
+      digest: createHash('sha256').update(bytes).digest('hex'),
+    };
+  }
+  app.get('/api/v1/sources/:sourceId/companions', async (request, reply) => {
+    const { sourceId } = request.params as { sourceId: string };
+    const patch = selectedPatch(requireActor(request), sourceId);
+    reply.header('cache-control', 'private, no-store');
+    if (!patch) return { supportedKinds: ['patch'], items: [] };
+    const { selected, bytes, fingerprint, digest } = patch;
+    return {
+      supportedKinds: ['patch'],
+      items: [
+        {
+          id: digest,
+          kind: 'patch',
+          required: false,
+          filename: selected.fileName ?? `Patch.${fingerprint.format}`,
+          sizeBytes: bytes.length,
+          sha256: digest,
+          format: fingerprint.format,
+          contentPath: `/api/v1/sources/${encodeURIComponent(sourceId)}/companions/${digest}/content`,
+          ...(fingerprint.sourceCrc32 === undefined || fingerprint.sourceSize === undefined
+            ? {}
+            : { base: { crc32: fingerprint.sourceCrc32, sizeBytes: fingerprint.sourceSize } }),
+        },
+      ],
+    };
+  });
+  app.get('/api/v1/sources/:sourceId/companions/:id/content', async (request, reply) => {
+    const { sourceId, id } = request.params as { sourceId: string; id: string };
+    const patch = selectedPatch(requireActor(request), sourceId);
+    if (!patch || patch.digest !== id)
+      throw new DomainError('not-found', 404, 'Companion is not available');
+    return sendSnapshot(
+      request,
+      reply,
+      patch.bytes,
+      patch.digest,
+      patch.selected.contentType ?? 'application/octet-stream',
+      patch.selected.fileName ?? `Patch.${patch.fingerprint.format}`,
     );
   });
   app.put('/api/v1/sources/:sourceId/matches/selections', async (request, reply) => {
@@ -187,20 +242,40 @@ export function registerSourceSelections(
       throw new DomainError('not-found', 404, 'Selected content not found');
     const bytes = context.catalog.sourceMatchContent(sourceId, kind, role);
     if (!bytes) throw new DomainError('not-found', 404, 'Selected content not found');
-    // Access is decided above on every request; the validator only saves resending unchanged bytes.
-    const etag = strongEtag(createHash('sha256').update(bytes).digest('hex'));
-    reply.header('cache-control', 'private, no-cache');
-    reply.header('etag', etag);
-    const conditional = request.headers['if-none-match'];
-    if (etagMatches(typeof conditional === 'string' ? conditional : undefined, etag))
-      return reply.code(304).send();
-    reply.header('x-content-type-options', 'nosniff');
-    reply.header(
-      'content-disposition',
-      `${kind === 'artwork' && selected.contentType !== 'application/pdf' ? 'inline' : 'attachment'}; filename="selected"; filename*=UTF-8''${encodeURIComponent(selected.fileName ?? 'selected')}`,
+    return sendSnapshot(
+      request,
+      reply,
+      bytes,
+      createHash('sha256').update(bytes).digest('hex'),
+      selected.contentType,
+      selected.fileName ?? 'selected',
+      kind === 'artwork' && selected.contentType !== 'application/pdf',
     );
-    return reply.type(selected.contentType).send(Buffer.from(bytes));
   });
+}
+
+function sendSnapshot(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  bytes: Uint8Array,
+  digest: string,
+  contentType: string,
+  fileName: string,
+  inline = false,
+) {
+  // Authorization precedes validator evaluation.
+  const etag = strongEtag(digest);
+  reply.header('cache-control', 'private, no-cache');
+  reply.header('etag', etag);
+  const conditional = request.headers['if-none-match'];
+  if (etagMatches(typeof conditional === 'string' ? conditional : undefined, etag))
+    return reply.code(304).send();
+  reply.header('x-content-type-options', 'nosniff');
+  reply.header(
+    'content-disposition',
+    `${inline ? 'inline' : 'attachment'}; filename="selected"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+  );
+  return reply.type(contentType).send(Buffer.from(bytes));
 }
 
 function includeArtworkRoles(request: FastifyRequest): boolean {

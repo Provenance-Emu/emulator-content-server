@@ -127,6 +127,9 @@ export function registerLibraryBrowse(
     const search = rawSearch.normalize('NFC').toLowerCase();
     const rootId = query(request, 'rootId');
     const systemId = query(request, 'systemId');
+    const includeRomDownload = query(request, 'includeRomDownload');
+    if (includeRomDownload !== undefined && !['true', 'false'].includes(includeRomDownload))
+      throw new DomainError('invalid-query', 400, 'Invalid includeRomDownload');
     const rawSystems = query(request, 'systemIds');
     const systemIds =
       rawSystems === undefined
@@ -166,6 +169,7 @@ export function registerLibraryBrowse(
       search,
       sort,
       limit,
+      includeRomDownload: includeRomDownload === 'true',
     };
     const fingerprint = createHash('sha256')
       .update(
@@ -289,6 +293,7 @@ export function registerLibraryBrowse(
             systemId: row.item.systemIdentifier,
             item: row.item,
             ...(row.previewAsset ? { previewAsset: row.previewAsset } : {}),
+            ...(row.romDownload ? { romDownload: row.romDownload } : {}),
             canUpload: canWrite(catalog, actor, row.item),
             canAdopt: false,
           };
