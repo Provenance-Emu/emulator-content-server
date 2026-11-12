@@ -584,7 +584,7 @@ paths:
         - { name: sort, in: query, schema: { type: string, enum: [name_asc, name_desc], default: name_asc } }
         - { name: cursor, in: query, schema: { type: string, maxLength: 4096 } }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
-        - { name: includeRomDownload, in: query, schema: { type: boolean, default: false }, example: true, description: Include authorized ROM download summaries on uploaded game rows. Scanned sources retain their existing filename, size and group fields. }
+        - { name: includeRomDownload, in: query, schema: { type: boolean, default: false }, example: true, description: 'Include authorized ROM download summaries on uploaded game rows. Scanned sources retain their existing filename, size and group fields.' }
       responses:
         '200':
           description: Authorized page; at most the requested limit. No absolute filesystem paths.
@@ -1476,7 +1476,7 @@ paths:
             application/octet-stream:
               schema: { type: string, format: binary }
         '304': { description: Authorized bytes match the supplied validator. }
-        '404': { description: Source or companion unavailable, or the selection has changed. }
+        '404': { description: 'Source or companion unavailable, or the selection has changed.' }
   /api/v1/sources/{sourceId}/group:
     parameters:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
