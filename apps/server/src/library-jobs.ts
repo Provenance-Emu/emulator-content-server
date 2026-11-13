@@ -12,6 +12,7 @@ import type { ServerContext } from './context.js';
 import { requireOwner } from './http.js';
 import { matchBody, type SourceMatchingService } from './source-matching.js';
 import { scanRoot } from './source-scan.js';
+import { usesVolumePolling } from './volume-polling.js';
 
 interface ScanResult {
   rootId: string;
@@ -358,6 +359,7 @@ export function registerLibraryJobs(
                     root,
                     next.actorId,
                     abort.signal,
+                    usesVolumePolling(root.path) ? 120_000 : undefined,
                   ).finally(() => {
                     runningScan.scanLibrary = undefined;
                   });

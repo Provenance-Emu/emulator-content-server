@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { setTimeout as pause } from 'node:timers/promises';
 import { DomainError } from '@ecs/domain';
-import { usesVolumePolling } from '../src/folder-watcher.js';
 import { reserveContentRoots } from '../src/root-mutations.js';
+import { usesVolumePolling } from '../src/volume-polling.js';
 import { libraryFixture } from './library-fixture.js';
 
 async function eventually(check: () => boolean) {

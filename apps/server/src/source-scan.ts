@@ -1,8 +1,11 @@
 import { lstat, realpath } from 'node:fs/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import type { CatalogDatabase, SourceInspection } from '@ecs/database';
 import { DomainError } from '@ecs/domain';
 import { inspectRoot, probeRoot, resolveInside } from '@ecs/storage';
 import { reserveContentRoots } from './root-mutations.js';
+
+const inspections = new WeakMap<CatalogDatabase, Set<string>>();
 
 /** A scan and all of its absence proofs share the organizer's root reservations. */
 export async function scanRoot(
@@ -10,10 +13,23 @@ export async function scanRoot(
   root: { id: string; path: string },
   actorId: string,
   signal?: AbortSignal,
+  deadlineMs?: number,
 ) {
   signal?.throwIfAborted();
   const registered = catalog.getContentRoot(root.id);
   if (!registered) throw new DomainError('not-found', 404, 'Content root not found');
+  let pending = inspections.get(catalog);
+  if (!pending) {
+    pending = new Set();
+    inspections.set(catalog, pending);
+  }
+  const active = pending;
+  if (active.has(root.id))
+    throw new DomainError(
+      'folder-check-timeout',
+      504,
+      'The previous read from this mounted volume is still blocked.',
+    );
   const roots = catalog
     .listContentRoots()
     .filter((candidate) => candidate.libraryId === registered.libraryId);
@@ -24,25 +40,59 @@ export async function scanRoot(
   try {
     catalog.beginRootScan(root.id);
     try {
-      const inspected = await inspectRoot(registered.path, {
-        pinnedRoot: true,
-        previousGroups: new Map(
-          catalog
-            .listSources(root.id)
-            .filter((file) => file.groupMembers?.length)
-            .map((file) => [file.relativePath, file.groupMembers ?? []]),
-        ),
-        ...(signal ? { signal } : {}),
+      const timeout = new AbortController();
+      const inspectionSignal = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal;
+      const inspect = async () => {
+        const inspected = await inspectRoot(registered.path, {
+          pinnedRoot: true,
+          previousGroups: new Map(
+            catalog
+              .listSources(root.id)
+              .filter((file) => file.groupMembers?.length)
+              .map((file) => [file.relativePath, file.groupMembers ?? []]),
+          ),
+          signal: inspectionSignal,
+        });
+        inspectionSignal.throwIfAborted();
+        if (inspected.online)
+          inspected.files = await pruneRenamedEntries(registered.path, inspected.files);
+        inspectionSignal.throwIfAborted();
+        const verifiedMoveSourceIds = inspected.online
+          ? await verifiedMoves(
+              catalog,
+              registered.id,
+              registered.path,
+              inspected.files,
+              inspectionSignal,
+            )
+          : [];
+        if (inspected.online && (await realpath(registered.path)) !== registered.path)
+          throw new DomainError('invalid-body', 400, 'Registered folder has changed');
+        return { inspected, verifiedMoveSourceIds };
+      };
+      active.add(root.id);
+      const inspectPromise = inspect().finally(() => {
+        active.delete(root.id);
       });
-      if (inspected.online)
-        inspected.files = await pruneRenamedEntries(registered.path, inspected.files);
-      const verifiedMoveSourceIds = inspected.online
-        ? await verifiedMoves(catalog, registered.id, registered.path, inspected.files)
-        : [];
-      // Check again after traversal and move verification, before committing any
-      // observations. A replaced/missing root must leave the last good index intact.
-      if (inspected.online && (await realpath(registered.path)) !== registered.path)
-        throw new DomainError('invalid-body', 400, 'Registered folder has changed');
+      let result: Awaited<typeof inspectPromise>;
+      try {
+        result =
+          deadlineMs === undefined
+            ? await inspectPromise
+            : await Promise.race([
+                inspectPromise,
+                sleep(deadlineMs, undefined, { signal: inspectionSignal, ref: false }).then(() => {
+                  throw new DomainError(
+                    'folder-check-timeout',
+                    504,
+                    'The mounted volume stopped responding during the file check.',
+                  );
+                }),
+              ]);
+      } finally {
+        timeout.abort();
+      }
+      const { inspected, verifiedMoveSourceIds } = result;
       signal?.throwIfAborted();
       const count = catalog.applyInspection({
         rootId: root.id,
@@ -108,6 +158,7 @@ async function verifiedMoves(
   rootId: string,
   rootPath: string,
   files: SourceInspection[],
+  signal: AbortSignal,
 ): Promise<string[]> {
   const candidates = catalog.inspectionMoveCandidates(rootId);
   const byIdentity = new Map<string, typeof candidates>();
@@ -124,6 +175,7 @@ async function verifiedMoves(
   const verified: string[] = [];
   const online = new Map<string, boolean>();
   for (const file of files) {
+    signal.throwIfAborted();
     if (!file.filesystemIdentity || file.mtimeMs == null) continue;
     const matching = byIdentity.get(file.filesystemIdentity);
     if (matching?.length !== 1 || fileCounts.get(file.filesystemIdentity) !== 1) continue;
