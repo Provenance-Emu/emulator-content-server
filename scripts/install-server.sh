@@ -99,8 +99,8 @@ mac_registered_arguments() {
 }
 
 as_admin() {
-  if sudo -n -v 2>/dev/null; then sudo -n "$@"
-  else sudo "$@" </dev/tty; fi
+  if ! sudo -n -v 2>/dev/null; then sudo -v </dev/tty || return; fi
+  sudo -n "$@"
 }
 
 find_desktop() {
