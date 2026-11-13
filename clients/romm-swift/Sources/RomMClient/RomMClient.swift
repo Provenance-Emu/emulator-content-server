@@ -10,7 +10,8 @@ public struct RomMClient: Sendable {
         try self.init(address: address, credential: credential, allowHTTP: allowHTTP, transport: RomMURLSession())
     }
 
-    init(address: RomMAddress, credential: RomMCredential, allowHTTP: Bool = false, transport: any RomMTransport) throws {
+    /// Sends requests through the app's own transport, for example in its tests.
+    public init(address: RomMAddress, credential: RomMCredential, allowHTTP: Bool = false, transport: any RomMTransport) throws {
         let authorization = try credential.authorization()
         guard authorization == nil || address.isHTTPS || allowHTTP else { throw RomMError.insecureConnection }
         self.address = address
@@ -172,7 +173,8 @@ private struct Detail: Decodable {
     }
 }
 
-protocol RomMTransport: Sendable {
+/// How the client reaches a RomM instance. `download` returns a temporary file the client moves or removes.
+public protocol RomMTransport: Sendable {
     func data(for request: URLRequest) async throws -> (Data, URLResponse)
     func download(for request: URLRequest) async throws -> (URL, URLResponse)
 }
