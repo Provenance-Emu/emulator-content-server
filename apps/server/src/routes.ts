@@ -193,8 +193,15 @@ export function registerRoutes(
          * somewhere. Nothing loads from another origin, nothing inline runs,
          * and the only place a request can go is back here.
          */
-        response.header('content-security-policy', UI_CONTENT_POLICY);
+        const sevenZipWorker = /(?:^|[/\\])seven-zip-worker-[A-Za-z0-9_-]+\.js$/.test(path);
+        response.header(
+          'content-security-policy',
+          sevenZipWorker
+            ? UI_CONTENT_POLICY.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")
+            : UI_CONTENT_POLICY,
+        );
         if (
+          sevenZipWorker ||
           /(?:^|[/\\])(?:import\.worker|pdf\.worker\.min)(?:-[A-Za-z0-9_-]+)?\.(?:js|mjs)$/.test(
             path,
           )

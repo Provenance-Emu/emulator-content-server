@@ -23,7 +23,9 @@ export function softwareCorePlan(id) {
   if (!core) throw Error('Unknown software recipe');
   const targetName = core.software.targetName ?? id;
   const makeDirectory = core.software.makeDirectory ?? '.';
+  const makefile = core.software.makefile ?? 'Makefile';
   if (
+    !['Makefile', 'Makefile.libretro'].includes(makefile) ||
     !/^[a-z0-9_]+$/.test(targetName) ||
     !/^(\.|[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)$/.test(makeDirectory)
   )
@@ -37,6 +39,7 @@ export function softwareCorePlan(id) {
     core,
     targetName,
     makeDirectory,
+    makefile,
     frontendPin: config.frontend.revision,
     coreFlags: [
       'platform=emscripten',
@@ -117,7 +120,7 @@ function compiler(root) {
 }
 function compile(plan, frontend, core) {
   const makeRoot = join(core, plan.makeDirectory);
-  run('emmake', ['make', '-j2', ...plan.coreFlags], makeRoot);
+  run('emmake', ['make', '-j2', '-f', plan.makefile, ...plan.coreFlags], makeRoot);
   copyFileSync(
     join(makeRoot, `${plan.targetName}_libretro_emscripten.bc`),
     join(frontend, 'libretro_emscripten.bc'),

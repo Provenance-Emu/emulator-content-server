@@ -3,6 +3,7 @@ import test from 'node:test';
 import { Uint8ArrayReader, Uint8ArrayWriter, ZipWriter } from '@zip.js/zip.js/index-native.js';
 import { extractPlayerZip } from '../src/player/archive.js';
 import { preparePlayer } from '../src/player/preflight.js';
+import { decodeSevenZip } from '../src/player/seven-zip.js';
 import { fixture } from './player-fixture.js';
 
 async function archive(files: Record<string, Uint8Array>) {
@@ -64,4 +65,29 @@ test('normal player preflight prepares ZIP assets and local sources as cartridge
     assert.equal(prepared.contentExtension, 'nes');
     assert.deepEqual(prepared.content, rom);
   }
+});
+
+// Generated with 7-Zip from text files named .nds. No ROM data is included.
+const singleSevenZip =
+  'N3q8ryccAAS90wuxDQAAAAAAAABaAAAAAAAAACEGnv8BAAhnYW1lIGRhdGEAAQQGAAEJDQAHCwEAASEhAQAMCQAICgFR6GQ9AAAFARkMAAAAAAAAAAAAAAAAERMAZwBhAG0AZQAuAG4AZABzAAAAGQAUCgEAGA1yCCBz3QEVBgEAIICkgQAA';
+const multiSevenZip =
+  'N3q8ryccAAQJ6AgsbgAAAAAAAAAgAAAAAAAAAJ5OjPABAAVmb29iYXIAAACBMweuD85vVl76Dfokg9wXd2LyF6CdJkEnhFookZ6OYXMl6x6FMFeF8pPMGdx8P3wdcGUbtzbgvLt/2GSJjMJCcAMr75yV/SZ8vwoQwbpesAFYYsfSiN/BoZqXc46CgAAAABcGCgEJZAAHCwEAASMDAQEFXQAQAAAMdgoBXIYqygAA';
+
+const encryptedSevenZip =
+  'N3q8ryccAAQ6pVUSgAAAAAAAAAAuAAAAAAAAAKFysahS69fMCorUtU8yd69ZzhXQHX8ZcOax1zayXHp1LA+LtZK6Vtbgc6NC9gX3wCc4x3UUq//WTL3FiRKLhOOzOfTv8UQ2pvLsRhQEmdG8PFoPw5KsoFU5r3woR/dZtFlgI1SIuzQa36UKANKDKhtEyydm9diGkwd6BtCZecmegUNSgRcGEAEJcAAHCwEAASQG8QcBElMPyO1K+Jc6a/LCOjdLDYEOjwxqCgF6c4rPAAA=';
+
+test('7z playback extracts one supported file and rejects ambiguous, truncated or oversized archives', async () => {
+  const single = Buffer.from(singleSevenZip, 'base64');
+  const multiple = Buffer.from(multiSevenZip, 'base64');
+  const extracted = await decodeSevenZip(single, ['nds'], 1024);
+  assert.equal(extracted.extension, 'nds');
+  assert.equal(new TextDecoder().decode(extracted.bytes), 'game data');
+  await assert.rejects(decodeSevenZip(single, ['nes'], 1024), /no game file supported/);
+  await assert.rejects(decodeSevenZip(multiple, ['nds'], 1024), /multiple game files/);
+  await assert.rejects(decodeSevenZip(single.subarray(0, -1), ['nds'], 1024), /invalid/i);
+  await assert.rejects(decodeSevenZip(single, ['nds'], 64), /size limit/);
+  await assert.rejects(
+    decodeSevenZip(Buffer.from(encryptedSevenZip, 'base64'), ['nds'], 1024),
+    /encrypted|invalid/i,
+  );
 });

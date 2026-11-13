@@ -462,6 +462,17 @@ test('Jaguar browse request counts across cart and CD libraries', async (t) => {
     })
   ).json().items[0];
   assert.equal(local.platform_slug, 'jaguar');
+  // Jaguar resolves the name and byte size on demand before staging a gateway cartridge.
+  const details = await gateway.inject({ url: `/api/roms/${local.id}`, headers: allowed });
+  assert.equal(details.statusCode, 200);
+  assert.equal(details.json().id, local.id);
+  assert.equal(details.json().fs_name, 'Local Jaguar.j64');
+  assert.equal(details.json().fs_size_bytes, 4);
+  const cartContent = `/api/roms/${local.id}/content/${encodeURIComponent(details.json().fs_name)}`;
+  const downloadedCart = await gateway.inject({ url: cartContent, headers: allowed });
+  assert.equal(downloadedCart.statusCode, 200);
+  assert.deepEqual(downloadedCart.rawPayload, Buffer.from('cart'));
+  assert.equal((await gateway.inject({ url: cartContent, headers: denied })).statusCode, 404);
   const coverPath = `/assets/romm/ecs/${local.id}/cover`;
   assert.equal(local.path_cover_large, coverPath);
   const smallCover = `/assets/romm/resources/ecs/${local.id}/cover`;

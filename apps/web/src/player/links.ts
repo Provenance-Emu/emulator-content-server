@@ -79,8 +79,8 @@ export function playUnavailableReason(
   );
   if (!installed.length)
     return 'No enabled browser emulator supports this console. Install or enable one in Settings → Emulators.';
-  if (/\.(7z|rar)$/i.test(name))
-    return 'Extract this archive and rescan the library folder. Browser play supports a single game in a ZIP or an uncompressed game file.';
+  if (/\.rar$/i.test(name))
+    return 'Extract this archive and rescan the library folder. Browser play supports a single game in a ZIP or 7z, or an uncompressed game file.';
   if (size <= 0)
     return 'This game file is empty. Rescan its library folder after restoring the file.';
   if (installed.every((core) => size > core.maxContentBytes))

@@ -62,6 +62,28 @@
       ]
     },
     {
+      "id": "desmume2015",
+      "repository": "https://github.com/libretro/desmume2015",
+      "revision": "422b688009ccb9f2917c086a8fe79c8cecb030ae",
+      "recipe": "build-software-core.mjs",
+      "recipeArguments": ["desmume2015"],
+      "rebuild": "rebuild-software-core-source.mjs",
+      "sourceDirectory": "desmume2015",
+      "patches": ["desmume2015-private-path-size.patch"],
+      "software": {
+        "name": "DeSmuME 2015 (Nintendo DS)",
+        "systems": ["com.provenance.ds"],
+        "extensions": ["nds"],
+        "maxContentBytes": 536870912,
+        "makeDirectory": "desmume",
+        "makefile": "Makefile.libretro"
+      },
+      "licenses": [
+        "RetroArch GPL-3.0-or-later",
+        "DeSmuME 2015 GPL-2.0-or-later; preserve all upstream dependency notices"
+      ]
+    },
+    {
       "id": "stella2014",
       "repository": "https://github.com/libretro/stella2014-libretro",
       "revision": "7d1361e407e63f29e52892655069e5fb4096e691",

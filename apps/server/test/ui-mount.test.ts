@@ -123,11 +123,18 @@ test('first-party worker assets carry player-compatible isolation headers', asyn
     join(assets, 'assets', 'import.worker.js'),
     'self.onmessage=()=>self.postMessage(1)',
   );
+  await writeFile(join(assets, 'assets', 'seven-zip-worker-test.js'), 'self.onmessage=()=>{}');
   try {
     await withServer(assets, async ({ app }) => {
       const r = await app.inject({ url: '/ui/assets/import.worker.js' });
       assert.equal(r.headers['cross-origin-embedder-policy'], 'require-corp');
       assert.equal(r.headers['cross-origin-resource-policy'], 'same-origin');
+      const archive = await app.inject({ url: '/ui/assets/seven-zip-worker-test.js' });
+      assert.equal(archive.statusCode, 200);
+      assert.match(archive.headers['content-security-policy'] ?? '', /'wasm-unsafe-eval'/);
+      assert.equal(archive.headers['cross-origin-embedder-policy'], 'require-corp');
+      assert.equal(archive.headers['cross-origin-resource-policy'], 'same-origin');
+      assert.doesNotMatch(r.headers['content-security-policy'] ?? '', /'wasm-unsafe-eval'/);
     });
   } finally {
     await import('node:fs/promises').then((fs) => fs.rm(assets, { recursive: true, force: true }));

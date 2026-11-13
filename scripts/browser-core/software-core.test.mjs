@@ -23,6 +23,7 @@ test('software packages bind actual artifacts to system, extension and firmware-
   const loader = Buffer.from('export default () => {};'),
     wasm = Buffer.from([0, 97, 115, 109]);
   const cases = [
+    ['desmume2015', 'com.provenance.ds', ['nds'], 536870912],
     ['stella2014', 'com.provenance.2600', ['a26', 'bin'], 1048576],
     ['freeintv', 'com.provenance.intellivision', ['int', 'bin', 'rom'], 1048576],
     ['atari800', 'com.provenance.5200', ['a52', 'car', 'bin', 'rom'], 1048576],
@@ -49,6 +50,8 @@ test('software packages bind actual artifacts to system, extension and firmware-
 });
 
 test('nested and differently named core targets build the selected frontend and bitcode', () => {
+  assert.equal(softwareCorePlan('desmume2015').makeDirectory, 'desmume');
+  assert.equal(softwareCorePlan('desmume2015').makefile, 'Makefile.libretro');
   assert.equal(softwareCorePlan('potator').makeDirectory, 'platform/libretro');
   assert.equal(softwareCorePlan('sameduck').makeDirectory, 'libretro');
   assert.ok(softwareCorePlan('pokemini').coreFlags.includes('STATIC_LINKING_LINK=1'));

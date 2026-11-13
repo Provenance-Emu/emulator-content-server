@@ -1,0 +1,17 @@
+diff --git a/desmume/Makefile.libretro b/desmume/Makefile.libretro
+--- a/desmume/Makefile.libretro
++++ b/desmume/Makefile.libretro
+@@ -216,6 +216,13 @@
+ 
+ else ifeq ($(platform), emscripten)
+    TARGET := $(TARGET_NAME)_libretro_$(platform).bc
++   # Keep the older libretro-common stat ABI private when linked with RetroArch.
++   PRIVATE_STAT_FLAGS := -Dpath_get_size=desmume2015_path_get_size \
++                         -Dpath_is_directory=desmume2015_path_is_directory \
++                         -Dpath_is_character_special=desmume2015_path_is_character_special \
++                         -Dpath_is_valid=desmume2015_path_is_valid
++   CFLAGS += $(PRIVATE_STAT_FLAGS)
++   CXXFLAGS += $(PRIVATE_STAT_FLAGS)
+    STATIC_LINKING = 1
+ 
+ # Windows MSVC 2010 x64

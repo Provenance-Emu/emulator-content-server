@@ -183,6 +183,9 @@ importers:
       '@zip.js/zip.js':
         specifier: 2.24.0
         version: 2.24.0
+      libarchive-wasm:
+        specifier: 1.2.0
+        version: 1.2.0
       pdfjs-dist:
         specifier: 6.4.299
         version: 6.4.299
@@ -1138,6 +1141,9 @@ packages:
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
 
+  libarchive-wasm@1.2.0:
+    resolution: {integrity: sha512-aunFn8oL9VwGRj+brRvdOv8BRUD4Ea1WxJW45IdiuXE2Vp/m/X+M1UxSU+yPzXfc1mPPC8AARaflg/CtF11u8g==}
+
   light-my-request@6.6.0:
     resolution: {integrity: sha512-CHYbu8RtboSIoVsHZ6Ye4cj4Aw/yg2oAFimlF7mNvfDV192LR7nDiKtSIfCuLT7KokPSTn/9kfVLm5OGN0A28A==}
 
@@ -2085,6 +2091,8 @@ snapshots:
       dequal: 2.0.3
 
   json-schema-traverse@1.0.0: {}
+
+  libarchive-wasm@1.2.0: {}
 
   light-my-request@6.6.0:
     dependencies:

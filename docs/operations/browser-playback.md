@@ -128,9 +128,26 @@ The focused real-core test also changes palette pixels, switches both shaders an
 
 ### Compressed cartridge games
 
-Browser play can open a ZIP containing one supported game file. Extraction happens
-in the browser within the selected emulator’s content-size limit. The ZIP stays
+Browser play can open a ZIP or 7z containing one supported game file. Extraction happens
+in the browser within the selected emulator’s content-size limit. The archive stays
 in the library. Archives containing multiple matching game files, encrypted or
 linked entries, or disc-set references require extraction and a library rescan.
-Extract 7z and RAR files before playing them. Game details explain missing cores
+Extract RAR files before playing them. Game details explain missing cores
 and unsupported formats, with a shortcut to **Settings → Emulators** for owners.
+
+### Nintendo DS
+
+The pinned DeSmuME 2015 recipe builds a single-threaded browser profile for
+`com.provenance.ds` and `.nds` cartridges. With the pinned RetroArch, DeSmuME
+2015 and Emscripten checkouts described in
+[`buildbot-config.json`](../../scripts/browser-core/buildbot-config.json), build
+and package it outside the repository. Create a dedicated player registry parent
+directory before building.
+
+```sh
+node scripts/browser-core/build-software-core.mjs /absolute/retroarch /absolute/desmume2015 /absolute/player-registry/desmume2015 desmume2015
+node scripts/browser-core/package-player.mjs /absolute/player-registry/desmume2015 /absolute/desmume2015.ecsplayer
+```
+
+Use **Settings → Emulators → Install from file** to activate the package. The
+profile uses the core's internal firmware path and does not enable ECS save sync.

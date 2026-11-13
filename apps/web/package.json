@@ -19,6 +19,7 @@
   "dependencies": {
     "@ecs/client": "workspace:*",
     "@zip.js/zip.js": "2.24.0",
+    "libarchive-wasm": "1.2.0",
     "pdfjs-dist": "6.4.299"
   },
   "devDependencies": {

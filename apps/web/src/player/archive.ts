@@ -2,7 +2,7 @@ import { Uint8ArrayReader, Uint8ArrayWriter, ZipReader } from '@zip.js/zip.js/in
 import { type BrowserCore, contentExtensions } from './runtime.js';
 
 const discExtension = /\.(cue|gdi|ccd|m3u)$/i;
-export function zipContentExtensions(core: BrowserCore): string[] {
+export function archiveContentExtensions(core: BrowserCore): string[] {
   return contentExtensions(core).filter(
     (extension) =>
       ![
@@ -26,7 +26,7 @@ export function zipContentExtensions(core: BrowserCore): string[] {
 export function supportsContentName(core: BrowserCore, name: string): boolean {
   return (
     contentExtensions(core).some((extension) => name.toLowerCase().endsWith(`.${extension}`)) ||
-    (/\.zip$/i.test(name) && zipContentExtensions(core).length > 0)
+    (/\.(zip|7z)$/i.test(name) && archiveContentExtensions(core).length > 0)
   );
 }
 
@@ -92,4 +92,43 @@ export async function extractPlayerZip(
   } finally {
     await reader.close();
   }
+}
+
+export function extractPlayerSevenZip(
+  bytes: Uint8Array<ArrayBuffer>,
+  extensions: string[],
+  limit: number,
+  signal?: AbortSignal,
+): Promise<{ bytes: Uint8Array<ArrayBuffer>; extension: string }> {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./seven-zip-worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    const timeout = setTimeout(() => fail(new Error('7z extraction timed out.')), 60_000);
+    function cleanup() {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', abort);
+      worker.terminate();
+    }
+    function fail(error: unknown) {
+      cleanup();
+      reject(error);
+    }
+    function abort() {
+      fail(signal?.reason);
+    }
+    signal?.addEventListener('abort', abort, { once: true });
+    worker.onerror = () => fail(new Error('Unable to start 7z extraction.'));
+    worker.onmessage = ({ data }) => {
+      cleanup();
+      if (data.error) reject(new Error(data.error));
+      else resolve(data.result);
+    };
+    try {
+      worker.postMessage([bytes, extensions, limit], [bytes.buffer]);
+    } catch (error) {
+      fail(error);
+    }
+  });
 }

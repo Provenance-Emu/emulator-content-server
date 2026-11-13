@@ -1,5 +1,10 @@
 import type { Item, Manifest, ManifestFile } from '@ecs/client';
-import { extractPlayerZip, supportsContentName, zipContentExtensions } from './archive.js';
+import {
+  archiveContentExtensions,
+  extractPlayerSevenZip,
+  extractPlayerZip,
+  supportsContentName,
+} from './archive.js';
 import type { PlayerClient, PlayerSelection, StartOptions } from './controller.js';
 import { MAX_CUE_BYTES } from './cue.js';
 import { prepareCueMedia } from './cue-media.js';
@@ -164,7 +169,11 @@ export async function preparePlayer(
         );
         content = media.content;
         contentFiles = media.files;
-      } else if (core.runtime === 'dolphin-wasm-esm' && file.size > 32 * 1024 ** 2)
+      } else if (
+        contentExtension !== '7z' &&
+        core.runtime === 'dolphin-wasm-esm' &&
+        file.size > 32 * 1024 ** 2
+      )
         disk = await stage('asset', file.id, file.size);
       else
         content = (
@@ -210,7 +219,11 @@ export async function preparePlayer(
         );
         content = media.content;
         contentFiles = media.files;
-      } else if (core.runtime === 'dolphin-wasm-esm' && source.size > 32 * 1024 ** 2)
+      } else if (
+        contentExtension !== '7z' &&
+        core.runtime === 'dolphin-wasm-esm' &&
+        source.size > 32 * 1024 ** 2
+      )
         disk = await stage('source', source.id, source.size);
       else
         content = (
@@ -220,10 +233,14 @@ export async function preparePlayer(
           })
         ).bytes;
     }
-    if (contentExtension === 'zip' && !contentExtensions(core).includes('zip')) {
-      const extracted = await extractPlayerZip(
+    if (
+      contentExtension === '7z' ||
+      (contentExtension === 'zip' && !contentExtensions(core).includes('zip'))
+    ) {
+      const extract = contentExtension === '7z' ? extractPlayerSevenZip : extractPlayerZip;
+      const extracted = await extract(
         content,
-        zipContentExtensions(core),
+        archiveContentExtensions(core),
         core.maxContentBytes,
         options.signal,
       );
