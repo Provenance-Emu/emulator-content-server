@@ -9,7 +9,7 @@ use std::{
 };
 
 const IMAGE: &str = "Emulation-Server-nightly-macos-arm64.dmg";
-const REQUIREMENT: &str = "anchor apple generic and identifier \"org.provenance.contentserver.tray\" and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = \"S32Z3HMYVQ\"";
+const REQUIREMENT: &str = "=anchor apple generic and identifier \"org.provenance.contentserver.tray\" and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = \"S32Z3HMYVQ\"";
 
 #[derive(Deserialize)]
 struct Manifest {

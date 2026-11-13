@@ -64,7 +64,9 @@ On macOS, open the DMG and drag Emulation Server to Applications. Open the app a
 
 On Windows, run the MSI. On Linux, install the DEB with your package manager or make the AppImage executable and run it on a tray-capable desktop. On Windows and Linux, start the standalone server separately or connect to an existing server.
 
-Nightly desktop builds check for a newer installer when you open the library window and hourly while it stays open. **Settings → Updates → Desktop app updates** shows the installed build, last check, and available installer date. Install the new desktop app from the downloads page. The server's **Automatic** setting updates the server and its bundled web interface.
+Signed Apple Silicon nightlies installed in Applications check for updates at launch and hourly while the app is running. The app verifies the new build, installs it, and relaunches. An older desktop build needs a one-time installation from the downloads page to enable this.
+
+**Settings → Updates → Desktop app updates** shows the installed build, last check, and available installer date. Windows and Linux check for a new installer while the library window is open. Use the downloads page to install it. The server's **Automatic** setting controls updates to the server and its bundled web interface.
 
 Linux and Windows nightly desktop installers are unsigned. When macOS signing is enabled, the macOS desktop installer is Developer ID signed and Apple notarized from the same commit as the server archives. Repositories with signing disabled retain their last notarized DMG and can download the unsigned desktop build as a workflow test artifact.
 

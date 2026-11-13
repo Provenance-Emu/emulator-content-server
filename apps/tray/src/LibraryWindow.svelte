@@ -12,6 +12,7 @@
   import { openExternal, showLibrary } from './lib/windows';
   let { selection }: { selection: DesktopSelection } = $props();
   const appUpdates = createDesktopUpdates();
+  const autoInstallDesktop = '__TAURI_INTERNALS__' in window && /Mac/.test(navigator.platform);
   const updateDate = (value: string) => new Date(value).toLocaleString();
   onMount(appUpdates.start);
   const profiles = untrack(() => selection.profiles);
@@ -200,7 +201,11 @@
         <p role="status"><strong>Desktop update available</strong> · {$appUpdates.available.sha.slice(0, 12)} · published <time datetime={$appUpdates.available.publishedAt}>{updateDate($appUpdates.available.publishedAt)}</time></p>
       {/if}
       {#if $appUpdates.error}<p role="status">{$appUpdates.error}</p>{/if}
-      <p>The desktop app checks for new nightly installers while the library window is open.</p>
+      {#if autoInstallDesktop}
+        <p>Keep the app running to receive updates. The app checks hourly and restarts after installing a verified update.</p>
+      {:else}
+        <p>The desktop app checks for new nightly installers while the library window is open.</p>
+      {/if}
     {:else}
       <p>This build has no release metadata for automatic checks.</p>
     {/if}
