@@ -24,6 +24,7 @@ pub struct Service {
     uid: u32,
     home: PathBuf,
     installed: bool,
+    boot_installed: bool,
 }
 pub struct Reply {
     pub(crate) code: i32,
@@ -32,6 +33,8 @@ pub struct Reply {
 
 const MANAGER_ERROR: &str = "Could not contact or control your per-user service manager.";
 const ABSENT_ERROR: &str = "Install the login service with ecs service install first.";
+pub(crate) const BOOT_SERVICE: &str = "system/app.emulator-content-server";
+const BOOT_PLIST: &str = "/Library/LaunchDaemons/app.emulator-content-server.plist";
 const SHOW: [&str; 6] = [
     "--user",
     "show",
@@ -77,6 +80,10 @@ pub fn execute(action: Action) -> Result<String, String> {
         uid,
         home,
         installed,
+        boot_installed: matches!(platform, Platform::Mac)
+            && std::path::Path::new(BOOT_PLIST)
+                .try_exists()
+                .map_err(|_| MANAGER_ERROR)?,
     }
     .run(action, &mut command)
     .map(str::to_owned)
@@ -132,6 +139,22 @@ impl Service {
         action: Action,
         runner: &mut impl FnMut(&str, &[&str]) -> Result<Reply, String>,
     ) -> Result<&'static str, String> {
+        if self.boot_installed {
+            if !matches!(action, Action::Status) {
+                return Err(
+                    "Use launchctl with administrator privileges to manage the boot service."
+                        .into(),
+                );
+            }
+            let reply = runner("/bin/launchctl", &["print", BOOT_SERVICE])?;
+            return match reply.code {
+                0 if reply.stdout.lines().any(|line| line == "\tstate = running") => {
+                    Ok("boot-running")
+                }
+                0 | 113 => Ok("boot-stopped"),
+                _ => Err(MANAGER_ERROR.into()),
+            };
+        }
         if !self.installed {
             return available("absent", action);
         }
@@ -322,7 +345,30 @@ mod tests {
             uid: 501,
             home: "/Users/operator".into(),
             installed,
+            boot_installed: false,
         }
+    }
+
+    #[test]
+    fn reports_boot_service_without_offering_user_service_controls() {
+        let mut svc = service(Platform::Mac, false);
+        svc.boot_installed = true;
+        assert_eq!(
+            run(
+                &svc,
+                Action::Status,
+                vec![(
+                    "/bin/launchctl",
+                    vec!["print", BOOT_SERVICE],
+                    0,
+                    "\tstate = running\n"
+                )]
+            )
+            .unwrap(),
+            "boot-running"
+        );
+        assert!(run(&svc, Action::Start, vec![]).is_err());
+        assert!(run(&svc, Action::Stop, vec![]).is_err());
     }
 
     #[test]

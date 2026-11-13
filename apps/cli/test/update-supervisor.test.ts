@@ -22,27 +22,27 @@ for (const fails of [false, true]) {
     await fixture(startup, data, false, false);
     await fixture(join(updates, 'builds', candidate), data, true, fails);
     const module = new URL('../src/update-supervisor.js', import.meta.url).href;
-    const child = spawn(
-      process.execPath,
-      [
-        '--input-type=module',
-        '-e',
-        `import { supervise } from ${JSON.stringify(module)};
-       await supervise(${JSON.stringify(data)}, ['serve'], ${JSON.stringify(startup)});`,
-      ],
-      { stdio: 'ignore' },
-    );
-    const exited = once(child, 'exit');
+    const launch = () =>
+      spawn(
+        process.execPath,
+        [
+          '--input-type=module',
+          '-e',
+          `import { supervise } from ${JSON.stringify(module)};
+         await supervise(${JSON.stringify(data)}, ['serve'], ${JSON.stringify(startup)});`,
+        ],
+        { stdio: 'ignore' },
+      );
+    let child = launch();
+    let exited = once(child, 'exit');
+    const stop = async () => {
+      if (child.exitCode !== null || child.signalCode !== null) return;
+      if (process.platform === 'win32') await writeFile(join(data, 'stop'), '');
+      else child.kill('SIGTERM');
+      await exited;
+    };
     t.after(async () => {
-      if (child.exitCode === null && child.signalCode === null) {
-        if (process.platform === 'win32') {
-          await writeFile(join(data, 'stop'), '');
-          await exited;
-        } else {
-          child.kill('SIGTERM');
-          await exited;
-        }
-      }
+      await stop();
       await rm(base, { recursive: true, force: true });
     });
 
@@ -63,6 +63,20 @@ for (const fails of [false, true]) {
       assert.equal(database.prepare('SELECT value FROM example').get()?.value, expected);
     } finally {
       database.close();
+    }
+    if (!fails) {
+      await stop();
+      await rm(join(data, 'stop'), { force: true });
+      await rm(marker);
+      child = launch();
+      exited = once(child, 'exit');
+      for (let i = 0; i < 150; i++) {
+        assert.equal(child.exitCode, null);
+        if ((await readFile(marker, 'utf8').catch(() => '')) === expected) break;
+        await delay(50);
+      }
+      assert.equal(await readFile(marker, 'utf8'), expected);
+      assert.equal((await readUpdateState(updates)).active, candidate);
     }
   });
 }

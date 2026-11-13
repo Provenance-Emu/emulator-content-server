@@ -5,6 +5,8 @@ repo=Provenance-Emu/emulator-content-server
 api=https://api.github.com/repos/$repo/releases
 downloads=https://github.com/$repo/releases/download
 origin=http://127.0.0.1:8473
+label=app.emulator-content-server
+daemon="/Library/LaunchDaemons/$label.plist"
 
 die() { printf 'Emulation Server: %s\n' "$*" >&2; exit 1; }
 download() {
@@ -39,19 +41,28 @@ inspect_service() {
   service_found=false
   service_state='not installed'
   manager_ready=false
+  service_mode=login
   local port='' args='' configured_data='' state='' agent unit
   if [[ $platform == macos-arm64 ]]; then
-    agent="$HOME/Library/LaunchAgents/app.emulator-content-server.plist"
+    agent="$HOME/Library/LaunchAgents/$label.plist"
     if launchctl print "gui/$uid" >/dev/null 2>&1; then manager_ready=true; fi
-    if state=$(launchctl print "gui/$uid/app.emulator-content-server" 2>/dev/null); then
+    if [[ -e $daemon || -L $daemon ]]; then
+      service_found=true
+      service_mode=boot
+      manager_ready=true
+      service_state='installed, stopped'
+      if state=$(launchctl print "system/$label" 2>/dev/null); then
+        service_state=$(awk -F ' = ' '/^\tstate = / {print $2; exit}' <<<"$state")
+      fi
+      args=$(mac_registered_arguments "$daemon") || args=''
+    elif state=$(launchctl print "gui/$uid/$label" 2>/dev/null); then
       service_found=true
       service_state=$(awk -F ' = ' '/^\tstate = / {print $2; exit}' <<<"$state")
       args=$(awk '/^\targuments = \{/ {active=1; next} active && /^\t}/ {exit} active {sub(/^\t\t/, ""); print}' <<<"$state")
     elif [[ -e $agent || -L $agent ]]; then
       service_found=true
       service_state='installed, stopped'
-      args=$(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments' "$agent" 2>/dev/null |
-        awk '/^    / {print substr($0, 5)}') || args=''
+      args=$(mac_registered_arguments "$agent") || args=''
     fi
     configured_data=$(awk '$0=="--data" {getline; print; exit}' <<<"$args")
     port=$(awk '$0=="--port" {getline; print; exit}' <<<"$args")
@@ -82,6 +93,16 @@ inspect_service() {
   service_state=${service_state:-installed}
 }
 
+mac_registered_arguments() {
+  /usr/libexec/PlistBuddy -c 'Print :ProgramArguments' "$1" 2>/dev/null |
+    awk '/^    / {print substr($0, 5)}'
+}
+
+as_admin() {
+  if sudo -n -v 2>/dev/null; then sudo -n "$@"
+  else sudo "$@" </dev/tty; fi
+}
+
 find_desktop() {
   installed_app=''
   local candidate
@@ -101,15 +122,18 @@ server_healthy() {
 }
 
 report_installation() {
-  if "$manager_ready"; then printf 'Login service: %s\n' "$service_state"
+  if [[ $service_mode == boot ]]; then printf 'Boot service: %s\n' "$service_state"
+  elif "$manager_ready"; then printf 'Login service: %s\n' "$service_state"
   else printf 'Login service: %s (user service manager unavailable)\n' "$service_state"; fi
   if server_healthy; then
     printf 'Server: responding at %s/ui/\n' "$origin"
   else
     printf 'Server: no response at %s/health\n' "$origin"
     if "$service_found"; then
-      if [[ $platform == macos-arm64 ]]; then
-        printf 'Start it from the menu bar app or check the service with launchctl print gui/%s/app.emulator-content-server.\n' "$uid"
+      if [[ $service_mode == boot ]]; then
+        printf 'Check the service with launchctl print system/%s.\n' "$label"
+      elif [[ $platform == macos-arm64 ]]; then
+        printf 'Start it from the menu bar app or check the service with launchctl print gui/%s/%s.\n' "$uid" "$label"
       else
         printf 'Check the service with systemctl --user status ecs.service.\n'
       fi
@@ -124,17 +148,146 @@ report_installation() {
 
 channel=${1:-}
 choice=${2:-}
-[[ $# -le 2 ]] || die 'Usage: install-server.sh [nightly|release] [server|both], or install-server.sh doctor'
+startup=${3:-}
+[[ $# -le 3 ]] || die 'Usage: install-server.sh [nightly|release] [server|both] [--boot|--login], or install-server.sh doctor'
 inspect_service
 find_desktop
 if [[ $channel == doctor && $# -eq 1 ]]; then report_installation; exit 0; fi
 [[ -z $channel || $channel == nightly || $channel == release ]] || die 'Choose nightly, release, or doctor.'
 [[ -z $choice || $choice == server || $choice == both ]] || die 'Choose server or both.'
+[[ -z $startup || $startup == --boot || $startup == --login ]] || die 'Choose --boot or --login.'
+if [[ -n $startup && $platform != macos-arm64 ]]; then die 'The startup option is available on macOS.'; fi
 install_server=true
 if "$service_found" || server_healthy; then
   install_server=false
   report_installation
   printf 'Using the existing server installation.\n'
+fi
+if [[ $platform == macos-arm64 && $service_mode == login ]] &&
+  { "$install_server" || [[ -f $HOME/Library/LaunchAgents/$label.plist ]]; }; then
+  if [[ -z $startup && -z $choice && -t 1 ]]; then
+    ask 'Start the server at [1] Login or [2] Boot before login (administrator password required)? [1] '
+    case "$answer" in
+      ''|1) startup=--login ;;
+      2) startup=--boot ;;
+      *) die 'Choose 1 or 2.' ;;
+    esac
+  fi
+elif [[ $startup == --boot && $service_mode != boot ]]; then
+  die 'The running server has no login registration for this installer to convert.'
+fi
+if [[ $startup == --boot && $service_mode == login ]]; then
+  sudo -n -v 2>/dev/null || sudo -v </dev/tty ||
+    die 'Administrator authorization is required to install the boot service.'
+fi
+
+install_boot_service() (
+  set -E
+  local_agent="$HOME/Library/LaunchAgents/$label.plist"
+  staging="$base/.boot-service-lock"
+  mkdir -m 700 "$staging" || die 'A boot service installation is already in progress.'
+  candidate="$staging/$label.plist"
+  saved_agent="$staging/previous.plist"
+  target="system/$label"
+  system_staging=''
+  daemon_installed=false
+  committed=false
+  restore() {
+    if [[ -n $system_staging ]]; then as_admin /bin/rm -f "$system_staging" || true; fi
+    if ! "$committed"; then
+      if "$daemon_installed"; then
+        if ! as_admin /bin/launchctl bootout "$target" 2>/dev/null &&
+          /bin/launchctl print "$target" >/dev/null 2>&1; then
+          printf 'Could not stop the boot service. The backup is in %s.\n' "$staging" >&2
+          return
+        fi
+        if ! as_admin /bin/rm -f "$daemon"; then
+          printf 'Could not remove the boot registration. The backup is in %s.\n' "$staging" >&2
+          return
+        fi
+      fi
+      if [[ -f $saved_agent ]]; then
+        mv "$saved_agent" "$local_agent" || return
+        if ! /bin/launchctl print "gui/$uid/$label" >/dev/null 2>&1; then
+          /bin/launchctl bootstrap "gui/$uid" "$local_agent" || true
+        fi
+      fi
+    fi
+    rm -rf -- "$staging"
+  }
+  trap 'status=$?; trap - ERR EXIT; restore; exit "$status"' ERR
+  trap 'restore' EXIT
+  trap 'exit 1' HUP INT TERM
+  [[ ! -e $daemon && ! -L $daemon ]] || die 'A boot service already exists.'
+
+  /usr/bin/plutil -create xml1 "$candidate"
+  /usr/bin/plutil -insert Label -string "$label" "$candidate"
+  /usr/bin/plutil -insert RunAtLoad -bool YES "$candidate"
+  /usr/bin/plutil -insert KeepAlive -bool YES "$candidate"
+  /usr/bin/plutil -insert ProcessType -string Interactive "$candidate"
+  if "$install_server"; then
+    [[ ! -e $local_agent && ! -L $local_agent ]] || die 'A login service appeared during setup.'
+    /usr/bin/plutil -insert ProgramArguments -json '[]' "$candidate"
+    index=0
+    for arg in "$launcher/runtime/node" "$launcher/server/dist/src/supervise.js" serve \
+      --data "$data" --host 127.0.0.1 --port 8473; do
+      /usr/bin/plutil -insert "ProgramArguments.$index" -string "$arg" "$candidate"
+      index=$((index + 1))
+    done
+  else
+    [[ -f $local_agent && ! -L $local_agent ]] || die 'The login registration is unavailable.'
+    original_runtime=$(/usr/bin/plutil -extract ProgramArguments.0 raw -o - "$local_agent")
+    original_supervisor=$(/usr/bin/plutil -extract ProgramArguments.1 raw -o - "$local_agent")
+    [[ $original_runtime == /*/runtime/node &&
+      $original_supervisor == "${original_runtime%/runtime/node}/server/dist/src/supervise.js" &&
+      -x $original_runtime && -f $original_supervisor ]] ||
+      die 'Boot startup requires the portable server launcher with update support.'
+    /usr/bin/plutil -insert ProgramArguments -xml \
+      "$(/usr/bin/plutil -extract ProgramArguments xml1 -o - "$local_agent")" "$candidate"
+    if /usr/bin/plutil -extract EnvironmentVariables xml1 -o /dev/null "$local_agent" 2>/dev/null; then
+      die 'This login service has custom environment settings. Move them to supported server arguments before conversion.'
+    fi
+  fi
+  /usr/bin/plutil -replace UserName -string "$(id -un)" "$candidate"
+  /usr/bin/plutil -replace WorkingDirectory -string "$HOME" "$candidate"
+  /usr/bin/plutil -insert EnvironmentVariables -json '{}' "$candidate"
+  /usr/bin/plutil -insert EnvironmentVariables.HOME -string "$HOME" "$candidate"
+  /usr/bin/plutil -lint "$candidate" >/dev/null
+
+  if [[ -f $local_agent ]]; then
+    mv "$local_agent" "$saved_agent"
+    if /bin/launchctl print "gui/$uid/$label" >/dev/null 2>&1; then
+      /bin/launchctl bootout "gui/$uid/$label"
+    fi
+  fi
+  system_staging=$(as_admin /usr/bin/mktemp "/Library/LaunchDaemons/.$label.XXXXXXXX")
+  as_admin /usr/bin/tee "$system_staging" <"$candidate" >/dev/null
+  as_admin /bin/chmod 0644 "$system_staging"
+  as_admin /bin/mv -n "$system_staging" "$daemon"
+  [[ ! -e $system_staging ]] || die 'A boot service appeared during setup.'
+  system_staging=''
+  daemon_installed=true
+  as_admin /bin/launchctl enable "$target"
+  as_admin /bin/launchctl bootstrap system "$daemon"
+  for ((attempt=0; attempt<45; attempt++)); do
+    if server_healthy && /bin/launchctl print "$target" 2>/dev/null | awk '
+      /^\tstate = running$/ { running=1 } END { exit !running }
+    '; then
+      committed=true
+      printf 'Boot service is running. macOS starts it after the startup disk unlocks.\n'
+      exit 0
+    fi
+    sleep 1
+  done
+  printf 'The boot service did not answer at %s/health. Check %s/logs/ecs.log.\n' "$origin" "$data" >&2
+  return 1
+)
+
+if ! "$install_server" && [[ $startup == --boot && $service_mode == login ]]; then
+  umask 077
+  mkdir -p "$base"
+  install_boot_service
+  inspect_service
 fi
 if [[ -n $installed_app ]]; then
   if "$install_server"; then printf 'Using the desktop app at %s.\n' "$installed_app"; fi
@@ -159,8 +312,10 @@ fi
 
 check_fresh_service() {
   inspect_service
-  "$manager_ready" || die 'Run setup from your logged-in user session with the service manager available.'
-  if "$service_found"; then die 'A login service appeared during setup. Run the installer again to use it.'; fi
+  if [[ $startup != --boot ]]; then
+    "$manager_ready" || die 'Run setup from your logged-in user session with the service manager available.'
+  fi
+  if "$service_found"; then die 'A service appeared during setup. Run the installer again to use it.'; fi
 }
 
 # Emit the same columns with the system JSON parser on each platform.
@@ -285,7 +440,10 @@ if "$install_server"; then
     check_fresh_service
     "$launcher/ecs" service install --data "$data" --host 127.0.0.1
   }
-  if [[ $platform == macos-arm64 ]]; then
+  if [[ $startup == --boot ]]; then
+    "$launcher/ecs" init --data "$data" >/dev/null
+    install_boot_service
+  elif [[ $platform == macos-arm64 ]]; then
     if ! "$launcher/ecs" service setup-local --data "$data" --host 127.0.0.1 >/dev/null 2>"$scratch/setup-error"; then
       if grep -Fxq 'service takes install, uninstall, or status' "$scratch/setup-error"; then
         # Earlier portable packages already support ordinary service registration.
@@ -303,7 +461,7 @@ if "$install_server"; then
     if server_healthy; then break; fi
     sleep 1
   done
-  [[ $attempt -lt 30 ]] || die "The login service was registered, but the server has not answered. Check $data/logs/ecs.log."
+  [[ $attempt -lt 30 ]] || die "The service was registered, but the server has not answered. Check $data/logs/ecs.log."
   printf '\nServer is running. Open %s/ui/\n' "$origin"
   if [[ -f $data/bootstrap.token ]]; then
     printf 'Use the one-time setup code from %s/bootstrap.token to create the owner account.\n' "$data"

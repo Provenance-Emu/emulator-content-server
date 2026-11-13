@@ -8,6 +8,7 @@ import { CatalogDatabase } from '@ecs/database';
 import { type PlayerCatalogSelection, playerCatalogSelection } from './player-catalog-options.js';
 
 export const LAUNCH_AGENT = 'app.emulator-content-server.plist';
+const BOOT_DAEMON = `/Library/LaunchDaemons/${LAUNCH_AGENT}`;
 export const SYSTEMD_UNIT = 'ecs.service';
 export const TASK_NAME = 'EmulatorContentServer';
 
@@ -132,6 +133,8 @@ export async function installService(
   });
   const text = renderRegistration(spec);
   const file = registrationFile(spec);
+  if (spec.platform === 'darwin' && (await bootRegistration()) !== null)
+    throw new Error('A boot service is installed. Manage it with launchctl as an administrator.');
   if (onlyIfAbsent) {
     if (spec.platform !== 'darwin' || !file) throw new Error('Local setup requires macOS');
     await mkdir(dirname(file), { recursive: true });
@@ -170,6 +173,8 @@ export async function uninstallService(
   runner: CommandRunner = defaultRunner,
 ): Promise<void> {
   const file = registrationFile(spec);
+  if (spec.platform === 'darwin' && (await bootRegistration()) !== null)
+    throw new Error('A boot service is installed. Manage it with launchctl as an administrator.');
   for (const command of uninstallCommands(spec, file)) runner(command.argv);
   if (file) await rm(file, { force: true });
 }
@@ -273,11 +278,23 @@ async function registrationText(spec: ServiceSpec, runner: CommandRunner): Promi
     const result = runner(['schtasks', '/Query', '/TN', TASK_NAME, '/XML']);
     return result.status === 0 ? result.stdout : null;
   }
+  if (spec.platform === 'darwin') {
+    const boot = await bootRegistration();
+    if (boot !== null) return boot;
+  }
   const file = registrationFile(spec);
   if (!file) return null;
   return readFile(file, 'utf8').catch((error: unknown) => {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     return null;
+  });
+}
+
+async function bootRegistration(): Promise<string | null> {
+  if (process.platform !== 'darwin') return null;
+  return readFile(BOOT_DAEMON, 'utf8').catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
   });
 }
 

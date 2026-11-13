@@ -12,11 +12,13 @@ The same listen flags as `ecs serve` are recorded: `--host`, `--port`, `--advert
 
 | Platform | What install writes |
 | --- | --- |
-| macOS | `~/Library/LaunchAgents/app.emulator-content-server.plist`, then `launchctl bootstrap`. `RunAtLoad` and `KeepAlive` are set. |
+| macOS | `ecs service install` writes a login agent in `~/Library/LaunchAgents`. The [macOS installer](nightly-builds.md#install-with-one-command) also offers a system LaunchDaemon for boot startup. |
 | Linux | `~/.config/systemd/user/ecs.service`, then `systemctl --user enable --now`. For a server that must run while logged out, run `loginctl enable-linger` once as that user. |
 | Windows | A Task Scheduler logon task named `EmulatorContentServer`, at the user's own privilege. There is no service binary and no elevation. |
 
 `install` again overwrites that one registration. `uninstall` removes it and leaves every other agent, unit, or task alone.
+
+The macOS boot service uses `/Library/LaunchDaemons/app.emulator-content-server.plist` and runs as the installing user. Check it with `launchctl print system/app.emulator-content-server`. Administrator authorization is required to manage that system job. Server updates replace the worker behind the same launcher. At the next boot, the launcher starts the last successfully installed build after the startup disk unlocks.
 
 A daemon has no terminal. `serve` then writes `logs/ecs.log` under the data directory, redacts authorization headers and token or password values, and rotates the file by size. The live file is renamed aside when it grows; only an older archived generation is deleted. `logs/ecs.pid` is how `status` tells a running process from a loaded registration that is stopped. `status` prints whether the registration is loaded, whether that process is running, and which port it was given.
 

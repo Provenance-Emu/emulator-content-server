@@ -81,9 +81,11 @@
 
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
   <section>
-    <h2>Local login service</h2>
+    <h2>Local service</h2>
     <p aria-live="polite">{serviceSummary($service)}</p>
-    <p class="dim">Controls the service registered for your user on this computer.</p>
+    {#if $service.state === 'boot-running' || $service.state === 'boot-stopped'}
+      <p class="dim">Use launchctl as an administrator to start or stop the boot service.</p>
+    {/if}
     {#if $service.native}
       {#if $service.state === 'absent'}
         <p>Open the library window for setup and connection options.</p>

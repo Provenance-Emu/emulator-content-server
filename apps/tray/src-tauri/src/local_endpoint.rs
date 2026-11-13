@@ -207,8 +207,14 @@ fn registration(
 ) -> Result<(String, u32, String), String> {
     match platform {
         Platform::Mac => {
-            let service = format!("gui/{uid}/app.emulator-content-server");
-            let text = output(runner, "/bin/launchctl", &["print", &service])?;
+            let mut service = format!("gui/{uid}/app.emulator-content-server");
+            let text = match output(runner, "/bin/launchctl", &["print", &service]) {
+                Ok(text) => text,
+                Err(_) => {
+                    service = service::BOOT_SERVICE.into();
+                    output(runner, "/bin/launchctl", &["print", &service])?
+                }
+            };
             if text.lines().next() != Some(&format!("{service} = {{"))
                 || text.lines().last() != Some("}")
             {

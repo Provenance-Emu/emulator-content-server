@@ -1,6 +1,14 @@
 import { writable } from 'svelte/store';
 
-export type ServiceState = 'unknown' | 'absent' | 'running' | 'stopped' | 'starting' | 'stopping';
+export type ServiceState =
+  | 'unknown'
+  | 'absent'
+  | 'running'
+  | 'stopped'
+  | 'starting'
+  | 'stopping'
+  | 'boot-running'
+  | 'boot-stopped';
 export type ServiceInvoke = (command: string) => Promise<string>;
 export interface ServiceSnapshot {
   native: boolean;
@@ -42,7 +50,17 @@ export function createServiceControl(
     update({ busy: true });
     try {
       const reply = await invoke(command);
-      if (!['absent', 'running', 'stopped', 'starting', 'stopping'].includes(reply)) {
+      if (
+        ![
+          'absent',
+          'running',
+          'stopped',
+          'starting',
+          'stopping',
+          'boot-running',
+          'boot-stopped',
+        ].includes(reply)
+      ) {
         throw new Error('The service manager returned an unexpected status.');
       }
       update({ state: reply as ServiceState, failure: null });
@@ -80,6 +98,8 @@ export function serviceSummary(snapshot: ServiceSnapshot): string {
     stopped: 'Local service stopped',
     starting: 'Local service starting…',
     stopping: 'Local service stopping…',
+    'boot-running': 'Boot service running',
+    'boot-stopped': 'Boot service stopped',
   };
   return labels[snapshot.state];
 }

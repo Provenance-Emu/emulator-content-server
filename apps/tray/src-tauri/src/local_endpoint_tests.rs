@@ -35,9 +35,11 @@ impl Runner for Fixture {
     fn run(&mut self, program: &str, args: &[&str]) -> Result<String, String> {
         self.commands
             .push((program.into(), args.iter().map(|s| s.to_string()).collect()));
-        self.replies
-            .pop_front()
-            .ok_or_else(|| "Tool unavailable".into())
+        let reply = self.replies.pop_front().ok_or("Tool unavailable")?;
+        if reply == "missing login registration" {
+            return Err(reply);
+        }
+        Ok(reply)
     }
     fn process(&mut self, pid: u32) -> Result<ProcessIdentity, String> {
         if pid == 124 {
@@ -142,6 +144,28 @@ fn verifies_fixed_mac_service_owner_process_and_exact_listener() {
     assert_eq!(result.origin(), "http://127.0.0.1:7878");
     assert_eq!(result.pid, 123);
 }
+#[test]
+fn verifies_the_system_service_with_the_same_process_owner_checks() {
+    let registration = MAC.replace("gui/501/", "system/");
+    let boot = || {
+        fixture(vec![
+            "missing login registration".into(),
+            registration.clone(),
+            SOCKET.into(),
+            SOCKET.into(),
+            "missing login registration".into(),
+            registration.clone(),
+        ])
+    };
+    let mut f = boot();
+    let snapshot = inspect(Platform::Mac, 501, &mut f).unwrap();
+    assert_eq!(snapshot.service, service::BOOT_SERVICE);
+    assert_eq!(snapshot.origin(), "http://127.0.0.1:7878");
+    let mut f = boot();
+    f.process.uid = 502;
+    assert!(inspect(Platform::Mac, 501, &mut f).is_err());
+}
+
 #[test]
 fn wrong_service_pid_owner_and_ambiguous_or_nonloopback_listener_fail_closed() {
     for service in [
