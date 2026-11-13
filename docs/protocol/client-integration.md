@@ -49,6 +49,36 @@ A game grid needs one request per page and no ROM downloads. Each `source` row i
 
 Covers are returned at their stored size (up to 8 MB, usually far smaller). Downscale on the device and cache the result. The Authorization header is required, so configure the image loader with a request modifier; a bare URL loader such as `AsyncImage` cannot fetch a cover.
 
+## Edit a game's details from a device
+
+An app that lets the user rename a game or change its cover can save the change back with two routes. Check `features.sourceDetailsWrite` in `GET /api/v1/capabilities` first; an older server does not have them.
+
+1. Read the revision: `GET /api/v1/sources/{sourceId}/matches/selections` returns `revision`.
+2. Send it back as `If-Match: "rev-N"` on every write. A missing header is `428`. A stale revision is `409` and nothing changes: reload the selections, show the user the current values and retry.
+3. `PUT /api/v1/sources/{sourceId}/details` with a JSON body `{"title": "...", "details": {...}}` (`operationId` `saveSourceDetails`). `title` is required, 1 to 200 characters after trimming, and always replaces the saved title. `details` is optional and takes `publisher`, `developer`, `year`, `genre`, `region`, `language` and `description` (up to 2000 characters). Partial edits keep data: when `details` is omitted, the details already saved for the game are kept, whichever provider wrote them. When it is present, each key that is present replaces that field, an empty string clears it, and keys that are absent keep their current value. A client that only edits the title sends just `{"title": "..."}`.
+4. `PUT /api/v1/sources/{sourceId}/details/cover` with the raw image as the body (`operationId` `saveSourceCover`). `Content-Type` must be `image/png`, `image/jpeg` or `image/webp` and the bytes must really be that format, otherwise `415`. The limit is 2 MiB; a larger image is `413`. The new cover is served from the `artworkPath` the browse row already carries.
+5. Both answer `200` with the same body as the selections route, including the new `revision`. Use it for the next write. The game's change-feed event fires, so other devices refresh.
+
+Who may write: a user session or device token with the `write` scope, for a user who is an owner or editor of the game's library. A reader gets `403`. A game the caller cannot read is `404`. A game that is not in any library is owner-only. Pairing issues read-only tokens, so an app that edits needs a device token the owner created with the `write` scope. Hand-entered details are never replaced by automatic matching; the owner can still pick a lookup match or clear the selection.
+
+```sh
+base=http://127.0.0.1:8473
+printf 'Authorization: Bearer %s\n' "$ECS_TOKEN" |
+  curl --fail --silent --show-error --header @- "$base/api/v1/sources/SOURCE_ID/matches/selections"
+# take "revision" from the reply, for example 3
+
+printf 'Authorization: Bearer %s\n' "$ECS_TOKEN" |
+  curl --fail --silent --show-error --header @- --request PUT \
+    --header 'If-Match: "rev-3"' --header 'Content-Type: application/json' \
+    --data '{"title":"My Game","details":{"year":"1991"}}' \
+    "$base/api/v1/sources/SOURCE_ID/details"
+
+printf 'Authorization: Bearer %s\n' "$ECS_TOKEN" |
+  curl --fail --silent --show-error --header @- --request PUT \
+    --header 'If-Match: "rev-4"' --header 'Content-Type: image/png' \
+    --data-binary @cover.png "$base/api/v1/sources/SOURCE_ID/details/cover"
+```
+
 ## Pair a device with a TV interface
 
 Try the catalog without an Authorization header first if the user has not supplied a token. The server's network policy determines whether that request can browse. Existing bearer tokens still work.
