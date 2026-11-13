@@ -81,7 +81,8 @@ hdiutil verify "$dmg" >/dev/null
 spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
 hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$dmg" >/dev/null
 mounted=true
-codesign --verify --deep --strict "$mount/Emulation Server.app"
+codesign --verify --deep --strict -R "$(<apps/tray/src-tauri/src/desktop-update.requirement)" \
+  "$mount/Emulation Server.app"
 spctl --assess --type execute --verbose=2 "$mount/Emulation Server.app"
 hdiutil detach "$mount" >/dev/null
 mounted=false
