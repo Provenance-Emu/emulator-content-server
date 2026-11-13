@@ -101,6 +101,30 @@ import Testing
     }
 }
 
+@Test func coversResolveAgainstTheInstance() async throws {
+    let relative = FixtureTransport(cover: "roms/7/4/cover/small.png?ts=2026-01-02 03:04")
+    let game = try #require(await makeClient(relative).games(platformID: 7).items.first)
+    #expect(game.coverPath == "roms/7/4/cover/small.png?ts=2026-01-02 03:04")
+    #expect(try await makeClient(relative).cover(for: game) == Data([9, 8, 7]))
+    let request = try #require(await relative.requests.last)
+    #expect(request.url?.absoluteString
+        == "https://romm.example/install/assets/romm/resources/roms/7/4/cover/small.png?ts=2026-01-02%2003:04")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer rmm_fixture")
+
+    let rooted = FixtureTransport(cover: "/assets/romm/resources/ecs/4/cover")
+    let gatewayGame = try #require(await makeClient(rooted).games(platformID: 7).items.first)
+    #expect(try await makeClient(rooted).cover(for: gatewayGame) == Data([9, 8, 7]))
+    #expect(await rooted.requests.last?.url?.absoluteString == "https://romm.example/install/assets/romm/resources/ecs/4/cover")
+
+    let none = try #require(await makeClient(FixtureTransport()).games(platformID: 7).items.first)
+    #expect(none.coverPath == nil)
+    #expect(try await makeClient(FixtureTransport()).cover(for: none) == nil)
+
+    let escaping = FixtureTransport(cover: "../../api/users")
+    let hostile = try #require(await makeClient(escaping).games(platformID: 7).items.first)
+    await #expect(throws: RomMError.invalidContent) { try await makeClient(escaping).cover(for: hostile) }
+}
+
 @Test func rejectedAuthentication() async throws {
     let client = try makeClient(FixtureTransport(status: 401))
     await #expect(throws: RomMError.accessDenied) { try await client.platforms() }
@@ -130,15 +154,18 @@ private actor FixtureTransport: RomMTransport {
     var requests: [URLRequest] = []
     private let files: [FixtureFile]
     private let status: Int
+    private let cover: String?
 
-    init(files: [FixtureFile] = [], status: Int = 200) {
+    init(files: [FixtureFile] = [], status: Int = 200, cover: String? = nil) {
         self.files = files
         self.status = status
+        self.cover = cover
     }
 
     func data(for request: URLRequest) throws -> (Data, URLResponse) {
         requests.append(request)
         let url = try #require(request.url)
+        if url.path.hasPrefix("/install/assets/") { return (Data([9, 8, 7]), try response(for: url)) }
         let body: Any
         switch url.path {
         case "/install/api/platforms":
@@ -146,10 +173,10 @@ private actor FixtureTransport: RomMTransport {
         case "/install/api/roms":
             let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
             let offset = Int(query.first { $0.name == "offset" }?.value ?? "") ?? 0
-            body = [
-                "items": [["id": 4 + offset, "name": "Test Game", "fs_name": "Test Game", "platform_id": 7, "platform_slug": "dc", "fs_size_bytes": 3]],
-                "limit": 1, "total": 2, "offset": offset
-            ]
+            var game: [String: Any] = ["id": 4 + offset, "name": "Test Game", "fs_name": "Test Game", "platform_id": 7,
+                                       "platform_slug": "dc", "fs_size_bytes": 3]
+            if let cover { game["path_cover_small"] = cover }
+            body = ["items": [game], "limit": 1, "total": 2, "offset": offset]
         default:
             body = [
                 "id": 4, "fs_name": "Test Game", "fs_path": "roms/dc",

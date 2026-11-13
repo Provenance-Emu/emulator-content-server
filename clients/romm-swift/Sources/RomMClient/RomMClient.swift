@@ -39,6 +39,23 @@ public struct RomMClient: Sendable {
         return page
     }
 
+    /// The game's cover image, or nil when it has none or the server no longer serves it.
+    /// A cover is decoration: only a rejected credential is an error.
+    public func cover(for game: RomMGame, maximumBytes: Int = 8_000_000) async throws -> Data? {
+        guard let path = game.coverPath else { return nil }
+        var request = URLRequest(url: try address.asset(path))
+        request.setValue(authorization, forHTTPHeaderField: "Authorization")
+        let (data, response) = try await transport.data(for: request)
+        do {
+            try Self.validate(response)
+        } catch RomMError.accessDenied {
+            throw RomMError.accessDenied
+        } catch {
+            return nil
+        }
+        return data.isEmpty || data.count > maximumBytes ? nil : data
+    }
+
     /// Stages every game file, keeping paths relative to its RomM game directory.
     /// Each request selects a single file by ID so the original archive and disc
     /// members arrive unchanged, including repeated basenames in separate folders.
