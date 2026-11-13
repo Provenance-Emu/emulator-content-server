@@ -39,6 +39,10 @@ hdiutil detach "$mount" >/dev/null
 mounted=false
 
 bundle_id=$(plutil -extract CFBundleIdentifier raw -o - "$app/Contents/Info.plist")
+if [[ ${GITHUB_SHA:-} =~ ^[0-9a-f]{40}$ && ${GITHUB_RUN_NUMBER:-} =~ ^[1-9][0-9]*$ ]]; then
+  plutil -insert ECSNightlyCommit -string "$GITHUB_SHA" "$app/Contents/Info.plist"
+  plutil -insert ECSNightlyRun -integer "$GITHUB_RUN_NUMBER" "$app/Contents/Info.plist"
+fi
 echo 'Signing macOS app bundle'
 codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$app"
 node scripts/package-macos.mjs "$bundle"

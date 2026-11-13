@@ -183,7 +183,12 @@ jobs:
             "$RUNNER_TEMP/ecs-unsigned/$name" "$RUNNER_TEMP/ecs-signed/$name"
       - name: Stage notarized installer and checksum
         shell: bash
-        run: node scripts/publish-desktop.mjs nightly "$RUNNER_TEMP/ecs-signed" --stage-only
+        run: |
+          node scripts/publish-desktop.mjs nightly "$RUNNER_TEMP/ecs-signed" --stage-only
+          image=dist-release/desktop/Emulation-Server-nightly-macos-arm64.dmg
+          digest=$(shasum -a 256 "$image" | awk '{print $1}')
+          jq -n --arg sha "$GITHUB_SHA" --arg digest "$digest" --argjson run "$GITHUB_RUN_NUMBER" \
+            '{sha: $sha, sha256: $digest, run: $run}' > dist-release/desktop/ecs-desktop-macos-arm64.json
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-macos-arm64
@@ -228,6 +233,7 @@ jobs:
           elif test "$ECS_MACOS_SIGNED" = true; then
             test "$(wc -l < SHA256SUMS.txt)" -eq 7
             test -f Emulation-Server-nightly-macos-arm64.dmg
+            test -f ecs-desktop-macos-arm64.json
           else
             test "$(wc -l < SHA256SUMS.txt)" -eq 6
           fi

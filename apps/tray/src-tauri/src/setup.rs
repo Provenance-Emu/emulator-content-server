@@ -189,7 +189,7 @@ fn path(path: &std::path::Path) -> Result<&str, String> {
         .ok_or_else(|| "The installation path cannot be represented.".into())
 }
 
-fn fetch(asset: &str, file: &std::path::Path, max: u64) -> Result<(), String> {
+pub(crate) fn fetch(asset: &str, file: &std::path::Path, max: u64) -> Result<(), String> {
     let result = service::command_with_timeout(
         "/usr/bin/curl",
         &[
@@ -236,7 +236,7 @@ fn fetch(asset: &str, file: &std::path::Path, max: u64) -> Result<(), String> {
     Ok(())
 }
 
-fn read_bounded(file: &std::path::Path, limit: u64) -> Result<Vec<u8>, String> {
+pub(crate) fn read_bounded(file: &std::path::Path, limit: u64) -> Result<Vec<u8>, String> {
     use std::io::Read;
     let mut bytes = Vec::new();
     std::fs::File::open(file)

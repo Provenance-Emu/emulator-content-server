@@ -2,6 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod cli_tools;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+mod desktop_update;
 mod downloads;
 mod local_endpoint;
 mod navigation;
@@ -326,6 +328,8 @@ fn main() {
                     })
                     .build()?;
             }
+            #[cfg(all(target_os = "macos", target_arch = "aarch64", not(debug_assertions)))]
+            desktop_update::start(app.handle().clone());
             Ok(())
         })
         .plugin(
