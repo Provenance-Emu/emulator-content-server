@@ -13,6 +13,7 @@ import {
   isSaveAssetKind,
   type LibraryRecord,
   type LibraryRole,
+  SOURCE_DETAIL_KEYS,
   type SourceAvailability,
   type SourceDetails,
   type SourceFileRecord,
@@ -3232,15 +3233,7 @@ type SourceRow = {
   mtime_ms: number | null;
 };
 
-const DETAIL_KEYS = [
-  'publisher',
-  'developer',
-  'year',
-  'genre',
-  'region',
-  'language',
-  'description',
-] as const;
+const DETAIL_KEYS = SOURCE_DETAIL_KEYS;
 
 /** The details a person reads on a game card; match evidence stays on the selections route. */
 function sourceDetails(json: string | null | undefined): { details?: SourceDetails } {

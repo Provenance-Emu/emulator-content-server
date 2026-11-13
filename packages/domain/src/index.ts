@@ -41,6 +41,21 @@ export type SourceArtworkRole =
   | 'screenshot'
   | 'other';
 
+/** Reserved provider id for a record a person entered; it is never a plugin. */
+export const MANUAL_PROVIDER_ID = 'manual';
+/** Largest saved front artwork snapshot; the manual-role cap is larger. */
+export const FRONT_ARTWORK_MAX_BYTES = 2 * 1024 * 1024;
+export const MANUAL_ARTWORK_MAX_BYTES = 8 * 1024 * 1024;
+export const SOURCE_DETAIL_KEYS = [
+  'publisher',
+  'developer',
+  'year',
+  'genre',
+  'region',
+  'language',
+  'description',
+] as const;
+
 export interface SourceDetails {
   publisher?: string;
   developer?: string;

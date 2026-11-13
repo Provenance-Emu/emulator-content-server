@@ -3,6 +3,7 @@ import { lookup } from 'node:dns/promises';
 import { request } from 'node:https';
 import {
   DomainError,
+  MANUAL_PROVIDER_ID,
   type SourceMatchRecord,
   type WorkflowArtifact,
   type WorkflowProposal,
@@ -249,6 +250,21 @@ export async function materializeCleanupProposal(
       : draft.action === 'replace-system'
         ? 'rom'
         : 'metadata';
+  if (
+    context.catalog
+      .sourceMatches(draft.sourceId)
+      .matches.some(
+        (match) =>
+          match.providerId === MANUAL_PROVIDER_ID &&
+          match.kind === kind &&
+          (kind !== 'artwork' || (match.artworkRole ?? 'front') === 'front'),
+      )
+  )
+    throw new DomainError(
+      'manual-details-protected',
+      409,
+      'These details were entered by hand and cannot be replaced by cleanup',
+    );
   if (
     candidate.kind !== kind ||
     hasIdentityConflict(record.input, [candidate]) ||

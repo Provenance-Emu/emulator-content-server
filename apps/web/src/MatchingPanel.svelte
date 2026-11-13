@@ -93,7 +93,7 @@
     if(unsaved)category=unsaved.kind;
     else if(!suggestions.some((c)=>c.kind===category))category=suggestions[0]?.kind??'metadata';
   }
-  function providerName(id:string){return plugins.find((p)=>p.id===id)?.name ?? id;}
+  function providerName(id:string){if(id==='manual')return 'Edited by hand';return plugins.find((p)=>p.id===id)?.name ?? id;}
   async function download(candidate:MatchingCandidate){
     if(!candidate.fileId)return;
     try {
@@ -110,7 +110,7 @@
   {#if $controller.savedLoading}<p role="status">Loading saved matches…</p>{/if}
   {#if $controller.saved?.matches.length}
     <div class="matching-card-grid">{#each $controller.saved.matches as selected (matchSlot(selected))}
-      <article class="matching-card"><h3>{selected.title}</h3><p class="dim">{matchLabel(selected)} · {providerName(selected.providerId)}</p>
+      <article class="matching-card"><h3>{selected.title}</h3><p class="dim">{selected.providerId==='manual'?'Edited by hand':`${matchLabel(selected)} · ${providerName(selected.providerId)}`}</p>
         {#if selected.kind==='artwork' && (roleOf(selected)==='front'?$controller.savedArtwork:$controller.savedArtworkByRole[roleOf(selected)])}<img src={(roleOf(selected)==='front'?$controller.savedArtwork:$controller.savedArtworkByRole[roleOf(selected)])??''} alt={'Saved artwork for '+selected.title} />
         {:else}<MatchMetadata metadata={selected.metadata} />{/if}
         {#if selected.kind==='cheats'}<p class="dim">All codes in the saved file are disabled. Choose compatible codes in your player.</p>{/if}

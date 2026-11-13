@@ -1,6 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import {
   DomainError,
+  FRONT_ARTWORK_MAX_BYTES,
+  MANUAL_ARTWORK_MAX_BYTES,
   type SourceArtworkRole,
   type SourceMatchRecord,
   type SourceMatchState,
@@ -86,7 +88,8 @@ export function writeSourceMatch(
     )
   )
     return current;
-  const contentLimit = kind === 'artwork' && role === 'manual' ? 8 * 1024 * 1024 : 2 * 1024 * 1024;
+  const contentLimit =
+    kind === 'artwork' && role === 'manual' ? MANUAL_ARTWORK_MAX_BYTES : FRONT_ARTWORK_MAX_BYTES;
   if (content && content.byteLength > contentLimit)
     throw new DomainError('matching-file-too-large', 413, 'Selected content is too large');
   if (match) {

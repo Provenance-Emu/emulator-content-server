@@ -199,6 +199,30 @@ export function itemDecision(
   );
 }
 
+/**
+ * Write access to a source the caller can already see (`visibleSource` ran first, so a
+ * source the caller cannot read stays a 404). A source outside any library is owner-only.
+ */
+export function sourceDecision(
+  catalog: CatalogDatabase,
+  actor: Actor,
+  source: { libraryId: string | null },
+): void {
+  const denied = () => new DomainError('forbidden', 403, 'Write permission is required');
+  if (actor.kind !== 'user' || actor.localTrust || !actor.scopes.includes('write')) throw denied();
+  if (source.libraryId === null) {
+    if (!actor.isOwner || !actor.scopes.includes('admin')) throw denied();
+    return;
+  }
+  const allowed = authorize({
+    actor,
+    action: 'write',
+    libraryId: source.libraryId,
+    membership: catalog.membership(actor.userId, source.libraryId),
+  });
+  if (!allowed) throw denied();
+}
+
 export function assetDecision(
   catalog: CatalogDatabase,
   actor: Actor,

@@ -6,7 +6,7 @@ import type { Actor, AssetKind } from '@ecs/domain';
 import { openServer } from '../src/index.js';
 
 export async function libraryFixture(
-  options: { matchingPluginsDir?: string; automaticMatching?: boolean } = {},
+  options: { matchingPluginsDir?: string; automaticMatching?: boolean; localTrust?: boolean } = {},
 ) {
   const base = await realpath(await mkdtemp(join(tmpdir(), 'ecs-browse-')));
   const server = await openServer({
