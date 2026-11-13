@@ -162,6 +162,8 @@
     "PUT /api/v1/roots/:rootId/organization-policy",
     "PUT /api/v1/roots/:rootId/watching-policy",
     "PUT /api/v1/server/updates",
+    "PUT /api/v1/sources/:sourceId/details",
+    "PUT /api/v1/sources/:sourceId/details/cover",
     "PUT /api/v1/sources/:sourceId/matches/lookup-hints",
     "PUT /api/v1/sources/:sourceId/matches/selections",
     "PUT /api/v1/storage-locations/write-target",
@@ -285,6 +287,7 @@
         "rangeRequests",
         "resumableUploads",
         "romDownloadSummaries",
+        "sourceDetailsWrite",
         "virtualFormats",
         "webPlayback",
         "webdav"
@@ -766,6 +769,15 @@
         "year"
       ],
       "required": []
+    },
+    "SourceDetailsDraft": {
+      "properties": [
+        "details",
+        "title"
+      ],
+      "required": [
+        "title"
+      ]
     },
     "MatchingPlugin": {
       "properties": [

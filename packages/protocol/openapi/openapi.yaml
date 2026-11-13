@@ -1400,6 +1400,76 @@ paths:
               schema: { $ref: '#/components/schemas/SourceMatchSelections' }
         '409':
           description: The matching revision changed. Reload saved matches before editing.
+  /api/v1/sources/{sourceId}/details:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: saveSourceDetails
+      tags: [Matching and jobs]
+      description: |
+        Saves a game's title and details as entered by a person (provider `manual`). The caller needs a user token with the `write` scope and write permission on the game's library (owners and editors); a game outside any library is owner-only. A game the caller cannot read is 404, one it can read but not write is 403. Access is decided before the body is read.
+
+        `title` is always replaced. When `details` is omitted, the details already saved for the game are kept, whichever provider wrote them. When `details` is present, each key that is present replaces that field, an empty string clears it, and absent keys keep their current value. Automatic matching never replaces a hand-entered record.
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string }, example: '"rev-0"', description: Saved matching revision (`revision` from the selections response) as a quoted rev-N ETag. }
+        - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { title: "Example Game", details: { publisher: "Example Co", year: "1991" } }
+            schema: { $ref: '#/components/schemas/SourceDetailsDraft' }
+      responses:
+        '200':
+          description: Saved. The response carries the new `revision`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceMatchSelections' }
+        '400':
+          description: Invalid title or details.
+        '403':
+          description: The caller can read the game but may not change it.
+        '404':
+          description: The game does not exist or is not visible to the caller.
+        '409':
+          description: The matching revision changed. Reload the selections and retry.
+        '428':
+          description: If-Match is missing.
+  /api/v1/sources/{sourceId}/details/cover:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: saveSourceCover
+      tags: [Matching and jobs]
+      description: |
+        Saves a game's front cover as entered by a person (provider `manual`). Same authority as `saveSourceDetails`, decided before the image is read. The image is served from the game's existing artwork path. At most 2 MiB; the declared type and the file's own signature must both be PNG, JPEG or WebP.
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string }, example: '"rev-0"' }
+        - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false } }
+      requestBody:
+        required: true
+        content:
+          image/png: { schema: { type: string, format: binary } }
+          image/jpeg: { schema: { type: string, format: binary } }
+          image/webp: { schema: { type: string, format: binary } }
+      responses:
+        '200':
+          description: Saved. The response carries the new `revision`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceMatchSelections' }
+        '403':
+          description: The caller can read the game but may not change it.
+        '404':
+          description: The game does not exist or is not visible to the caller.
+        '409':
+          description: The matching revision changed. Reload the selections and retry.
+        '413':
+          description: The image is larger than 2 MiB (`matching-file-too-large`).
+        '415':
+          description: Not a PNG, JPEG or WebP image, or the declared type does not match the bytes.
+        '428':
+          description: If-Match is missing.
   /api/v1/sources/{sourceId}/matches/selections/{kind}:
     parameters:
       - { name: sourceId, in: path, required: true, schema: { type: string } }
@@ -2404,6 +2474,7 @@ components:
         webPlayback: { type: boolean }
         romDownloadSummaries: { type: boolean, description: Supports the opt-in ROM download summary on browse rows. }
         gameCompanions: { type: boolean, description: Supports companion discovery and authorized downloads. Inspect supportedKinds on each game. }
+        sourceDetailsWrite: { type: boolean, description: Supports saving a game's title and details and cover from a device with saveSourceDetails and saveSourceCover. }
     PlayerCoreResource:
       type: object
       required: [url, sha256, sizeBytes]
@@ -2724,6 +2795,16 @@ components:
         region: { type: string }
         language: { type: string }
         description: { type: string, maxLength: 2000 }
+    SourceDetailsDraft:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200, description: Replaces the game's title. Trimmed. }
+        details:
+          description: Optional. Present keys replace that field, an empty string clears it, absent keys keep their saved value. Omit to keep all saved details.
+          allOf:
+            - { $ref: '#/components/schemas/SourceDetails' }
     MatchingPlugin:
       type: object
       required: [id, name, kind, capabilities, network]

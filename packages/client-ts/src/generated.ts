@@ -71,6 +71,7 @@ export interface FeatureFlags {
   webPlayback?: boolean;
   romDownloadSummaries?: boolean;
   gameCompanions?: boolean;
+  sourceDetailsWrite?: boolean;
 }
 
 export interface PlayerCoreResource {
@@ -317,6 +318,11 @@ export interface SourceDetails {
   region?: string;
   language?: string;
   description?: string;
+}
+
+export interface SourceDetailsDraft {
+  title: string;
+  details?: unknown;
 }
 
 export interface MatchingPlugin {

@@ -132,8 +132,9 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var webPlayback: Bool?
     public var romDownloadSummaries: Bool?
     public var gameCompanions: Bool?
+    public var sourceDetailsWrite: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, sourceDetailsWrite: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -145,6 +146,7 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.webPlayback = webPlayback
         self.romDownloadSummaries = romDownloadSummaries
         self.gameCompanions = gameCompanions
+        self.sourceDetailsWrite = sourceDetailsWrite
     }
 }
 
@@ -637,6 +639,16 @@ public struct SourceDetails: Codable, Equatable, Sendable {
         self.region = region
         self.language = language
         self.description = description
+    }
+}
+
+public struct SourceDetailsDraft: Codable, Equatable, Sendable {
+    public var title: String
+    public var details: String?
+
+    public init(title: String, details: String? = nil) {
+        self.title = title
+        self.details = details
     }
 }
 

@@ -19,6 +19,7 @@ export interface Capabilities {
     webPlayback?: boolean;
     romDownloadSummaries?: boolean;
     gameCompanions?: boolean;
+    sourceDetailsWrite?: boolean;
   };
   limits: {
     maxUploadBytes: number;
@@ -53,6 +54,7 @@ export function buildCapabilities(input: {
       webPlayback: input.webPlayback === true,
       romDownloadSummaries: true,
       gameCompanions: true,
+      sourceDetailsWrite: true,
     },
     limits: {
       maxUploadBytes: input.maxUploadBytes,
