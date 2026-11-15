@@ -76,6 +76,17 @@ test('pairing requires owner approval and a private one-use device secret', asyn
     const canceled = (await post(requests, { name: 'iCube' })).json();
     assert.equal((await post(`${requests}/cancel`, canceled)).statusCode, 204);
     assert.equal((await post(`${requests}/status`, canceled)).statusCode, 404);
+    const denied = (await post(requests, { name: 'Provenance' })).json();
+    const validPIN = (await post(`${requests}/${denied.id}/approve`, {}, true)).json().pin;
+    const badPIN = validPIN === '000000' ? '111111' : '000000';
+    for (let remaining = 4; remaining >= 0; remaining--) {
+      const response = await post(`${requests}/complete`, { ...denied, pin: badPIN });
+      assert.equal(response.statusCode, remaining === 0 ? 404 : 400);
+    }
+    assert.equal(
+      (await post(`${requests}/complete`, { ...denied, pin: validPIN })).statusCode,
+      404,
+    );
     assert.equal((await post('/inspect', { pin })).statusCode, 401);
     assert.equal((await post('/approve', { id, pin })).statusCode, 401);
     assert.equal((await post('/redeem', { id, secret })).statusCode, 202);
@@ -117,6 +128,7 @@ test('pairing requires owner approval and a private one-use device secret', asyn
       401,
     );
     const expiring = (await post('', { name: 'Expiring TV' })).json();
+    const expiringRequest = (await post(requests, { name: 'Expiring handheld' })).json();
     t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
     try {
       t.mock.timers.tick(300_001);
@@ -125,6 +137,7 @@ test('pairing requires owner approval and a private one-use device secret', asyn
         (await post('/redeem', { id: expiring.id, secret: expiring.secret })).statusCode,
         404,
       );
+      assert.equal((await post(`${requests}/status`, expiringRequest)).statusCode, 404);
     } finally {
       t.mock.timers.reset();
     }
