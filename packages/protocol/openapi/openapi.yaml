@@ -1786,7 +1786,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: string}}
       responses:
         '204': { description: Invitation withdrawn. }
-        '404': { description: Invitation expired, redeemed, or unavailable. }
+        '404': { description: 'Invitation expired, redeemed, or unavailable.' }
   /api/v1/device-pairing/invitations/redeem:
     post:
       operationId: redeemDevicePairingInvitation
@@ -1805,7 +1805,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
-        '404': { description: Invitation expired, redeemed, withdrawn, or code did not match. }
+        '404': { description: 'Invitation expired, redeemed, withdrawn, or code did not match.' }
         '429': { description: Too many attempts. }
   /api/v1/device-pairing/requests:
     get:
@@ -1916,7 +1916,7 @@ paths:
               schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
         '202': { description: Awaiting owner approval. }
         '400': { description: The PIN did not match or the request body is invalid. }
-        '404': { description: Request expired, already redeemed, or unavailable. }
+        '404': { description: 'Request expired, already redeemed, or unavailable.' }
   /api/v1/device-tokens:
     get:
       operationId: listDeviceTokens
