@@ -83,7 +83,11 @@ printf 'Authorization: Bearer %s\n' "$ECS_TOKEN" |
 
 Try the catalog without an Authorization header first if the user has not supplied a token. The server's network policy determines whether that request can browse. Existing bearer tokens still work.
 
-If sign-in is required, POST a device name to `/api/v1/device-pairing`. Show the six-digit PIN and a QR code for `/ui/?settings=devices#pair=<PIN>` on the configured server. The server owner can scan the QR code or enter the PIN under **Settings → Devices**, review the device, and approve read access. Keep the separate challenge secret on the device. Poll `/api/v1/device-pairing/redeem` with the challenge ID and secret every three seconds. A `202` means approval is pending. A `200` returns a revocable read-only device token once, valid for 90 days. A `404` means the request is unavailable or expired. Pairing requests last five minutes and are cleared on restart.
+Start with `POST /api/v1/device-pairing/requests` and the device name. Keep the returned challenge secret on the requesting device. Poll `/api/v1/device-pairing/requests/status` with the request ID and secret every three seconds. Under **Settings → Devices**, the owner can approve the request and display its six-digit PIN and QR code. The device validates that a scanned `ecs-pair:<id>:<pin>` payload matches its active request before using the PIN. Submit the ID, secret and PIN to `POST /api/v1/device-pairing/requests/complete`.
+
+A successful completion returns a revocable read-only device token once, valid for 90 days. Save it using the same credential store as a manually supplied token. Requests expire after five minutes and are cleared on server restart. Cancel a request with `POST /api/v1/device-pairing/requests/cancel` and the request ID and secret.
+
+On servers that return `404` when starting a request, use the original `POST /api/v1/device-pairing` flow. Show the device PIN and link to `/ui/?settings=devices#pair=<PIN>` for owner approval, then poll `/api/v1/device-pairing/redeem` with the ID and secret. Existing apps can keep using those endpoints.
 
 ## iOS and other Apple apps
 
@@ -95,7 +99,7 @@ Pin the Emulation Server Swift SDK by adding the repository as a SwiftPM depende
 
 Add `.product(name: "EmulatorContentClient", package: "emulator-content-server")` to the app target's dependencies. Xcode can use the same URL with the **Exact Version** rule. The tag pins the Swift package and the matching OpenAPI contract together. Existing clients that vendor `clients/swift` can continue to use that package path.
 
-The package provides Codable models and `ContentSync` for the change feed, save adoption and resume requests. It declares iOS 17, tvOS 17, macOS 14 and visionOS 1 minimums. Use `URLSession` for catalog requests and file downloads. For example, after selecting a server and retrieving its token from Keychain:
+The package provides Codable models and `ContentSync` for the change feed, save adoption and resume requests. In revisions with request-first pairing, `DevicePairingClient` handles approval polling, PIN or QR redemption and fallback for older servers. `DevicePairingView` provides the shared pairing sheet, with camera scanning on supported iOS devices. Apps that offer scanning provide a camera usage description. The package declares iOS 17, tvOS 17, macOS 14 and visionOS 1 minimums. Use `URLSession` for catalog requests and file downloads. For example, after selecting a server and retrieving its token from Keychain:
 
 ```swift
 import EmulatorContentClient
