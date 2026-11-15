@@ -39,7 +39,7 @@ This brief records an audit made on 2026-11-10 and the batches that follow from 
 
 **Deleting.** Items and files are already soft-deleted (`deleted_at`), with no restore route, no trash view, and no purge. Removing a folder or a storage location deletes catalog rows only. Organization in move mode is the one path that removes a file from disk. There is no blob garbage collection.
 
-**Pairing.** The existing flow is device-initiated: the device shows a PIN, the owner approves it in Settings → Devices, the device redeems a read-only token. The server never shows a QR code, and no QR encoder is in the repository. The page's content policy means a code must be drawn locally as SVG.
+**Pairing.** A device can request read access in the app. In Settings → Devices the owner approves the pending request and sees a PIN and QR. The device enters or scans the code to receive a revocable read-only token, and the request disappears. The original device-displayed PIN still works for older clients.
 
 ## Remaining batches
 

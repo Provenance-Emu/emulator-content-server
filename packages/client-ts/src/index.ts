@@ -69,6 +69,7 @@ export type {
   ContentRootScan,
   ContentRootSummary,
   ContentRootSummaryList,
+  DevicePairingPending,
   DeviceToken,
   DeviceTokenCreated,
   DeviceTokenDraft,

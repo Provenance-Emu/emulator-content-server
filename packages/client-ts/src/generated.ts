@@ -708,6 +708,29 @@ export interface DevicePairingRedemption {
   secret: string;
 }
 
+export interface DevicePairingRequest {
+  id: string;
+  secret: string;
+  expiresInSeconds: number;
+}
+
+export interface DevicePairingPending {
+  id: string;
+  name: string;
+  approved: boolean;
+  expiresAt: string;
+}
+
+export interface DevicePairingRequestList {
+  items: DevicePairingPending[];
+}
+
+export interface DevicePairingCompletion {
+  id: string;
+  secret: string;
+  pin: string;
+}
+
 export interface DeviceTokenDraft {
   name: string;
   scopes: string[];

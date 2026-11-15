@@ -1765,6 +1765,114 @@ paths:
               schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
         '202': { description: Awaiting owner approval. }
         '404': { description: 'Pairing expired, already redeemed, or unavailable.' }
+  /api/v1/device-pairing/requests:
+    get:
+      operationId: listDevicePairingRequests
+      tags: [Authentication]
+      description: Lists pending and approved requests for the signed-in owner. Codes and device secrets are omitted.
+      responses:
+        '200':
+          description: Active requests.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DevicePairingRequestList' }
+    post:
+      operationId: requestDevicePairing
+      tags: [Authentication]
+      security: []
+      description: Starts a five-minute request. Keep the returned secret on the requesting device.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {name: Living room Apple TV}
+            schema: { $ref: '#/components/schemas/DevicePairingDraft' }
+      responses:
+        '201':
+          description: Request created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DevicePairingRequest' }
+        '404': { description: Pairing is unavailable. }
+        '429': { description: Too many pending or recent requests. }
+  /api/v1/device-pairing/requests/{id}/approve:
+    post:
+      operationId: approveDevicePairingRequest
+      tags: [Authentication]
+      description: Owner sign-in required. Approves the request and reveals its six-digit PIN. The QR payload is ecs-pair followed by the request ID and PIN, separated by colons.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: PIN to enter on the requesting device.
+          content:
+            application/json:
+              example: {pin: '123456'}
+              schema: { $ref: '#/components/schemas/DevicePairingPIN' }
+        '404': { description: Request expired or unavailable. }
+  /api/v1/device-pairing/requests/{id}:
+    delete:
+      operationId: dismissDevicePairingRequest
+      tags: [Authentication]
+      description: Owner sign-in required. Dismisses a pending or approved request.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Request dismissed. }
+        '404': { description: Request expired or unavailable. }
+  /api/v1/device-pairing/requests/status:
+    post:
+      operationId: devicePairingRequestStatus
+      tags: [Authentication]
+      security: []
+      description: Poll with the requesting device's secret to learn when the owner has approved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DevicePairingRedemption' }
+      responses:
+        '200':
+          description: Approval status.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DevicePairingApproved' }
+        '404': { description: Request expired or unavailable. }
+  /api/v1/device-pairing/requests/cancel:
+    post:
+      operationId: cancelDevicePairingRequest
+      tags: [Authentication]
+      security: []
+      description: Cancel a request using the requesting device's private secret.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DevicePairingRedemption' }
+      responses:
+        '204': { description: Request canceled. }
+        '404': { description: Request expired or unavailable. }
+  /api/v1/device-pairing/requests/complete:
+    post:
+      operationId: completeDevicePairingRequest
+      tags: [Authentication]
+      security: []
+      description: Exchanges the private secret and the owner-approved PIN for a read-only device token issued once. Five wrong PIN attempts invalidate the request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {id: REPLACE_WITH_PAIRING_ID, secret: REPLACE_WITH_PAIRING_SECRET, pin: '123456'}
+            schema: { $ref: '#/components/schemas/DevicePairingCompletion' }
+      responses:
+        '200':
+          description: Read-only token for the approved device.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
+        '202': { description: Awaiting owner approval. }
+        '400': { description: The PIN did not match or the request body is invalid. }
+        '404': { description: Request expired, already redeemed, or unavailable. }
   /api/v1/device-tokens:
     get:
       operationId: listDeviceTokens
@@ -3298,6 +3406,35 @@ components:
       properties:
         id: { type: string }
         secret: { type: string }
+    DevicePairingRequest:
+      type: object
+      required: [id, secret, expiresInSeconds]
+      properties:
+        id: { type: string }
+        secret: { type: string }
+        expiresInSeconds: { type: integer }
+    DevicePairingPending:
+      type: object
+      required: [id, name, approved, expiresAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        approved: { type: boolean }
+        expiresAt: { type: string }
+    DevicePairingRequestList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DevicePairingPending' }
+    DevicePairingCompletion:
+      type: object
+      required: [id, secret, pin]
+      properties:
+        id: { type: string }
+        secret: { type: string }
+        pin: { type: string, pattern: '^[0-9]{6}$' }
     DeviceTokenDraft:
       type: object
       required: [name, scopes]

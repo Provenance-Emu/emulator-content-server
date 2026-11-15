@@ -32,6 +32,50 @@ test('pairing requires owner approval and a private one-use device secret', asyn
     const { id, pin, secret, expiresInSeconds } = challenge.json();
     assert.match(pin, /^\d{6}$/);
     assert.equal(expiresInSeconds, 300);
+    const requests = '/requests';
+    const list = () => server.app.inject({ url: `/api/v1/device-pairing${requests}`, headers });
+    const newcomer = await post(requests, { name: 'iFly' });
+    assert.equal(newcomer.statusCode, 201);
+    const requested = newcomer.json();
+    const proof = { id: requested.id, secret: requested.secret };
+    assert.equal(requested.pin, undefined);
+    assert.equal(
+      (await server.app.inject({ url: `/api/v1/device-pairing${requests}` })).statusCode,
+      401,
+    );
+    assert.deepEqual(
+      (await list())
+        .json()
+        .items.map(({ name, approved }: { name: string; approved: boolean }) => ({
+          name,
+          approved,
+        })),
+      [{ name: 'iFly', approved: false }],
+    );
+    assert.equal((await post(`${requests}/${proof.id}/approve`, {})).statusCode, 401);
+    assert.equal((await post('/redeem', proof)).statusCode, 404);
+    assert.equal((await post(`${requests}/complete`, { ...proof, pin })).statusCode, 202);
+    const ownerCode = await post(`${requests}/${proof.id}/approve`, {}, true);
+    assert.equal(ownerCode.statusCode, 200);
+    const newPin: string = ownerCode.json().pin;
+    assert.match(newPin, /^\d{6}$/);
+    assert.deepEqual((await post(`${requests}/status`, proof)).json(), { approved: true });
+    assert.equal((await post('/inspect', { pin: newPin }, true)).statusCode, 404);
+    assert.equal(
+      (await post(`${requests}/complete`, { ...proof, secret: 'wrong', pin: newPin })).statusCode,
+      404,
+    );
+    assert.equal((await post(`${requests}/complete`, { ...proof, pin })).statusCode, 400);
+    const completed = await Promise.all([
+      post(`${requests}/complete`, { ...proof, pin: newPin }),
+      post(`${requests}/complete`, { ...proof, pin: newPin }),
+    ]);
+    assert.deepEqual(completed.map((reply) => reply.statusCode).sort(), [200, 404]);
+    assert.deepEqual(completed.find((reply) => reply.statusCode === 200)?.json().scopes, ['read']);
+    assert.deepEqual((await list()).json().items, []);
+    const canceled = (await post(requests, { name: 'iCube' })).json();
+    assert.equal((await post(`${requests}/cancel`, canceled)).statusCode, 204);
+    assert.equal((await post(`${requests}/status`, canceled)).statusCode, 404);
     assert.equal((await post('/inspect', { pin })).statusCode, 401);
     assert.equal((await post('/approve', { id, pin })).statusCode, 401);
     assert.equal((await post('/redeem', { id, secret })).statusCode, 202);

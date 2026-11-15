@@ -1,5 +1,6 @@
 {
   "paths": [
+    "DELETE /api/v1/device-pairing/requests/:id",
     "DELETE /api/v1/device-tokens/:tokenId",
     "DELETE /api/v1/files/:assetId",
     "DELETE /api/v1/guest-grants/:grantId",
@@ -21,6 +22,7 @@
     "GET /api/v1/browse-libraries",
     "GET /api/v1/capabilities",
     "GET /api/v1/changes",
+    "GET /api/v1/device-pairing/requests",
     "GET /api/v1/device-tokens",
     "GET /api/v1/files/:assetId",
     "GET /api/v1/files/:assetId/content",
@@ -106,6 +108,11 @@
     "POST /api/v1/device-pairing/approve",
     "POST /api/v1/device-pairing/inspect",
     "POST /api/v1/device-pairing/redeem",
+    "POST /api/v1/device-pairing/requests",
+    "POST /api/v1/device-pairing/requests/:id/approve",
+    "POST /api/v1/device-pairing/requests/cancel",
+    "POST /api/v1/device-pairing/requests/complete",
+    "POST /api/v1/device-pairing/requests/status",
     "POST /api/v1/device-tokens",
     "POST /api/v1/files/:assetId/adopt",
     "POST /api/v1/guest-grants",
@@ -1506,6 +1513,52 @@
       ],
       "required": [
         "id",
+        "secret"
+      ]
+    },
+    "DevicePairingRequest": {
+      "properties": [
+        "expiresInSeconds",
+        "id",
+        "secret"
+      ],
+      "required": [
+        "expiresInSeconds",
+        "id",
+        "secret"
+      ]
+    },
+    "DevicePairingPending": {
+      "properties": [
+        "approved",
+        "expiresAt",
+        "id",
+        "name"
+      ],
+      "required": [
+        "approved",
+        "expiresAt",
+        "id",
+        "name"
+      ]
+    },
+    "DevicePairingRequestList": {
+      "properties": [
+        "items"
+      ],
+      "required": [
+        "items"
+      ]
+    },
+    "DevicePairingCompletion": {
+      "properties": [
+        "id",
+        "pin",
+        "secret"
+      ],
+      "required": [
+        "id",
+        "pin",
         "secret"
       ]
     },

@@ -5,6 +5,7 @@
   import FormField from './components/FormField.svelte';
   import InlineNotice from './components/InlineNotice.svelte';
   import PairDevice from './PairDevice.svelte';
+  import PairingRequests from './PairingRequests.svelte';
 
   let { client, onrejected, pairingPin = '', onpaired = () => {} }: {
     client: ContentClient;
@@ -72,6 +73,7 @@
 </script>
 
 <h1>Devices</h1>
+<PairingRequests {client} {onrejected} oncompleted={() => void load()} />
 <PairDevice {client} initialPin={pairingPin} onpaired={() => { onpaired(); void load(); }} />
 <p>Give an app a separate token for your account. Tokens follow your library access and can be revoked without signing out your other apps.</p>
 {#if loaded}

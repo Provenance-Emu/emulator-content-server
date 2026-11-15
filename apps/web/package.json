@@ -20,7 +20,8 @@
     "@ecs/client": "workspace:*",
     "@zip.js/zip.js": "2.24.0",
     "libarchive-wasm": "1.2.0",
-    "pdfjs-dist": "6.4.299"
+    "pdfjs-dist": "6.4.299",
+    "qrcode-generator": "1.4.4"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",

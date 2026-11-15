@@ -1418,6 +1418,52 @@ public struct DevicePairingRedemption: Codable, Equatable, Sendable {
     }
 }
 
+public struct DevicePairingRequest: Codable, Equatable, Sendable {
+    public var id: String
+    public var secret: String
+    public var expiresInSeconds: Int
+
+    public init(id: String, secret: String, expiresInSeconds: Int) {
+        self.id = id
+        self.secret = secret
+        self.expiresInSeconds = expiresInSeconds
+    }
+}
+
+public struct DevicePairingPending: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var approved: Bool
+    public var expiresAt: String
+
+    public init(id: String, name: String, approved: Bool, expiresAt: String) {
+        self.id = id
+        self.name = name
+        self.approved = approved
+        self.expiresAt = expiresAt
+    }
+}
+
+public struct DevicePairingRequestList: Codable, Equatable, Sendable {
+    public var items: [DevicePairingPending]
+
+    public init(items: [DevicePairingPending]) {
+        self.items = items
+    }
+}
+
+public struct DevicePairingCompletion: Codable, Equatable, Sendable {
+    public var id: String
+    public var secret: String
+    public var pin: String
+
+    public init(id: String, secret: String, pin: String) {
+        self.id = id
+        self.secret = secret
+        self.pin = pin
+    }
+}
+
 public struct DeviceTokenDraft: Codable, Equatable, Sendable {
     public var name: String
     public var scopes: [String]

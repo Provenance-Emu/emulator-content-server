@@ -129,3 +129,32 @@ test('a scanned TV pairing link survives sign-in and requires explicit approval'
   expect(page.url()).not.toContain(secret);
   expect(page.url()).not.toContain('#pair=');
 });
+
+test('owner approves a pending request and its PIN and QR clear after redemption', async ({
+  page,
+  fixture,
+}) => {
+  const post = (suffix: string, body: object) =>
+    fetch(`${fixture.origin}/api/v1/device-pairing/requests${suffix}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Devices', exact: true }).click();
+  const requests = page.getByRole('region', { name: 'Device access requests' });
+  const qr = requests.getByRole('img', { name: 'Pairing QR code' });
+  const response = await post('', { name: 'Generated handheld' });
+  expect(response.status).toBe(201);
+  const { id, secret } = await response.json();
+  await expect(requests.getByText('Generated handheld', { exact: true })).toBeVisible();
+  await expect(qr).toHaveCount(0);
+  await requests.getByRole('button', { name: 'Approve read access' }).click();
+  await expect(qr).toBeVisible();
+  const pin = await requests.getByText(/^\d{6}$/).innerText();
+  const redeemed = await post('/complete', { id, secret, pin });
+  expect(redeemed.status).toBe(200);
+  await expect(qr).toHaveCount(0);
+  await expect(page.getByRole('cell', { name: 'Generated handheld', exact: true })).toBeVisible();
+});

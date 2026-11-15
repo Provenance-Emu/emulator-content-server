@@ -35,6 +35,8 @@ import type {
   ContentRootSummaryList,
   DevicePairingApproved,
   DevicePairingCandidate,
+  DevicePairingPIN,
+  DevicePairingRequestList,
   DeviceTokenCreated,
   DeviceTokenDraft,
   DeviceTokenList,
@@ -994,6 +996,18 @@ export class ContentClient {
 
   approveDevicePairing(id: string, pin: string): Promise<DevicePairingApproved> {
     return this.post('/api/v1/device-pairing/approve', { id, pin });
+  }
+
+  devicePairingRequests(): Promise<DevicePairingRequestList> {
+    return this.getJson('/api/v1/device-pairing/requests');
+  }
+
+  approveDevicePairingRequest(id: string): Promise<DevicePairingPIN> {
+    return this.post(`/api/v1/device-pairing/requests/${encodeURIComponent(id)}/approve`, {});
+  }
+
+  dismissDevicePairingRequest(id: string): Promise<void> {
+    return this.remove(`/api/v1/device-pairing/requests/${encodeURIComponent(id)}`);
   }
 
   deviceTokens(): Promise<DeviceTokenList> {

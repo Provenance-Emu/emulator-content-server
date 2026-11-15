@@ -189,6 +189,9 @@ importers:
       pdfjs-dist:
         specifier: 6.4.299
         version: 6.4.299
+      qrcode-generator:
+        specifier: 1.4.4
+        version: 1.4.4
     devDependencies:
       '@playwright/test':
         specifier: 1.58.2
@@ -1247,6 +1250,9 @@ packages:
   process-warning@5.1.0:
     resolution: {integrity: sha512-jQSaVHsPgtyw60e1rQ/A+/ArPEj/S8pS/vFnyGa/gYFXrKk/6RuDkoqVDQ5NI5MmS01698ltlAk0NoDBNLujRw==}
 
+  qrcode-generator@1.4.4:
+    resolution: {integrity: sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==}
+
   quick-format-unescaped@4.0.4:
     resolution: {integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==}
 
@@ -2185,6 +2191,8 @@ snapshots:
   process-warning@4.0.1: {}
 
   process-warning@5.1.0: {}
+
+  qrcode-generator@1.4.4: {}
 
   quick-format-unescaped@4.0.4: {}
 
