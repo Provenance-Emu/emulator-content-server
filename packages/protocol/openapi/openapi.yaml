@@ -1874,7 +1874,7 @@ paths:
               schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
         '202': { description: Awaiting owner approval. }
         '400': { description: The PIN did not match or the request body is invalid. }
-        '404': { description: Request expired, already redeemed, or unavailable. }
+        '404': { description: 'Request expired, already redeemed, or unavailable.' }
   /api/v1/device-tokens:
     get:
       operationId: listDeviceTokens
