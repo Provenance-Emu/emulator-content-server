@@ -17,7 +17,7 @@ public struct DevicePairingView: View {
     @State private var approved = false
     @State private var code = ""
     @State private var error: String?
-    @State private var completed = false
+    @State private var receivedToken: String?
     #if os(iOS)
     @State private var scanning = false
     #endif
@@ -36,7 +36,10 @@ public struct DevicePairingView: View {
     public var body: some View {
         NavigationStack {
             Form {
-                if let pin = session?.legacyPIN {
+                if let receivedToken {
+                    Button("Retry Connection") { run { try await connect(receivedToken) } }
+                        .disabled(operation != nil)
+                } else if let pin = session?.legacyPIN {
                     Text("Enter this PIN in Settings → Devices on the server.")
                     Text(pin).font(.title.monospacedDigit())
                     if let url = legacyApprovalURL(pin) {
@@ -80,7 +83,7 @@ public struct DevicePairingView: View {
         .onAppear { if session == nil && error == nil { start() } }
         .onDisappear {
             operation?.cancel()
-            if let session, !completed {
+            if let session, receivedToken == nil {
                 Task { try? await client.cancel(session) }
             }
         }
@@ -125,7 +128,7 @@ public struct DevicePairingView: View {
 
     private func connect(_ token: String) async throws {
         try Task.checkCancellation()
-        completed = true
+        receivedToken = token
         try await onToken(token)
         dismiss()
     }
