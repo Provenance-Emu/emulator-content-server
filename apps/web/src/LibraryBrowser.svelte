@@ -40,6 +40,7 @@
     onsettings,
     onchoose,
     oncreate,
+    onpairdevice,
   }: {
     context: ServerContext;
     application: ApplicationController;
@@ -52,6 +53,7 @@
     onsettings: (destination?: SettingsDestination) => void;
     onchoose: (scope: LibraryScope) => void;
     oncreate: () => void;
+    onpairdevice: () => void;
   } = $props();
   const browser = untrack(() => createLibraryBrowser(context.client, null));
   const authEpoch = untrack(() => get(application).authEpoch);
@@ -357,7 +359,10 @@
           <h1>{libraries.length || !owner ? 'Your libraries' : 'Welcome to your game library'}</h1>
           <p class="dim">{libraries.length ? 'Choose a library to browse, play or manage your games.' : 'Create a library, add your games, then play or download them.'}</p>
         </div>
-        {#if owner}<button class="primary" type="button" onclick={oncreate}>{libraries.length ? 'Create a library' : 'Create your first library'}</button>{/if}
+        {#if owner}<div class="actions">
+          <button type="button" onclick={onpairdevice}>Pair a device</button>
+          <button class="primary" type="button" onclick={oncreate}>{libraries.length ? 'Create a library' : 'Create your first library'}</button>
+        </div>{/if}
       </header>
       {#if owner && !libraries.length}<UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
       {#if libraries.length}

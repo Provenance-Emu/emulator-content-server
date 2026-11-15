@@ -18,6 +18,7 @@
   import ThemePicker from './components/ThemePicker.svelte';
   import ServerUpdatePrompt from './ServerUpdatePrompt.svelte';
   import Modal from './components/Modal.svelte';
+  import PairingInvitation from './PairingInvitation.svelte';
   let {
     context,
     folderSelection,
@@ -57,6 +58,7 @@
   let playerEpoch = $state(0);
   let drawer = $state(false);
   let signingIn = $state(false);
+  let invitingDevice = $state(false);
   let editing = $state<Library | null | undefined>(undefined);
   const unsubscribe = application.subscribe((state) => {
     if (!state.signedIn) {
@@ -67,6 +69,7 @@
       scope = null;
       rootId = '';
       settings = false;
+      invitingDevice = false;
       settingsLibraryId = '';
       drawer = false;
       if (wasAuthenticated) recordLocation(true);
@@ -213,6 +216,9 @@
     <span>{context.label}</span>
   </header>
   {#if $application.signedIn && !signingIn}
+    {#if invitingDevice && $application.owner}
+      <PairingInvitation client={context.client} origin={context.origin} onclose={() => invitingDevice = false} />
+    {/if}
     <aside class="library-sidebar">{@render navigation()}</aside>
     {#if drawer}<Modal title="Library navigation" navigation onclose={() => (drawer = false)}>
         {@render navigation()}
@@ -238,6 +244,7 @@
             onsettings={openSettings}
             onchoose={choose}
             oncreate={() => (editing = null)}
+            onpairdevice={() => (invitingDevice = true)}
           />{/key}
         </div>
         {#if settings}<SettingsShell

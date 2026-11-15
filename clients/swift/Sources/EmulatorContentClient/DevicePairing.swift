@@ -35,6 +35,42 @@ public struct DevicePairingClient: Sendable {
         }
     }
 
+    /// An owner-created code from the server's home page.
+    public struct Invitation: Equatable, Sendable {
+        public let origin: URL
+        fileprivate let id: String
+        fileprivate let pin: String
+
+        public init(qrCode: String) throws {
+            guard qrCode.utf8.count <= 2048,
+                  let code = URLComponents(string: qrCode),
+                  code.scheme == "ecs-pair", code.host == "invite", code.path.isEmpty,
+                  code.user == nil, code.password == nil, code.port == nil, code.fragment == nil,
+                  let items = code.queryItems, items.count == 3,
+                  let server = items.first(where: { $0.name == "server" })?.value,
+                  let id = items.first(where: { $0.name == "id" })?.value, UUID(uuidString: id) != nil,
+                  let pin = items.first(where: { $0.name == "pin" })?.value, DevicePairingClient.isPIN(pin),
+                  let url = URL(string: server),
+                  let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  ["http", "https"].contains(parts.scheme), parts.host?.isEmpty == false,
+                  parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil,
+                  parts.path.isEmpty || parts.path == "/"
+            else { throw Failure.invalidResponse }
+            self.origin = url
+            self.id = id
+            self.pin = pin
+        }
+
+        public func redeem(deviceName: String, allowHTTP: Bool) async throws -> String {
+            let client = try DevicePairingClient(origin: origin, allowHTTP: allowHTTP)
+            let claim = DevicePairingInvitationClaim(id: id, pin: pin, name: deviceName)
+            let (data, status) = try await client.post("device-pairing/invitations/redeem", claim)
+            if status == 404 { throw Failure.expired }
+            guard status == 200 else { throw Failure.response(status) }
+            return try DevicePairingClient.readToken(from: data)
+        }
+    }
+
     private let send: Transport
     private static let requests = "device-pairing/requests"
 
@@ -113,13 +149,15 @@ public struct DevicePairingClient: Sendable {
         case 202: return nil
         case 404: throw Failure.expired
         case 200:
-            let result = try JSONDecoder().decode(DeviceTokenCreated.self, from: data)
-            guard result.scopes == ["read"], Self.isToken(result.token) else {
-                throw Failure.invalidResponse
-            }
-            return result.token
+            return try Self.readToken(from: data)
         default: throw Failure.response(status)
         }
+    }
+
+    private static func readToken(from data: Data) throws -> String {
+        let result = try JSONDecoder().decode(DeviceTokenCreated.self, from: data)
+        guard result.scopes == ["read"], isToken(result.token) else { throw Failure.invalidResponse }
+        return result.token
     }
 
     public func cancel(_ session: Session) async throws {

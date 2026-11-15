@@ -164,6 +164,97 @@ private struct LegacyApprovalCode: View {
 }
 
 #if os(iOS)
+/// Scans a server address and invitation created on the server's home page.
+public struct DevicePairingInvitationView: View {
+    private let deviceName: String
+    private let onToken: @MainActor (URL, String) async throws -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var invitation: DevicePairingClient.Invitation?
+    @State private var token: String?
+    @State private var error: String?
+    @State private var allowHTTP = false
+    @State private var scanning = false
+    @State private var operation: Task<Void, Never>?
+
+    public init(deviceName: String, onToken: @escaping @MainActor (URL, String) async throws -> Void) {
+        self.deviceName = deviceName
+        self.onToken = onToken
+    }
+
+    public var body: some View {
+        NavigationStack {
+            Form {
+                if let invitation {
+                    LabeledContent("Server", value: invitation.origin.absoluteString)
+                    if invitation.origin.scheme == "http" {
+                        Toggle("Allow pairing over local HTTP", isOn: $allowHTTP)
+                    }
+                    Button(token == nil ? "Connect" : "Retry Connection") {
+                        run {
+                            let confirmed: String
+                            if let token {
+                                confirmed = token
+                            } else {
+                                confirmed = try await invitation.redeem(deviceName: deviceName, allowHTTP: allowHTTP)
+                                token = confirmed
+                            }
+                            try await onToken(invitation.origin, confirmed)
+                            dismiss()
+                        }
+                    }
+                    .disabled(invitation.origin.scheme == "http" && !allowHTTP)
+                }
+                if DataScannerViewController.isSupported {
+                    Button(invitation == nil ? "Scan QR Code" : "Scan Another Code") {
+                        run {
+                            guard await AVCaptureDevice.requestAccess(for: .video),
+                                  DataScannerViewController.isAvailable else {
+                                error = "Camera access is unavailable."
+                                return
+                            }
+                            scanning = true
+                        }
+                    }
+                } else {
+                    Text("This device does not support live QR scanning.")
+                }
+                if let error { Text(error).foregroundStyle(.secondary) }
+                if operation != nil { ProgressView() }
+            }
+            .disabled(operation != nil)
+            .navigationTitle("Pair with a Server")
+            .toolbar { Button("Cancel", role: .cancel) { dismiss() } }
+        }
+        .sheet(isPresented: $scanning) {
+            NavigationStack {
+                PairingScanner { code in
+                    scanning = false
+                    do {
+                        invitation = try DevicePairingClient.Invitation(qrCode: code)
+                        allowHTTP = false
+                        token = nil
+                        error = nil
+                    } catch {
+                        self.error = "Scan the pairing QR from the server’s home page."
+                    }
+                }
+                .toolbar { Button("Cancel") { scanning = false } }
+            }
+        }
+        .onDisappear { operation?.cancel() }
+    }
+
+    private func run(_ work: @escaping @MainActor () async throws -> Void) {
+        guard operation == nil else { return }
+        error = nil
+        operation = Task {
+            defer { operation = nil }
+            do { try await work() }
+            catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+        }
+    }
+}
+
 private struct PairingScanner: UIViewControllerRepresentable {
     let onCode: (String) -> Void
 

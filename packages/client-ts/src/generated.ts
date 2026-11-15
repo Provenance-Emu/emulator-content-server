@@ -708,6 +708,18 @@ export interface DevicePairingRedemption {
   secret: string;
 }
 
+export interface DevicePairingInvitation {
+  id: string;
+  pin: string;
+  expiresInSeconds: number;
+}
+
+export interface DevicePairingInvitationClaim {
+  id: string;
+  pin: string;
+  name: string;
+}
+
 export interface DevicePairingRequest {
   id: string;
   secret: string;

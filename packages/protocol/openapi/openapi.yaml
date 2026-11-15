@@ -1765,6 +1765,48 @@ paths:
               schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
         '202': { description: Awaiting owner approval. }
         '404': { description: 'Pairing expired, already redeemed, or unavailable.' }
+  /api/v1/device-pairing/invitations:
+    post:
+      operationId: createDevicePairingInvitation
+      tags: [Authentication]
+      description: Owner-only. Creates a one-use invitation valid for five minutes. Encode its ID and PIN with the server origin for the requesting device.
+      responses:
+        '201':
+          description: A new read-only pairing invitation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DevicePairingInvitation' }
+        '429': { description: Too many active or recent invitations. }
+  /api/v1/device-pairing/invitations/{id}:
+    delete:
+      operationId: withdrawDevicePairingInvitation
+      tags: [Authentication]
+      description: The owner who created the invitation may withdraw it before redemption.
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204': { description: Invitation withdrawn. }
+        '404': { description: Invitation expired, redeemed, or unavailable. }
+  /api/v1/device-pairing/invitations/redeem:
+    post:
+      operationId: redeemDevicePairingInvitation
+      tags: [Authentication]
+      security: []
+      description: Exchanges an active invitation ID and its six-digit PIN for a revocable read-only device token issued once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {id: REPLACE_WITH_INVITATION_ID, pin: '123456', name: Living room handheld}
+            schema: { $ref: '#/components/schemas/DevicePairingInvitationClaim' }
+      responses:
+        '200':
+          description: Read-only token for this device.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceTokenCreated' }
+        '404': { description: Invitation expired, redeemed, withdrawn, or code did not match. }
+        '429': { description: Too many attempts. }
   /api/v1/device-pairing/requests:
     get:
       operationId: listDevicePairingRequests
@@ -3408,6 +3450,20 @@ components:
       properties:
         id: { type: string }
         secret: { type: string }
+    DevicePairingInvitation:
+      type: object
+      required: [id, pin, expiresInSeconds]
+      properties:
+        id: { type: string }
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+        expiresInSeconds: { type: integer }
+    DevicePairingInvitationClaim:
+      type: object
+      required: [id, pin, name]
+      properties:
+        id: { type: string }
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+        name: { type: string }
     DevicePairingRequest:
       type: object
       required: [id, secret, expiresInSeconds]
