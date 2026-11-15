@@ -1830,6 +1830,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {id: REPLACE_WITH_PAIRING_ID, secret: REPLACE_WITH_PAIRING_SECRET}
             schema: { $ref: '#/components/schemas/DevicePairingRedemption' }
       responses:
         '200':
@@ -1848,6 +1849,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {id: REPLACE_WITH_PAIRING_ID, secret: REPLACE_WITH_PAIRING_SECRET}
             schema: { $ref: '#/components/schemas/DevicePairingRedemption' }
       responses:
         '204': { description: Request canceled. }
