@@ -1,6 +1,6 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
-#if os(iOS)
+#if os(iOS) && !targetEnvironment(macCatalyst)
 import AVFoundation
 import VisionKit
 #endif
@@ -18,7 +18,7 @@ public struct DevicePairingView: View {
     @State private var code = ""
     @State private var error: String?
     @State private var receivedToken: String?
-    #if os(iOS)
+    #if os(iOS) && !targetEnvironment(macCatalyst)
     @State private var scanning = false
     #endif
 
@@ -57,7 +57,7 @@ public struct DevicePairingView: View {
                         #endif
                     Button("Connect") { finish(session, code: code) }
                         .disabled(operation != nil || (try? session.pin(from: code)) == nil)
-                    #if os(iOS)
+                    #if os(iOS) && !targetEnvironment(macCatalyst)
                     if DataScannerViewController.isSupported {
                         Button("Scan QR Code") {
                             run {
@@ -87,7 +87,7 @@ public struct DevicePairingView: View {
                 Task { try? await client.cancel(session) }
             }
         }
-        #if os(iOS)
+        #if os(iOS) && !targetEnvironment(macCatalyst)
         .sheet(isPresented: $scanning) {
             NavigationStack {
                 PairingScanner { value in
@@ -163,7 +163,7 @@ private struct LegacyApprovalCode: View {
     }
 }
 
-#if os(iOS)
+#if os(iOS) && !targetEnvironment(macCatalyst)
 /// Scans a server address and invitation created on the server's home page.
 public struct DevicePairingInvitationView: View {
     private let deviceName: String
