@@ -589,6 +589,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"systems":[{"systemId":"com.provenance.dreamcast","formats":["chd","cdi"]}]}
             schema: { $ref: '#/components/schemas/GameRomPreferences' }
       responses:
         '200':
@@ -606,6 +607,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"title":"Example game"}
             schema: { $ref: '#/components/schemas/GameSourceLink' }
       responses:
         '200':
@@ -1328,6 +1330,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"enabled":true,"keepOriginals":false}
             schema: { $ref: '#/components/schemas/DiscConversionPolicy' }
       responses:
         '200':
@@ -1345,6 +1348,7 @@ paths:
         required: true
         content:
           application/json:
+            example: {"keepOriginals":false}
             schema: { $ref: '#/components/schemas/DiscConversionDraft' }
       responses:
         '200':

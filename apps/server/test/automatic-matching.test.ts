@@ -199,37 +199,41 @@ test('automatic search retains alternatives with conflicting verified identities
 test('a folder scan fills metadata and artwork automatically using online sources and skips repeated unchanged scans', async () => {
   const f = await fixture();
   const worker = Fastify();
-  registerLibraryJobs(worker, { catalog: f.catalog, automaticMatching: true } as ServerContext, {
-    async autoMatch(_actor, sourceId, options) {
-      assert.equal(options.online, true);
-      assert.equal(options.checksum, true);
-      assert.equal(options.providerIds, undefined);
-      for (const kind of ['metadata', 'artwork'] as const) {
-        const current = f.catalog.sourceMatches(sourceId);
-        f.catalog.saveSourceMatch(
-          sourceId,
-          current.revision,
-          kind,
-          {
-            id: kind,
-            providerId: 'test.fill',
+  registerLibraryJobs(
+    worker,
+    { catalog: f.catalog, dataDir: join(f.base, 'data'), automaticMatching: true } as ServerContext,
+    {
+      async autoMatch(_actor, sourceId, options) {
+        assert.equal(options.online, true);
+        assert.equal(options.checksum, true);
+        assert.equal(options.providerIds, undefined);
+        for (const kind of ['metadata', 'artwork'] as const) {
+          const current = f.catalog.sourceMatches(sourceId);
+          f.catalog.saveSourceMatch(
+            sourceId,
+            current.revision,
             kind,
-            title: 'Generated game',
-            confidence: 'checksum',
-            metadata: {},
-            originKind: null,
-            contentAvailable: false,
-            contentType: null,
-            fileName: null,
-            updatedAt: new Date().toISOString(),
-          },
-          null,
-          f.owner.id,
-        );
-      }
-      return { status: 'saved', saved: 2, suggestions: 0, error: null };
+            {
+              id: kind,
+              providerId: 'test.fill',
+              kind,
+              title: 'Generated game',
+              confidence: 'checksum',
+              metadata: {},
+              originKind: null,
+              contentAvailable: false,
+              contentType: null,
+              fileName: null,
+              updatedAt: new Date().toISOString(),
+            },
+            null,
+            f.owner.id,
+          );
+        }
+        return { status: 'saved', saved: 2, suggestions: 0, error: null };
+      },
     },
-  });
+  );
   await worker.ready();
   try {
     const scan = () =>
@@ -339,32 +343,36 @@ test('the overview reports what the automatic fill did for a folder and counts p
   worker.addHook('onRequest', async (request) => {
     (request as unknown as { actor: unknown }).actor = f.actor;
   });
-  registerLibraryJobs(worker, { catalog: f.catalog, automaticMatching: true } as ServerContext, {
-    async autoMatch(_actor, sourceId) {
-      f.catalog.saveSourceMatch(
-        sourceId,
-        f.catalog.sourceMatches(sourceId).revision,
-        'metadata',
-        {
-          id: 'metadata',
-          providerId: 'test.fill',
-          kind: 'metadata',
-          title: 'Generated game',
-          confidence: 'checksum',
-          metadata: {},
-          originKind: null,
-          contentAvailable: false,
-          contentType: null,
-          fileName: null,
-          updatedAt: new Date().toISOString(),
-        },
-        null,
-        f.owner.id,
-      );
-      // Details were saved, but one lookup source could not be reached.
-      return { status: 'saved', saved: 1, suggestions: 0, error: PROVIDERS_FAILED_REASON };
+  registerLibraryJobs(
+    worker,
+    { catalog: f.catalog, dataDir: join(f.base, 'data'), automaticMatching: true } as ServerContext,
+    {
+      async autoMatch(_actor, sourceId) {
+        f.catalog.saveSourceMatch(
+          sourceId,
+          f.catalog.sourceMatches(sourceId).revision,
+          'metadata',
+          {
+            id: 'metadata',
+            providerId: 'test.fill',
+            kind: 'metadata',
+            title: 'Generated game',
+            confidence: 'checksum',
+            metadata: {},
+            originKind: null,
+            contentAvailable: false,
+            contentType: null,
+            fileName: null,
+            updatedAt: new Date().toISOString(),
+          },
+          null,
+          f.owner.id,
+        );
+        // Details were saved, but one lookup source could not be reached.
+        return { status: 'saved', saved: 1, suggestions: 0, error: PROVIDERS_FAILED_REASON };
+      },
     },
-  });
+  );
   await worker.ready();
   try {
     const overview = async () =>
@@ -425,12 +433,20 @@ test('new evidence queues only the affected game, even after the worker restarts
     f.app.inject({ method: 'POST', url: `/api/v1/roots/${f.root.id}/scan`, headers: f.auth });
   const start = async () => {
     const worker = Fastify();
-    registerLibraryJobs(worker, { catalog: f.catalog, automaticMatching: true } as ServerContext, {
-      async autoMatch(_actor, id) {
-        called.push(f.catalog.getSource(id)?.displayName ?? '');
-        return { status: 'unmatched', saved: 0, suggestions: 0, error: null };
+    registerLibraryJobs(
+      worker,
+      {
+        catalog: f.catalog,
+        dataDir: join(f.base, 'data'),
+        automaticMatching: true,
+      } as ServerContext,
+      {
+        async autoMatch(_actor, id) {
+          called.push(f.catalog.getSource(id)?.displayName ?? '');
+          return { status: 'unmatched', saved: 0, suggestions: 0, error: null };
+        },
       },
-    });
+    );
     await worker.ready();
     return worker;
   };
@@ -521,11 +537,15 @@ test('folder registration checks files without a client scan and watcher checks 
     f.owner.id,
   ).job;
   f.catalog.libraryJobs.state(interrupted.id, 'running');
-  registerLibraryJobs(worker, { catalog: f.catalog, automaticMatching: true } as ServerContext, {
-    async autoMatch() {
-      return { status: 'unmatched', saved: 0, suggestions: 0, error: null };
+  registerLibraryJobs(
+    worker,
+    { catalog: f.catalog, dataDir: join(f.base, 'data'), automaticMatching: true } as ServerContext,
+    {
+      async autoMatch() {
+        return { status: 'unmatched', saved: 0, suggestions: 0, error: null };
+      },
     },
-  });
+  );
   try {
     await worker.ready();
     assert.equal(f.catalog.libraryJobs.get(interrupted.id)?.state, 'interrupted');
