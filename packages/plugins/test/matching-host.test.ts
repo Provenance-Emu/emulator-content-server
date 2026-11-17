@@ -56,7 +56,7 @@ test('pending queue is bounded and shutting down rejects every queued request', 
   const marker = join(tmpdir(), `ecs-match-cap-${process.pid}-${Date.now()}`);
   const { directory, job } =
     await fixture(`import {writeFile} from 'node:fs/promises';export default {search:async()=>{
-    await writeFile(${JSON.stringify(marker)},String(process.pid));await new Promise(()=>{});
+    await writeFile(${JSON.stringify(marker)},String(process.pid)+'\\n');await new Promise(()=>{});
   }};`);
   try {
     const active = assert.rejects(matchingJob(job('active')), /clos/);
@@ -78,7 +78,7 @@ test('a queued deadline expires without terminating the healthy active worker', 
   const marker = join(tmpdir(), `ecs-match-queued-deadline-${process.pid}-${Date.now()}`);
   const { directory, job } =
     await fixture(`import {writeFile} from 'node:fs/promises';export default {search:async input=>{
-    if(input.name==='active'){await writeFile(${JSON.stringify(marker)},String(process.pid));await new Promise(r=>setTimeout(r,200));}
+    if(input.name==='active'){await writeFile(${JSON.stringify(marker)},String(process.pid)+'\\n');await new Promise(r=>setTimeout(r,200));}
     return [{id:'one',kind:'metadata',title:input.name,confidence:'local',metadata:{pid:String(process.pid)}}];
   }};`);
   try {
@@ -100,7 +100,7 @@ test('pool admits at most two scopes and scoped shutdown preserves the other act
   const fixtures = await Promise.all(
     [0, 1, 2].map((i) =>
       fixture(`import {writeFile} from 'node:fs/promises';export default {search:async input=>{
-    await writeFile(${JSON.stringify(join(markers, String(i)))},String(process.pid));
+    await writeFile(${JSON.stringify(join(markers, String(i)))},String(process.pid)+'\\n');
     if(input.name==='hang')await new Promise(()=>{});if(input.name==='slow')await new Promise(r=>setTimeout(r,200));
     return [{id:'one',kind:'metadata',title:input.name,confidence:'local',metadata:{pid:String(process.pid)}}];
   }};`),
@@ -201,10 +201,13 @@ async function fixture(code: string) {
 async function started(path: string): Promise<number> {
   for (let attempt = 0; attempt < 100; attempt++) {
     try {
-      return Number(await readFile(path, 'utf8'));
-    } catch {
-      await delay(20);
+      const record = await readFile(path, 'utf8');
+      // The file can be visible before its contents have been written.
+      if (/^[1-9][0-9]*\n$/.test(record)) return Number(record);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
+    await delay(20);
   }
   throw new Error('Provider did not start');
 }
@@ -241,7 +244,7 @@ test('aborted active worker cannot answer the next queued job and is replaced', 
   const { directory, job } = await fixture(`
     import {writeFile} from 'node:fs/promises';
     export default {search: async input=>{
-      if(input.name==='old'){await writeFile(${JSON.stringify(marker)},String(process.pid));await new Promise(r=>setTimeout(r,200));}
+      if(input.name==='old'){await writeFile(${JSON.stringify(marker)},String(process.pid)+'\\n');await new Promise(r=>setTimeout(r,200));}
       return [{id:'one',kind:'metadata',title:input.name,confidence:'local',metadata:{pid:String(process.pid)}}];
     }};`);
   try {
@@ -267,7 +270,7 @@ test('queued cancellation preserves the active worker and the following FIFO req
   const { directory, job } = await fixture(`
     import {writeFile} from 'node:fs/promises'; let calls=0;
     export default {search: async input=>{
-      calls++; if(input.name==='first'){await writeFile(${JSON.stringify(marker)},String(process.pid));await new Promise(r=>setTimeout(r,150));}
+      calls++; if(input.name==='first'){await writeFile(${JSON.stringify(marker)},String(process.pid)+'\\n');await new Promise(r=>setTimeout(r,150));}
       return [{id:'one',kind:'metadata',title:input.name,confidence:'local',metadata:{pid:String(process.pid),calls:String(calls)}}];
     }};`);
   try {
@@ -310,7 +313,7 @@ test('scoped shutdown rejects active and queued work, kills its worker, and perm
   const marker = join(tmpdir(), `ecs-match-close-${process.pid}-${Date.now()}`);
   const { directory, job } = await fixture(`import {writeFile} from 'node:fs/promises';
     export default {search:async input=>{
-      if(input.name==='hang'){await writeFile(${JSON.stringify(marker)},String(process.pid));await new Promise(()=>{});}
+      if(input.name==='hang'){await writeFile(${JSON.stringify(marker)},String(process.pid)+'\\n');await new Promise(()=>{});}
       return [{id:'one',kind:'metadata',title:input.name,confidence:'local',metadata:{pid:String(process.pid)}}];
     }};`);
   try {
@@ -458,7 +461,7 @@ test('provider that ignores its own deadline is retired before another job can o
   const marker = join(tmpdir(), `ecs-match-provider-deadline-${process.pid}-${Date.now()}`);
   const { directory, job } =
     await fixture(`import {writeFile} from 'node:fs/promises';export default {search:async input=>{
-    if(input.name==='ignore'){await writeFile(${JSON.stringify(marker)},String(process.pid));await new Promise(()=>{});}
+    if(input.name==='ignore'){await writeFile(${JSON.stringify(marker)},String(process.pid)+'\\n');await new Promise(()=>{});}
     return [{id:'one',kind:'metadata',title:input.name,confidence:'local',metadata:{pid:String(process.pid)}}];
   }};`);
   try {
