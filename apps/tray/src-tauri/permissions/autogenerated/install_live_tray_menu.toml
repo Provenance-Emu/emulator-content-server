@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-install-live-tray-menu"
+description = "Enables the install_live_tray_menu command without any pre-configured scope."
+commands.allow = ["install_live_tray_menu"]
+
+[[permission]]
+identifier = "deny-install-live-tray-menu"
+description = "Denies the install_live_tray_menu command without any pre-configured scope."
+commands.deny = ["install_live_tray_menu"]

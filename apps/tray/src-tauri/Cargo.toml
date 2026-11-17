@@ -10,7 +10,7 @@ publish = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "~2.12.3", features = ["tray-icon"] }
 # Keep these aligned with the JavaScript plugins in ../package.json.
 tauri-plugin-opener = "=2.5.1"
 tauri-plugin-process = "=2.3.1"
@@ -18,7 +18,15 @@ tauri-plugin-process = "=2.3.1"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+tempfile = "3"
 uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+dispatch2 = "0.3"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["NSWorkspace"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSString", "NSURL"] }
+plist = "1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod cli_tools;
+mod companion_apps;
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod desktop_update;
 mod downloads;
@@ -233,18 +234,20 @@ fn install_startup_menu(app: &tauri::App) -> tauri::Result<()> {
             &quit,
         ],
     )?;
-    let tray = app.tray_by_id("status").ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "The configured tray icon is missing",
-        )
-    })?;
-    tray.set_menu(Some(menu))?;
-    tray.set_show_menu_on_left_click(true)?;
-    Ok(())
+    companion_apps::install_menu(app.handle(), menu)
 }
 
 fn startup_menu_action(app: &tauri::AppHandle, id: &str) {
+    if id.starts_with("companion-") {
+        let handle = app.clone();
+        let id = id.to_owned();
+        tauri::async_runtime::spawn_blocking(move || {
+            if let Some(Err(error)) = companion_apps::menu_action(&handle, &id) {
+                handle.dialog().message(error).title("Companion apps").show(|_| {});
+            }
+        });
+        return;
+    }
     if id == "startup-cli-tools" {
         let handle = app.clone();
         tauri::async_runtime::spawn(async move {
@@ -289,15 +292,16 @@ fn startup_menu_action(app: &tauri::AppHandle, id: &str) {
     }
 }
 
-// Rust remains the native shell: fixed OS service commands, no catalog,
-// data directory, credentials, server address, or arbitrary command execution.
+// The native shell owns OS services, application discovery, and the tray menu.
 fn main() {
     tauri::Builder::default()
         .manage(LocalState::default())
         .manage(SetupState::default())
         .on_menu_event(|app, event| startup_menu_action(app, event.id().as_ref()))
         .setup(|app| {
+            app.manage(companion_apps::State::new(app.handle()));
             install_startup_menu(app)?;
+            companion_apps::refresh(app.handle());
             // Build only the two configured windows, with explicit denial of popup inheritance.
             for config in app.config().app.windows.clone() {
                 tauri::WebviewWindowBuilder::from_config(app, &config)?
@@ -355,7 +359,12 @@ fn main() {
             install_local_server,
             reveal_local_setup_code,
             choose_managed_directory,
-            validate_managed_selection
+            validate_managed_selection,
+            companion_apps::companion_apps,
+            companion_apps::open_companion_app,
+            companion_apps::install_companion_app,
+            companion_apps::install_live_tray_menu,
+            companion_apps::set_live_tray_tooltip
         ])
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -363,6 +372,10 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("the tray application failed to start")
         .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::TrayIconEvent(event) = &event {
+                companion_apps::on_tray_click(app, event);
+            }
             // The tray starts hidden, but reopening it from Finder/Dock must
             // reveal a window after both windows have been closed (hidden).
             #[cfg(target_os = "macos")]

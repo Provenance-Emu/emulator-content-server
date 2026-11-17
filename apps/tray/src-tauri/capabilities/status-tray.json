@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "status-tray",
+  "description": "Install and update the live tray menu from the bundled status window.",
+  "windows": ["status"],
+  "permissions": ["allow-install-live-tray-menu", "allow-set-live-tray-tooltip"]
+}

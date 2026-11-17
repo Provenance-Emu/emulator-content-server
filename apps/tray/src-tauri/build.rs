@@ -10,6 +10,11 @@ fn main() {
             "reveal_local_setup_code",
             "choose_managed_directory",
             "validate_managed_selection",
+            "companion_apps",
+            "open_companion_app",
+            "install_companion_app",
+            "install_live_tray_menu",
+            "set_live_tray_tooltip",
         ]),
     ))
     .expect("failed to build native command permissions");

@@ -9,8 +9,8 @@
     folderSelection,
     setupCode,
     revealSetupCode,
-    setupGuide, onsetupclose, onchoosecomputer, desktopUpdates,
-  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void; desktopUpdates?: Snippet } = $props();
+    setupGuide, onsetupclose, onchoosecomputer, desktopUpdates, desktopApps,
+  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void; desktopUpdates?: Snippet; desktopApps?: Snippet } = $props();
 </script>
 
-{#key context.key}<LibraryShell {context} {folderSelection} {setupCode} {revealSetupCode} {setupGuide} {onsetupclose} {onchoosecomputer} {desktopUpdates} />{/key}
+{#key context.key}<LibraryShell {context} {folderSelection} {setupCode} {revealSetupCode} {setupGuide} {onsetupclose} {onchoosecomputer} {desktopUpdates} {desktopApps} />{/key}

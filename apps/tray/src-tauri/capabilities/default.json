@@ -5,7 +5,6 @@
   "windows": ["status", "library"],
   "permissions": [
     "core:default",
-    "core:tray:default",
     "core:menu:default",
     "core:window:allow-show",
     "core:window:allow-hide",

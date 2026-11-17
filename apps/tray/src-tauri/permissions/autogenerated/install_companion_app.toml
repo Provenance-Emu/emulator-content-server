@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-install-companion-app"
+description = "Enables the install_companion_app command without any pre-configured scope."
+commands.allow = ["install_companion_app"]
+
+[[permission]]
+identifier = "deny-install-companion-app"
+description = "Denies the install_companion_app command without any pre-configured scope."
+commands.deny = ["install_companion_app"]

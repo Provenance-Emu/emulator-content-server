@@ -27,8 +27,8 @@
     folderSelection,
     setupCode,
     revealSetupCode,
-    setupGuide, onsetupclose, onchoosecomputer, desktopUpdates,
-  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void; desktopUpdates?: Snippet } = $props();
+    setupGuide, onsetupclose, onchoosecomputer, desktopUpdates, desktopApps,
+  }: { context: ServerContext; folderSelection?: FolderSelectionAdapter; setupCode?: string; revealSetupCode?: () => Promise<void>; setupGuide?: SetupMode; onsetupclose?: () => void; onchoosecomputer?: () => void; desktopUpdates?: Snippet; desktopApps?: Snippet } = $props();
   const application = untrack(() => createApplication(context));
   const updates = untrack(() => createServerUpdates(context.client));
   const updateAccess = $derived($application.owner && $application.hasSession ? $application.authEpoch : null);
@@ -343,6 +343,7 @@
       >
         <Icon name="folder" />Unassigned folders
       </button>{/if}
+    {@render desktopApps?.()}
     <div class="nav-account">
       <button type="button" onclick={() => { guide = $application.owner ? 'host' : 'join'; drawer = false; }}><Icon name="guide" />Setup guide</button>
       <button

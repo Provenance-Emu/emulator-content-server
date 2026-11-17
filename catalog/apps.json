@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "updated": "2026-11-15",
+  "apps": [
+    {
+      "id": "icube",
+      "name": "iCube",
+      "summary": "GameCube and Wii",
+      "systems": [
+        "gamecube",
+        "wii"
+      ],
+      "bundleIds": [
+        "com.joemattiello.iCube"
+      ],
+      "urlSchemes": [
+        "dolphinios"
+      ],
+      "links": {
+        "macAppStore": null,
+        "iosAppStore": null,
+        "tvosAppStore": null,
+        "testFlight": null,
+        "website": "https://icube-emu.com/downloads/"
+      }
+    },
+    {
+      "id": "provenance",
+      "name": "Provenance",
+      "summary": "Multi-system emulator",
+      "systems": [
+        "nes",
+        "snes",
+        "n64",
+        "psx"
+      ],
+      "bundleIds": [
+        "org.provenance-emu.provenance"
+      ],
+      "urlSchemes": [
+        "provenance"
+      ],
+      "links": {
+        "macAppStore": null,
+        "iosAppStore": "https://apps.apple.com/app/id1596862805",
+        "tvosAppStore": null,
+        "testFlight": null,
+        "website": "https://provenance-emu.com/"
+      }
+    },
+    {
+      "id": "ifly",
+      "name": "iFly",
+      "summary": "Dreamcast, NAOMI and Atomiswave",
+      "systems": [
+        "dreamcast",
+        "naomi",
+        "atomiswave"
+      ],
+      "bundleIds": [
+        "com.joemattiello.iFly"
+      ],
+      "urlSchemes": [
+        "ifly"
+      ],
+      "links": {
+        "macAppStore": null,
+        "iosAppStore": null,
+        "tvosAppStore": null,
+        "testFlight": null,
+        "website": "https://ifly-emu.com/downloads/"
+      }
+    },
+    {
+      "id": "virtual-jaguar",
+      "name": "Virtual Jaguar",
+      "summary": "Atari Jaguar and Jaguar CD",
+      "systems": [
+        "jaguar",
+        "jaguarcd"
+      ],
+      "bundleIds": [
+        "io.github.libretro.VirtualJaguar"
+      ],
+      "urlSchemes": [],
+      "links": {
+        "macAppStore": null,
+        "iosAppStore": null,
+        "tvosAppStore": null,
+        "testFlight": null,
+        "website": "https://jaguar.provenance-emu.com/app.html"
+      }
+    }
+  ]
+}

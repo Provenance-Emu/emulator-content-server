@@ -1,5 +1,7 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/core';
+  import { listen } from '@tauri-apps/api/event';
+  import { getCurrentWindow } from '@tauri-apps/api/window';
   import App from '@ecs/web/App.svelte';
   import { get } from 'svelte/store';
   import { connectionAddress } from './lib/application';
@@ -11,6 +13,54 @@
   import { createDesktopUpdates } from './lib/desktop-updates';
   import { openExternal, showLibrary } from './lib/windows';
   let { selection }: { selection: DesktopSelection } = $props();
+  interface CompanionApp {
+    id: string;
+    action: { kind: 'open' | 'store' | 'beta' | 'website'; label: string } | null;
+  }
+  let companions = $state<CompanionApp[]>([]);
+  let companionFailure = $state('');
+  let companionRequest = 0;
+
+  async function refreshCompanions() {
+    const request = ++companionRequest;
+    try {
+      const rows = await invoke<CompanionApp[]>('companion_apps');
+      if (!disposed && request === companionRequest) companions = rows.filter((row) => row.action);
+    } catch {
+      if (!disposed && request === companionRequest) companions = [];
+    }
+  }
+
+  async function actOnCompanion(row: CompanionApp) {
+    if (!row.action) return;
+    companionFailure = '';
+    try {
+      await invoke(row.action.kind === 'open' ? 'open_companion_app' : 'install_companion_app', { id: row.id });
+    } catch (error) {
+      companionFailure = String(error);
+      void refreshCompanions();
+    }
+  }
+
+  onMount(() => {
+    if (!('__TAURI_INTERNALS__' in window)) return;
+    const subscriptions = [
+      listen('companion-catalog-changed', () => void refreshCompanions()),
+      getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+        if (focused) void refreshCompanions();
+      }),
+    ];
+    const ready = Promise.allSettled(subscriptions);
+    void ready.then(() => { if (!disposed) void refreshCompanions(); });
+    return () => {
+      void ready.then((results) => {
+        for (const result of results) {
+          if (result.status === 'fulfilled') result.value();
+        }
+      });
+    };
+  });
+
   const appUpdates = createDesktopUpdates();
   const autoInstallDesktop = '__TAURI_INTERNALS__' in window && /Mac/.test(navigator.platform);
   const updateDate = (value: string) => new Date(value).toLocaleString();
@@ -191,12 +241,25 @@
 </header>
 {#if $selection && !welcome}
   {#if awaitingManagedVerification}<p class="startup-verification dim" role="status">Checking local service…</p>
-  {:else}<App context={$selection} {folderSelection} {desktopUpdates}
+  {:else}<App context={$selection} {folderSelection} {desktopUpdates} {desktopApps}
     setupGuide={guideMode} onsetupclose={() => guideMode = undefined} onchoosecomputer={() => { welcome = true; remote = false; }}
     setupCode={setupCode && setupCode.key === $selection.key ? setupCode.value : undefined}
     revealSetupCode={canSetUpMac && ['127.0.0.1', '[::1]'].includes(new URL($selection.origin).hostname) ? revealSetupCode : undefined}
   />{/if}
 {/if}
+{#snippet desktopApps()}
+  {#if companions.length}
+    <div class="desktop-apps" role="group" aria-label="Apps">
+      <p class="nav-label">Apps</p>
+      {#each companions as row (row.id)}
+        {#if row.action}
+          <button type="button" onclick={() => void actOnCompanion(row)}>{row.action.label}</button>
+        {/if}
+      {/each}
+      {#if companionFailure}<p class="problem" role="alert">{companionFailure}</p>{/if}
+    </div>
+  {/if}
+{/snippet}
 {#snippet desktopUpdates()}
   <section aria-label="Desktop app updates">
     <h2>Desktop app updates</h2>
@@ -244,6 +307,7 @@
   {#if $selection}<p class="dim">Browser playback may ask you to sign in separately.</p>{/if}
 {/snippet}
 <style>
+  .desktop-apps { display: grid; gap: .25rem; }
   .computer-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.5rem; }
   .computer-choices section { display: flex; flex-direction: column; align-items: start; margin: 0; padding: var(--space-5); border: var(--border-width) solid var(--line); border-radius: var(--radius-panel); background: var(--color-surface-muted); box-shadow: none; }
   .computer-choices h2 { font-size: 1.15rem; margin-top: 0; }

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-companion-app"
+description = "Enables the open_companion_app command without any pre-configured scope."
+commands.allow = ["open_companion_app"]
+
+[[permission]]
+identifier = "deny-open-companion-app"
+description = "Denies the open_companion_app command without any pre-configured scope."
+commands.deny = ["open_companion_app"]

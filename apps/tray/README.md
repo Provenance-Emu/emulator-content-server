@@ -2,6 +2,8 @@
 
 Installers and first-run instructions: [desktop installation](../../docs/operations/desktop-install.md). The product is named Emulation Server; existing bundle and service identifiers remain unchanged. A native startup menu keeps the library, status and Quit accessible before the frontend is ready. Frontend tray initialization errors reveal the status window.
 
+The **Apps** submenu and desktop library sidebar let you open installed companion apps on macOS or find download links. Install links come from [the companion catalog](../../catalog/apps.json) on `main`. Edit that file to update links for current desktop installs. The tray checks for updates at launch and on use, at most once per day, with a local cache and a bundled fallback. Set an unavailable link to `null`. A populated TestFlight link is public and takes precedence over the website when an App Store link is unavailable.
+
 ## Local login service controls
 
 The menu and status window can start and stop the login service registered for
