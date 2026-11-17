@@ -1480,6 +1480,30 @@ public struct DevicePairingRedemption: Codable, Equatable, Sendable {
     }
 }
 
+public struct DevicePairingInvitation: Codable, Equatable, Sendable {
+    public var id: String
+    public var pin: String
+    public var expiresInSeconds: Int
+
+    public init(id: String, pin: String, expiresInSeconds: Int) {
+        self.id = id
+        self.pin = pin
+        self.expiresInSeconds = expiresInSeconds
+    }
+}
+
+public struct DevicePairingInvitationClaim: Codable, Equatable, Sendable {
+    public var id: String
+    public var pin: String
+    public var name: String
+
+    public init(id: String, pin: String, name: String) {
+        self.id = id
+        self.pin = pin
+        self.name = name
+    }
+}
+
 public struct DevicePairingRequest: Codable, Equatable, Sendable {
     public var id: String
     public var secret: String

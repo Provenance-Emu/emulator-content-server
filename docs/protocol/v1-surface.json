@@ -1,5 +1,6 @@
 {
   "paths": [
+    "DELETE /api/v1/device-pairing/invitations/:id",
     "DELETE /api/v1/device-pairing/requests/:id",
     "DELETE /api/v1/device-tokens/:tokenId",
     "DELETE /api/v1/files/:assetId",
@@ -108,6 +109,8 @@
     "POST /api/v1/device-pairing",
     "POST /api/v1/device-pairing/approve",
     "POST /api/v1/device-pairing/inspect",
+    "POST /api/v1/device-pairing/invitations",
+    "POST /api/v1/device-pairing/invitations/redeem",
     "POST /api/v1/device-pairing/redeem",
     "POST /api/v1/device-pairing/requests",
     "POST /api/v1/device-pairing/requests/:id/approve",
@@ -1576,6 +1579,30 @@
       "required": [
         "id",
         "secret"
+      ]
+    },
+    "DevicePairingInvitation": {
+      "properties": [
+        "expiresInSeconds",
+        "id",
+        "pin"
+      ],
+      "required": [
+        "expiresInSeconds",
+        "id",
+        "pin"
+      ]
+    },
+    "DevicePairingInvitationClaim": {
+      "properties": [
+        "id",
+        "name",
+        "pin"
+      ],
+      "required": [
+        "id",
+        "name",
+        "pin"
       ]
     },
     "DevicePairingRequest": {

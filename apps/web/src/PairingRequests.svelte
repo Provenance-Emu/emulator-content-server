@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import qr from 'qrcode-generator';
   import { ContentError, type ContentClient, type DevicePairingPending } from '@ecs/client';
   import InlineNotice from './components/InlineNotice.svelte';
   import { explain } from './lib/problems';
+  import { pairingQR } from './lib/pairing-qr';
 
   let { client, onrejected, oncompleted }: {
     client: ContentClient;
@@ -71,18 +71,6 @@
     }
   }
 
-  function matrix(id: string, pin: string) {
-    const code = qr(0, 'M');
-    code.addData(`ecs-pair:${id}:${pin}`);
-    code.make();
-    const size = code.getModuleCount();
-    let path = '';
-    for (let row = 0; row < size; row++)
-      for (let col = 0; col < size; col++)
-        if (code.isDark(row, col)) path += `M${col} ${row}h1v1h-1z`;
-    return { size: size + 8, path };
-  }
-
   onMount(() => {
     void refresh();
     const timer = setInterval(() => void refresh(), 3000);
@@ -99,7 +87,7 @@
       <div class="request">
         <p><strong>{item.name}</strong> · {item.approved ? 'Waiting for the device to enter its code' : 'Requested read access'}</p>
         {#if pin}
-          {@const code = matrix(item.id, pin)}
+          {@const code = pairingQR(`ecs-pair:${item.id}:${pin}`)}
           <p>Enter <strong class="pin">{pin}</strong> on the requesting device or scan this code in the app.</p>
           <svg aria-label="Pairing QR code" role="img" width="164" height="164" viewBox={`-4 -4 ${code.size} ${code.size}`} shape-rendering="crispEdges">
             <rect x="-4" y="-4" width={code.size} height={code.size} fill="#fff" />

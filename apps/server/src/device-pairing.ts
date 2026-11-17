@@ -19,17 +19,28 @@ interface Pairing {
   approvedBy?: string;
 }
 
+interface Invitation {
+  ownerId: string;
+  pin: string;
+  expiresAt: number;
+  attemptsRemaining: number;
+}
+
 /** Short-lived approval state is deliberately lost when the server restarts.
  * Only the high-entropy secret held by the requesting device can claim a token.
  */
 export function registerDevicePairing(app: FastifyInstance, context: ServerContext): void {
   const pending = new Map<string, Pairing>();
+  const invitations = new Map<string, Invitation>();
   const unavailable = () => new DomainError('not-found', 404, 'Pairing expired or not found');
 
   function prune() {
     const now = Date.now();
     for (const [id, request] of pending) {
       if (request.expiresAt <= now) pending.delete(id);
+    }
+    for (const [id, invite] of invitations) {
+      if (invite.expiresAt <= now) invitations.delete(id);
     }
   }
 
@@ -48,15 +59,20 @@ export function registerDevicePairing(app: FastifyInstance, context: ServerConte
     return pin;
   }
 
+  function deviceName(body: unknown) {
+    const name = requiredString(jsonObject(body), 'name').trim();
+    if (!name || name.length > 80 || /[\p{Cc}\p{Cf}]/u.test(name)) {
+      throw new DomainError('invalid-body', 400, 'Invalid device name');
+    }
+    return name;
+  }
+
   function start(ip: string, body: unknown, requestFirst: boolean) {
     if (!context.catalog.server().bootstrapped || !context.uiDir) throw unavailable();
     if (!context.limiter.allow(`pair-start:${ip}`)) {
       throw new DomainError('rate-limited', 429, 'Too many pairing requests');
     }
-    const name = requiredString(jsonObject(body), 'name').trim();
-    if (!name || name.length > 80 || /[\p{Cc}\p{Cf}]/u.test(name)) {
-      throw new DomainError('invalid-body', 400, 'Invalid device name');
-    }
+    const name = deviceName(body);
     prune();
     if (pending.size >= 128) {
       throw new DomainError('rate-limited', 429, 'Too many devices waiting to pair');
@@ -91,18 +107,74 @@ export function registerDevicePairing(app: FastifyInstance, context: ServerConte
     return entry;
   }
 
-  function issueFor(entry: Pairing, ownerId: string) {
+  function issueReadAccess(name: string, ownerId: string) {
     const issued = issueToken();
     const created = context.catalog.createDeviceToken({
       userId: ownerId,
-      name: entry.name,
+      name,
       tokenHash: issued.hash,
       scopes: ['read'],
       expiresAt: new Date(Date.now() + tokenLifetimeMs).toISOString(),
     });
-    pending.delete(entry.id);
     return { id: created.id, token: issued.token, scopes: ['read'] };
   }
+
+  function issueFor(entry: Pairing, ownerId: string) {
+    const token = issueReadAccess(entry.name, ownerId);
+    pending.delete(entry.id);
+    return token;
+  }
+
+  const invitePath = '/api/v1/device-pairing/invitations';
+  app.post(invitePath, async (request, reply) => {
+    const owner = requireOwner(request, 'Sign in as the owner to invite a device');
+    prune();
+    if (invitations.size >= 128 || !context.limiter.allow(`pair-invite:${owner.userId}`)) {
+      throw new DomainError('rate-limited', 429, 'Too many pairing invitations');
+    }
+    const id = randomUUID();
+    const pin = String(randomInt(1_000_000)).padStart(6, '0');
+    invitations.set(id, {
+      ownerId: owner.userId,
+      pin,
+      expiresAt: Date.now() + lifetimeMs,
+      attemptsRemaining: 5,
+    });
+    return reply
+      .header('cache-control', 'no-store')
+      .status(201)
+      .send({
+        id,
+        pin,
+        expiresInSeconds: lifetimeMs / 1000,
+      });
+  });
+  app.delete<{ Params: { id: string } }>(`${invitePath}/:id`, async (request, reply) => {
+    const owner = requireOwner(request, 'Sign in as the owner to withdraw an invitation');
+    prune();
+    if (invitations.get(request.params.id)?.ownerId !== owner.userId) throw unavailable();
+    invitations.delete(request.params.id);
+    return reply.header('cache-control', 'no-store').status(204).send();
+  });
+  app.post(`${invitePath}/redeem`, async (request, reply) => {
+    reply.header('cache-control', 'no-store');
+    if (!context.limiter.allow(`pair-claim:${request.ip}`)) {
+      throw new DomainError('rate-limited', 429, 'Too many pairing attempts');
+    }
+    prune();
+    const body = jsonObject(request.body);
+    const id = requiredString(body, 'id');
+    const invite = invitations.get(id);
+    if (!invite) throw unavailable();
+    const name = deviceName(body);
+    if (requiredString(body, 'pin') !== invite.pin) {
+      if (--invite.attemptsRemaining === 0) invitations.delete(id);
+      throw unavailable();
+    }
+    const token = issueReadAccess(name, invite.ownerId);
+    invitations.delete(id);
+    return reply.send(token);
+  });
 
   const requests = '/api/v1/device-pairing/requests';
   app.post('/api/v1/device-pairing', async (request, reply) => {

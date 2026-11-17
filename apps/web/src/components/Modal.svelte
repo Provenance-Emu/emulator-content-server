@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte';
+  import Icon from './Icon.svelte';
   let {
     title,
     onclose,
@@ -37,11 +38,12 @@
     <h2>{title}</h2>
     <button
       type="button"
+      class="dialog-close"
       aria-label={`Close ${title}`}
       disabled={busy}
       onclick={() => dialog.close()}
     >
-      Close
+      <Icon name="close" />
     </button>
   </div>
   {@render children()}

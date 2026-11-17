@@ -126,7 +126,7 @@
     </form>
 
     <h2>Accounts</h2>
-    <ul>{#each users as user (user.id)}<li>{user.username}{user.isOwner ? ' · owner' : ''}</li>{/each}</ul>
+    <ul class="account-list">{#each users as user (user.id)}<li>{user.username}{#if user.isOwner}<span class="dim"> · owner</span>{/if}</li>{/each}</ul>
     <form class="settings-form" onsubmit={(event) => { event.preventDefault(); void addAccount(); }}>
       <fieldset disabled={working}>
         <div class="settings-fields">

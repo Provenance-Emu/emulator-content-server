@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from './components/Icon.svelte';
   import type { Snippet } from 'svelte';
   import type { ContentClient, Library } from '@ecs/client';
   import type { FolderContext } from './lib/folder-selection';
@@ -77,10 +78,9 @@
 
 <div class="settings-shell compact-controls">
   <aside class="settings-sidebar">
-    <button class="settings-back" type="button" onclick={onback}>Back to library</button>
-    {#if onsetup}<button type="button" class="settings-back" onclick={onsetup}>Setup guide</button>{/if}
-    <p class="settings-server-identity eyebrow">{serverLabel}</p>
+    <button class="settings-back" type="button" onclick={onback}><Icon name="back" />Back to library</button>
     <p class="settings-heading">Settings</p>
+    <p class="settings-server-identity">{serverLabel}</p>
     <label class="settings-section-picker">
       Settings section
       <select value={active} onchange={event => choose(event.currentTarget.value)}>
@@ -100,6 +100,7 @@
         </div>{/if}
       {/each}
     </nav>
+    {#if onsetup}<button type="button" class="settings-back settings-setup" onclick={onsetup}><Icon name="guide" />Setup guide</button>{/if}
   </aside>
   <div class="settings-content">
     {#if appState.owner && !appState.hasSession && ['emulators', 'plugins'].includes(active)}
@@ -141,9 +142,9 @@
       <section aria-labelledby="api-reference-heading">
         <h2 id="api-reference-heading">API and documentation</h2>
         <p class="dim">Explore the REST API for this server or read the project guides.</p>
-        <ul>
+        <ul class="link-list">
           {#each documentationLinks(context.origin) as { href, label } (href)}
-            <li><a {href} target="_blank" rel="noreferrer" onclick={openDocumentation}>{label}</a></li>
+            <li><a {href} target="_blank" rel="noreferrer" onclick={openDocumentation}>{label}<Icon name="arrow" /></a></li>
           {/each}
         </ul>
       </section>

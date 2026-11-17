@@ -16,8 +16,10 @@
   import { readSetupProgress, type SetupMode } from './lib/setup-progress';
   import SettingsShell from './SettingsShell.svelte';
   import ThemePicker from './components/ThemePicker.svelte';
+  import Icon from './components/Icon.svelte';
   import ServerUpdatePrompt from './ServerUpdatePrompt.svelte';
   import Modal from './components/Modal.svelte';
+  import PairingInvitation from './PairingInvitation.svelte';
   import UndoToast from './components/UndoToast.svelte';
   import { undoToast } from './lib/trash';
   let {
@@ -59,6 +61,7 @@
   let playerEpoch = $state(0);
   let drawer = $state(false);
   let signingIn = $state(false);
+  let invitingDevice = $state(false);
   let editing = $state<Library | null | undefined>(undefined);
   const unsubscribe = application.subscribe((state) => {
     if (!state.signedIn) {
@@ -69,6 +72,7 @@
       scope = null;
       rootId = '';
       settings = false;
+      invitingDevice = false;
       settingsLibraryId = '';
       drawer = false;
       if (wasAuthenticated) recordLocation(true);
@@ -209,12 +213,15 @@
   <header class="mobile-header">
     {#if $application.signedIn}
       <button type="button" aria-label="Open navigation" onclick={() => (drawer = true)}>
-        Menu
+        <Icon name="menu" />
       </button>
     {/if}
     <span>{context.label}</span>
   </header>
   {#if $application.signedIn && !signingIn}
+    {#if invitingDevice && $application.owner}
+      <PairingInvitation client={context.client} origin={context.origin} onclose={() => invitingDevice = false} />
+    {/if}
     <aside class="library-sidebar">{@render navigation()}</aside>
     {#if drawer}<Modal title="Library navigation" navigation onclose={() => (drawer = false)}>
         {@render navigation()}
@@ -240,6 +247,7 @@
             onsettings={openSettings}
             onchoose={choose}
             oncreate={() => (editing = null)}
+            onpairdevice={() => (invitingDevice = true)}
           />{/key}
         </div>
         {#if settings}<SettingsShell
@@ -307,13 +315,18 @@
 {#snippet navigation()}
   <nav aria-label="Library navigation">
     <div class="server-identity">
-      <p class="eyebrow">Emulation Server</p>
+      <span class="server-mark"><Icon name="games" /></span>
       <strong>{context.label}</strong>
-      <span class="dim">{$application.owner ? 'Owner' : 'Library access'}</span>
+      <span class="server-state">
+        <span class="dot" class:up={$application.reachable === true} class:down={$application.reachable === false}></span>
+        {$application.reachable === false ? 'Not connected' : $application.owner ? 'Owner' : 'Library access'}
+      </span>
     </div>
-    <button type="button" aria-current={!scope && !settings ? 'page' : undefined} onclick={() => choose(null)}>Home</button>
-    <p class="nav-label">Libraries</p>
-    {#if $application.owner}<button type="button" onclick={() => { editing = null; drawer = false; }}>Add library</button>{/if}
+    <button type="button" aria-current={!scope && !settings ? 'page' : undefined} onclick={() => choose(null)}><Icon name="home" />Home</button>
+    <div class="nav-label-row">
+      <p class="nav-label">Libraries</p>
+      {#if $application.owner}<button type="button" aria-label="Add library" title="Add library" onclick={() => { editing = null; drawer = false; }}><Icon name="plus" /></button>{/if}
+    </div>
     {#each $application.libraries as library (library.id)}<button
         type="button"
         aria-current={scope && 'libraryId' in scope && scope.libraryId === library.id && !settings
@@ -321,17 +334,17 @@
           : undefined}
         onclick={() => choose({ libraryId: library.id })}
       >
-        {library.name}
+        <Icon name="library" />{library.name}
       </button>{/each}
     {#if $application.owner}<button
         type="button"
         aria-current={scope && 'unassigned' in scope && !settings ? 'page' : undefined}
         onclick={() => choose({ unassigned: true })}
       >
-        Unassigned folders
+        <Icon name="folder" />Unassigned folders
       </button>{/if}
-    <button type="button" onclick={() => { guide = $application.owner ? 'host' : 'join'; drawer = false; }}>Setup guide</button>
     <div class="nav-account">
+      <button type="button" onclick={() => { guide = $application.owner ? 'host' : 'join'; drawer = false; }}><Icon name="guide" />Setup guide</button>
       <button
         type="button"
         aria-current={settings ? 'page' : undefined}
@@ -339,7 +352,7 @@
           openSettings();
         }}
       >
-        Settings
+        <Icon name="settings" />Settings
       </button>
       {#if $application.hasSession}<button
           type="button"
@@ -347,8 +360,8 @@
             void application.signOut();
           }}
         >
-          Sign out
-        </button>{:else}<p class="dim">This network allows access without a password.</p><button type="button" onclick={() => { signingIn = true; drawer = false; }}>Sign in</button>{/if}
+          <Icon name="sign-out" />Sign out
+        </button>{:else}<p class="dim">This network allows access without a password.</p><button type="button" onclick={() => { signingIn = true; drawer = false; }}><Icon name="sign-in" />Sign in</button>{/if}
       <ThemePicker />
     </div>
   </nav>

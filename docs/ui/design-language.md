@@ -13,9 +13,28 @@ Emulation Server is a compact utility for people finding and organizing their ga
 | Feedback | `--color-danger`, `--color-success` |
 | Type | `--font-body`, `--font-mono`, `--text-body`, `--text-label`, `--text-small`, `--leading-body`, `--weight-medium`, `--weight-semibold` |
 | Rhythm and panels | `--space-1` through `--space-6`, `--space-8`, `--panel-padding`, `--content-measure` |
-| Shape | `--border-width`, `--radius-sm`, `--radius-control`, `--radius-panel`, `--radius-dialog` |
+| Shape | `--border-width`, `--radius-sm`, `--radius-control`, `--radius-panel`, `--radius-dialog`, `--radius-pill` |
 | Controls | `--control-height-touch`, `--control-height-desktop`, `--control-padding-block`, `--control-padding-inline` |
-| Focus and motion | `--focus-width`, `--focus-offset`, `--focus-color`, `--motion-control` |
+| Focus and motion | `--focus-width`, `--focus-offset`, `--focus-color`, `--motion-control`, `--motion-surface`, `--ease-out` |
+| Depth | `--shadow-control`, `--shadow-panel`, `--shadow-raised`, `--shadow-popover`, `--color-highlight`, `--color-hover`, `--color-sidebar` |
+
+### Surfaces, depth and motion
+
+Depth comes from tokens, not from borders drawn in a component. Borders are translucent hairlines (`--color-border`), panels sit on `--shadow-panel`, anything floating (filter panel, Manage menu, dialogs) uses `--shadow-popover`, and hover lift uses `--shadow-raised`. `--color-hover` is the resting-to-hover tint for quiet rows; `--color-sidebar` is the navigation column. Every transition uses `--ease-out` with `--motion-control` (controls) or `--motion-surface` (cards, drawers); animate only `transform` and `opacity`. Dialogs fade without moving because their contents are measured and focused as they open. Reduced motion turns all of it off.
+
+Icons come from `components/Icon.svelte`: one light stroke on a 24px grid, always decorative beside a visible label or inside a control with an `aria-label`. Add a glyph there instead of inlining an SVG.
+
+### Shell
+
+The library sidebar and the Settings sidebar occupy the same `--sidebar-width` column, so opening Settings swaps the list without moving the page. The server name carries a status dot that reflects whether the server is answering; never colour it from anything else. Setup guide, Settings, sign-in and Appearance stay at the foot. Content inside `.application-content` gets mouse density on fine pointers; touch keeps 44px.
+
+Home shows one tile per library from `components/LibraryTiles.svelte`: up to four covers, the name, and a game count. `lib/library-tiles.ts` reads one bounded page of the same authorized `browse` the collection uses (the count is the sum of `systemCounts`), so a tile never counts a game its viewer cannot open, and it reloads when the catalog changes. A library that cannot be summarised keeps a plain tile.
+
+A settings page is a heading followed by panels (`section` with an `h2`); nothing sits loose on the canvas. A `section` inside a `section` is an inset, not a second card. Forms align their fields and button on the bottom edge. A status dot is green only for something that is working and red only for a failure; a feature that is simply switched off stays neutral.
+
+The desktop library window pins its connection bar and publishes its height as `--shell-offset`; the sidebars and the phone header sit below it. Leave the variable unset in the browser.
+
+`Status.svelte` (shared with the desktop status window) shows one headline state, then `.status-facts` and `.status-features`. `.link-list` is the row style for outbound documentation links.
 
 ### Light and dark
 

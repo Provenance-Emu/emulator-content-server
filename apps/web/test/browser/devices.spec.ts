@@ -158,3 +158,29 @@ test('owner approves a pending request and its PIN and QR clear after redemption
   await expect(qr).toHaveCount(0);
   await expect(page.getByRole('cell', { name: 'Generated handheld', exact: true })).toBeVisible();
 });
+
+test('owner creates a one-use pairing QR from the library home', async ({ page, fixture }) => {
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Pair a device', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Pair a device' });
+  await expect(dialog.getByRole('button', { name: 'Create pairing QR' })).toBeDisabled();
+  await dialog
+    .getByLabel('Server address reachable from your device')
+    .fill('http://studio.test:8473');
+  const created = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/device-pairing/invitations') && response.status() === 201,
+  );
+  await dialog.getByRole('button', { name: 'Create pairing QR' }).click();
+  const { id, pin } = await (await created).json();
+  await expect(dialog.getByRole('img', { name: 'Server pairing QR code' })).toBeVisible();
+  await expect(dialog.getByText('http://studio.test:8473', { exact: false })).toBeVisible();
+  const claim = () =>
+    fetch(`${fixture.origin}/api/v1/device-pairing/invitations/redeem`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, pin, name: 'Generated QR client' }),
+    });
+  expect((await claim()).status).toBe(200);
+  expect((await claim()).status).toBe(404);
+});

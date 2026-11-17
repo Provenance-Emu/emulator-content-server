@@ -35,6 +35,7 @@ import type {
   ContentRootSummaryList,
   DevicePairingApproved,
   DevicePairingCandidate,
+  DevicePairingInvitation,
   DevicePairingPIN,
   DevicePairingRequestList,
   DeviceTokenCreated,
@@ -1007,6 +1008,14 @@ export class ContentClient {
 
   devicePairingRequests(): Promise<DevicePairingRequestList> {
     return this.getJson('/api/v1/device-pairing/requests');
+  }
+
+  createDevicePairingInvitation(): Promise<DevicePairingInvitation> {
+    return this.post('/api/v1/device-pairing/invitations', {});
+  }
+
+  withdrawDevicePairingInvitation(id: string): Promise<void> {
+    return this.remove(`/api/v1/device-pairing/invitations/${encodeURIComponent(id)}`);
   }
 
   approveDevicePairingRequest(id: string): Promise<DevicePairingPIN> {

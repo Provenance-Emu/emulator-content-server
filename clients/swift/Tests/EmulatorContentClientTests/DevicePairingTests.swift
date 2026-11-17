@@ -6,6 +6,20 @@ struct DevicePairingTests {
     private let secret = String(repeating: "s", count: 43)
     private let token = String(repeating: "t", count: 43)
 
+    @Test func homeInvitationParsesServerAndRejectsInvalidInput() throws {
+        let id = "1df386f0-795c-449c-8bd9-f8d62b0b029a"
+        let invite = try DevicePairingClient.Invitation(
+            qrCode: "ecs-pair://invite?server=http%3A%2F%2Fstudio.local%3A18473&id=\(id)&pin=012345"
+        )
+        #expect(invite.origin.absoluteString == "http://studio.local:18473")
+        #expect(throws: DevicePairingClient.Failure.invalidResponse) {
+            try DevicePairingClient.Invitation(qrCode: "ecs-pair://invite?server=file%3A%2F%2F%2Fprivate&id=\(id)&pin=012345")
+        }
+        #expect(throws: DevicePairingClient.Failure.invalidResponse) {
+            try DevicePairingClient.Invitation(qrCode: "ecs-pair://invite?server=https%3A%2F%2Fexample.test&id=\(id)&pin=012345&pin=999999")
+        }
+    }
+
     @Test func requestFirstUsesMatchingQRAndReturnsReadToken() async throws {
         let client = DevicePairingClient { route, data in
             switch route {

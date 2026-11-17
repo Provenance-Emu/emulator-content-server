@@ -100,6 +100,8 @@ A successful completion returns a revocable read-only device token once, valid f
 
 On servers that return `404` when starting a request, use the original `POST /api/v1/device-pairing` flow. Show the device PIN and link to `/ui/?settings=devices#pair=<PIN>` for owner approval, then poll `/api/v1/device-pairing/redeem` with the ID and secret. Existing apps can keep using those endpoints.
 
+An owner can start pairing from **Pair a device** on the library home page. The owner creates a five-minute invitation with `POST /api/v1/device-pairing/invitations`. The QR uses `ecs-pair://invite` with URL-encoded `server`, `id`, and `pin` query parameters. Show the server origin to the user for confirmation and ask before using local HTTP. Redeem once with the invitation ID, PIN, and device name at `POST /api/v1/device-pairing/invitations/redeem`. A successful claim returns the same read-only device token as request-first pairing. The owner can withdraw the unused code with `DELETE /api/v1/device-pairing/invitations/{id}`.
+
 ## iOS and other Apple apps
 
 Pin the Emulation Server Swift SDK by adding the repository as a SwiftPM dependency:

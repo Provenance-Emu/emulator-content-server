@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LibraryTiles from './components/LibraryTiles.svelte';
   import { ContentError } from '@ecs/client';
   import type {
     ContentRootSummary,
@@ -40,6 +41,7 @@
     onsettings,
     onchoose,
     oncreate,
+    onpairdevice,
   }: {
     context: ServerContext;
     application: ApplicationController;
@@ -52,6 +54,7 @@
     onsettings: (destination?: SettingsDestination) => void;
     onchoose: (scope: LibraryScope) => void;
     oncreate: () => void;
+    onpairdevice: () => void;
   } = $props();
   const browser = untrack(() => createLibraryBrowser(context.client, null));
   const authEpoch = untrack(() => get(application).authEpoch);
@@ -357,17 +360,15 @@
           <h1>{libraries.length || !owner ? 'Your libraries' : 'Welcome to your game library'}</h1>
           <p class="dim">{libraries.length ? 'Choose a library to browse, play or manage your games.' : 'Create a library, add your games, then play or download them.'}</p>
         </div>
-        {#if owner}<button class="primary" type="button" onclick={oncreate}>{libraries.length ? 'Create a library' : 'Create your first library'}</button>{/if}
+        {#if owner}<div class="actions">
+          <button type="button" onclick={onpairdevice}>Pair a device</button>
+          <button class="primary" type="button" onclick={oncreate}>{libraries.length ? 'Create a library' : 'Create your first library'}</button>
+        </div>{/if}
       </header>
       {#if owner && !libraries.length}<UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
       {#if libraries.length}
-        <div class="library-choice-grid" aria-label="Choose a library">
-          {#each libraries as library (library.id)}
-            <button type="button" class="library-choice" aria-label={`Open library ${library.name}`} onclick={() => onchoose({ libraryId: library.id })}>
-              <span class="eyebrow">Game library</span><strong>{library.name}</strong><span>Open library →</span>
-            </button>
-          {/each}
-        </div>
+        <LibraryTiles client={context.client} {libraries} invalidation={$application.invalidation}
+          onchoose={(libraryId) => onchoose({ libraryId })} onsignedout={() => rejectAccess(401)} />
         {#if owner}<details class="home-management"><summary>Unassigned folders</summary><UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} /></details>{/if}
       {:else if owner}
         <ol class="welcome-steps">
@@ -445,6 +446,7 @@
         empty={$browser.items.length === 0}
         {filtered}
         canAdd={canAdd}
+        unassigned={!!scope && 'unassigned' in scope}
       />
       {#if !$browser.loading && !$browser.failure && !$browser.items.length && !filtered && canAdd}
         <button class="primary" type="button" onclick={() => (addChoices = true)}>{$browser.filters.category === 'games' ? 'Add your first game' : 'Add your first file'}</button>

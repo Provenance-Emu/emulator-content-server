@@ -33,17 +33,19 @@
   $effect(() => { typed = watch.origin; });
 </script>
 
-<main>
-  <div class="row">
+<main class="status-window compact-controls">
+  <header class="status-window-heading">
     <div>
       <h1>Emulation Server</h1>
       <p class="dim">
         {watch.checkedAt ? `Checked ${watch.checkedAt}` : 'Checking'}
       </p>
     </div>
-    <button type="button" onclick={canOpen}>Open interface</button>
-    <button type="button" disabled={!watch.origin} onclick={openBrowser}>Open in browser</button>
-  </div>
+    <div class="actions">
+      <button type="button" disabled={!watch.origin} onclick={openBrowser}>Open in browser</button>
+      <button type="button" class="primary" onclick={canOpen}>Open interface</button>
+    </div>
+  </header>
 
   <!-- The same component the web interface renders, so the two cannot drift. -->
   <Status capabilities={watch.capabilities} reachable={watch.reachable !== false} />
@@ -82,7 +84,9 @@
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
   <section>
     <h2>Local service</h2>
-    <p aria-live="polite">{serviceSummary($service)}</p>
+    <p class="service-summary" aria-live="polite">
+      <span class="dot" class:up={canStop($service)} class:down={!!$service.failure}></span>{serviceSummary($service)}
+    </p>
     {#if $service.state === 'boot-running' || $service.state === 'boot-stopped'}
       <p class="dim">Use launchctl as an administrator to start or stop the boot service.</p>
     {/if}
@@ -126,10 +130,19 @@
 </main>
 
 <style>
-  .saved-servers { display: grid; gap: .5rem; list-style: none; padding: 0; }
+  .status-window { max-width: 40rem; padding: var(--space-5) var(--space-5) var(--space-8); }
+  .status-window-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .status-window-heading p { margin: 0; font-size: var(--text-small); }
+  .saved-servers { display: grid; gap: 2px; list-style: none; margin: 0 0 var(--space-4); padding: 0; }
+  .saved-servers button { width: 100%; text-align: left; background: transparent; border-color: transparent; box-shadow: none; }
+  .saved-servers button:hover { background: var(--color-hover); }
+  .saved-servers button[aria-pressed="true"] { background: var(--color-selected); color: var(--color-selected-text); }
+  .status-window form { align-items: end; }
+  .status-window form label { flex: 1 1 14rem; }
+  .service-summary { display: flex; align-items: center; margin-top: 0; }
   .service-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 </style>

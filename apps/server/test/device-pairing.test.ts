@@ -26,6 +26,35 @@ test('pairing requires owner approval and a private one-use device secret', asyn
         payload,
         headers: authorized ? headers : {},
       });
+    const invitations = '/invitations';
+    assert.equal((await post(invitations, {})).statusCode, 401);
+    const createdInvite = await post(invitations, {}, true);
+    assert.equal(createdInvite.statusCode, 201);
+    assert.equal(createdInvite.headers['cache-control'], 'no-store');
+    const invite = createdInvite.json();
+    assert.match(invite.pin, /^\d{6}$/);
+    assert.equal(invite.expiresInSeconds, 300);
+    const claim = { id: invite.id, pin: invite.pin, name: 'iFly from web home' };
+    assert.equal((await post(`${invitations}/redeem`, { ...claim, id: 'other' })).statusCode, 404);
+    const claims = await Promise.all([
+      post(`${invitations}/redeem`, claim),
+      post(`${invitations}/redeem`, claim),
+    ]);
+    assert.deepEqual(claims.map((reply) => reply.statusCode).sort(), [200, 404]);
+    assert.deepEqual(claims.find((reply) => reply.statusCode === 200)?.json().scopes, ['read']);
+    const withdrawn = (await post(invitations, {}, true)).json();
+    assert.equal(
+      (
+        await server.app.inject({
+          method: 'DELETE',
+          url: `/api/v1/device-pairing${invitations}/${withdrawn.id}`,
+          headers,
+        })
+      ).statusCode,
+      204,
+    );
+    assert.equal((await post(`${invitations}/redeem`, { ...claim, ...withdrawn })).statusCode, 404);
+
     const challenge = await post('', { name: 'Living Room TV' });
     assert.equal(challenge.statusCode, 201);
     assert.equal(challenge.headers['cache-control'], 'no-store');

@@ -125,7 +125,7 @@
 {#if actionFailure}<p role="alert" class="problem">{actionFailure}</p>{/if}
 {#if overview}
   <p class="scan-automatic" role="status">
-    <span class="dot" class:up={overview.automaticMatching} class:down={!overview.automaticMatching}></span>
+    <span class="dot" class:up={overview.automaticMatching}></span>
     {overview.automaticMatching
       ? 'Automatic lookup is on. The server checks new and changed games first and retries older misses when the queue is idle.'
       : 'Automatic lookup is off on this server. You can still look up details and covers from this page.'}

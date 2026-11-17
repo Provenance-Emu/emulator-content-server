@@ -53,8 +53,13 @@
 </script>
 
 <h1>WebDAV</h1>
-<p>Browse and download your libraries in Finder or another WebDAV client.</p>
+<p class="dim">Browse and download your libraries in Finder or another WebDAV client.</p>
+<section>
+<h2>Connect</h2>
 <label>Server address<input readonly value={new URL('/dav/', origin).href} /></label>
+</section>
+<section>
+<h2>App credentials</h2>
 <p class="dim">App credentials belong to your signed-in account and follow its library permissions. Sign in with a username and password to manage them.</p>
 {#if loaded}
   {#if credentials.length}<div class="table-scroll"><table>
@@ -78,3 +83,4 @@
   </form>
 {:else if working}<p role="status">Loading app credentials…</p>{:else}<button type="button" onclick={() => void load()}>Retry app credentials</button>{/if}
 {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
+</section>
