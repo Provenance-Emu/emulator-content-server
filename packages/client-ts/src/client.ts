@@ -102,6 +102,7 @@ import type {
   StorageLocationList,
   StorageWriteTarget,
   SystemList,
+  TrashPage,
   UploadSession,
   User,
   UserDraft,
@@ -170,6 +171,12 @@ export class ContentError extends Error {
  * while a `Uint8Array` suits a save that is already in memory.
  */
 export type UploadBody = Blob | Uint8Array;
+
+export interface TrashQuery {
+  libraryId?: string;
+  cursor?: string;
+  limit?: number;
+}
 
 export interface ChangeQuery {
   cursor?: string;
@@ -1490,6 +1497,35 @@ export class ContentClient {
    */
   adopt(assetId: string): Promise<Asset> {
     return this.post<Asset>(`/api/v1/files/${assetId}/adopt`, {});
+  }
+
+  /** Moves a game and its files to the trash. `restoreItem` brings them back until they are purged. */
+  deleteItem(itemId: string): Promise<void> {
+    return this.remove(`/api/v1/items/${itemId}`);
+  }
+
+  /** Moves one file to the trash. */
+  deleteFile(assetId: string): Promise<void> {
+    return this.remove(`/api/v1/files/${assetId}`);
+  }
+
+  restoreItem(itemId: string): Promise<Item> {
+    return this.post<Item>(`/api/v1/items/${itemId}/restore`, {});
+  }
+
+  /** A file whose path is taken by a newer one returns beside it as a conflict copy. */
+  restoreFile(assetId: string): Promise<Asset> {
+    return this.post<Asset>(`/api/v1/files/${assetId}/restore`, {});
+  }
+
+  /** Deleted games and files this account may restore, newest first. */
+  trash(query: TrashQuery = {}): Promise<TrashPage> {
+    const search = new URLSearchParams();
+    if (query.libraryId) search.set('libraryId', query.libraryId);
+    if (query.cursor) search.set('cursor', query.cursor);
+    if (query.limit !== undefined) search.set('limit', String(query.limit));
+    const suffix = search.toString();
+    return this.getJson(`/api/v1/trash${suffix ? `?${suffix}` : ''}`);
   }
 
   changes(query: ChangeQuery = {}): Promise<ChangeList> {

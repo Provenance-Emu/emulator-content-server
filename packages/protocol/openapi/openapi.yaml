@@ -801,7 +801,42 @@ paths:
       tags: [Libraries and items]
       responses:
         '204':
-          description: Item deleted.
+          description: Item moved to the trash with its files. It can be restored until its purgeAfter date.
+  /api/v1/items/{itemId}/restore:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: restoreItem
+      tags: [Libraries and items]
+      description: Returns a deleted game and the files deleted with it. Needs write access to the game and a signed-in account. Restoring a game that is already live returns it unchanged.
+      responses:
+        '200':
+          description: The game is live again.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Item' }
+        '401': { description: Authentication is required. }
+        '403': { description: Write access to the game and a signed-in account are required. }
+        '404': { description: The game is unknown, hidden, or already purged. }
+        '413': { description: Restoring would exceed the library byte quota. }
+  /api/v1/trash:
+    get:
+      operationId: listTrash
+      tags: [Libraries and items]
+      description: Deleted games and files the caller may restore, newest first. A game deleted with its files is one entry. Guest grants cannot list the trash.
+      parameters:
+        - { name: libraryId, in: query, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string, maxLength: 4096 }, description: Use nextCursor verbatim. }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        '200':
+          description: One page of the trash.
+          content:
+            application/json:
+              example: {"entries": [{"kind": "item", "id": "item-demo", "name": "Example game", "libraryId": "library-demo", "itemId": "item-demo", "itemTitle": "Example game", "systemIdentifier": "com.provenance.nes", "size": 262160, "fileCount": 1, "deletedAt": "2026-11-16T19:00:00.000Z", "deletedBy": {"id": "user-demo", "name": "owner"}, "purgeAfter": "2026-12-16T19:00:00.000Z", "itemDeleted": false}], "nextCursor": null}
+              schema: { $ref: '#/components/schemas/TrashPage' }
+        '401': { description: Authentication is required. }
+        '403': { description: A signed-in account with write scope is required. }
   /api/v1/items/{itemId}/manifest:
     parameters:
       - { name: itemId, in: path, required: true, schema: { type: string } }
@@ -945,7 +980,25 @@ paths:
       tags: [Uploads and downloads]
       responses:
         '204':
-          description: Asset deleted.
+          description: File moved to the trash. It can be restored until its purgeAfter date.
+  /api/v1/files/{assetId}/restore:
+    parameters:
+      - { name: assetId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: restoreFile
+      tags: [Uploads and downloads]
+      description: Returns a deleted file to its game. If a newer file now holds its path, the restored file comes back beside it as a conflict copy and neither is overwritten.
+      responses:
+        '200':
+          description: The file is live again.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asset' }
+        '401': { description: Authentication is required. }
+        '403': { description: Write access to the game and a signed-in account are required. }
+        '404': { description: The file is unknown, hidden, or already purged. }
+        '409': { description: The file's game is in the trash. Restore the game first. }
+        '413': { description: Restoring would exceed the library byte quota. }
   /api/v1/files/{assetId}/adopt:
     parameters:
       - { name: assetId, in: path, required: true, schema: { type: string } }
@@ -2602,6 +2655,44 @@ components:
           type: array
           items: { type: string }
         bootstrapped: { type: boolean }
+        trash: { $ref: '#/components/schemas/TrashPolicy' }
+    TrashPolicy:
+      type: object
+      required: [retentionDays]
+      properties:
+        retentionDays: { type: integer, description: Days a deleted game or file can still be restored before it is removed for good. }
+    TrashEntry:
+      type: object
+      required: [kind, id, name, libraryId, itemId, itemTitle, systemIdentifier, size, fileCount, deletedAt, purgeAfter, itemDeleted]
+      properties:
+        kind: { type: string, enum: [item, file] }
+        id: { type: string, description: Item id when kind is item, file id when kind is file. }
+        name: { type: string }
+        libraryId: { type: string }
+        itemId: { type: string }
+        itemTitle: { type: string }
+        systemIdentifier: { type: string }
+        size: { type: integer, format: int64, description: Bytes that return on restore. }
+        fileCount: { type: integer }
+        deletedAt: { type: string, format: date-time }
+        deletedBy: { $ref: '#/components/schemas/TrashActor' }
+        purgeAfter: { type: string, format: date-time, description: The entry is removed for good at the first retention run after this time. }
+        itemDeleted: { type: boolean, description: True for a file whose game is also in the trash. Restore the game first. }
+    TrashActor:
+      type: object
+      description: Who deleted an entry. Absent on entries deleted before the server recorded it.
+      required: [id]
+      properties:
+        id: { type: string }
+        name: { type: string, description: Account name. Absent when a guest link or a removed account deleted the entry. }
+    TrashPage:
+      type: object
+      required: [entries, nextCursor]
+      properties:
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/TrashEntry' }
+        nextCursor: { type: [string, 'null'] }
     ProtocolInfo:
       type: object
       required: [major, minor, path]

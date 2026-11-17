@@ -38,6 +38,8 @@ export function buildCapabilities(input: {
   lanOpen?: boolean;
   webdavEnabled?: boolean;
   webPlayback?: boolean;
+  /** Days a deleted game or file stays restorable. Omit when the server keeps no trash. */
+  trashRetentionDays?: number;
 }): Capabilities {
   return {
     protocol: { major: API_MAJOR, minor: API_MINOR, path: API_PATH },
@@ -62,5 +64,8 @@ export function buildCapabilities(input: {
     },
     authentication: input.lanOpen ? ['bearer', 'bootstrap', 'lan'] : ['bearer', 'bootstrap'],
     ...(input.bootstrapped === undefined ? {} : { bootstrapped: input.bootstrapped }),
+    ...(input.trashRetentionDays === undefined
+      ? {}
+      : { trash: { retentionDays: input.trashRetentionDays } }),
   };
 }

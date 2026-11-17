@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { backupData } from '../src/lifecycle.js';
+import { CatalogDatabase } from '@ecs/database';
+import { blobPath } from '@ecs/storage';
+import { backupData, copyNewerBlobs, initData } from '../src/lifecycle.js';
 
 const cli = fileURLToPath(new URL('../src/main.js', import.meta.url));
 
@@ -87,3 +90,70 @@ function run(args: string[]): { status: number | null; stdout: string; stderr: s
   const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
+
+test('a backup holds the bytes of every file its catalog names, including the trash', async () => {
+  const base = await mkdtemp(join(tmpdir(), 'ecs-backup-trash-'));
+  const dataDir = join(base, 'data');
+  const destination = join(base, 'backup');
+  try {
+    await initData(dataDir, 'Test');
+    const catalog = new CatalogDatabase(join(dataDir, 'library.sqlite'));
+    const digests: string[] = [];
+    try {
+      const user = catalog.createUser({ username: 'owner', passwordHash: 'x', actorId: 'test' });
+      const library = catalog.createLibrary(user.id, 'Library');
+      const item = catalog.createItem({
+        libraryId: library.id,
+        systemIdentifier: 'com.provenance.nes',
+        title: 'Example',
+        md5: null,
+        crc: null,
+        actorId: user.id,
+      });
+      for (const name of ['live.generated', 'trashed.generated']) {
+        const bytes = randomBytes(32);
+        const sha256 = createHash('sha256').update(bytes).digest('hex');
+        digests.push(sha256);
+        await mkdir(dirname(blobPath(dataDir, sha256)), { recursive: true });
+        await writeFile(blobPath(dataDir, sha256), bytes);
+        const asset = catalog.completeUpload({
+          uploadId: catalog.createUpload({
+            userId: user.id,
+            guestGrantId: null,
+            libraryId: library.id,
+          }).id,
+          itemId: item.id,
+          kind: 'rom',
+          displayName: name,
+          relativePath: name,
+          baseRevision: catalog.getItem(item.id)?.revision ?? 1,
+          sha256,
+          size: bytes.length,
+          md5: 'b'.repeat(32),
+          crc: '12345678',
+          shareable: true,
+          actorId: user.id,
+          locationId: null,
+        });
+        if (name.startsWith('trashed')) catalog.deleteAsset(asset.id, user.id);
+      }
+    } finally {
+      catalog.close();
+    }
+    await backupData(dataDir, destination);
+    for (const sha256 of digests) await stat(blobPath(destination, sha256));
+
+    // An upload that lands between the byte copy and the catalog snapshot is
+    // named by the snapshot but missed by the copy. The top-up fetches it.
+    const late = digests[0] as string;
+    await rm(blobPath(destination, late));
+    assert.equal(await copyNewerBlobs(dataDir, destination, []), 1);
+    assert.deepEqual(
+      await readFile(blobPath(destination, late)),
+      await readFile(blobPath(dataDir, late)),
+    );
+    assert.equal(await copyNewerBlobs(dataDir, destination, []), 0);
+  } finally {
+    await rm(base, { recursive: true, force: true });
+  }
+});

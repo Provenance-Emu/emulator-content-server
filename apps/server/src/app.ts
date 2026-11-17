@@ -30,6 +30,7 @@ import { registerPlayerIsolation } from './player-isolation.js';
 import { loadPlayerProfiles } from './player-profiles.js';
 import { registerRoutes } from './routes.js';
 import { registerServerUpdates, type ServerUpdates } from './server-updates.js';
+import { type RetentionResult, scheduleRetention } from './trash.js';
 import { davAuthenticator, isDavRequest, registerWebDav } from './webdav.js';
 import { registerWebDavCredentials } from './webdav-credentials.js';
 import { authenticateWorkflowPrincipal } from './workflow-auth.js';
@@ -65,10 +66,18 @@ export interface OpenServerOptions {
   localTrust?: boolean;
 }
 
+declare module 'fastify' {
+  interface FastifyInstance {
+    runRetention: (now?: Date) => Promise<RetentionResult>;
+  }
+}
+
 export async function openServer(options: OpenServerOptions): Promise<{
   app: FastifyInstance;
   catalog: CatalogDatabase;
   close: () => Promise<void>;
+  /** Purges what is past its date and collects unreferenced bytes. Also runs hourly. */
+  runRetention: (now?: Date) => Promise<RetentionResult>;
 }> {
   const selectedCatalog =
     options.playerCatalogSnapshot === undefined
@@ -158,6 +167,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     close: async () => {
       await app.close();
     },
+    runRetention: (now) => app.runRetention(now),
   };
 }
 
@@ -305,11 +315,14 @@ export async function buildApp(
       app.log.warn('Workflow artifact collection deferred');
     }
   };
+  const retention = scheduleRetention(context, (message) => app.log.warn(message));
+  app.decorate('runRetention', retention.run);
   const workflowCollection = setInterval(collectWorkflowArtifacts, 3_600_000);
   workflowCollection.unref();
   const startBackgroundWork = () => {
     collectWorkflowArtifacts();
     folderWatcher.reconcile();
+    void retention.run().catch(() => app.log.warn('Trash retention deferred'));
   };
   app.addHook('onReady', async () => {
     if (startup) {
@@ -324,6 +337,7 @@ export async function buildApp(
   });
   app.addHook('preClose', async () => {
     clearInterval(workflowCollection);
+    await retention.stop();
     await stopLibraryJobs(context.catalog);
     await folderWatcher.close();
   });

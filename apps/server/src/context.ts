@@ -26,4 +26,6 @@ export interface ServerContext {
    * facing the public internet, where the socket address is the proxy.
    */
   localTrust: boolean;
+  /** Created on first use. See `blobGate` in `trash.ts`. */
+  blobGate?: import('./trash.js').BlobGate;
 }

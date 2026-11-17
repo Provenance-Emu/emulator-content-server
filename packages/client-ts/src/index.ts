@@ -49,6 +49,7 @@ export {
   type LibraryScope,
   planResume,
   type ResumePlan,
+  type TrashQuery,
   type UploadBody,
   type UploadRequest,
 } from './client.js';
@@ -162,6 +163,10 @@ export type {
   SystemCount,
   SystemList,
   SystemSummary,
+  TrashActor,
+  TrashEntry,
+  TrashPage,
+  TrashPolicy,
   UploadSession,
   User,
   UserDraft,
