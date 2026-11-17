@@ -11,6 +11,7 @@
     onplay,
     externalBusy = false,
     onemulators,
+    ontrash,
   }: {
     detailState: DetailState;
     playerCore: import('./player/links').PlayableCores;
@@ -18,6 +19,8 @@
     onplay: (href: string) => void;
     externalBusy?: boolean;
     onemulators?: () => void;
+    /** Present when this account may delete files from the game. */
+    ontrash?: (file: ManifestFile) => void;
   } = $props();
   let selected = $state('overview');
   const playable = $derived.by(() => {
@@ -148,6 +151,12 @@
         >
           {detailState.reading?.id === file.id ? 'Downloading…' : 'Download'}
         </button>
+        {#if ontrash}<button
+            type="button"
+            aria-label={`Move ${file.relativePath} to trash`}
+            disabled={busy}
+            onclick={() => ontrash(file)}
+          >Move to trash</button>{/if}
       </div>
     </td>
   </tr>

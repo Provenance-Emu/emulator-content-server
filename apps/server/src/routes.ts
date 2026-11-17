@@ -88,6 +88,7 @@ import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
 import { registerSourceMatching } from './source-matching.js';
 import { organizationFolderIdentity, registerSourceOrganization } from './source-organization.js';
+import { blobGate, registerTrashRoutes, TRASH_RETENTION_DAYS } from './trash.js';
 import { registerWorkflowApprovals } from './workflow-approvals.js';
 import { registerWorkflowEvidence } from './workflow-evidence.js';
 import { registerWorkflowRoutes } from './workflow-routes.js';
@@ -114,6 +115,7 @@ export function registerRoutes(
 ): void {
   const { catalog } = context;
   registerDevicePairing(app, context);
+  registerTrashRoutes(app, context);
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
   const matching = registerSourceMatching(app, context, (rootId, sourceId) =>
@@ -295,6 +297,7 @@ export function registerRoutes(
       lanOpen: context.localTrust && policy.mode !== 'token',
       webdavEnabled: context.webdavEnabled,
       webPlayback: Boolean(context.player || context.playerProfiles.size),
+      trashRetentionDays: TRASH_RETENTION_DAYS,
     });
   });
 
@@ -715,32 +718,35 @@ export function registerRoutes(
           }
           await truncateStaging(stagingPath(context, upload.id), upload.received);
           if (upload.received === 0) throw new DomainError('invalid-body', 400, 'Upload is empty');
-          const placed = await placeUploadBytes(
-            context,
-            stagingPath(context, upload.id),
-            reserveLocation,
-          );
-          let asset: ReturnType<CatalogDatabase['completeUpload']>;
-          try {
-            asset = catalog.completeUpload({
-              uploadId: upload.id,
-              itemId: item.id,
-              kind,
-              displayName: requiredString(body, 'displayName'),
-              relativePath,
-              baseRevision: requiredInteger(body, 'baseRevision'),
-              sha256: placed.sha256,
-              size: placed.size,
-              md5: placed.md5,
-              crc: placed.crc,
-              shareable: !isRestrictedAssetKind(kind),
-              actorId: actor.kind === 'user' ? actor.userId : null,
-              deviceId: deviceOf(actor),
-              locationId: placed.locationId,
-            });
-          } finally {
-            placed.release();
-          }
+          // Placing the bytes and naming them in the catalog happen under the
+          // gate, so blob collection cannot remove them in between.
+          const asset = await blobGate(context).shared(async () => {
+            const placed = await placeUploadBytes(
+              context,
+              stagingPath(context, upload.id),
+              reserveLocation,
+            );
+            try {
+              return catalog.completeUpload({
+                uploadId: upload.id,
+                itemId: item.id,
+                kind,
+                displayName: requiredString(body, 'displayName'),
+                relativePath,
+                baseRevision: requiredInteger(body, 'baseRevision'),
+                sha256: placed.sha256,
+                size: placed.size,
+                md5: placed.md5,
+                crc: placed.crc,
+                shareable: !isRestrictedAssetKind(kind),
+                actorId: actor.kind === 'user' ? actor.userId : null,
+                deviceId: deviceOf(actor),
+                locationId: placed.locationId,
+              });
+            } finally {
+              placed.release();
+            }
+          });
           await removeStaging(context.dataDir, upload.id);
           return { status: 201, body: asset };
         },

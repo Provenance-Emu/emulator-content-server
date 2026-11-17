@@ -97,14 +97,76 @@ public struct Capabilities: Codable, Equatable, Sendable {
     public var limits: Limits
     public var authentication: [String]
     public var bootstrapped: Bool?
+    public var trash: TrashPolicy?
 
-    public init(`protocol`: ProtocolInfo, minClientVersion: String, features: FeatureFlags, limits: Limits, authentication: [String], bootstrapped: Bool? = nil) {
+    public init(`protocol`: ProtocolInfo, minClientVersion: String, features: FeatureFlags, limits: Limits, authentication: [String], bootstrapped: Bool? = nil, trash: TrashPolicy? = nil) {
         self.`protocol` = `protocol`
         self.minClientVersion = minClientVersion
         self.features = features
         self.limits = limits
         self.authentication = authentication
         self.bootstrapped = bootstrapped
+        self.trash = trash
+    }
+}
+
+public struct TrashPolicy: Codable, Equatable, Sendable {
+    public var retentionDays: Int
+
+    public init(retentionDays: Int) {
+        self.retentionDays = retentionDays
+    }
+}
+
+public struct TrashEntry: Codable, Equatable, Sendable {
+    public var kind: String
+    public var id: String
+    public var name: String
+    public var libraryId: String
+    public var itemId: String
+    public var itemTitle: String
+    public var systemIdentifier: String
+    public var size: Int64
+    public var fileCount: Int
+    public var deletedAt: String
+    public var deletedBy: TrashActor?
+    public var purgeAfter: String
+    public var itemDeleted: Bool
+
+    public init(kind: String, id: String, name: String, libraryId: String, itemId: String, itemTitle: String, systemIdentifier: String, size: Int64, fileCount: Int, deletedAt: String, deletedBy: TrashActor? = nil, purgeAfter: String, itemDeleted: Bool) {
+        self.kind = kind
+        self.id = id
+        self.name = name
+        self.libraryId = libraryId
+        self.itemId = itemId
+        self.itemTitle = itemTitle
+        self.systemIdentifier = systemIdentifier
+        self.size = size
+        self.fileCount = fileCount
+        self.deletedAt = deletedAt
+        self.deletedBy = deletedBy
+        self.purgeAfter = purgeAfter
+        self.itemDeleted = itemDeleted
+    }
+}
+
+public struct TrashActor: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String?
+
+    public init(id: String, name: String? = nil) {
+        self.id = id
+        self.name = name
+    }
+}
+
+public struct TrashPage: Codable, Equatable, Sendable {
+    public var entries: [TrashEntry]
+    public var nextCursor: String?
+
+    public init(entries: [TrashEntry], nextCursor: String? = nil) {
+        self.entries = entries
+        self.nextCursor = nextCursor
     }
 }
 

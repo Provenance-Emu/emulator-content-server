@@ -18,6 +18,8 @@
   import ThemePicker from './components/ThemePicker.svelte';
   import ServerUpdatePrompt from './ServerUpdatePrompt.svelte';
   import Modal from './components/Modal.svelte';
+  import UndoToast from './components/UndoToast.svelte';
+  import { undoToast } from './lib/trash';
   let {
     context,
     folderSelection,
@@ -351,3 +353,4 @@
     </div>
   </nav>
 {/snippet}
+<UndoToast toast={undoToast} />

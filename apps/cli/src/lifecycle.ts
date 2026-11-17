@@ -1,5 +1,6 @@
-import { cp, rm, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { copyFile, cp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { issueToken } from '@ecs/auth';
 import { CatalogDatabase, type CatalogLimits, type StorageLocationRecord } from '@ecs/database';
 import {
@@ -125,9 +126,14 @@ export async function backupData(dataDir: string, destination: string): Promise<
     );
     try {
       await ensureLayout(destination);
-      catalog.backupTo(join(destination, 'library.sqlite'));
+      // Bytes first, catalog second. The server may purge the trash while this
+      // runs: a file removed after the copy leaves spare bytes in the backup,
+      // and one removed before it is gone from the later snapshot as well. The
+      // other order could save a row whose bytes were removed in between.
       await cp(join(dataDir, 'blobs'), join(destination, 'blobs'), { recursive: true });
       if (locations.length > 0) await copyLocations(destination, locations);
+      catalog.backupTo(join(destination, 'library.sqlite'));
+      await copyNewerBlobs(dataDir, destination, locations);
     } catch (error) {
       if (!existed) await rm(destination, { recursive: true, force: true });
       throw error;
@@ -135,6 +141,52 @@ export async function backupData(dataDir: string, destination: string): Promise<
   } finally {
     catalog.close();
   }
+}
+
+/**
+ * Copies bytes the snapshot names that arrived after the first copy. An upload
+ * that finished in between is in the catalog snapshot but not yet in the backup.
+ * Bytes missing from the source too are left to `doctor` to report.
+ */
+export async function copyNewerBlobs(
+  dataDir: string,
+  destination: string,
+  locations: readonly StorageLocationRecord[],
+): Promise<number> {
+  const snapshot = new DatabaseSync(join(destination, 'library.sqlite'), { readOnly: true });
+  let rows: Array<{ sha256: string; location_id: string | null }>;
+  try {
+    rows = snapshot.prepare('SELECT sha256, location_id FROM blobs').all() as typeof rows;
+  } finally {
+    snapshot.close();
+  }
+  let copied = 0;
+  for (const row of rows) {
+    const location = row.location_id
+      ? locations.find((item) => item.id === row.location_id)
+      : undefined;
+    if (row.location_id && !location) continue;
+    const target = blobPath(
+      location ? join(destination, 'locations', location.id) : destination,
+      row.sha256,
+    );
+    if (
+      await stat(target).then(
+        () => true,
+        () => false,
+      )
+    )
+      continue;
+    const source = blobPath(location?.path ?? dataDir, row.sha256);
+    await mkdir(dirname(target), { recursive: true });
+    if (await copyFile(source, target).then(() => true, missing)) copied += 1;
+  }
+  return copied;
+}
+
+function missing(error: unknown): false {
+  if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+  throw error;
 }
 
 async function copyLocations(

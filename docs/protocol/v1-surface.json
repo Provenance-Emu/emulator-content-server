@@ -69,6 +69,7 @@
     "GET /api/v1/sources/:sourceId/matches/selections/:kind/content",
     "GET /api/v1/storage-locations",
     "GET /api/v1/systems",
+    "GET /api/v1/trash",
     "GET /api/v1/uploads/:uploadId",
     "GET /api/v1/users",
     "GET /api/v1/webdav-credentials",
@@ -115,6 +116,7 @@
     "POST /api/v1/device-pairing/requests/status",
     "POST /api/v1/device-tokens",
     "POST /api/v1/files/:assetId/adopt",
+    "POST /api/v1/files/:assetId/restore",
     "POST /api/v1/guest-grants",
     "POST /api/v1/investigator/runs",
     "POST /api/v1/investigator/runs/:runId/cancel",
@@ -123,6 +125,7 @@
     "POST /api/v1/investigator/runs/:runId/suggestions",
     "POST /api/v1/investigators",
     "POST /api/v1/items",
+    "POST /api/v1/items/:itemId/restore",
     "POST /api/v1/libraries",
     "POST /api/v1/library-jobs",
     "POST /api/v1/library-jobs/:jobId/cancel",
@@ -262,7 +265,8 @@
         "features",
         "limits",
         "minClientVersion",
-        "protocol"
+        "protocol",
+        "trash"
       ],
       "required": [
         "authentication",
@@ -270,6 +274,64 @@
         "limits",
         "minClientVersion",
         "protocol"
+      ]
+    },
+    "TrashPolicy": {
+      "properties": [
+        "retentionDays"
+      ],
+      "required": [
+        "retentionDays"
+      ]
+    },
+    "TrashEntry": {
+      "properties": [
+        "deletedAt",
+        "deletedBy",
+        "fileCount",
+        "id",
+        "itemDeleted",
+        "itemId",
+        "itemTitle",
+        "kind",
+        "libraryId",
+        "name",
+        "purgeAfter",
+        "size",
+        "systemIdentifier"
+      ],
+      "required": [
+        "deletedAt",
+        "fileCount",
+        "id",
+        "itemDeleted",
+        "itemId",
+        "itemTitle",
+        "kind",
+        "libraryId",
+        "name",
+        "purgeAfter",
+        "size",
+        "systemIdentifier"
+      ]
+    },
+    "TrashActor": {
+      "properties": [
+        "id",
+        "name"
+      ],
+      "required": [
+        "id"
+      ]
+    },
+    "TrashPage": {
+      "properties": [
+        "entries",
+        "nextCursor"
+      ],
+      "required": [
+        "entries",
+        "nextCursor"
       ]
     },
     "ProtocolInfo": {

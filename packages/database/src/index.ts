@@ -33,6 +33,12 @@ export {
 } from './library-jobs.js';
 export { MIGRATIONS, type Migration, pendingMigrations, SCHEMA_VERSION } from './schema.js';
 export {
+  type PurgeResult,
+  TRASH_RETENTION_DAYS,
+  type TrashEntryRecord,
+  type TrashPosition,
+} from './trash.js';
+export {
   type ApplySourceProposalGroup,
   WorkflowApplicationRepository,
   type WorkflowProposalVersion,
