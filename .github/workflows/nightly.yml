@@ -8,6 +8,10 @@ on:
       release_tag:
         description: 'Optional existing version tag. Run on that tag to attach server packages to its GitHub release.'
         type: string
+      verify_only:
+        description: 'Build, sign and verify the nightly artifacts without publishing them.'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -116,7 +120,8 @@ jobs:
     if: >-
       !inputs.release_tag && github.ref == 'refs/heads/main' &&
       vars.ECS_NIGHTLY_MACOS_SIGNING == 'true'
-    runs-on: macos-15
+    # Sign the existing arm64 installer on the separate Intel runner pool.
+    runs-on: macos-15-intel
     timeout-minutes: 40
     environment: nightly-macos-signing
     steps:
@@ -184,7 +189,7 @@ jobs:
       - name: Stage notarized installer and checksum
         shell: bash
         run: |
-          node scripts/publish-desktop.mjs nightly "$RUNNER_TEMP/ecs-signed" --stage-only
+          node scripts/publish-desktop.mjs nightly "$RUNNER_TEMP/ecs-signed" --stage-only --arch=arm64
           image=dist-release/desktop/Emulation-Server-nightly-macos-arm64.dmg
           digest=$(shasum -a 256 "$image" | awk '{print $1}')
           jq -n --arg sha "$GITHUB_SHA" --arg digest "$digest" --argjson run "$GITHUB_RUN_NUMBER" \
@@ -200,7 +205,7 @@ jobs:
     name: Publish verified distributions
     needs: [server, desktop, sign_macos]
     if: >-
-      always() && needs.server.result == 'success' &&
+      always() && !inputs.verify_only && needs.server.result == 'success' &&
       ((!inputs.release_tag && github.ref == 'refs/heads/main' && needs.desktop.result == 'success' &&
         (needs.sign_macos.result == 'success' || vars.ECS_NIGHTLY_MACOS_SIGNING != 'true')) ||
       (inputs.release_tag && github.ref == format('refs/tags/{0}', inputs.release_tag)))

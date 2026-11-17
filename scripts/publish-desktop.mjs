@@ -8,6 +8,10 @@ if (!tag || (tag !== 'nightly' && !/^v[0-9][a-zA-Z0-9.-]*$/.test(tag)))
   throw new Error('A version release tag is required');
 const version = tag === 'nightly' ? tag : tag.slice(1);
 const platform = process.platform;
+const target = process.argv.slice(4).find((arg) => arg.startsWith('--arch='));
+if (target !== undefined && (platform !== 'darwin' || target !== '--arch=arm64'))
+  throw new Error('Only a macOS arm64 installer can override the host architecture');
+const architecture = target === undefined ? process.arch : 'arm64';
 const suffixes =
   platform === 'win32' ? ['.msi'] : platform === 'linux' ? ['.deb', '.AppImage'] : ['.dmg'];
 const source = resolve(process.argv[3] ?? 'apps/tray/src-tauri/target/release/bundle');
@@ -31,7 +35,7 @@ for (const extension of suffixes) {
   if (matches.length !== 1)
     throw new Error(`Expected one ${extension} installer, found ${matches.length}`);
   const label = platform === 'darwin' ? 'macos' : platform === 'win32' ? 'windows' : platform;
-  const name = `Emulation-Server-${version}-${label}-${process.arch}${extension}`;
+  const name = `Emulation-Server-${version}-${label}-${architecture}${extension}`;
   const target = join(output, name);
   await copyFile(matches[0], target);
   checksums.push(
@@ -41,7 +45,7 @@ for (const extension of suffixes) {
   );
   assets.push(target);
 }
-const sums = join(output, `SHA256SUMS-desktop-${platform}-${process.arch}.txt`);
+const sums = join(output, `SHA256SUMS-desktop-${platform}-${architecture}.txt`);
 await writeFile(sums, `${checksums.join('\n')}\n`);
 if (!process.argv.includes('--stage-only')) {
   execFileSync('gh', ['release', 'upload', tag, ...assets, sums], { stdio: 'inherit' });

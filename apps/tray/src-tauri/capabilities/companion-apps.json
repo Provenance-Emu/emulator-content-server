@@ -3,9 +3,5 @@
   "identifier": "companion-apps",
   "description": "Companion app discovery and actions in the bundled library only.",
   "windows": ["library"],
-  "permissions": [
-    "allow-companion-apps",
-    "allow-open-companion-app",
-    "allow-install-companion-app"
-  ]
+  "permissions": ["allow-companion-apps", "allow-open-companion-app", "allow-install-companion-app"]
 }

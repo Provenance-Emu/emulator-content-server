@@ -863,7 +863,7 @@ paths:
               schema: { $ref: '#/components/schemas/Item' }
         '401': { description: Authentication is required. }
         '403': { description: Write access to the game and a signed-in account are required. }
-        '404': { description: The game is unknown, hidden, or already purged. }
+        '404': { description: 'The game is unknown, hidden, or already purged.' }
         '413': { description: Restoring would exceed the library byte quota. }
   /api/v1/trash:
     get:
@@ -1042,7 +1042,7 @@ paths:
               schema: { $ref: '#/components/schemas/Asset' }
         '401': { description: Authentication is required. }
         '403': { description: Write access to the game and a signed-in account are required. }
-        '404': { description: The file is unknown, hidden, or already purged. }
+        '404': { description: 'The file is unknown, hidden, or already purged.' }
         '409': { description: The file's game is in the trash. Restore the game first. }
         '413': { description: Restoring would exceed the library byte quota. }
   /api/v1/files/{assetId}/adopt:
