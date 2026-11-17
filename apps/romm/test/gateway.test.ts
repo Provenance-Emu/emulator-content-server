@@ -215,6 +215,27 @@ test('RomM browse, byte ranges and extractable GameCube and arcade downloads', a
       );
     }
   };
+  const groupPath = `/api/roms/${discs.id}/ecs-files`;
+  const { items: members } = await json<{
+    items: { id: string; relativePath: string; sizeBytes: number }[];
+  }>(groupPath);
+  assert.deepEqual(
+    members.map(({ relativePath, sizeBytes }) => [relativePath, sizeBytes]),
+    [
+      ['Collection.m3u', playlist.length],
+      ['Discs/Disc 1.iso', discOne.length],
+      ['Discs/Disc 2.iso', discTwo.length],
+    ],
+  );
+  const track = members.find((member) => member.relativePath === 'Discs/Disc 1.iso');
+  assert.ok(track);
+  const memberPath = `${groupPath}/${track.id}/content`;
+  const member = await request(memberPath, { headers: { Range: 'bytes=2-6' } });
+  assert.equal(member.status, 206);
+  assert.deepEqual(Buffer.from(await member.arrayBuffer()), discOne.subarray(2, 7));
+  assert.equal((await request(groupPath, {}, other.authorization)).status, 404);
+  assert.equal((await request(memberPath, {}, other.authorization)).status, 404);
+  assert.equal((await request(`${groupPath}/${'0'.repeat(64)}/content`)).status, 404);
   await checkArchive(discs, {
     'Collection.m3u': Buffer.from('Disc 1.iso\nDisc 2.iso\n'),
     'Disc 1.iso': discOne,

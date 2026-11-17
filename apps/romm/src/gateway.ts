@@ -155,7 +155,7 @@ async function resolveSource(
     ),
     path: sourcePath(sourceId, archive ? 'bundle' : 'content'),
     archive,
-    ...(archive && /\.m3u$/i.test(primary.name)
+    ...(archive
       ? {
           members: group.files.map((file) => ({
             name: file.relativePath ?? file.name,
@@ -448,6 +448,37 @@ export function openGateway(options: { origin: string; indexPath: string }) {
     async (request, reply) =>
       (await game(new Upstream(origin, request, reply), (request.params as { id: string }).id)).rom,
   );
+  const memberId = (file: DownloadMember) =>
+    createHash('sha256').update(file.path).update('\n').update(file.name).digest('hex');
+  app.get('/api/roms/:id/ecs-files', async (request, reply) => {
+    const ecs = new Upstream(origin, request, reply);
+    const { id } = request.params as { id: string };
+    const { members } = await game(ecs, id);
+    if (!members || members.length > 512)
+      throw new GatewayError(404, 'Grouped game files are not available.');
+    return {
+      items: members.map((file) => ({
+        id: memberId(file),
+        relativePath: file.name,
+        sizeBytes: file.size,
+      })),
+    };
+  });
+  app.route({
+    method: ['GET', 'HEAD'],
+    url: '/api/roms/:id/ecs-files/:fileId/content',
+    async handler(request, reply) {
+      const ecs = new Upstream(origin, request, reply);
+      const { id, fileId } = request.params as { id: string; fileId: string };
+      const { members } = await game(ecs, id);
+      const file =
+        members?.length && members.length <= 512
+          ? members.find((member) => memberId(member) === fileId)
+          : undefined;
+      if (!file) throw new GatewayError(404, 'Game file not found.');
+      return relay(ecs, file.path, request, reply);
+    },
+  });
   app.route({
     method: ['GET', 'HEAD'],
     url: '/api/roms/:id/content/:name',
