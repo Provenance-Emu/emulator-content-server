@@ -1588,10 +1588,11 @@ paths:
       operationId: saveSourceCover
       tags: [Matching and jobs]
       description: |
-        Saves a game's front cover as entered by a person (provider `manual`). Same authority as `saveSourceDetails`, decided before the image is read. The image is served from the game's existing artwork path. At most 2 MiB; the declared type and the file's own signature must both be PNG, JPEG or WebP.
+        Saves one picture for a game as entered by a person (provider `manual`): its front cover by default, or the kind named by `artworkRole`. Same authority as `saveSourceDetails`, decided before the image is read. It replaces the picture saved for that kind and leaves the others alone. The image is served from the game's existing artwork path with the same `artworkRole`. At most 2 MiB, or 8 MiB for `manual`; the declared type and the file's own signature must both be PNG, JPEG or WebP.
       parameters:
         - { name: If-Match, in: header, required: true, schema: { type: string }, example: '"rev-0"' }
         - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false } }
+        - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, banner, other], default: front }, description: Which picture of the game this is. }
       requestBody:
         required: true
         content:
@@ -1610,8 +1611,10 @@ paths:
           description: The game does not exist or is not visible to the caller.
         '409':
           description: The matching revision changed. Reload the selections and retry.
+        '400':
+          description: Unknown `artworkRole`.
         '413':
-          description: The image is larger than 2 MiB (`matching-file-too-large`).
+          description: The image is larger than the limit for its kind (`matching-file-too-large`).
         '415':
           description: Not a PNG, JPEG or WebP image, or the declared type does not match the bytes.
         '428':
@@ -1629,7 +1632,7 @@ paths:
           required: true
           schema: { type: string }
           description: Current saved matching revision as a quoted rev-N ETag.
-        - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, other] }, description: Artwork role to remove; defaults to front. }
+        - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, banner, other] }, description: Artwork role to remove; defaults to front. }
         - { name: includeArtworkRoles, in: query, schema: { type: boolean, default: false }, description: Include all artwork roles in the response; older clients should keep the default front-only result. }
       responses:
         '200':
@@ -1645,7 +1648,7 @@ paths:
       operationId: selectedMatchContent
       tags: [Matching and jobs]
       parameters:
-        - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, other] }, description: Artwork role content to retrieve; defaults to front. }
+        - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, banner, other] }, description: Artwork role content to retrieve; defaults to front. }
       responses:
         '200':
           description: Authorized immutable artwork, patch, or disabled RetroArch cheat file snapshot.
@@ -3308,7 +3311,7 @@ components:
         id: { type: string }
         providerId: { type: string }
         kind: { type: string, enum: [rom, metadata, artwork, patch, cheats] }
-        artworkRole: { type: string, enum: [front, back, disc, manual, title, screenshot, other] }
+        artworkRole: { type: string, enum: [front, back, disc, manual, title, screenshot, banner, other] }
         title: { type: string }
         confidence: { type: string, enum: [checksum, local, name] }
         metadata:
@@ -3330,7 +3333,7 @@ components:
         lookupHints: { $ref: '#/components/schemas/SourceLookupHints' }
         matches:
           type: array
-          maxItems: 11
+          maxItems: 12
           items: { $ref: '#/components/schemas/SavedSourceMatch' }
     SourceLookupHints:
       type: object

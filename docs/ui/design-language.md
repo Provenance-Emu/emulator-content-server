@@ -50,6 +50,18 @@ Everything is on the page; nothing opens. One row holds search, **Library folder
 
 A collection never has Previous and Next. `lib/library-browser.ts` reads bounded batches and keeps them, `LibraryBrowser.svelte` asks for the next batch while the end of the list is within a screen of the viewport, and the foot of the list says how much is shown (`Showing 100 of 1,240`, then `1,240 games`). **Show more** is the same action for a keyboard, and becomes **Try again** after a failed read, which is never retried on its own. The browse contract pages by cursor and reports no offsets, so numbered pages are not available. A refresh reads everything on screen again and swaps it in together. Covers are requested only for cards near the viewport (`CollectionPage.svelte` reports them, `previews.request` keeps at most 240 and releases the oldest), so a long scroll does not hold every image in memory.
 
+### Game page
+
+Opening a game in a server folder shows `GameSource.svelte`: the front cover, the title, one line of facts (system, year, publisher, genre), then **Play**, **Download**, **Edit details**, and an icon-only refresh. The description sits under the actions and folds after four lines. Panels follow in a fixed order: **Artwork**, **Details**, **Files**, saved patches, **Manage**.
+
+One matching controller is created for the page and shared with `MatchingPanel` (`controller` prop), so the cover, the details and the lookup never show different saved state.
+
+- **Artwork** (`GameArtwork.svelte`) is a strip with one tile per kind of picture. A saved banner also runs across the top of the page. A tile opens the viewer; an empty tile (shown only to someone who may edit) opens the file chooser. The viewer steps through the saved pictures with arrow buttons or arrow keys and carries the icon buttons: download, replace, remove. Remove asks first, because the picture is not kept anywhere else. Every icon button has an `aria-label` and a `title`. On a mouse a small pencil appears on a tile for a direct replace; on touch the viewer's full-size buttons do it.
+- **Details** (`GameDetails.svelte`) lists the saved fields and is absent when there are none. **Edit details** turns it into a form in place; every field is sent, so emptying one clears it.
+- **Manage** holds the occasional tasks as disclosures, each with a name and one line saying what it does: look up details and artwork, other copies, convert a disc, organize the file. A new task goes here, not in the action row. Inside the lookup task the saved matches are one compact row each; the big cards are for the review flow in Library activity only.
+
+Uploaded games (items) still use the earlier file table layout.
+
 Existing `--ink`, `--ink-dim`, `--paper`, `--panel`, `--line`, `--accent`, and `--warn` are compatibility aliases. Prefer semantic tokens in new components. Apply theme overrides to `:root`; scoped overrides can directly use the compatibility names where old components need them.
 
 Touch controls are at least 2.75rem (44px at the default font size). `.compact-controls` opts a subtree into 2.25rem mouse controls only on wide screens with a fine pointer, hover, and no coarse pointer. Settings and FolderPicker use this class; collection controls retain the same density through their shared selectors. Never shrink coarse-pointer targets to fit a layout. `label.check` gives a checkbox its full labelled hit area.

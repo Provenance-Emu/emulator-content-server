@@ -39,6 +39,7 @@ export type SourceArtworkRole =
   | 'manual'
   | 'title'
   | 'screenshot'
+  | 'banner'
   | 'other';
 
 /** Reserved provider id for a record a person entered; it is never a plugin. */

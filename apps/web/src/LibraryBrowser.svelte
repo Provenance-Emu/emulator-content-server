@@ -426,6 +426,7 @@
       selectedSource={$browser.active?.source??null}
       gameCompanions={$application.capabilities?.features.gameCompanions === true}
       {owner}
+      canEdit={owner || libraries.some((library) => library.id === $browser.active?.source?.libraryId && library.canCreateItems)}
       {context}
       {playerCore}
       {systems}

@@ -478,6 +478,29 @@ export const MIGRATIONS: readonly Migration[] = [
     );
     CREATE INDEX game_source_copies_item ON game_source_copies(item_id);`,
   },
+  {
+    // A CHECK constraint cannot be altered in place. Every saved selection, with its picture
+    // or file, is copied into the rebuilt table inside this migration's transaction before
+    // the old one is dropped; nothing else refers to this table.
+    version: 25,
+    sql: `
+    ALTER TABLE source_match_selections RENAME TO source_match_selections_v24;
+    CREATE TABLE source_match_selections (
+      source_id TEXT NOT NULL REFERENCES source_files(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK(kind IN ('rom','metadata','artwork','patch','cheats')),
+      artwork_role TEXT NOT NULL DEFAULT '' CHECK(
+        (kind='artwork' AND artwork_role IN ('front','back','disc','manual','title','screenshot','banner','other')) OR
+        (kind<>'artwork' AND artwork_role='')
+      ),
+      selection_json TEXT NOT NULL CHECK(json_valid(selection_json)),
+      content BLOB CHECK(content IS NULL OR length(content) <= 8388608),
+      PRIMARY KEY(source_id,kind,artwork_role)
+    );
+    INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
+      SELECT source_id,kind,artwork_role,selection_json,content FROM source_match_selections_v24;
+    DROP TABLE source_match_selections_v24;
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

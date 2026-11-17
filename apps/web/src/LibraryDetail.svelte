@@ -3,27 +3,23 @@
   import { onDestroy } from 'svelte';
   import type { ServerContext } from './lib/application';
   import type { DetailController } from './lib/detail';
-  import { availabilityLabel, systemLabel } from './lib/content-format';
+  import { systemLabel } from './lib/content-format';
   import { explain } from './lib/problems';
-  import { bytes } from './lib/format';
   import { chooseBrowserDownload } from './lib/browser-download';
   import { boundedDownloadBlob } from './lib/download-limits';
-  import { sourcePlayHref, sourcePlayUnavailableReason } from './player/links';
   import GameCopies from './GameCopies.svelte';
+  import GameSource from './GameSource.svelte';
   import Files from './Files.svelte';
-  import MatchingPanel from './MatchingPanel.svelte';
-  import DiscConversion from './DiscConversion.svelte';
-  import SourceOrganization from './SourceOrganization.svelte';
   import Upload from './Upload.svelte';
   import Modal from './components/Modal.svelte';
   import { moveToTrash, undoToast } from './lib/trash';
-  import SavedPatches from './components/SavedPatches.svelte';
   let {
     controller,
     context,
     playerCore,
     systems,
     owner,
+    canEdit = false,
     selectedSource,
     gameCompanions = false,
     refreshing = false,
@@ -38,6 +34,8 @@
     playerCore: import('./player/links').PlayableCores;
     systems: SystemSummary[];
     owner: boolean;
+    /** May change this game's details and pictures: the owner, or an editor of its library. */
+    canEdit?: boolean;
     selectedSource:SourceFile|null;
     gameCompanions?: boolean;
     refreshing?: boolean;
@@ -53,7 +51,6 @@
   let disposed = false;
   let groupDownloading=$state(false);
   let groupFailure=$state<string|null>(null);
-  let patchRevision = $state(0);
   onDestroy(() => {
     disposed = true;
   });
@@ -129,136 +126,113 @@
   async function adopt() {
     if (await controller.adopt()) onchanged();
   }
-  const play = $derived($controller.source ? sourcePlayHref(playerCore, $controller.source) : null);
-  const showPatches = $derived(gameCompanions && $controller.source?.kind === 'rom');
 </script>
 
 <button type="button" class="back-button" onclick={onback}>Back to collection</button>
-<header class="page-heading">
-  <div>
-    <p class="eyebrow">
-      {$controller.source ? 'Server folder file' : $controller.asset ? 'Library file' : 'Game'}
-    </p>
-    <h1 tabindex="-1" data-detail-heading>
-      {$controller.entry?.name ?? 'File unavailable'}
-    </h1>
-    <p class="dim">
-      {systemLabel($controller.entry?.systemId ?? null, systems)}
-    </p>
-  </div>
-  <div class="actions">
-    {#if $controller.canUpload && $controller.item}<button
-        type="button"
-        onclick={() => {uploadTarget=$controller.item;upload=true;}}
-      >
-        Add a file
-      </button>{/if}
-    {#if $controller.canUpload && $controller.item && !$controller.asset}<button
-        type="button"
-        disabled={trashing || saving || $controller.loading || !!$controller.reading || $controller.adopting}
-        onclick={() => {
-          const item = $controller.item;
-          if (item) void trash({ kind: 'item', id: item.id, name: item.title });
-        }}
-      >
-        Move to trash
-      </button>{/if}
-    <button
-      type="button"
-      disabled={saving || refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
-      onclick={() => { patchRevision++; onrefresh(); }}
-    >
-      Refresh details
-    </button>
-  </div>
-</header>
 {#if saveFailure}<p class="problem" role="alert">{saveFailure}</p>{/if}
 {#if saving && !$controller.reading}<p role="status">Choose where to save the file…</p>{/if}
 {#if $controller.failure}<p class="problem" role="alert">
     {$controller.failure}
   </p>{/if}
 {#if $controller.loading}<p role="status">Reading file details…</p>{/if}
-{#if $controller.source}<section>
-    {#if play}<h2>Ready to play</h2><p>Play here in your browser, or download the game file to use in your emulator.</p>
-    {:else if $controller.source.kind === 'rom' && $controller.source.availability === 'local'}<h2>Browser play needs attention</h2><p>{sourcePlayUnavailableReason(playerCore, $controller.source)}</p>{#if owner && onemulators}<button type="button" onclick={onemulators}>Manage emulators</button>{/if}
-    {:else}<h2>File download</h2>{/if}
-    <p>
-      {bytes($controller.source.size)} · {availabilityLabel($controller.source.availability)}
-    </p>
+{#if selectedSource}
+  {#key `${context.key}:${selectedSource.id}`}
+    <GameSource
+      {controller}
+      {context}
+      {playerCore}
+      {systems}
+      {owner}
+      {canEdit}
+      {selectedSource}
+      {gameCompanions}
+      {refreshing}
+      {saving}
+      {groupDownloading}
+      {groupFailure}
+      {onrefresh}
+      {onchanged}
+      {onauthorization}
+      {onemulators}
+      ondownload={(memberId) => void download(undefined, memberId)}
+      ondownloadset={() => void downloadBundle()}
+    />
+  {/key}
+{:else}
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">{$controller.asset ? 'Library file' : 'Game'}</p>
+      <h1 tabindex="-1" data-detail-heading>
+        {$controller.entry?.name ?? 'File unavailable'}
+      </h1>
+      <p class="dim">
+        {systemLabel($controller.entry?.systemId ?? null, systems)}
+      </p>
+    </div>
     <div class="actions">
-      {#if play}<button class="primary" type="button" onclick={() => context.openPlayer(play)}>Play</button>{/if}
+      {#if $controller.canUpload && $controller.item}<button
+          type="button"
+          onclick={() => {uploadTarget=$controller.item;upload=true;}}
+        >
+          Add a file
+        </button>{/if}
+      {#if $controller.canUpload && $controller.item && !$controller.asset}<button
+          type="button"
+          disabled={trashing || saving || $controller.loading || !!$controller.reading || $controller.adopting}
+          onclick={() => {
+            const item = $controller.item;
+            if (item) void trash({ kind: 'item', id: item.id, name: item.title });
+          }}
+        >
+          Move to trash
+        </button>{/if}
       <button
         type="button"
-        disabled={saving || $controller.source.availability !== 'local' || !!$controller.reading}
-        onclick={() => {
-          void download();
-        }}
+        disabled={saving || refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
+        onclick={onrefresh}
       >
-        Download {$controller.source.name}
+        Refresh details
       </button>
     </div>
-    {#if $controller.groupError}<p class="problem">{$controller.groupError} Rescan this library folder after fixing its disc files.</p>{/if}
-    {#if $controller.sourceFiles.length > 1}
-      <h2>Disc set · {$controller.sourceFiles.length} files</h2>
-      <button type="button" disabled={saving || groupDownloading || !!$controller.reading || !!$controller.groupError} onclick={()=>void downloadBundle()}>{groupDownloading ? 'Downloading ZIP…' : 'Download complete set as ZIP'}</button>
-      <p class="dim">The ZIP keeps the original folder layout so CUE and playlist references work.</p>
-      {#if groupFailure}<p class="problem" role="alert">{groupFailure}</p>{/if}
-      <ul>{#each $controller.sourceFiles as file (file.id)}<li>{file.name} · {bytes(file.size)} <button type="button" disabled={saving || groupDownloading || !!$controller.reading || file.availability !== 'local'} onclick={()=>void download(undefined, file.id)}>Download file</button></li>{/each}</ul>
-    {/if}
-    {#if $controller.source.availability !== 'local'}<p class="dim">
-        This file is unavailable while its server folder is offline.
-      </p>{/if}
-  </section>
-
-{:else if $controller.item}<Files
-    detailState={$controller}
-    externalBusy={saving || groupDownloading || trashing}
-    {playerCore}
-    {onemulators}
-    ontrash={$controller.canUpload
-      ? (file) => void trash({ kind: 'file', id: file.id, name: file.relativePath })
-      : undefined}
-    ondownload={(file) => {
-      void download(file);
-    }}
-    onplay={(href) => context.openPlayer(href)}
-  />
-  {#if $controller.canAdopt}<section>
-      <h2>Preserved save copy</h2>
-      <p>
-        Use this copy as the current save. The save it replaces stays beside it as a preserved copy.
-      </p>
-      <button
-        type="button"
-        disabled={$controller.adopting || !!$controller.reading}
-        onclick={() => {
-          void adopt();
-        }}
-      >
-        {$controller.adopting ? 'Choosing…' : 'Use this copy'}
-      </button>
-    </section>{/if}{/if}
-{#if $controller.source || $controller.item}
-  {#key `${context.key}:${$controller.source?.id ?? $controller.item?.id}`}
-    <GameCopies client={context.client} item={$controller.source ? null : $controller.item} source={$controller.source}
-      cores={playerCore} {owner} onchanged={() => { onchanged(); onrefresh(); }} onplay={(href) => context.openPlayer(href)} />
-  {/key}
+  </header>
+  {#if $controller.item}<Files
+      detailState={$controller}
+      externalBusy={saving || groupDownloading || trashing}
+      {playerCore}
+      {onemulators}
+      ontrash={$controller.canUpload
+        ? (file) => void trash({ kind: 'file', id: file.id, name: file.relativePath })
+        : undefined}
+      ondownload={(file) => {
+        void download(file);
+      }}
+      onplay={(href) => context.openPlayer(href)}
+    />
+    {#if $controller.canAdopt}<section>
+        <h2>Preserved save copy</h2>
+        <p>
+          Use this copy as the current save. The save it replaces stays beside it as a preserved copy.
+        </p>
+        <button
+          type="button"
+          disabled={$controller.adopting || !!$controller.reading}
+          onclick={() => {
+            void adopt();
+          }}
+        >
+          {$controller.adopting ? 'Choosing…' : 'Use this copy'}
+        </button>
+      </section>{/if}
+    {#key `${context.key}:${$controller.item.id}`}
+      <GameCopies client={context.client} item={$controller.item} source={null}
+        cores={playerCore} {owner} onchanged={() => { onchanged(); onrefresh(); }} onplay={(href) => context.openPlayer(href)} />
+    {/key}
+  {/if}
 {/if}
 {#if $controller.reading}<p role="status">
     Downloading {$controller.reading.received} bytes{#if $controller.reading.total !== null}
       of {$controller.reading.total}{/if}
   </p>{/if}
-{#if showPatches && $controller.source}{#key `${context.key}:${$controller.source.id}:${patchRevision}`}
-  <SavedPatches client={context.client} sourceId={$controller.source.id} {onauthorization} />
-{/key}{/if}
-{#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} onchanged={() => { patchRevision++; onchanged(); }} showLegacyPatchDownload={!showPatches} sourceId={selectedSource.id} sourceName={selectedSource.name} />
-{#if owner && selectedSource.kind === 'rom' && selectedSource.availability === 'local' && !selectedSource.groupError &&
-  (/\.(cue|gdi)$/i.test(selectedSource.name) || (/\.zip$/i.test(selectedSource.name) &&
-    /\.(dreamcast|psx|segacd|saturn|pcecd|pcfx|3do|neogeocd|jaguarcd|cdi)$/.test(selectedSource.systemId ?? '')))}
-  <DiscConversion client={context.client} rootId={selectedSource.rootId} sourceId={selectedSource.id} onconverted={()=>{onchanged();onrefresh();}} />
-{/if}
-{#if selectedSource.kind==='rom'}<SourceOrganization {context} {owner} sourceRootId={selectedSource.rootId} sourceId={selectedSource.id} libraryId={selectedSource.libraryId} onchanged={()=>{onchanged();onrefresh();}} />{/if}
-{/key}{/if}
 {#if upload && uploadTarget}<Modal
     title="Add a file"
     busy={uploading}

@@ -147,6 +147,8 @@ export type {
   ServerUpdateSettings,
   ServerUpdateStatus,
   SessionResponse,
+  SourceDetails,
+  SourceDetailsDraft,
   SourceFile,
   SourceFileList,
   SourceGroup,

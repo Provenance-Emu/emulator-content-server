@@ -112,13 +112,18 @@ async function fixture() {
   };
   const putCover = async (
     payload: Buffer,
-    options: { headers?: Record<string, string>; rev?: number | null; type?: string } = {},
+    options: {
+      headers?: Record<string, string>;
+      rev?: number | null;
+      type?: string;
+      role?: string;
+    } = {},
   ) => {
     const headers = options.headers ?? f.auth;
     const rev = options.rev === undefined ? await revision() : options.rev;
     return f.app.inject({
       method: 'PUT',
-      url: `${base}/details/cover`,
+      url: `${base}/details/cover?includeArtworkRoles=true${options.role ? `&artworkRole=${options.role}` : ''}`,
       headers: {
         ...headers,
         'content-type': options.type ?? 'image/png',
@@ -263,6 +268,55 @@ test('an owner saves a cover and it is served with a validator', async () => {
       headers: { ...f.auth, 'if-none-match': etag },
     });
     assert.equal(again.statusCode, 304);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('each kind of picture is saved on its own, with its own size limit', async () => {
+  const f = await fixture();
+  try {
+    const front = png();
+    const back = Buffer.concat([png(), Buffer.from('back')]);
+    assert.equal((await f.putCover(front)).statusCode, 200);
+    const saved = await f.putCover(back, { role: 'back' });
+    assert.equal(saved.statusCode, 200, saved.body);
+    const roles = saved
+      .json()
+      .matches.filter((m: { kind: string }) => m.kind === 'artwork')
+      .map((m: { artworkRole: string; providerId: string; fileName: string }) => [
+        m.artworkRole,
+        m.providerId,
+        m.fileName,
+      ]);
+    assert.deepEqual(roles.sort(), [
+      ['back', 'manual', 'back.png'],
+      ['front', 'manual', 'cover.png'],
+    ]);
+    const content = (role: string) =>
+      f.app.inject({
+        url: `${f.base}/matches/selections/artwork/content?artworkRole=${role}`,
+        headers: f.auth,
+      });
+    assert.deepEqual((await content('back')).rawPayload, back);
+    assert.deepEqual((await content('front')).rawPayload, front);
+
+    const banner = Buffer.concat([png(), Buffer.from('banner')]);
+    const withBanner = await f.putCover(banner, { role: 'banner' });
+    assert.equal(withBanner.statusCode, 200, withBanner.body);
+    assert.deepEqual((await content('banner')).rawPayload, banner);
+    assert.deepEqual((await content('back')).rawPayload, back);
+
+    const unknown = await f.putCover(front, { role: 'poster' });
+    assert.equal(unknown.statusCode, 400, unknown.body);
+
+    // A scanned manual page may be larger than a cover.
+    const large = Buffer.concat([png(), Buffer.alloc(3 * 1024 * 1024)]);
+    const before = await f.revision();
+    assert.equal((await f.putCover(large, { role: 'title' })).statusCode, 413);
+    assert.equal(await f.revision(), before);
+    assert.equal((await f.putCover(large, { role: 'manual' })).statusCode, 200);
+    assert.deepEqual((await content('manual')).rawPayload, large);
   } finally {
     await f.dispose();
   }

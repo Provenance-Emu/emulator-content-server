@@ -15,6 +15,7 @@ const ARTWORK_ROLES: readonly SourceArtworkRole[] = [
   'manual',
   'title',
   'screenshot',
+  'banner',
   'other',
 ];
 

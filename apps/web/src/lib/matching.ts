@@ -2,6 +2,7 @@ import {
   type ContentClient,
   ContentError,
   type MatchingOptions,
+  type SourceDetailsDraft,
   type SourceLookupHints,
   type SourceMatches,
   type SourceMatchSelections,
@@ -30,6 +31,10 @@ export interface MatchingController extends Readable<MatchingState> {
   save(id: string): Promise<boolean>;
   remove(kind: string): Promise<boolean>;
   saveLookupHints(hints: SourceLookupHints): Promise<boolean>;
+  /** Saves the title and details a person typed. An empty field clears what was saved. */
+  saveDetails(draft: SourceDetailsDraft): Promise<boolean>;
+  /** Saves a picture a person chose for one kind of artwork, replacing the saved one. */
+  saveArtwork(role: string, image: Blob): Promise<boolean>;
   previewSaved(role: string): Promise<void>;
   clear(): void;
   invalidate(): void;
@@ -248,8 +253,58 @@ export function createMatching(client: ContentClient, sourceId: string): Matchin
       if (live(run)) update({ saving: null });
     }
   }
+  /** A write a person made by hand. After a conflict or a lost reply the saved state is read again. */
+  async function write(
+    tag: string,
+    send: (revision: number) => Promise<SourceMatchSelections>,
+  ): Promise<boolean> {
+    if (
+      disposed ||
+      denied ||
+      current.savedLoading ||
+      current.savedLoadFailed ||
+      current.saving ||
+      !current.saved
+    )
+      return false;
+    const run = epoch;
+    update({ saving: tag, failure: null });
+    try {
+      await showSaved(await send(current.saved.revision), run);
+      return live(run);
+    } catch (error) {
+      if (!live(run)) return false;
+      if (!(error instanceof ContentError) || error.status === 409 || error.status >= 500) {
+        try {
+          await showSaved(await client.sourceSelections(sourceId, lifetime.signal), run);
+        } catch {
+          if (live(run)) update({ savedLoadFailed: true });
+        }
+      }
+      if (live(run)) failure(error);
+      return false;
+    } finally {
+      if (live(run)) update({ saving: null });
+    }
+  }
   return {
     subscribe: store.subscribe,
+    saveDetails(draft) {
+      return write('details', (revision) =>
+        client.saveSourceDetails(sourceId, draft, revision, lifetime.signal),
+      );
+    },
+    saveArtwork(role, image) {
+      return write(`artwork:${role}`, (revision) =>
+        client.saveSourceArtwork(
+          sourceId,
+          image,
+          revision,
+          role as Parameters<ContentClient['saveSourceArtwork']>[3],
+          lifetime.signal,
+        ),
+      );
+    },
     async saveLookupHints(hints) {
       if (
         disposed ||

@@ -6,6 +6,7 @@ export const ARTWORK_ROLES = [
   'manual',
   'title',
   'screenshot',
+  'banner',
   'other',
 ] as const;
 export type ArtworkRole = (typeof ARTWORK_ROLES)[number];
@@ -34,6 +35,8 @@ const roles: Record<string, ArtworkRole> = {
   screenshots: 'screenshot',
   snap: 'screenshot',
   snaps: 'screenshot',
+  banner: 'banner',
+  banners: 'banner',
   other: 'other',
   misc: 'other',
 };

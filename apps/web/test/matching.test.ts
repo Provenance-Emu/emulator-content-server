@@ -503,3 +503,85 @@ test('a lost automatic search response reconciles saved metadata without repeati
   assert.equal(get(controller).savedLoadFailed, false);
   assert.equal(searches, 1);
 });
+
+test('details and pictures entered by hand are saved at the current revision and a conflict reloads before another try', async (t) => {
+  const selection = (revision: number, matches: unknown[] = []) =>
+    Response.json({ sourceId: 'source', revision, matches });
+  const metadata = {
+    id: 'manual:metadata:1',
+    providerId: 'manual',
+    kind: 'metadata',
+    title: 'Typed title',
+    confidence: 'local',
+    metadata: { title: 'Typed title', year: '1994' },
+    contentAvailable: false,
+    contentType: null,
+    fileName: null,
+  };
+  const back = {
+    id: 'manual:artwork:1',
+    providerId: 'manual',
+    kind: 'artwork',
+    artworkRole: 'back',
+    title: 'Typed title',
+    confidence: 'local',
+    metadata: { artworkRole: 'back' },
+    contentAvailable: true,
+    contentType: 'image/png',
+    fileName: 'back.png',
+  };
+  const writes: {
+    path: string;
+    role: string | null;
+    revision: string | null;
+    type: string | null;
+    body: unknown;
+  }[] = [];
+  let conflict = false;
+  const f = transport(async (url, init) => {
+    if (init?.method !== 'PUT') return selection(conflict ? 9 : 4);
+    const headers = new Headers(init.headers);
+    writes.push({
+      path: url.pathname,
+      role: url.searchParams.get('artworkRole'),
+      revision: headers.get('if-match'),
+      type: headers.get('content-type'),
+      body: typeof init.body === 'string' ? JSON.parse(init.body) : init.body,
+    });
+    if (conflict) return problem(409, 'matching-conflict');
+    return url.pathname.endsWith('/details')
+      ? selection(5, [metadata])
+      : selection(6, [metadata, back]);
+  });
+  t.after(f.restore);
+  const controller = createMatching(f.client, 'source');
+  t.after(() => controller.dispose());
+  assert.equal(await controller.saveDetails({ title: 'Too early' }), false);
+  assert.equal(writes.length, 0);
+  await controller.load();
+
+  const draft = { title: 'Typed title', details: { year: '1994', publisher: '' } };
+  assert.equal(await controller.saveDetails(draft), true);
+  assert.equal(writes[0]?.path, '/api/v1/sources/source/details');
+  assert.equal(writes[0]?.revision, '"rev-4"');
+  assert.deepEqual(writes[0]?.body, draft);
+  assert.equal(get(controller).saved?.matches[0]?.title, 'Typed title');
+
+  const image = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' });
+  assert.equal(await controller.saveArtwork('back', image), true);
+  assert.equal(writes[1]?.path, '/api/v1/sources/source/details/cover');
+  assert.equal(writes[1]?.role, 'back');
+  assert.equal(writes[1]?.revision, '"rev-5"');
+  assert.equal(writes[1]?.type, 'image/png');
+  assert.equal(writes[1]?.body, image);
+  assert.equal(get(controller).saved?.revision, 6);
+  assert.equal(get(controller).saving, null);
+
+  // Someone else changed the game: the write is refused and the saved state is read again.
+  conflict = true;
+  assert.equal(await controller.saveDetails(draft), false);
+  assert.equal(writes[2]?.revision, '"rev-6"');
+  assert.equal(get(controller).saved?.revision, 9);
+  assert.ok(get(controller).failure);
+  assert.equal(writes.length, 3);
+});

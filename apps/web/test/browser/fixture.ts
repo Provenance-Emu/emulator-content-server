@@ -212,6 +212,15 @@ async function createFixture() {
     throw error;
   }
 }
+const foldedTasks = new WeakMap<
+  import('@playwright/test').Page,
+  import('@playwright/test').Locator
+>();
+/** Leaves the game page's task sections folded, as a person first sees them. */
+export async function keepTasksFolded(page: import('@playwright/test').Page) {
+  const folded = foldedTasks.get(page);
+  if (folded) await page.removeLocatorHandler(folded);
+}
 export const test = base.extend<{ fixture: Awaited<ReturnType<typeof createFixture>> }>({
   page: async ({ page }, use) => {
     // Most cases exercise normal browser downloads, including browsers without a secure save picker.
@@ -222,6 +231,23 @@ export const test = base.extend<{ fixture: Awaited<ReturnType<typeof createFixtu
         writable: true,
         value: undefined,
       }),
+    );
+    // The game page folds its occasional tasks (lookup, other copies, conversion, organizing)
+    // behind disclosures. Cases written against those sections open them on sight;
+    // game-page.spec.ts covers the folded page itself and calls keepTasksFolded first.
+    const folded = page.locator('details.game-task:not([open]) > summary').first();
+    foldedTasks.set(page, folded);
+    await page.addLocatorHandler(
+      folded,
+      async () => {
+        await page.evaluate(() => {
+          for (const task of document.querySelectorAll<HTMLDetailsElement>(
+            'details.game-task:not([open])',
+          ))
+            task.open = true;
+        });
+      },
+      { noWaitAfter: true },
     );
     await use(page);
   },

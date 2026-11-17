@@ -3,14 +3,16 @@
   import { onMount, onDestroy, untrack } from 'svelte';
   import { get } from 'svelte/store';
   import type { ServerContext } from './lib/application';
-  import { createMatching } from './lib/matching';
+  import { createMatching, type MatchingController } from './lib/matching';
   import { explain } from './lib/problems';
   import MatchingProviders from './components/MatchingProviders.svelte';
   import FormField from './components/FormField.svelte';
   import MatchMetadata from './components/MatchMetadata.svelte';
   import {artworkRoles,roleOf,matchSlot,matchLabel} from './lib/matching-slots';
-  let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy,showLegacyPatchDownload=true}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void;showLegacyPatchDownload?:boolean}=$props();
-  const controller=untrack(()=>createMatching(context.client,sourceId));
+  let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy,showLegacyPatchDownload=true,controller:shared}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void;showLegacyPatchDownload?:boolean;
+    /** The game page's own controller. It loads, reports failures and is disposed there. */
+    controller?:MatchingController}=$props();
+  const controller=untrack(()=>shared ?? createMatching(context.client,sourceId));
   let plugins=$state<MatchingPlugin[]>([]);
   let providerIds=$state<string[]>([]);
   let managerId=$state('org.ecs.matches');
@@ -39,7 +41,7 @@
   const activeProviders=$derived(plugins.some((plugin)=>plugin.kind==='provider'&&providerIds.includes(plugin.id)&&(!plugin.network||online)));
   $effect(()=>{onbusy?.($controller.loading || $controller.savedLoading || !!$controller.saving);});
   const container=$derived(/\.(rar|m3u|ccd)$/i.test(sourceName));
-  onMount(()=>{savedReady=controller.load();if(owner)void loadPlugins();});
+  onMount(()=>{if(!shared)savedReady=controller.load();if(owner)void loadPlugins();});
   async function loadPlugins(){
     if(disposed||registryLoading)return;
     registryLoading=true;registryFailure=null;
@@ -51,7 +53,7 @@
     } catch(error){if(!disposed)registryFailure=explain(error);}
     finally {if(!disposed)registryLoading=false;}
   }
-  onDestroy(()=>{disposed=true;controller.dispose();});
+  onDestroy(()=>{disposed=true;if(!shared)controller.dispose();});
   async function save(id:string){if(await controller.save(id))onchanged();}
   async function saveLookupHints() {
     const saved = get(controller).saved?.lookupHints;
@@ -108,7 +110,19 @@
 <section class="matching matching-page" aria-label="Metadata and artwork matching">
   <h2>Saved matches</h2>
   {#if $controller.savedLoading}<p role="status">Loading saved matches…</p>{/if}
-  {#if $controller.saved?.matches.length}
+  {#if shared && $controller.saved?.matches.length}
+    <!-- The game page already shows the pictures and details; this is the list of what is kept. -->
+    <ul class="saved-rows">{#each $controller.saved.matches as selected (matchSlot(selected))}
+      {@const art=selected.kind==='artwork'?(roleOf(selected)==='front'?$controller.savedArtwork:$controller.savedArtworkByRole[roleOf(selected)]):null}
+      <li>
+        {#if art}<img src={art} alt={'Saved artwork for '+selected.title} />{:else}<span class="saved-thumb" aria-hidden="true"></span>{/if}
+        <span class="saved-name"><strong>{selected.kind==='metadata'?'Details':selected.kind==='rom'?'System match':matchLabel(selected)}</strong>
+          <span class="dim">{selected.providerId==='manual'?'Edited by hand':providerName(selected.providerId)}{#if selected.kind==='cheats'} · codes stay off until you choose them in your player{/if}</span></span>
+        {#if selected.contentAvailable && (selected.kind!=='patch' || showLegacyPatchDownload)}<button type="button" class="text-button" aria-label={`Download ${matchLabel(selected)}`} onclick={()=>void downloadSaved(selected.kind,selected.fileName??'selected',selected.kind==='artwork'?roleOf(selected):undefined)}>Download</button>{/if}
+        {#if owner}<button type="button" class="text-button" aria-label={`Remove saved ${matchLabel(selected)}`} disabled={!!$controller.saving||$controller.loading||$controller.savedLoadFailed||$controller.savedLoading} onclick={()=>void remove(matchSlot(selected))}>Remove</button>{/if}
+      </li>
+    {/each}</ul>
+  {:else if $controller.saved?.matches.length}
     <div class="matching-card-grid">{#each $controller.saved.matches as selected (matchSlot(selected))}
       <article class="matching-card"><h3>{selected.title}</h3><p class="dim">{selected.providerId==='manual'?'Edited by hand':`${matchLabel(selected)} · ${providerName(selected.providerId)}`}</p>
         {#if selected.kind==='artwork' && (roleOf(selected)==='front'?$controller.savedArtwork:$controller.savedArtworkByRole[roleOf(selected)])}<img src={(roleOf(selected)==='front'?$controller.savedArtwork:$controller.savedArtworkByRole[roleOf(selected)])??''} alt={'Saved artwork for '+selected.title} />
@@ -121,7 +135,7 @@
     {/each}</div>
   {:else if $controller.saved && !$controller.savedLoading}<p class="dim">No matches have been saved for this game.</p>{/if}
   {#if $controller.savedLoadFailed}<button type="button" disabled={$controller.loading||$controller.savedLoading||!!$controller.saving} onclick={()=>void controller.load()}>Retry saved matches</button>{/if}
-  {#if failure||$controller.failure}<p role="alert" class="problem">{failure ?? $controller.failure}</p>{/if}
+  {#if failure||(!shared&&$controller.failure)}<p role="alert" class="problem">{failure ?? $controller.failure}</p>{/if}
   {#if registryFailure}<p role="alert" class="problem">{registryFailure}</p><button type="button" disabled={registryLoading} onclick={()=>void loadPlugins()}>Retry matching providers</button>{/if}
   {#if owner}
   {#if $controller.saved?.lookupHints}
@@ -189,4 +203,10 @@
   h3 { margin-top:0; }
   .matching-card > button { margin:var(--space-1) var(--space-1) 0 0; }
   img { display:block; width:100%; max-width:18rem; max-height:24rem; object-fit:contain; }
+  .saved-rows { display:grid; gap:var(--space-1); margin:0 0 var(--space-4); padding:0; list-style:none; }
+  .saved-rows li { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1) var(--space-3); min-height:var(--control-height-touch); }
+  .saved-rows img, .saved-thumb { flex:none; width:2.25rem; height:2.25rem; max-width:none; border-radius:var(--radius-sm); object-fit:cover; background:var(--color-surface-inset); }
+  .saved-name { display:flex; flex:1 1 12rem; flex-wrap:wrap; gap:0 var(--space-2); min-width:0; }
+  .saved-name strong::first-letter { text-transform:uppercase; }
+  .saved-name .dim { font-size:var(--text-small); }
 </style>

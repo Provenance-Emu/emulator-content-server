@@ -90,10 +90,12 @@ import type {
   PlayerIsolationSession,
   PlayerManagement,
   Problem,
+  SavedSourceMatch,
   ServerUpdateDecision,
   ServerUpdateSettings,
   ServerUpdateStatus,
   SessionResponse,
+  SourceDetailsDraft,
   SourceFileList,
   SourceGroup,
   SourceLookupHints,
@@ -1164,7 +1166,50 @@ export class ContentClient {
     return this.selectionRequest(
       id,
       { method: 'DELETE', headers: { 'if-match': `"rev-${revision}"` }, signal },
-      `selections/${encodeURIComponent(kind)}${query.size ? `?${query}` : ''}`,
+      `matches/selections/${encodeURIComponent(kind)}${query.size ? `?${query}` : ''}`,
+    );
+  }
+  /**
+   * Saves a game's title and details as a person entered them. Keys present in `details`
+   * replace that field, an empty string clears it, and absent keys keep what is saved.
+   */
+  async saveSourceDetails(
+    id: string,
+    draft: SourceDetailsDraft,
+    revision: number,
+    signal?: AbortSignal,
+  ): Promise<SourceMatchSelections> {
+    return this.selectionRequest(
+      id,
+      {
+        method: 'PUT',
+        headers: { 'if-match': `"rev-${revision}"` },
+        body: JSON.stringify(draft),
+        signal,
+      },
+      'details',
+    );
+  }
+  /**
+   * Saves one picture for a game (PNG, JPEG or WebP), replacing the one saved for that kind.
+   * The front cover is the default.
+   */
+  async saveSourceArtwork(
+    id: string,
+    image: Blob,
+    revision: number,
+    artworkRole: NonNullable<SavedSourceMatch['artworkRole']> = 'front',
+    signal?: AbortSignal,
+  ): Promise<SourceMatchSelections> {
+    return this.selectionRequest(
+      id,
+      {
+        method: 'PUT',
+        headers: { 'if-match': `"rev-${revision}"`, 'content-type': image.type },
+        body: image,
+        signal,
+      },
+      `details/cover?artworkRole=${encodeURIComponent(artworkRole)}`,
     );
   }
   async saveSourceLookupHints(
@@ -1181,15 +1226,15 @@ export class ContentClient {
         body: JSON.stringify(hints),
         signal,
       },
-      'lookup-hints',
+      'matches/lookup-hints',
     );
   }
   private async selectionRequest(
     id: string,
     init: RequestInit,
-    path = 'selections',
+    path = 'matches/selections',
   ): Promise<SourceMatchSelections> {
-    const url = this.url(`/api/v1/sources/${encodeURIComponent(id)}/matches/${path}`);
+    const url = this.url(`/api/v1/sources/${encodeURIComponent(id)}/${path}`);
     url.searchParams.set('includeArtworkRoles', 'true');
     const response = await fetch(url, {
       ...init,
@@ -1206,7 +1251,7 @@ export class ContentClient {
       !Number.isSafeInteger(result.revision) ||
       result.revision < 0 ||
       !Array.isArray(result.matches) ||
-      result.matches.length > 11
+      result.matches.length > 12
     )
       throw new Error('Invalid saved matches');
     const selections = new Set<string>();
@@ -1220,7 +1265,7 @@ export class ContentClient {
         !['rom', 'metadata', 'artwork', 'patch', 'cheats'].includes(match.kind) ||
         (match.kind === 'artwork' &&
           match.artworkRole !== undefined &&
-          !['front', 'back', 'disc', 'manual', 'title', 'screenshot', 'other'].includes(
+          !['front', 'back', 'disc', 'manual', 'title', 'screenshot', 'banner', 'other'].includes(
             match.artworkRole,
           )) ||
         (match.kind !== 'artwork' && match.artworkRole !== undefined) ||

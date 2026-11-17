@@ -3,6 +3,7 @@ import type { Actor, AssetKind, SourceDetails, SourceMatchRecord } from '@ecs/do
 import {
   DomainError,
   FRONT_ARTWORK_MAX_BYTES,
+  MANUAL_ARTWORK_MAX_BYTES,
   MANUAL_PROVIDER_ID,
   SOURCE_DETAIL_KEYS,
 } from '@ecs/domain';
@@ -84,14 +85,16 @@ export function registerSourceSelections(
     'image/webp': { type: 'image/webp', extension: 'webp' },
   };
   app.register(async (scope) => {
-    scope.addContentTypeParser(Object.keys(COVER_TYPES), (_request, payload, done) => {
+    scope.addContentTypeParser(Object.keys(COVER_TYPES), (request, payload, done) => {
+      // onRequest has already rejected an unknown kind.
+      const limit = artworkLimit(artworkRole(request));
       const chunks: Buffer[] = [];
       let size = 0;
       let finished = false;
       payload.on('data', (chunk: Buffer) => {
         if (finished) return;
         size += chunk.length;
-        if (size > FRONT_ARTWORK_MAX_BYTES) {
+        if (size > limit) {
           finished = true;
           done(tooLarge());
           return;
@@ -151,16 +154,18 @@ export function registerSourceSelections(
     scope.put(
       '/api/v1/sources/:sourceId/details/cover',
       {
-        bodyLimit: FRONT_ARTWORK_MAX_BYTES,
+        // The largest kind sets the transport limit; each kind's own limit is checked below.
+        bodyLimit: MANUAL_ARTWORK_MAX_BYTES,
         onRequest: async (request) => {
           authorizeDetailsWrite(request);
+          const limit = artworkLimit(artworkRole(request));
           const declared = String(request.headers['content-type'] ?? '')
             .split(';')[0]
             ?.trim()
             .toLowerCase();
           if (!declared || !COVER_TYPES[declared]) throw unsupportedCover();
           const length = Number(request.headers['content-length']);
-          if (Number.isFinite(length) && length > FRONT_ARTWORK_MAX_BYTES) throw tooLarge();
+          if (Number.isFinite(length) && length > limit) throw tooLarge();
         },
       },
       async (request, reply) => {
@@ -171,9 +176,11 @@ export function registerSourceSelections(
           .split(';')[0]
           ?.trim()
           .toLowerCase();
+        const role = artworkRole(request);
         const bytes = request.body;
         if (!Buffer.isBuffer(bytes) || bytes.length === 0 || imageType(bytes) !== declared)
           throw unsupportedCover();
+        if (bytes.length > artworkLimit(role)) throw tooLarge();
         const cover = COVER_TYPES[declared as string] as { type: string; extension: string };
         const current = context.catalog
           .sourceMatches(sourceId)
@@ -187,19 +194,19 @@ export function registerSourceSelections(
             id: `${MANUAL_PROVIDER_ID}:artwork:${digest}`,
             providerId: MANUAL_PROVIDER_ID,
             kind: 'artwork',
-            artworkRole: 'front',
+            artworkRole: role,
             title: current?.title ?? source.title ?? source.displayName,
             confidence: 'local',
-            metadata: { artworkRole: 'front' },
+            metadata: { artworkRole: role },
             originKind: null,
             contentAvailable: true,
             contentType: cover.type,
-            fileName: `cover.${cover.extension}`,
+            fileName: `${role === 'front' ? 'cover' : role}.${cover.extension}`,
             updatedAt: new Date().toISOString(),
           },
           bytes,
           actor.userId,
-          'front',
+          role,
         );
         reply.header('cache-control', 'private, no-store');
         return state(actor, sourceId, includeArtworkRoles(request));
@@ -496,7 +503,7 @@ function artworkRole(request: FastifyRequest): NonNullable<SourceMatchRecord['ar
   const value = (request.query as Record<string, unknown>).artworkRole ?? 'front';
   if (
     typeof value !== 'string' ||
-    !['front', 'back', 'disc', 'manual', 'title', 'screenshot', 'other'].includes(value)
+    !['front', 'back', 'disc', 'manual', 'title', 'screenshot', 'banner', 'other'].includes(value)
   )
     throw new DomainError('invalid-request', 400, 'Invalid artwork role');
   return value as NonNullable<SourceMatchRecord['artworkRole']>;
@@ -512,6 +519,10 @@ export function matchSlot(candidate: {
     : candidate.kind;
 }
 
+/** A manual is a scanned page; every other picture is held to the cover limit. */
+function artworkLimit(role: NonNullable<SourceMatchRecord['artworkRole']>): number {
+  return role === 'manual' ? MANUAL_ARTWORK_MAX_BYTES : FRONT_ARTWORK_MAX_BYTES;
+}
 function tooLarge(): DomainError {
   return new DomainError('matching-file-too-large', 413, 'Selected content is too large');
 }

@@ -291,11 +291,12 @@ test('a transient saved-match load can retry inside the open game', async ({ pag
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
   const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
-  await expect(matching.getByRole('alert')).toBeVisible();
+  // The game page reports the failed read once, above its panels.
+  await expect(page.getByRole('alert')).toBeVisible();
   await expect(matching.getByText('No matches have been saved for this game.')).toHaveCount(0);
   await matching.getByRole('button', { name: 'Retry saved matches', exact: true }).click();
   await expect(matching.getByText('No matches have been saved for this game.')).toBeVisible();
-  await expect(matching.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(matching.getByRole('button', { name: 'Retry saved matches' })).toHaveCount(0);
   expect(reads).toBe(2);
 });
@@ -575,8 +576,8 @@ test('front, back, disc and manual choices coexist with role filtering and a PDF
       matching.getByRole('button', { name: `Remove saved ${label}`, exact: true }),
     ).toBeVisible();
   }
-  await matching.getByRole('button', { name: 'Preview back cover', exact: true }).click();
-  await expect(matching.locator('img[alt^="Saved artwork"]')).toHaveCount(2);
+  // The game page loads every saved picture itself; nothing needs a Preview click.
+  await expect(matching.locator('img[alt^="Saved artwork"]')).toHaveCount(3);
   const pending = page.waitForEvent('download');
   await matching.getByRole('button', { name: 'Download manual', exact: true }).click();
   const download = await pending;
