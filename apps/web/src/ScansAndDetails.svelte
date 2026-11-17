@@ -5,6 +5,7 @@
   import type { ServerContext } from './lib/application';
   import { automaticText, missingCount, overviewTotals } from './lib/library-overview';
   import { explain } from './lib/problems';
+  import DiscConversion from './DiscConversion.svelte';
   import FolderOrganizationPolicy from './FolderOrganizationPolicy.svelte';
   import FolderWatchPolicy from './FolderWatchPolicy.svelte';
   import LibraryCleanup from './LibraryCleanup.svelte';
@@ -32,7 +33,7 @@
   let selectedJob = $state<string>();
   let activityHeading = $state<HTMLHeadingElement>();
   let folderPolicy = $state<{
-    kind: 'watch' | 'organization';
+    kind: 'watch' | 'organization' | 'disc';
     root: Pick<ContentRoot, 'id' | 'label' | 'libraryId'>;
   } | null>(null);
   let cleanupLibrary = $state('');
@@ -105,11 +106,13 @@
 
 {#if folderPolicy}
   <Modal
-    title={folderPolicy.kind === 'watch' ? 'Folder watching' : 'Automatic organization'}
+    title={folderPolicy.kind === 'watch' ? 'Folder watching' : folderPolicy.kind === 'disc' ? 'CHD conversion' : 'Automatic organization'}
     onclose={() => (folderPolicy = null)}
   >
     {#if folderPolicy.kind === 'watch'}
       <FolderWatchPolicy client={context.client} root={folderPolicy.root} {onrejected} />
+    {:else if folderPolicy.kind === 'disc'}
+      <DiscConversion client={context.client} rootId={folderPolicy.root.id} />
     {:else}
       <FolderOrganizationPolicy client={context.client} root={folderPolicy.root} {onrejected} />
     {/if}
@@ -185,6 +188,9 @@
                       aria-label={`Organization settings for ${folder.label}`}
                       onclick={() => (folderPolicy = { kind: 'organization', root })}
                     >Organization</button>
+                    <button type="button" aria-label={`CHD conversion settings for ${folder.label}`}
+                      onclick={() => (folderPolicy = { kind: 'disc', root })}
+                    >CHD conversion</button>
                   </div>
                 </td>
               </tr>

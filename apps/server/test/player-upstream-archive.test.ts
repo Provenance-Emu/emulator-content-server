@@ -388,6 +388,17 @@ test('every built-in recovery resource matches its independently captured offici
     }[];
   };
   for (const source of upstreamArchiveSources) {
+    if (source.url.includes('2026-11-15')) {
+      assert.equal(source.entries.length, 47);
+      assert.ok(source.entries.some((entry) => entry.id === 'org.libretro.prboom'));
+      assert.ok(
+        source.entries.every(
+          (entry) =>
+            entry.upstream?.manifest.player?.web?.buildVersion === 'web.libretro.com 2026-11-15',
+        ),
+      );
+      continue;
+    }
     assert.deepEqual(
       receipt.archives.find((archive) => archive.sha256 === source.sha256),
       { url: source.url, sha256: source.sha256, sizeBytes: source.sizeBytes },

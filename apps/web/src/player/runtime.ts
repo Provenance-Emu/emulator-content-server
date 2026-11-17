@@ -84,8 +84,27 @@ export const paths = {
   battery_save: '/ecs/saves/game.srm',
   save_state: '/ecs/states/game.state',
 } as const;
+export const dreamcastVmuPath = '/ecs/system/dc/vmu_save_A1.bin';
+export const dreamcastVmuBytes = 128 * 1024;
+
+export function usesDreamcastVmu(core: BrowserCore | undefined): boolean {
+  return core?.id === 'org.flycast.shil-vm' && core.saveCompletion === 'command-reply-v1';
+}
+
+export function isDreamcastCore(core: BrowserCore): boolean {
+  return (
+    core.id === 'org.flycast.wasm-jit' ||
+    core.id === 'org.flycast.shil-vm' ||
+    core.id === 'org.libretro.parallel-dc'
+  );
+}
+
 export function contentExtensions(core: BrowserCore): string[] {
-  return 'profileVersion' in core ? core.contentExtensions : [core.contentExtension];
+  if (!('profileVersion' in core)) return [core.contentExtension];
+  // Older local builds already support these formats but predate track staging.
+  return core.id === 'org.flycast.wasm-jit'
+    ? [...new Set([...core.contentExtensions, 'cue', 'gdi'])]
+    : core.contentExtensions;
 }
 export function profileIdentity(core: BrowserCore): string {
   return JSON.stringify([

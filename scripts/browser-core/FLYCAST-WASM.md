@@ -32,6 +32,14 @@ exactly matches its committed content.
 Unused platform submodules remain unmaterialized; all gitlinks are listed in
 the receipt. The staging path is retained in the receipt for inspection.
 
+The browser player accepts Dreamcast CHD, CDI and ELF files, plus scanned
+GDI or CUE/BIN track groups within the 512 MiB content limit. A ZIP or 7z
+can contain one CHD, CDI or ELF. Extract multi-track archives and rescan
+the folder so the scanner can resolve the descriptor's tracks. The player
+looks for an accessible `dc_boot.bin` in the game's library and otherwise
+uses HLE BIOS. Rescan an existing folder to classify newly recognized
+firmware filenames.
+
 The manifest exposes Dreamcast only. Naomi, Naomi2, and Atomiswave still need
 managed firmware staging and separate original-program boot acceptance.
 

@@ -102,6 +102,7 @@ export interface FeatureFlags {
   webPlayback?: boolean;
   romDownloadSummaries?: boolean;
   gameCompanions?: boolean;
+  gameCopySelection?: boolean;
   sourceDetailsWrite?: boolean;
 }
 
@@ -378,6 +379,21 @@ export interface FolderWatchPolicy {
 
 export interface FolderWatchPolicyDraft {
   enabled: boolean;
+}
+
+export interface DiscConversionPolicy {
+  enabled: boolean;
+  keepOriginals: boolean;
+}
+
+export interface DiscConversionDraft {
+  keepOriginals?: boolean;
+}
+
+export interface DiscConversionResult {
+  sourceId: string;
+  name: string;
+  keptOriginals: boolean;
 }
 
 export interface SourceOrganizationPolicy {
@@ -856,6 +872,44 @@ export interface LibraryBrowseEntry {
   parentItem?: Item;
   previewAsset?: Asset;
   romDownload?: RomDownloadSummary;
+}
+
+export interface GameSourceLink {
+  itemId?: string | null;
+  title?: string;
+}
+
+export interface GameRomCopy {
+  id: string;
+  kind: string;
+  name: string;
+  format: string;
+  sizeBytes: number;
+  contentPath: string;
+  availability: string;
+  medium: string;
+  grouped: boolean;
+}
+
+export interface GameRomCopies {
+  systemId: string;
+  items: GameRomCopy[];
+}
+
+export interface SystemRomFormats {
+  systemId: string;
+  formats: string[];
+}
+
+export interface GameRomPreferences {
+  systems: SystemRomFormats[];
+  maxBytes?: number;
+  allowDiscBundles?: boolean;
+}
+
+export interface GameRomSelection {
+  systemId: string;
+  copy?: GameRomCopy;
 }
 
 export interface RomDownloadSummary {

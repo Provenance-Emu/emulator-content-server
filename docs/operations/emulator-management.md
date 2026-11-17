@@ -4,6 +4,18 @@ Open **Settings → Emulators**. Sign in as the server owner if requested; netwo
 
 **Available** lists the trusted catalog. Install downloads a pinned package or pinned upstream loader/WASM pair, verifies exact byte lengths and hashes, and activates it without a server restart. Upstream pairs are packaged locally; code is never evaluated by the server. Mutable upstream URLs fail closed if their bytes change. An unavailable entry explains the limitation; it does not enable Play. The catalog includes pinned NES/FCEUmm, BIOS-free Jaguar and the source-built PlayStation profile, plus experimental upstream software cores. Engine profiles needing unstaged companion data are withheld with an explanation. Other providers can supply a `.ecsplayer` package: choose **Install from file** with the normal OS file picker, then explicitly install it. Only install packages from a source you trust.
 
+Server administrators can stage a custom build under
+`<data-directory>/player-packages/<profile-id>.ecsplayer`. Restart to scan the
+directory, then use **Settings → Emulators → Available → Install**. The server
+validates each package and pins its bytes at startup. A staged package takes
+precedence over the bundled catalog entry with the same ID. Install creates a
+managed copy, so replacing the staged file does not change an existing installation.
+Keep this directory writable only by the administrator. Use
+`scripts/browser-core/package-player.mjs` to package a built profile.
+
+PrBoom can be installed from the upstream catalog. Add upstream `prboom.wad`
+to a scanned folder in the same library and launch a standalone Doom IWAD.
+
 **Installed** shows supported systems, formats, build and system files. Enable or disable an emulator, choose the default, or remove a managed installation. Changes apply to new launches. Already running sessions retain their loaded bytes. Removing an emulator does not remove games, saves, source folders or original package files. Operator-configured directories remain read-only; their profiles can be disabled or selected as default.
 
 Managed resources live under the existing server data directory's `players` folder. No `--player-plugins` configuration is needed for UI installs. Explicit external player directories remain supported. Preferences are persisted atomically in `player-settings.json`. A bounded package is completely validated in staging before publication; failures leave the prior active registry intact. Installs and changes are serialized, with at most 64 profiles and 512 MiB of resource snapshots.

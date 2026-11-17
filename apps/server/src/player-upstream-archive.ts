@@ -17,12 +17,16 @@ import { fileURLToPath } from 'node:url';
 import { DomainError } from '@ecs/domain';
 import { readRegular } from './player-assets.js';
 import type { TrustedPlayer } from './player-catalog.js';
+import { archive20261115 } from './player-catalog-2026-11-15.js';
 import {
   catalogJson,
   createPlayerCatalogSnapshot,
   type PlayerCatalogSnapshot,
 } from './player-catalog-snapshot.js';
-import { upstreamPlayerCatalog } from './player-catalog-upstream.js';
+import {
+  historicalUpstreamPlayerCatalog,
+  upstreamPlayerCatalog,
+} from './player-catalog-upstream.js';
 import { buildUpstreamPlayerPackage, validateCatalogPlayerDescriptor } from './player-download.js';
 import type { ArchiveExtraction } from './player-upstream-archive-worker.js';
 
@@ -36,26 +40,29 @@ export interface UpstreamArchiveSource {
 // These official dated bytes were matched against the existing catalog resource pins.
 // Extraction is shipped as 7z-wasm 1.2.0, with its License.txt retained by pnpm deploy.
 export const upstreamArchiveSources: readonly UpstreamArchiveSource[] = [
+  { ...archive20261115, entries: upstreamPlayerCatalog.filter((entry) => entry.available) },
   {
     url: 'https://buildbot.libretro.com/nightly/emscripten/2026-10-31_RetroArch.7z',
     sizeBytes: 774877505,
     sha256: '44ad5820a2b947f1a6f90e17d4decd29e332a748bbcfaa6383be8e8704c633ba',
-    entries: upstreamPlayerCatalog.filter(
-      (entry) => entry.available && entry.id !== 'org.libretro.pcsx-rearmed',
+    entries: historicalUpstreamPlayerCatalog.filter(
+      (entry) =>
+        entry.available &&
+        entry.upstream?.manifest.player?.web?.buildVersion === 'web.libretro.com 2026-10-31',
     ),
   },
   {
     url: 'https://buildbot.libretro.com/nightly/emscripten/2026-11-04_RetroArch.7z',
     sizeBytes: 775282631,
     sha256: 'e22ea52b816e647682c9f488d7288871c2e4bd164a92dd43235b78aee0e7ae2d',
-    entries: upstreamPlayerCatalog.filter(
+    entries: historicalUpstreamPlayerCatalog.filter(
       (entry) => entry.available && entry.id === 'org.libretro.pcsx-rearmed',
     ),
   },
 ];
 
 const MAX_ARCHIVE_BYTES = 800 * 1024 * 1024;
-const MAX_EXTRACTED_BYTES = 340 * 1024 * 1024;
+const MAX_EXTRACTED_BYTES = 680 * 1024 * 1024;
 const PREPARATION_TIMEOUT = 10 * 60 * 1000;
 const EXTRACTION_TIMEOUT = 3 * 60 * 1000;
 const inFlight = new Map<string, Promise<void>>();

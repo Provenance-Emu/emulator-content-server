@@ -9,8 +9,10 @@
   import { chooseBrowserDownload } from './lib/browser-download';
   import { boundedDownloadBlob } from './lib/download-limits';
   import { sourcePlayHref, sourcePlayUnavailableReason } from './player/links';
+  import GameCopies from './GameCopies.svelte';
   import Files from './Files.svelte';
   import MatchingPanel from './MatchingPanel.svelte';
+  import DiscConversion from './DiscConversion.svelte';
   import SourceOrganization from './SourceOrganization.svelte';
   import Upload from './Upload.svelte';
   import Modal from './components/Modal.svelte';
@@ -236,6 +238,12 @@
         {$controller.adopting ? 'Choosing…' : 'Use this copy'}
       </button>
     </section>{/if}{/if}
+{#if $controller.source || $controller.item}
+  {#key `${context.key}:${$controller.source?.id ?? $controller.item?.id}`}
+    <GameCopies client={context.client} item={$controller.source ? null : $controller.item} source={$controller.source}
+      cores={playerCore} {owner} onchanged={() => { onchanged(); onrefresh(); }} onplay={(href) => context.openPlayer(href)} />
+  {/key}
+{/if}
 {#if $controller.reading}<p role="status">
     Downloading {$controller.reading.received} bytes{#if $controller.reading.total !== null}
       of {$controller.reading.total}{/if}
@@ -244,6 +252,11 @@
   <SavedPatches client={context.client} sourceId={$controller.source.id} {onauthorization} />
 {/key}{/if}
 {#if selectedSource}{#key context.key+':'+selectedSource.id}<MatchingPanel {context} {owner} onchanged={() => { patchRevision++; onchanged(); }} showLegacyPatchDownload={!showPatches} sourceId={selectedSource.id} sourceName={selectedSource.name} />
+{#if owner && selectedSource.kind === 'rom' && selectedSource.availability === 'local' && !selectedSource.groupError &&
+  (/\.(cue|gdi)$/i.test(selectedSource.name) || (/\.zip$/i.test(selectedSource.name) &&
+    /\.(dreamcast|psx|segacd|saturn|pcecd|pcfx|3do|neogeocd|jaguarcd|cdi)$/.test(selectedSource.systemId ?? '')))}
+  <DiscConversion client={context.client} rootId={selectedSource.rootId} sourceId={selectedSource.id} onconverted={()=>{onchanged();onrefresh();}} />
+{/if}
 {#if selectedSource.kind==='rom'}<SourceOrganization {context} {owner} sourceRootId={selectedSource.rootId} sourceId={selectedSource.id} libraryId={selectedSource.libraryId} onchanged={()=>{onchanged();onrefresh();}} />{/if}
 {/key}{/if}
 {#if upload && uploadTarget}<Modal

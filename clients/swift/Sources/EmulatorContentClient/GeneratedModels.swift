@@ -194,9 +194,10 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var webPlayback: Bool?
     public var romDownloadSummaries: Bool?
     public var gameCompanions: Bool?
+    public var gameCopySelection: Bool?
     public var sourceDetailsWrite: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, sourceDetailsWrite: Bool? = nil) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, gameCopySelection: Bool? = nil, sourceDetailsWrite: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -208,6 +209,7 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.webPlayback = webPlayback
         self.romDownloadSummaries = romDownloadSummaries
         self.gameCompanions = gameCompanions
+        self.gameCopySelection = gameCopySelection
         self.sourceDetailsWrite = sourceDetailsWrite
     }
 }
@@ -759,6 +761,36 @@ public struct FolderWatchPolicyDraft: Codable, Equatable, Sendable {
 
     public init(enabled: Bool) {
         self.enabled = enabled
+    }
+}
+
+public struct DiscConversionPolicy: Codable, Equatable, Sendable {
+    public var enabled: Bool
+    public var keepOriginals: Bool
+
+    public init(enabled: Bool, keepOriginals: Bool) {
+        self.enabled = enabled
+        self.keepOriginals = keepOriginals
+    }
+}
+
+public struct DiscConversionDraft: Codable, Equatable, Sendable {
+    public var keepOriginals: Bool?
+
+    public init(keepOriginals: Bool? = nil) {
+        self.keepOriginals = keepOriginals
+    }
+}
+
+public struct DiscConversionResult: Codable, Equatable, Sendable {
+    public var sourceId: String
+    public var name: String
+    public var keptOriginals: Bool
+
+    public init(sourceId: String, name: String, keptOriginals: Bool) {
+        self.sourceId = sourceId
+        self.name = name
+        self.keptOriginals = keptOriginals
     }
 }
 
@@ -1715,6 +1747,82 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
         self.parentItem = parentItem
         self.previewAsset = previewAsset
         self.romDownload = romDownload
+    }
+}
+
+public struct GameSourceLink: Codable, Equatable, Sendable {
+    public var itemId: String?
+    public var title: String?
+
+    public init(itemId: String? = nil, title: String? = nil) {
+        self.itemId = itemId
+        self.title = title
+    }
+}
+
+public struct GameRomCopy: Codable, Equatable, Sendable {
+    public var id: String
+    public var kind: String
+    public var name: String
+    public var format: String
+    public var sizeBytes: Int64
+    public var contentPath: String
+    public var availability: String
+    public var medium: String
+    public var grouped: Bool
+
+    public init(id: String, kind: String, name: String, format: String, sizeBytes: Int64, contentPath: String, availability: String, medium: String, grouped: Bool) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.format = format
+        self.sizeBytes = sizeBytes
+        self.contentPath = contentPath
+        self.availability = availability
+        self.medium = medium
+        self.grouped = grouped
+    }
+}
+
+public struct GameRomCopies: Codable, Equatable, Sendable {
+    public var systemId: String
+    public var items: [GameRomCopy]
+
+    public init(systemId: String, items: [GameRomCopy]) {
+        self.systemId = systemId
+        self.items = items
+    }
+}
+
+public struct SystemRomFormats: Codable, Equatable, Sendable {
+    public var systemId: String
+    public var formats: [String]
+
+    public init(systemId: String, formats: [String]) {
+        self.systemId = systemId
+        self.formats = formats
+    }
+}
+
+public struct GameRomPreferences: Codable, Equatable, Sendable {
+    public var systems: [SystemRomFormats]
+    public var maxBytes: Int64?
+    public var allowDiscBundles: Bool?
+
+    public init(systems: [SystemRomFormats], maxBytes: Int64? = nil, allowDiscBundles: Bool? = nil) {
+        self.systems = systems
+        self.maxBytes = maxBytes
+        self.allowDiscBundles = allowDiscBundles
+    }
+}
+
+public struct GameRomSelection: Codable, Equatable, Sendable {
+    public var systemId: String
+    public var copy: GameRomCopy?
+
+    public init(systemId: String, copy: GameRomCopy? = nil) {
+        self.systemId = systemId
+        self.copy = copy
     }
 }
 

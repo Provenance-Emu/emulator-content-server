@@ -3,7 +3,14 @@ import type { CommandChannel } from './commands.js';
 import type { PlayerClient } from './controller.js';
 import { pngInfo } from './images.js';
 import { SAVE_LIMIT } from './preflight.js';
-import { type BrowserCore, type PlayerRuntime, paths } from './runtime.js';
+import {
+  type BrowserCore,
+  dreamcastVmuBytes,
+  dreamcastVmuPath,
+  type PlayerRuntime,
+  paths,
+  usesDreamcastVmu,
+} from './runtime.js';
 import { captureKey, stateCompatibility, statePath } from './states.js';
 export type SaveKind = 'battery_save' | 'save_state';
 export interface SaveTarget {
@@ -82,10 +89,15 @@ export class SaveSynchronizer {
           this.previewWarning = 'State preview could not be prepared.';
         }
       }
-      await this.commands.run(kind === 'battery_save' ? 'SAVE_FILES' : 'SAVE_STATE_SLOT 0');
-      const file = await this.runtime.FS.readFile(paths[kind]);
+      const vmu = kind === 'battery_save' && usesDreamcastVmu(this.target.core);
+      // Flycast commits each Maple write by renaming a complete card image.
+      if (!vmu)
+        await this.commands.run(kind === 'battery_save' ? 'SAVE_FILES' : 'SAVE_STATE_SLOT 0');
+      const file = await this.runtime.FS.readFile(vmu ? dreamcastVmuPath : paths[kind]);
       if (!(file instanceof Uint8Array) || file.byteLength <= 0 || file.byteLength > SAVE_LIMIT)
         throw new Error('Completed save is missing or exceeds the save size limit');
+      if (vmu && file.byteLength !== dreamcastVmuBytes)
+        throw new Error('Flycast did not produce a complete 128 KiB VMU image');
       const body = new Uint8Array(file);
       this.queuedPreview = null;
       if (kind === 'save_state' && this.target.core) {
@@ -108,7 +120,7 @@ export class SaveSynchronizer {
         kind === 'save_state' && this.target.core
           ? statePath(this.target.core)
           : ((kind === 'battery_save' ? this.target.batteryPath : this.target.statePath) ??
-            `browser-${this.target.profileId?.replace(/[^a-z0-9_.-]/gi, '_') ?? 'fceumm'}/game.${kind === 'battery_save' ? 'srm' : 'state'}`);
+            `browser-${this.target.profileId?.replace(/[^a-z0-9_.-]/gi, '_') ?? 'fceumm'}/${vmu ? 'vmu_save_A1.bin' : kind === 'battery_save' ? 'game.srm' : 'game.state'}`);
       this.request = {
         libraryId: this.target.libraryId,
         itemId: this.target.itemId,
@@ -119,7 +131,9 @@ export class SaveSynchronizer {
                 0,
                 240,
               )
-            : `${this.target.coreName ?? 'FCEUmm'} battery save`.slice(0, 240),
+            : vmu
+              ? 'Dreamcast VMU A1'
+              : `${this.target.coreName ?? 'FCEUmm'} battery save`.slice(0, 240),
         relativePath,
         baseRevision: this.baseline,
         body,

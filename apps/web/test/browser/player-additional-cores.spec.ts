@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { ContentClient } from '@ecs/client';
 import { expect, test } from '@playwright/test';
+import { Uint8ArrayReader, Uint8ArrayWriter, ZipWriter } from '@zip.js/zip.js/index-native.js';
 import {
   atari7800SmokeCartridge,
   atari7800SmokeCode,
@@ -94,18 +95,18 @@ if (jaguarPlugin || parallelPlugin || psxPlugin || prosystemPlugin || flycastPlu
     },
   });
 const cases = [
-  {
-    title: 'Flycast WASM JIT Dreamcast',
+  ...(['elf', 'zip'] as const).map((format) => ({
+    title: `Flycast WASM JIT Dreamcast ${format.toUpperCase()}`,
     plugin: flycastPlugin,
     profile: 'org.flycast.wasm-jit',
     system: 'com.provenance.dreamcast',
     program: dreamcastSmokeElf(),
-    filename: 'original.elf',
+    filename: `original.${format}`,
     needle: sh4SmokeCode(),
     guestAddress: 0x10000,
     counterAddress: 0xf800,
     littleEndian: true,
-  },
+  })),
   {
     title: 'Atari 7800 original cartridge',
     plugin: prosystemPlugin,
@@ -276,12 +277,18 @@ for (const entry of cases) {
           libraryId: library.id,
         });
         await client.scanRoot(root.id);
-        const source = (await client.sources(root.id)).items.find(
-          (source) => source.name === 'original.cue',
+        const source = (await client.sources()).items.find(
+          (source) => source.rootId === root.id && source.name === 'original.cue',
         );
         if (!source) throw new Error('Generated CUE source missing');
         playUrl = `${origin}/play/?source=${source.id}&profile=${entry.profile}`;
       } else {
+        let body: Uint8Array<ArrayBuffer> = program;
+        if (entry.profile === 'org.flycast.wasm-jit' && filename.endsWith('.zip')) {
+          const archive = new ZipWriter(new Uint8ArrayWriter(), { useWebWorkers: false });
+          await archive.add('original.elf', new Uint8ArrayReader(program));
+          body = Uint8Array.from(await archive.close());
+        }
         const rom = await client.upload({
           libraryId: library.id,
           itemId: item.id,
@@ -289,7 +296,7 @@ for (const entry of cases) {
           displayName: filename,
           relativePath: filename,
           baseRevision: item.revision,
-          body: program,
+          body,
         });
         if ('tracks' in entry) {
           for (const track of entry.tracks) {
@@ -372,17 +379,35 @@ for (const entry of cases) {
           },
           { needle, guestAddress, counterAddress, littleEndian },
         );
-      await expect.poll(async () => (await counters()).length).toBeGreaterThan(0);
+      // Software WebGL can take several seconds to run the first guest frame.
+      await expect
+        .poll(async () => (await counters()).length, { timeout: 30_000 })
+        .toBeGreaterThan(0);
       const before = await counters();
       await expect
-        .poll(async () => {
-          const after = await counters();
-          return after.some((next) =>
-            before.some(
-              (previous) => previous.offset === next.offset && previous.counter !== next.counter,
-            ),
-          );
-        })
+        .poll(
+          async () => {
+            const after = await frame.evaluate(
+              ({ offsets, guestAddress, counterAddress, littleEndian }) => {
+                const memory = (window as unknown as { __ecsSmokeMemory?: WebAssembly.Memory })
+                  .__ecsSmokeMemory;
+                if (!memory) return [];
+                const view = new DataView(memory.buffer);
+                return offsets.map((offset) =>
+                  view.getUint32(offset - guestAddress + counterAddress, littleEndian),
+                );
+              },
+              {
+                offsets: before.map(({ offset }) => offset),
+                guestAddress,
+                counterAddress,
+                littleEndian,
+              },
+            );
+            return after.some((counter, index) => counter !== before[index]?.counter);
+          },
+          { timeout: 15_000 },
+        )
         .toBe(true);
       let image = Buffer.alloc(0),
         pixel: number[] = [];

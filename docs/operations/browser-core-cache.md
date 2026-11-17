@@ -4,6 +4,13 @@ Catalog installs retain verified packages in `<data-directory>/player-cache`.
 The owner installation route and public API response stay unchanged. Package
 uploads and operator-managed player directories keep their existing behavior.
 
+The November 15, 2026 catalog uses 50 loader/WASM pairs extracted from the
+official dated Libretro nightly. All 50 passed factory startup in the
+production opaque sandbox. The installer admits 47 of these pairs. The
+reviewed nightly supplies the matching bytes when the direct paths rotate.
+Libretro retires dated archives, so retain a verified cache or stage trusted
+packages on the server for offline installs.
+
 ## Select a reviewed catalog independently of the application
 
 Export the bundled catalog to a new file and keep the printed snapshot ID:
@@ -131,17 +138,16 @@ references retain their pinned bytes independently of the package URL.
 
 The upstream web host replaces its nightly files. A changed size or checksum
 continues to fail verification. For available catalog entries with known resource
-pins, the server can recover the same bytes from two reviewed official dated archives. The
+pins, the server can recover the same bytes from reviewed official dated archives. The historical
 [archive verification receipt](./upstream-archive-recovery-2026-11-07.json) records
 full archive hashes and exact matches for all 100 pinned resource files.
 
 Recovery downloads each required archive once and extracts its selected members
 in one pass. The archives use a solid compression block. The initial fallback
-can therefore download about 775 MB, or about 1.6 GB when PlayStation's separate
-archive is also needed. The settings page displays this possibility. Later
+can therefore download about 780 MB for the current catalog. The settings page displays this possibility. Later
 installs reuse verified local resources.
 
-The raw recovery cache has a separate 340 MiB bound. Existing package retention
+The raw recovery cache has a separate 680 MiB bound. Existing package retention
 keeps its 512 MiB bound. Recovery prunes obsolete managed raw generations while
 preserving the package cache. Archive staging is removed after preparation.
 Allow about 2 GiB of free disk space for a cold recovery. Preparation is

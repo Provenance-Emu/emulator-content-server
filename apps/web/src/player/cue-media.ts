@@ -16,7 +16,7 @@ export async function prepareCueMedia(
   let entry = selected.relativePath;
   let members = selected.members ?? [];
   if (selected.kind === 'source') {
-    if (!client.sourceGroup) throw new Error('Update the server to play CUE/BIN disc groups');
+    if (!client.sourceGroup) throw new Error('Update the server to play CUE and GDI disc groups');
     const group = await client.sourceGroup(selected.id);
     if (group.sourceId !== selected.id || group.error)
       throw new Error('Disc group is incomplete; rescan its folder');
@@ -36,7 +36,7 @@ export async function prepareCueMedia(
   signal?.throwIfAborted();
   const descriptor = (await collect(selected.id, MAX_CUE_BYTES)).bytes;
   if (descriptor.byteLength !== selected.size)
-    throw new Error('CUE descriptor changed; refresh before playing');
+    throw new Error('Disc descriptor changed; refresh before playing');
   const plan = planCue(descriptor, entry, members, limit);
   const files: { path: string; bytes: Uint8Array<ArrayBuffer> }[] = [];
   for (const file of plan.files) {

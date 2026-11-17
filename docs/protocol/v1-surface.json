@@ -42,6 +42,7 @@
     "GET /api/v1/items/:itemId",
     "GET /api/v1/items/:itemId/companions",
     "GET /api/v1/items/:itemId/manifest",
+    "GET /api/v1/items/:itemId/rom-copies",
     "GET /api/v1/libraries",
     "GET /api/v1/libraries/:libraryId/members",
     "GET /api/v1/library-jobs",
@@ -56,6 +57,7 @@
     "GET /api/v1/plugins",
     "GET /api/v1/root-summaries",
     "GET /api/v1/roots",
+    "GET /api/v1/roots/:rootId/disc-conversion",
     "GET /api/v1/roots/:rootId/organization-policy",
     "GET /api/v1/roots/:rootId/watching-policy",
     "GET /api/v1/server/updates",
@@ -129,6 +131,7 @@
     "POST /api/v1/investigators",
     "POST /api/v1/items",
     "POST /api/v1/items/:itemId/restore",
+    "POST /api/v1/items/:itemId/rom-selection",
     "POST /api/v1/libraries",
     "POST /api/v1/library-jobs",
     "POST /api/v1/library-jobs/:jobId/cancel",
@@ -143,6 +146,7 @@
     "POST /api/v1/roots/:rootId/organization-policy/preview",
     "POST /api/v1/roots/:rootId/scan",
     "POST /api/v1/server/updates",
+    "POST /api/v1/sources/:sourceId/disc-conversion",
     "POST /api/v1/sources/:sourceId/matches",
     "POST /api/v1/sources/:sourceId/organization/apply",
     "POST /api/v1/sources/:sourceId/organization/preview",
@@ -171,12 +175,14 @@
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
     "PUT /api/v1/player/management/:id/system/:name",
+    "PUT /api/v1/roots/:rootId/disc-conversion",
     "PUT /api/v1/roots/:rootId/library",
     "PUT /api/v1/roots/:rootId/organization-policy",
     "PUT /api/v1/roots/:rootId/watching-policy",
     "PUT /api/v1/server/updates",
     "PUT /api/v1/sources/:sourceId/details",
     "PUT /api/v1/sources/:sourceId/details/cover",
+    "PUT /api/v1/sources/:sourceId/game",
     "PUT /api/v1/sources/:sourceId/matches/lookup-hints",
     "PUT /api/v1/sources/:sourceId/matches/selections",
     "PUT /api/v1/storage-locations/write-target",
@@ -353,6 +359,7 @@
       "properties": [
         "changeFeed",
         "gameCompanions",
+        "gameCopySelection",
         "guestGrants",
         "multiRange",
         "natTraversal",
@@ -895,6 +902,34 @@
       ],
       "required": [
         "enabled"
+      ]
+    },
+    "DiscConversionPolicy": {
+      "properties": [
+        "enabled",
+        "keepOriginals"
+      ],
+      "required": [
+        "enabled",
+        "keepOriginals"
+      ]
+    },
+    "DiscConversionDraft": {
+      "properties": [
+        "keepOriginals"
+      ],
+      "required": []
+    },
+    "DiscConversionResult": {
+      "properties": [
+        "keptOriginals",
+        "name",
+        "sourceId"
+      ],
+      "required": [
+        "keptOriginals",
+        "name",
+        "sourceId"
       ]
     },
     "SourceOrganizationPolicy": {
@@ -1803,6 +1838,76 @@
         "id",
         "libraryId",
         "name",
+        "systemId"
+      ]
+    },
+    "GameSourceLink": {
+      "properties": [
+        "itemId",
+        "title"
+      ],
+      "required": []
+    },
+    "GameRomCopy": {
+      "properties": [
+        "availability",
+        "contentPath",
+        "format",
+        "grouped",
+        "id",
+        "kind",
+        "medium",
+        "name",
+        "sizeBytes"
+      ],
+      "required": [
+        "availability",
+        "contentPath",
+        "format",
+        "grouped",
+        "id",
+        "kind",
+        "medium",
+        "name",
+        "sizeBytes"
+      ]
+    },
+    "GameRomCopies": {
+      "properties": [
+        "items",
+        "systemId"
+      ],
+      "required": [
+        "items",
+        "systemId"
+      ]
+    },
+    "SystemRomFormats": {
+      "properties": [
+        "formats",
+        "systemId"
+      ],
+      "required": [
+        "formats",
+        "systemId"
+      ]
+    },
+    "GameRomPreferences": {
+      "properties": [
+        "allowDiscBundles",
+        "maxBytes",
+        "systems"
+      ],
+      "required": [
+        "systems"
+      ]
+    },
+    "GameRomSelection": {
+      "properties": [
+        "copy",
+        "systemId"
+      ],
+      "required": [
         "systemId"
       ]
     },

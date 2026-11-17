@@ -1245,7 +1245,7 @@ export class CatalogDatabase {
           deleted.add(prior.id);
         }
       }
-      for (const file of input.files) {
+      for (let file of input.files) {
         let prior = byPath.get(file.relativePath);
         if (
           !prior &&
@@ -1286,6 +1286,15 @@ export class CatalogDatabase {
           )
             prior = candidate;
         }
+        // A conversion keeps the source system even when the CHD extension is ambiguous.
+        if (
+          prior?.system_id &&
+          !file.systemId &&
+          /\.chd$/i.test(file.relativePath) &&
+          file.filesystemIdentity &&
+          prior.filesystem_identity === file.filesystemIdentity
+        )
+          file = { ...file, systemId: prior.system_id };
         const id = prior?.id ?? randomUUID();
         seen.add(id);
         const changed =
@@ -1473,6 +1482,20 @@ export class CatalogDatabase {
     file: SourceInspection;
   }): SourceFileRecord {
     return this.transferInspectedSource(input, false);
+  }
+
+  replaceSourceDisc(input: SourceTransferInput, retiredIds: readonly string[]): SourceFileRecord {
+    return this.transaction(() => {
+      const updated = this.writeTransferredSource(input, false);
+      const at = nowIso();
+      for (const id of retiredIds) {
+        const prior = this.one<SourceRow>('SELECT * FROM source_files WHERE id=?', id);
+        if (!prior || prior.id === updated.id || prior.root_id !== updated.rootId)
+          throw new DomainError('conflict', 409, 'Disc group changed before conversion finished');
+        this.markInspectedSourceMissing(prior, updated.libraryId, at);
+      }
+      return updated;
+    });
   }
 
   cloneSource(input: {
@@ -2133,6 +2156,7 @@ export class CatalogDatabase {
     md5: string | null;
     crc: string | null;
     actorId: string;
+    sourceId?: string;
     deviceId?: string | null;
   }): ItemRecord {
     const timestamp = nowIso();
@@ -2164,6 +2188,11 @@ export class CatalogDatabase {
         timestamp,
         input.deviceId ?? null,
       );
+      if (input.sourceId)
+        this.db
+          .prepare(`INSERT INTO game_source_copies(source_id, item_id) VALUES (?, ?)
+            ON CONFLICT(source_id) DO UPDATE SET item_id = excluded.item_id`)
+          .run(input.sourceId, id);
       this.insertAudit(input.actorId, 'create-item', 'item', id, { title: input.title });
     });
     return {
@@ -2728,6 +2757,62 @@ export class CatalogDatabase {
 
   forgetBlob(sha256: string): boolean {
     return this.trash.forgetBlob(sha256);
+  }
+
+  gameForSource(sourceId: string): ItemRecord | null {
+    const linked = this.one<{ item_id: string }>(
+      'SELECT item_id FROM game_source_copies WHERE source_id = ?',
+      sourceId,
+    );
+    return linked ? this.getItem(linked.item_id) : null;
+  }
+
+  gameSourceCopies(itemId: string): SourceFileRecord[] {
+    const rows = this.db
+      .prepare(`SELECT s.*, r.library_id, ${sourceMatchColumns}
+      FROM game_source_copies g JOIN live_source_files s ON s.id = g.source_id
+      JOIN content_roots r ON r.id = s.root_id JOIN items i ON i.id = g.item_id
+      WHERE g.item_id = ? AND i.deleted_at IS NULL AND r.library_id = i.library_id
+        AND s.kind = 'rom' AND s.group_anchor IS NULL ORDER BY s.id`)
+      .all(itemId) as SourceRow[];
+    return rows.map(mapSource);
+  }
+
+  linkGameSource(sourceId: string, itemId: string | null, actorId: string): void {
+    this.transaction(() => {
+      const source = this.getSource(sourceId);
+      if (!source) throw new DomainError('not-found', 404, 'Source not found');
+      if (itemId) {
+        const item = this.getItem(itemId);
+        if (!item) throw new DomainError('not-found', 404, 'Game not found');
+        if (
+          source.libraryId !== item.libraryId ||
+          source.systemId !== item.systemIdentifier ||
+          source.kind !== 'rom' ||
+          source.groupAnchor
+        )
+          throw new DomainError(
+            'invalid-body',
+            400,
+            'Choose a game from the same library and system',
+          );
+        this.db
+          .prepare(`INSERT INTO game_source_copies(source_id, item_id) VALUES (?, ?)
+          ON CONFLICT(source_id) DO UPDATE SET item_id = excluded.item_id`)
+          .run(sourceId, itemId);
+      } else this.db.prepare('DELETE FROM game_source_copies WHERE source_id = ?').run(sourceId);
+      this.insertChange(
+        'source',
+        sourceId,
+        'upsert',
+        source.libraryId,
+        null,
+        false,
+        nowIso(),
+        null,
+      );
+      this.insertAudit(actorId, 'link-game-source', 'source', sourceId, { itemId: itemId ?? '' });
+    });
   }
 
   manifest(itemId: string): { revision: number; files: AssetRecord[] } | null {

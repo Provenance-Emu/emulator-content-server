@@ -49,6 +49,52 @@ export async function inspectRoot(
   return { medium: probe.medium, online: true, files };
 }
 
+// Firmware that otherwise looks like a ROM or disc archive by extension.
+const firmwareNames = new Set([
+  'dc_boot.bin',
+  'disksys.rom',
+  'prboom.wad',
+  'scph5500.bin',
+  'scph5501.bin',
+  'scph5502.bin',
+  'psxonpsp660.bin',
+  'bios_cd_u.bin',
+  'bios_cd_e.bin',
+  'bios_cd_j.bin',
+  'neocd_f.rom',
+  'neocd_sf.rom',
+  'front-sp1.bin',
+  'neocd_t.rom',
+  'neocd_st.rom',
+  'top-sp1.bin',
+  'neocd_z.rom',
+  'neocd_sz.rom',
+  'neocd.bin',
+  'ng-lo.rom',
+  '000-lo.lo',
+  'uni-bioscd.rom',
+  'colecovision.rom',
+  'eos.rom',
+  'writer.rom',
+  'o2rom.bin',
+  'c52.bin',
+  'g7400.bin',
+  'jopac.bin',
+  'panafz1.bin',
+  'panafz10.bin',
+  'panafz10-norsa.bin',
+  'panafz10e-anvil.bin',
+  'panafz10e-anvil-norsa.bin',
+  'goldstar.bin',
+  'sanyotry.bin',
+  '3do_arcade_saot.bin',
+  'panafz1-kanji.bin',
+  'panafz10ja-anvil-kanji.bin',
+  'panafz1j.bin',
+  'panafz1j-norsa.bin',
+  'panafz1j-kanji.bin',
+]);
+
 export function inferSource(relativePath: string): { kind: AssetKind; systemId: string | null } {
   const parts = relativePath.split('/');
   const base = parts.at(-1) ?? relativePath;
@@ -57,7 +103,8 @@ export function inferSource(relativePath: string): { kind: AssetKind; systemId: 
   const hinted = detectRomSystem(relativePath).systemId;
   if (
     /^\[bios\](?:\s|$)/i.test(base) ||
-    folders.some((folder) => folder === 'bios' || folder === 'bioses')
+    firmwareNames.has(base.toLowerCase()) ||
+    folders.some((folder) => ['bios', 'bioses', 'firmware'].includes(folder))
   ) {
     return { kind: 'bios', systemId: hinted };
   }

@@ -53,7 +53,11 @@ function bundle(
   prefix.writeUInt32BE(header.length);
   return { manifest, loader, wasm, bytes: Buffer.concat([prefix, header, loader, wasm]) };
 }
-async function fixture(t: import('node:test').TestContext, operator = false) {
+async function fixture(
+  t: import('node:test').TestContext,
+  operator = false,
+  prepare?: (dataDir: string) => Promise<void>,
+) {
   const directory = await mkdtemp(join(tmpdir(), 'ecs-player-manager-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const dataDir = join(directory, 'data'),
@@ -66,6 +70,7 @@ async function fixture(t: import('node:test').TestContext, operator = false) {
     await writeFile(join(p, 'loader.js'), b.loader);
     await writeFile(join(p, 'core.wasm'), b.wasm);
   }
+  await prepare?.(dataDir);
   const server = await openServer({
     dataDir,
     localTrust: true,
@@ -463,4 +468,49 @@ test('system-file count and total bytes remain bounded and Dolphin firmware uplo
     200,
     'replacement is allowed at the count limit',
   );
+});
+
+test('owner installs a host-supplied core by catalog ID and replacements fail verification', async (t) => {
+  const flycast = bundle('org.flycast.wasm-jit', ['com.provenance.dreamcast']);
+  const rejected = bundle('org.example.replaced');
+  const f = await fixture(t, false, async (dataDir) => {
+    const catalog = join(dataDir, 'player-packages');
+    await mkdir(catalog, { recursive: true });
+    await writeFile(join(catalog, 'org.flycast.wasm-jit.ecsplayer'), flycast.bytes);
+    await writeFile(join(catalog, 'org.example.replaced.ecsplayer'), rejected.bytes);
+    await writeFile(join(catalog, 'org.example.malformed.ecsplayer'), 'partial');
+    await symlink(
+      join(catalog, 'org.flycast.wasm-jit.ecsplayer'),
+      join(catalog, 'org.example.symlink.ecsplayer'),
+    );
+  });
+  const url = '/api/v1/player/management';
+  const initial = await f.server.app.inject({ url, headers: f.headers });
+  const { available, items } = initial.json();
+  assert.equal(items.length, 0);
+  assert.equal(
+    available.filter((item: { id: string }) => item.id === flycast.manifest.id).length,
+    1,
+  );
+  assert.equal(
+    available.find((item: { id: string }) => item.id === flycast.manifest.id).available,
+    true,
+  );
+  assert.ok(
+    !available.some((item: { id: string }) =>
+      ['org.example.symlink', 'org.example.malformed'].includes(item.id),
+    ),
+  );
+  const install = (id: string, headers?: typeof f.headers) =>
+    f.server.app.inject({ method: 'POST', url: `${url}/install/${id}`, headers, payload: {} });
+  assert.equal((await install(flycast.manifest.id)).statusCode, 403);
+  const installed = await install(flycast.manifest.id, f.headers);
+  assert.equal(installed.statusCode, 200);
+  assert.equal(installed.json().items[0].source, 'managed');
+  assert.equal(installed.json().items[0].profile.id, flycast.manifest.id);
+  await writeFile(
+    join(f.dataDir, 'player-packages', 'org.example.replaced.ecsplayer'),
+    flycast.bytes,
+  );
+  assert.equal((await install(rejected.manifest.id, f.headers)).statusCode, 409);
 });

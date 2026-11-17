@@ -1,4 +1,4 @@
-import type { Item, Manifest, ManifestFile } from '@ecs/client';
+import type { Item, Manifest, ManifestFile, SourceFile } from '@ecs/client';
 import {
   archiveContentExtensions,
   extractPlayerSevenZip,
@@ -9,10 +9,14 @@ import type { PlayerClient, PlayerSelection, StartOptions } from './controller.j
 import { MAX_CUE_BYTES } from './cue.js';
 import { prepareCueMedia } from './cue-media.js';
 import { cachePlayerDisk, type PlayerDiskFile } from './disk-cache.js';
+import { collectFirmware } from './firmware.js';
 import {
   type BrowserCore,
   contentExtensions,
+  dreamcastVmuBytes,
+  isDreamcastCore,
   profileIdentity,
+  usesDreamcastVmu,
   validateProfile,
 } from './runtime.js';
 import { stateCompatibility } from './states.js';
@@ -70,6 +74,7 @@ export interface PreparedPlayer {
   content: Uint8Array<ArrayBuffer>;
   disk?: PlayerDiskFile;
   contentFiles?: { path: string; bytes: Uint8Array<ArrayBuffer> }[];
+  firmware?: Awaited<ReturnType<typeof collectFirmware>>;
   battery?: { file: ManifestFile; bytes: Uint8Array<ArrayBuffer> };
   state?: { file: ManifestFile; bytes: Uint8Array<ArrayBuffer> };
 }
@@ -134,6 +139,8 @@ export async function preparePlayer(
   };
   try {
     let contentExtension = '';
+    let sources: SourceFile[] | undefined;
+    let selectedSource: SourceFile | undefined;
     let contentFiles: PreparedPlayer['contentFiles'];
     if (selection.kind === 'asset') {
       const file = manifest?.files.find(
@@ -144,11 +151,11 @@ export async function preparePlayer(
       contentExtension = file.relativePath.split('.').at(-1)?.toLowerCase() ?? '';
       bounded(
         file.size,
-        contentExtension === 'cue'
+        ['cue', 'gdi'].includes(contentExtension)
           ? Math.min(MAX_CUE_BYTES, core.maxContentBytes)
           : core.maxContentBytes,
       );
-      if (contentExtension === 'cue') {
+      if (['cue', 'gdi'].includes(contentExtension)) {
         const media = await prepareCueMedia(
           client,
           {
@@ -180,22 +187,22 @@ export async function preparePlayer(
           await client.collect(file.id, { maxBytes: core.maxContentBytes, signal: options.signal })
         ).bytes;
     } else {
-      const source = (await client.sources()).items.find(
-        (entry) => entry.id === selection.sourceId,
-      );
+      sources = (await client.sources()).items;
+      const source = sources.find((entry) => entry.id === selection.sourceId);
+      selectedSource = source;
       if (source?.availability !== 'local')
         throw new Error(
           'Source is unavailable, offline, evicted or unknown. Download it on the server first.',
         );
       if (
-        ((source.groupFileCount ?? 1) > 1 && !/\.cue$/i.test(source.name)) ||
+        ((source.groupFileCount ?? 1) > 1 && !/\.(cue|gdi)$/i.test(source.name)) ||
         source.groupError ||
         source.kind !== 'rom' ||
         !supportsContentName(core, source.name) ||
         !source.systemId ||
         !core.systems.includes(source.systemId)
       )
-        throw new Error('Source is not a supported game file or CUE/BIN group');
+        throw new Error('Source is not a supported game file or CUE or GDI group');
       if (
         item &&
         (!source.libraryId ||
@@ -206,11 +213,11 @@ export async function preparePlayer(
       contentExtension = source.name.split('.').at(-1)?.toLowerCase() ?? '';
       bounded(
         source.size,
-        contentExtension === 'cue'
+        ['cue', 'gdi'].includes(contentExtension)
           ? Math.min(MAX_CUE_BYTES, core.maxContentBytes)
           : core.maxContentBytes,
       );
-      if (contentExtension === 'cue') {
+      if (['cue', 'gdi'].includes(contentExtension)) {
         const media = await prepareCueMedia(
           client,
           { kind: 'source', id: source.id, relativePath: source.name, size: source.size },
@@ -233,14 +240,19 @@ export async function preparePlayer(
           })
         ).bytes;
     }
+    const system = item?.systemIdentifier ?? selectedSource?.systemId ?? null;
+    const dreamcast = system === 'com.provenance.dreamcast' && isDreamcastCore(core);
     if (
       contentExtension === '7z' ||
+      (contentExtension === 'zip' && dreamcast) ||
       (contentExtension === 'zip' && !contentExtensions(core).includes('zip'))
     ) {
       const extract = contentExtension === '7z' ? extractPlayerSevenZip : extractPlayerZip;
       const extracted = await extract(
         content,
-        archiveContentExtensions(core),
+        dreamcast
+          ? contentExtensions(core).filter((extension) => ['elf', 'chd', 'cdi'].includes(extension))
+          : archiveContentExtensions(core),
         core.maxContentBytes,
         options.signal,
       );
@@ -248,6 +260,12 @@ export async function preparePlayer(
       contentExtension = extracted.extension;
     }
     bounded(disk?.file.size ?? content.byteLength, core.maxContentBytes);
+    if (
+      core.id === 'org.libretro.prboom' &&
+      ![0x49, 0x57, 0x41, 0x44].every((byte, index) => content[index] === byte)
+    )
+      throw new Error('Choose a standalone Doom IWAD. Add-on WADs require their base game.');
+
     if (core.saveCompletion === 'none' && (options.batteryAssetId || options.stateAssetId))
       throw new Error('This emulator profile does not support save synchronization');
     options.signal?.throwIfAborted();
@@ -273,6 +291,9 @@ export async function preparePlayer(
       bounded(bytes.byteLength, SAVE_LIMIT);
       return { file, bytes };
     }
+    const batteryData = await collect(battery);
+    if (batteryData && usesDreamcastVmu(core) && batteryData.bytes.byteLength !== dreamcastVmuBytes)
+      throw new Error('The selected Dreamcast VMU image must contain 128 KiB');
     return {
       core,
       contentExtension,
@@ -281,7 +302,19 @@ export async function preparePlayer(
       content,
       ...(disk ? { disk } : {}),
       ...(contentFiles ? { contentFiles } : {}),
-      battery: await collect(battery),
+      firmware: await collectFirmware(
+        client,
+        core,
+        {
+          system,
+          libraryId: item?.libraryId ?? selectedSource?.libraryId ?? null,
+          files: manifest?.files ?? [],
+          source: selectedSource,
+          sources,
+        },
+        options.signal,
+      ),
+      battery: batteryData,
       state: await collect(state),
     };
   } catch (error) {

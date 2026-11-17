@@ -19,6 +19,7 @@ export interface Capabilities {
     webPlayback?: boolean;
     romDownloadSummaries?: boolean;
     gameCompanions?: boolean;
+    gameCopySelection?: boolean;
     sourceDetailsWrite?: boolean;
   };
   limits: {
@@ -56,6 +57,7 @@ export function buildCapabilities(input: {
       webPlayback: input.webPlayback === true,
       romDownloadSummaries: true,
       gameCompanions: true,
+      gameCopySelection: true,
       sourceDetailsWrite: true,
     },
     limits: {

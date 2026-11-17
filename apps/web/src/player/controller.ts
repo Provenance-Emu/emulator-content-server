@@ -1,11 +1,19 @@
 import { type CollectedAsset, type ContentClient, sha256Bytes } from '@ecs/client';
 import { CommandChannel } from './commands.js';
 import type { cachePlayerDisk } from './disk-cache.js';
+import { systemAssetPath } from './firmware.js';
 import { nativeInputConfig, verifiedInputBuild } from './input-model.js';
 import { coreOptionsConfig } from './options.js';
 import type { PlayerPreferences } from './preferences.js';
 import { preparePlayer } from './preflight.js';
-import { contentPath, paths, type RuntimeImporter, validateCoreBytes } from './runtime.js';
+import {
+  contentPath,
+  dreamcastVmuPath,
+  paths,
+  type RuntimeImporter,
+  usesDreamcastVmu,
+  validateCoreBytes,
+} from './runtime.js';
 import { SaveSynchronizer } from './saves.js';
 export type PlayerSelection =
   | { kind: 'asset'; itemId: string; assetId: string }
@@ -17,6 +25,7 @@ export type PlayerClient = Partial<
     | 'playerProfiles'
     | 'playerProfileAssets'
     | 'sourceGroup'
+    | 'browse'
     | 'downloadTo'
     | 'downloadSourceTo'
     | 'createPlayerIsolation'
@@ -160,19 +169,38 @@ export async function startPlayer(
       throw new Error('Unsupported core: MEMFS and callMain exports are required');
     for (const dir of ['/ecs', '/ecs/content', '/ecs/saves', '/ecs/states', '/ecs/system'])
       await runtime.FS.mkdirTree(dir);
-    const systemDirectory =
-      'profileVersion' in prepared.core && prepared.core.systemFilesDirectory
-        ? `/ecs/system/${prepared.core.systemFilesDirectory}`
-        : '/ecs/system';
-    if (extra.length && systemDirectory !== '/ecs/system')
-      await runtime.FS.mkdirTree(systemDirectory);
     for (const asset of extra) {
-      await runtime.FS.writeFile(`${systemDirectory}/${asset.name}`, asset.bytes);
+      const path = systemAssetPath(prepared.core, asset.name);
+      await runtime.FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
+      await runtime.FS.writeFile(path, asset.bytes);
       if (prepared.core.id === 'org.libretro.parallel-dc' && asset.name === 'awbios.zip') {
         await runtime.FS.mkdirTree('/ecs/system/dc');
         await runtime.FS.writeFile('/ecs/system/dc/awbios.zip', asset.bytes);
       }
     }
+    for (const file of prepared.firmware ?? []) {
+      await runtime.FS.mkdirTree(file.path.slice(0, file.path.lastIndexOf('/')));
+      await runtime.FS.writeFile(file.path, file.bytes);
+    }
+    const hasDreamcastBios =
+      prepared.firmware?.some((file) => file.path === '/ecs/system/dc/dc_boot.bin') ||
+      extra.some(
+        (asset) => systemAssetPath(prepared.core, asset.name) === '/ecs/system/dc/dc_boot.bin',
+      );
+    const defaults =
+      'profileVersion' in prepared.core ? prepared.core.defaultCoreOptions : undefined;
+    const coreDefaults =
+      prepared.core.id === 'org.flycast.wasm-jit' || prepared.core.id === 'org.flycast.shil-vm'
+        ? {
+            reicast_threaded_rendering: 'disabled',
+            reicast_emulate_framebuffer: 'enabled',
+            reicast_hle_bios: hasDreamcastBios ? 'disabled' : 'enabled',
+            ...defaults,
+            ...(prepared.core.id === 'org.flycast.shil-vm' && prepared.contentExtension === 'elf'
+              ? { reicast_emulate_framebuffer: 'enabled', reicast_hle_bios: 'enabled' }
+              : {}),
+          }
+        : defaults;
     await runtime.FS.writeFile(
       paths.config,
       new TextEncoder().encode(
@@ -181,12 +209,7 @@ export async function startPlayer(
     );
     await runtime.FS.writeFile(
       '/ecs/core-options.cfg',
-      new TextEncoder().encode(
-        coreOptionsConfig(
-          options.preferences?.options ?? {},
-          'profileVersion' in prepared.core ? prepared.core.defaultCoreOptions : undefined,
-        ),
-      ),
+      new TextEncoder().encode(coreOptionsConfig(options.preferences?.options ?? {}, coreDefaults)),
     );
     for (const file of prepared.contentFiles ?? [])
       await runtime.FS.writeFile(file.path, file.bytes);
@@ -202,7 +225,11 @@ export async function startPlayer(
         contentPath(prepared.core, prepared.contentExtension),
         prepared.content,
       );
-    if (prepared.battery) await runtime.FS.writeFile(paths.battery_save, prepared.battery.bytes);
+    if (prepared.battery) {
+      const path = usesDreamcastVmu(prepared.core) ? dreamcastVmuPath : paths.battery_save;
+      await runtime.FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
+      await runtime.FS.writeFile(path, prepared.battery.bytes);
+    }
     if (prepared.state) await runtime.FS.writeFile(paths.save_state, prepared.state.bytes);
     options.signal?.throwIfAborted();
     await runtime.callMain(

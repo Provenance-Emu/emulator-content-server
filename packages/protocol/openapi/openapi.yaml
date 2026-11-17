@@ -567,6 +567,52 @@ paths:
       responses:
         '204':
           description: Password replaced.
+  /api/v1/items/{itemId}/rom-copies:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: gameRomCopies
+      tags: [Libraries and items]
+      responses:
+        '200':
+          description: Readable ROM copies of one game.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameRomCopies' }
+  /api/v1/items/{itemId}/rom-selection:
+    parameters:
+      - { name: itemId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: selectGameRom
+      tags: [Libraries and items]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GameRomPreferences' }
+      responses:
+        '200':
+          description: Best readable copy for the announced system and formats, when available.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameRomSelection' }
+  /api/v1/sources/{sourceId}/game:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: linkGameSource
+      tags: [Folders and sources]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GameSourceLink' }
+      responses:
+        '200':
+          description: Owner linked the folder source to a game, created its game entry, or removed the link.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameSourceLink' }
   /api/v1/browse:
     get:
       operationId: browseLibrary
@@ -1263,6 +1309,49 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MatchingPluginList' }
+  /api/v1/roots/{rootId}/disc-conversion:
+    parameters:
+      - { name: rootId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: folderDiscConversion
+      tags: [Folders and sources]
+      responses:
+        '200':
+          description: Owner-only automatic CHD conversion settings for one folder.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscConversionPolicy' }
+    put:
+      operationId: setFolderDiscConversion
+      tags: [Folders and sources]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiscConversionPolicy' }
+      responses:
+        '200':
+          description: Automatic conversion settings saved. Conversion runs after a successful scan.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscConversionPolicy' }
+  /api/v1/sources/{sourceId}/disc-conversion:
+    parameters:
+      - { name: sourceId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: convertSourceDisc
+      tags: [Folders and sources]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiscConversionDraft' }
+      responses:
+        '200':
+          description: Verified CHD published using the existing source ID.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscConversionResult' }
   /api/v1/roots/{rootId}/watching-policy:
     parameters:
       - { name: rootId, in: path, required: true, schema: { type: string } }
@@ -2717,6 +2806,7 @@ components:
         webPlayback: { type: boolean }
         romDownloadSummaries: { type: boolean, description: Supports the opt-in ROM download summary on browse rows. }
         gameCompanions: { type: boolean, description: Supports companion discovery and authorized downloads. Inspect supportedKinds on each game. }
+        gameCopySelection: { type: boolean, description: Supports game copy links and per-system ROM format negotiation. }
         sourceDetailsWrite: { type: boolean, description: Supports saving a game's title and details and cover from a device with saveSourceDetails and saveSourceCover. }
     PlayerCoreResource:
       type: object
@@ -3081,6 +3171,23 @@ components:
       required: [enabled]
       properties:
         enabled: { type: boolean }
+    DiscConversionPolicy:
+      type: object
+      required: [enabled, keepOriginals]
+      properties:
+        enabled: { type: boolean }
+        keepOriginals: { type: boolean }
+    DiscConversionDraft:
+      type: object
+      properties:
+        keepOriginals: { type: boolean, default: false }
+    DiscConversionResult:
+      type: object
+      required: [sourceId, name, keptOriginals]
+      properties:
+        sourceId: { type: string }
+        name: { type: string }
+        keptOriginals: { type: boolean }
     SourceOrganizationPolicy:
       type: object
       required: [sourceRootId, enabled]
@@ -3696,6 +3803,58 @@ components:
         parentItem: { $ref: '#/components/schemas/Item' }
         previewAsset: { $ref: '#/components/schemas/Asset' }
         romDownload: { $ref: '#/components/schemas/RomDownloadSummary' }
+    GameSourceLink:
+      type: object
+      properties:
+        itemId: { type: [string, 'null'] }
+        title: { type: string, description: Create a game with this title when itemId is omitted. }
+    GameRomCopy:
+      type: object
+      required: [id, kind, name, format, sizeBytes, contentPath, availability, medium, grouped]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [asset, source] }
+        name: { type: string }
+        format: { type: string }
+        sizeBytes: { type: integer, format: int64 }
+        contentPath: { type: string }
+        availability: { type: string, enum: [local, evicted, offline] }
+        medium: { type: string, enum: [internal, removable, network, icloud, unknown] }
+        grouped: { type: boolean, description: The content path returns the whole disc set as a ZIP. }
+    GameRomCopies:
+      type: object
+      required: [systemId, items]
+      properties:
+        systemId: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/GameRomCopy' }
+    SystemRomFormats:
+      type: object
+      required: [systemId, formats]
+      properties:
+        systemId: { type: string }
+        formats:
+          type: array
+          maxItems: 32
+          items: { type: string, pattern: '^[a-z0-9]{1,16}$' }
+          description: File extensions in preference order, without a dot.
+    GameRomPreferences:
+      type: object
+      required: [systems]
+      properties:
+        systems:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/SystemRomFormats' }
+        maxBytes: { type: integer, format: int64, minimum: 1 }
+        allowDiscBundles: { type: boolean, description: Accept complete disc sets delivered as ZIP bundles. }
+    GameRomSelection:
+      type: object
+      required: [systemId]
+      properties:
+        systemId: { type: string }
+        copy: { $ref: '#/components/schemas/GameRomCopy' }
     RomDownloadSummary:
       type: object
       description: Authorized uploaded-item ROM files. The single-file fields are omitted for empty and grouped results. A true requiresSystemFiles flag means this view also exposes a required BIOS or system file.

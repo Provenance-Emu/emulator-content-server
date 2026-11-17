@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CommandChannel } from '../src/player/commands.js';
+import { dreamcastVmuBytes, dreamcastVmuPath } from '../src/player/runtime.js';
 import { SaveSynchronizer } from '../src/player/saves.js';
 import { statePath } from '../src/player/states.js';
 import { fixture } from './player-fixture.js';
@@ -25,6 +26,28 @@ function setup(deadlineMs = 30_000) {
   return { ...f, sync };
 }
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+test('Flycast uploads the committed VMU image without a RetroArch SRAM command', async () => {
+  const f = fixture();
+  const id = 'org.flycast.shil-vm';
+  const sync = new SaveSynchronizer(f.client, f.runtime, new CommandChannel(f.runtime), {
+    libraryId: 'library',
+    itemId: 'item',
+    revision: 7,
+    core: { ...f.core, id },
+    profileId: id,
+  });
+  f.runtime.EmscriptenSendCommand = () => assert.fail('VMU writes are already committed');
+  f.fs.set(dreamcastVmuPath, new Uint8Array([1]));
+  await assert.rejects(sync.capture('battery_save'), /complete 128 KiB VMU image/);
+  assert.equal(f.uploads.length, 0);
+
+  const card = new Uint8Array(dreamcastVmuBytes);
+  card[512] = 42;
+  f.fs.set(dreamcastVmuPath, card);
+  await sync.capture('battery_save');
+  assert.equal(f.uploads[0]?.relativePath, `browser-${id}/vmu_save_A1.bin`);
+  assert.deepEqual(f.uploads[0]?.body, card);
+});
 test('delayed multi-chunk replacement never reads/uploads old or partial state before matching success', async () => {
   const f = setup();
   f.runtime.EmscriptenSendCommand = (command) => {

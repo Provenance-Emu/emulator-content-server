@@ -9,6 +9,7 @@ import { DomainError } from '@ecs/domain';
 import type { FastifyInstance } from 'fastify';
 import { canSeeRoot } from './content.js';
 import type { ServerContext } from './context.js';
+import { autoConvertDiscs } from './disc-conversion.js';
 import { requireOwner } from './http.js';
 import { matchBody, type SourceMatchingService } from './source-matching.js';
 import { scanRoot } from './source-scan.js';
@@ -363,6 +364,10 @@ export function registerLibraryJobs(
                   ).finally(() => {
                     runningScan.scanLibrary = undefined;
                   });
+                  if (result.online) {
+                    const owner = actor.isOwner ? actor.userId : ownerId();
+                    if (owner) await autoConvertDiscs(context, root.id, owner, abort.signal);
+                  }
                   repository.saveScanResult(next.job.id, root.id, result);
                   repository.finishItem(next.job.id, { ...entry, status: 'saved' });
                   if (context.automaticMatching && result.online) {

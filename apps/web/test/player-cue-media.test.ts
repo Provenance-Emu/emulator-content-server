@@ -128,3 +128,109 @@ test('only profiles advertising CUE offer disc Play links and broken groups stay
   assert.equal(sourcePlayHref(f.profile, { ...f.source, groupError: 'Missing track' }), null);
   assert.equal(sourcePlayHref(f.profile, { ...f.source, name: 'disc.gdi' }), null);
 });
+
+for (const [id, kind] of [
+  ['org.flycast.wasm-jit', 'asset'],
+  ['org.flycast.wasm-jit', 'source'],
+  ['org.flycast.shil-vm', 'source'],
+] as const) {
+  test(`${id} stages ${kind} GDI tracks and authorized library BIOS`, async () => {
+    const f = await cueFixture();
+    f.profile.id = id;
+    f.profile.systems = ['com.provenance.dreamcast'];
+    f.profile.contentExtensions =
+      id === 'org.flycast.wasm-jit' ? ['chd', 'cdi', 'elf', 'zip'] : ['chd', 'cdi', 'elf', 'gdi'];
+    f.item.systemIdentifier = f.source.systemId = 'com.provenance.dreamcast';
+    const descriptor = new TextEncoder().encode(
+      '2\n1 0 4 2352 "../tracks/one.bin" 0\n2 450 0 2352 ../tracks/two.bin 0\n',
+    );
+    const game = f.manifest.files[0];
+    assert.ok(game);
+    game.relativePath = 'disc/original.gdi';
+    game.size = f.source.size = descriptor.length;
+    f.source.name = 'original.gdi';
+    f.bodies.rom = descriptor;
+    const bios = {
+      ...f.source,
+      id: 'bios',
+      name: 'DC_BOOT.BIN',
+      kind: 'bios' as const,
+      size: 2 * 1024 ** 2,
+    };
+    const unrelated = { ...bios, id: 'unrelated', libraryId: 'elsewhere' };
+    f.client.sources = async () => ({ items: [f.source, unrelated, bios] });
+    f.bodies.bios = new Uint8Array(bios.size);
+    // The content budget and the system-file budget are independent.
+    f.bodies.bios[0] = 42;
+
+    assert.ok(sourcePlayHref(f.profile, f.source));
+    assert.ok(assetPlayHref(f.profile, f.item, game));
+    await startPlayer(
+      f.client,
+      kind === 'asset' ? { kind, itemId: 'item', assetId: 'rom' } : { kind, sourceId: 'source' },
+      { canvas: {} as HTMLCanvasElement, importer: f.importer, profileId: f.profile.id },
+    );
+    assert.equal(
+      new TextDecoder().decode(f.fs.get('/ecs/content/game.gdi')),
+      '2\n1 0 4 2352 track-000.bin 0\n2 450 0 2352 track-001.bin 0\n',
+    );
+    assert.equal(f.fs.get('/ecs/system/dc/dc_boot.bin')?.[0], 42);
+    assert.ok(!f.events.includes('collect:unrelated'));
+    assert.ok(f.events.indexOf('write:/ecs/system/dc/dc_boot.bin') < f.events.indexOf('main'));
+    assert.match(
+      new TextDecoder().decode(f.fs.get('/ecs/core-options.cfg')),
+      /reicast_hle_bios = "disabled"/,
+    );
+  });
+}
+
+test('Nestopia loads disksys.rom from the library system-file listing', async () => {
+  const f = await cueFixture();
+  f.profile.id = 'org.libretro.nestopia';
+  f.item.systemIdentifier = 'com.provenance.fds';
+  f.profile.systems = [f.item.systemIdentifier];
+  f.profile.contentExtensions = ['fds'];
+  const game = f.manifest.files[0];
+  assert.ok(game);
+  game.relativePath = 'game.fds';
+  const bios = {
+    ...f.source,
+    id: 'bios',
+    name: 'DISKSYS.ROM',
+    kind: 'bios' as const,
+    size: 8192,
+  };
+  f.bodies.bios = new Uint8Array(bios.size);
+  f.bodies.bios[0] = 7;
+  f.client.browse = async (query) => {
+    assert.ok('libraryId' in query);
+    assert.equal(query.libraryId, f.item.libraryId);
+    assert.equal(query.category, 'system_files');
+    return {
+      items: [
+        {
+          ...bios,
+          entityType: 'source',
+          source: bios,
+          canUpload: false,
+          canAdopt: false,
+        },
+      ],
+      nextCursor: null,
+    };
+  };
+  f.client.sources = async () => {
+    throw new Error('The player should only list system files for uploaded games');
+  };
+  await startPlayer(
+    f.client,
+    { kind: 'asset', itemId: 'item', assetId: game.id },
+    {
+      canvas: {} as HTMLCanvasElement,
+      importer: f.importer,
+      profileId: f.profile.id,
+    },
+  );
+  assert.equal(f.fs.get('/ecs/system/disksys.rom')?.[0], 7);
+  assert.ok(f.events.indexOf('write:/ecs/system/disksys.rom') < f.events.indexOf('main'));
+});

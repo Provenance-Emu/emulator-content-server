@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { playerCatalog } from '../src/player-catalog.js';
+import { historicalUpstreamPlayerCatalog } from '../src/player-catalog-upstream.js';
 
 function evidence(name: string) {
   const path = `docs/operations/${name}-2026-11-06.json`;
@@ -19,7 +20,7 @@ function evidence(name: string) {
 
 test('all fifty upstream pairs retain exact partial evidence with unverified build mappings', () => {
   const { record, ref } = evidence('upstream-binary-mapping');
-  const upstream = playerCatalog.filter((entry) => entry.upstream);
+  const upstream = historicalUpstreamPlayerCatalog;
   assert.equal(upstream.length, 50);
   assert.deepEqual(
     record.profiles.map((p: { id: string }) => p.id).sort(),
@@ -171,7 +172,7 @@ test('upstream CI candidates stay distinct from reproducible pairs and complete 
   for (const input of rebuild.record.compilerCapture.inputs) {
     if (input.origin === 'pinned-archive') assert.equal(input.matchesSourceArchive, true);
   }
-  const vecx = playerCatalog.find((entry) => entry.id === rebuild.record.id);
+  const vecx = historicalUpstreamPlayerCatalog.find((entry) => entry.id === rebuild.record.id);
   for (const resource of rebuild.record.resources) {
     const pin = vecx?.upstream?.resources.find((r) => r.file === resource.file);
     assert.ok(pin);
@@ -179,7 +180,7 @@ test('upstream CI candidates stay distinct from reproducible pairs and complete 
     assert.equal(resource.sha256, pin.sha256);
     assert.equal(resource.sizeBytes, pin.sizeBytes);
   }
-  for (const entry of playerCatalog.filter((entry) => entry.upstream)) {
+  for (const entry of historicalUpstreamPlayerCatalog) {
     assert.equal(entry.provenance?.sourceMapping, 'unverified');
     for (const report of entry.id === rebuild.record.id ? [ci, rebuild] : [ci]) {
       const artifact: { kind: string; sizeBytes?: number; url: string } | undefined =
@@ -224,7 +225,7 @@ test('upstream reconstruction receipts require complete pair equality and preser
     record.profiles.length,
   );
   for (const profile of record.profiles) {
-    const entry = playerCatalog.find((e) => e.id === profile.id);
+    const entry = historicalUpstreamPlayerCatalog.find((e) => e.id === profile.id);
     assert.ok(entry?.upstream);
     assert.equal(entry.provenance?.sourceMapping, 'unverified');
     assert.equal(profile.sourceMapping, 'unverified');

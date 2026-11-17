@@ -470,6 +470,14 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX assets_blob ON assets(sha256);
     `,
   },
+  {
+    version: 24,
+    sql: `CREATE TABLE game_source_copies (
+      source_id TEXT PRIMARY KEY REFERENCES source_files(id) ON DELETE CASCADE,
+      item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE
+    );
+    CREATE INDEX game_source_copies_item ON game_source_copies(item_id);`,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

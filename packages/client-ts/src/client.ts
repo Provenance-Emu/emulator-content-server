@@ -41,11 +41,18 @@ import type {
   DeviceTokenCreated,
   DeviceTokenDraft,
   DeviceTokenList,
+  DiscConversionDraft,
+  DiscConversionPolicy,
+  DiscConversionResult,
   FolderListing,
   FolderOrganizationPreview,
   FolderWatchPolicy,
   FolderWatchPolicyDraft,
   GameCompanion,
+  GameRomCopies,
+  GameRomPreferences,
+  GameRomSelection,
+  GameSourceLink,
   GuestGrantCreated,
   GuestGrantDraft,
   GuestGrantList,
@@ -1323,6 +1330,33 @@ export class ContentClient {
 
   setFolderWatchPolicy(rootId: string, draft: FolderWatchPolicyDraft): Promise<FolderWatchPolicy> {
     return this.putJson(`/api/v1/roots/${encodeURIComponent(rootId)}/watching-policy`, draft);
+  }
+
+  gameRomCopies(itemId: string): Promise<GameRomCopies> {
+    return this.getJson(`/api/v1/items/${encodeURIComponent(itemId)}/rom-copies`);
+  }
+
+  selectGameRom(itemId: string, preferences: GameRomPreferences): Promise<GameRomSelection> {
+    return this.post(`/api/v1/items/${encodeURIComponent(itemId)}/rom-selection`, preferences);
+  }
+
+  linkGameSource(sourceId: string, link: GameSourceLink): Promise<GameSourceLink> {
+    return this.putJson(`/api/v1/sources/${encodeURIComponent(sourceId)}/game`, link);
+  }
+
+  folderDiscConversion(rootId: string): Promise<DiscConversionPolicy> {
+    return this.getJson(`/api/v1/roots/${encodeURIComponent(rootId)}/disc-conversion`);
+  }
+
+  setFolderDiscConversion(
+    rootId: string,
+    policy: DiscConversionPolicy,
+  ): Promise<DiscConversionPolicy> {
+    return this.putJson(`/api/v1/roots/${encodeURIComponent(rootId)}/disc-conversion`, policy);
+  }
+
+  convertSourceDisc(sourceId: string, draft: DiscConversionDraft): Promise<DiscConversionResult> {
+    return this.post(`/api/v1/sources/${encodeURIComponent(sourceId)}/disc-conversion`, draft);
   }
 
   sourceOrganizationPolicy(rootId: string): Promise<SourceOrganizationPolicy> {

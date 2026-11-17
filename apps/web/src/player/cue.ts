@@ -36,12 +36,13 @@ export function planCue(
   members: CueMember[],
   limit: number,
 ): { content: Uint8Array<ArrayBuffer>; files: { id: string; path: string; size: number }[] } {
+  const gdi = /\.gdi$/i.test(entry);
   if (!bytes.length || bytes.length > MAX_CUE_BYTES)
-    throw new Error('CUE descriptor exceeds 64 KiB');
+    throw new Error('Disc descriptor exceeds 64 KiB');
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 512 * 1024 * 1024)
     throw new Error('Invalid disc size limit');
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, '');
-  if (hasControl(text, true)) throw new Error('Invalid CUE descriptor');
+  if (hasControl(text, true)) throw new Error('Invalid disc descriptor');
   const descriptor = resolvePath(entry);
   const parent = descriptor.split('/').slice(0, -1);
   const available = new Map<string, CueMember>();
@@ -52,29 +53,56 @@ export function planCue(
   }
   const files: { id: string; path: string; size: number }[] = [];
   const selected = new Map<string, string>();
-  const lines = text.split(/\r?\n/).map((line) => {
-    if (!/^\s*FILE\b/i.test(line)) return line;
-    const match = /^(\s*)FILE\s+(?:"([^"]+)"|([^"\r\n]+?))\s+BINARY\s*$/i.exec(line);
-    if (!match) throw new Error('Only CUE/BIN files with BINARY tracks are supported');
-    const reference = resolvePath(match[2] ?? match[3] ?? '', parent);
+  function stageTrack(filename: string): string {
+    const reference = resolvePath(filename, parent);
     const member = available.get(reference.toLowerCase());
     if (!member || reference.toLowerCase() === descriptor.toLowerCase())
-      throw new Error('CUE track is missing from this disc group');
+      throw new Error(`${gdi ? 'GDI' : 'CUE'} track is missing from this disc group`);
     if (member.availability !== undefined && member.availability !== 'local')
-      throw new Error('CUE track is not available locally; download it on the server first');
+      throw new Error(
+        `${gdi ? 'GDI' : 'CUE'} track is not available locally; download it on the server first`,
+      );
     if (!Number.isSafeInteger(member.size) || member.size < 1 || member.size > limit)
-      throw new Error('Invalid CUE track size');
+      throw new Error('Invalid disc track size');
     let name = selected.get(member.id);
     if (!name) {
-      if (files.length >= MAX_MEDIA_FILES - 1) throw new Error('Too many CUE track files');
+      if (files.length >= MAX_MEDIA_FILES - 1) throw new Error('Too many disc track files');
       name = `track-${String(files.length).padStart(3, '0')}.bin`;
       files.push({ id: member.id, path: `/ecs/content/${name}`, size: member.size });
       selected.set(member.id, name);
     }
-    return `${match[1] ?? ''}FILE "${name}" BINARY`;
-  });
-  if (!files.length || !/^\s*TRACK\s+(?:0?[1-9]|[1-9]\d)\s+/im.test(text))
-    throw new Error('CUE descriptor has no supported tracks');
+    return name;
+  }
+  let lines = text.split(/\r?\n/);
+  if (gdi) {
+    lines = lines.map((line) => line.trim()).filter(Boolean);
+    const count = lines.shift() ?? '';
+    if (
+      !/^\d+$/.test(count) ||
+      Number(count) !== lines.length ||
+      !lines.length ||
+      lines.length >= MAX_MEDIA_FILES
+    )
+      throw new Error('Invalid GDI track count');
+    lines = [
+      count,
+      ...lines.map((line) => {
+        const match = /^(\d+\s+\d+\s+\d+\s+\d+)\s+(?:"([^"]+)"|([^"]+?))\s+(\d+)$/.exec(line);
+        if (!match) throw new Error('Invalid GDI track description');
+        return `${match[1]} ${stageTrack(match[2] ?? match[3] ?? '')} ${match[4]}`;
+      }),
+      '',
+    ];
+  } else {
+    lines = lines.map((line) => {
+      if (!/^\s*FILE\b/i.test(line)) return line;
+      const match = /^(\s*)FILE\s+(?:"([^"]+)"|([^"\r\n]+?))\s+BINARY\s*$/i.exec(line);
+      if (!match) throw new Error('Only CUE/BIN files with BINARY tracks are supported');
+      return `${match[1] ?? ''}FILE "${stageTrack(match[2] ?? match[3] ?? '')}" BINARY`;
+    });
+    if (!files.length || !/^\s*TRACK\s+(?:0?[1-9]|[1-9]\d)\s+/im.test(text))
+      throw new Error('CUE descriptor has no supported tracks');
+  }
   const content = new TextEncoder().encode(lines.join('\n'));
   if (content.length + files.reduce((sum, file) => sum + file.size, 0) > limit)
     throw new Error('Complete disc exceeds this emulator’s content size limit');

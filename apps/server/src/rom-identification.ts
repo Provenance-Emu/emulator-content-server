@@ -14,7 +14,7 @@ import { sourceMetadata } from './source-metadata.js';
 const ZIP_IDENTIFIER = fileURLToPath(new URL('./zip-identification-plugin.js', import.meta.url));
 const tools = new WeakMap<ServerContext, Promise<{ sevenZip?: string; chdman?: string }>>();
 const versions = new WeakMap<ServerContext, Promise<string>>();
-async function discover(
+export async function discover(
   configured: string | undefined,
   names: string[],
 ): Promise<string | undefined> {

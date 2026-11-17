@@ -80,7 +80,7 @@ function changedPixels(before: Uint8Array, after: Uint8Array): number {
 const plugin = process.env.ECS_ACCEPTANCE_N64_PLUGIN,
   content = process.env.ECS_ACCEPTANCE_N64_CONTENT;
 if (plugin && content) test.use({ headless: true });
-test('real legacy N64 core renders operator homebrew and responds to controller input in the opaque player', async ({
+test('real N64 core renders operator homebrew and responds to controller input in the opaque player', async ({
   page,
   browser,
 }, testInfo) => {
@@ -146,11 +146,16 @@ test('real legacy N64 core renders operator homebrew and responds to controller 
       },
       { origin, session },
     );
+    const profile = (await client.playerProfiles()).items.find((candidate) =>
+      candidate.systems.includes('com.provenance.n64'),
+    );
+    if (!profile) throw Error('N64 profile is unavailable');
+    const originalSourceProgram = profile.id === 'org.libretro.mupen64plus-next';
     await page.goto(
-      `${origin}/play/?item=${item.id}&asset=${asset.id}&profile=org.libretro.parallel-n64`,
+      `${origin}/play/?item=${item.id}&asset=${asset.id}&profile=${encodeURIComponent(profile.id)}`,
     );
     await expect(page.getByRole('combobox', { name: 'Emulator', exact: true })).toHaveValue(
-      'org.libretro.parallel-n64',
+      profile.id,
     );
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await expect(
@@ -171,15 +176,31 @@ test('real legacy N64 core renders operator homebrew and responds to controller 
         { timeout: 30000 },
       )
       .toBeGreaterThan(8);
+    await mkdir(testInfo.outputDir, { recursive: true });
     await writeFile(testInfo.outputPath('n64-before.png'), before);
     await canvas.click();
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    if (!originalSourceProgram) {
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(1000);
+    }
     const menu = await canvas.screenshot();
     await writeFile(testInfo.outputPath('n64-menu.png'), menu);
-    await page.keyboard.press('ArrowDown');
-    await page.waitForTimeout(300);
-    const after = await canvas.screenshot();
+    if (originalSourceProgram) await page.keyboard.down('z');
+    else await page.keyboard.press('ArrowDown');
+    let after = Buffer.alloc(0);
+    try {
+      await expect
+        .poll(
+          async () => {
+            after = await canvas.screenshot();
+            return changedPixels(pixels(menu), pixels(after));
+          },
+          { timeout: 10_000 },
+        )
+        .toBeGreaterThan(100);
+    } finally {
+      if (originalSourceProgram) await page.keyboard.up('z');
+    }
     await writeFile(testInfo.outputPath('n64-after-input.png'), after);
     const changed = changedPixels(pixels(menu), pixels(after));
     expect(changed).toBeGreaterThan(100);

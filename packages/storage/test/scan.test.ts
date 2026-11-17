@@ -291,6 +291,14 @@ test('explicit BIOS filenames are system firmware even inside a games folder', (
       systemId: 'com.provenance.jaguar',
     });
   }
+  for (const path of [
+    'Dreamcast/dc/DC_BOOT.BIN',
+    '3DO/panafz1.bin',
+    'Sega CD/bios_CD_U.bin',
+    'Famicom Disk System/disksys.rom',
+    'PlayStation/firmware/other.bin',
+  ])
+    assert.equal(inferSource(path).kind, 'bios');
   assert.equal(inferSource('Atari Jaguar/Biosphere.j64').kind, 'rom');
   assert.equal(inferSource('Atari Jaguar/Game [BIOS].j64').kind, 'rom');
 });

@@ -8,7 +8,7 @@
   import { startPlayer, type PlayerSelection } from './controller.js';
   import { allItems } from './preflight.js';
   import { supportsContentName } from './archive.js';
-  import { type BrowserCore, importBrowserRuntime, validateProfile } from './runtime.js';
+  import { type BrowserCore, importBrowserRuntime, usesDreamcastVmu, validateProfile } from './runtime.js';
   import SaveControls from './SaveControls.svelte';
   import SaveRecovery from './SaveRecovery.svelte';
   import Tabs from '../components/Tabs.svelte';
@@ -207,7 +207,7 @@
       let system:string|null=null,name='',title='',size=0;
       if (sourceId) {
         source = (await client.sources()).items.find(file=>file.id===sourceId) ?? null;
-        if (!source || source.availability!=='local' || source.groupError || ((source.groupFileCount??1)>1&&!/\.cue$/i.test(source.name)) || !source.systemId) throw new Error('Source is unavailable or needs a supported disc group.');
+        if (!source || source.availability!=='local' || source.groupError || ((source.groupFileCount??1)>1&&!/\.(cue|gdi)$/i.test(source.name)) || !source.systemId) throw new Error('Source is unavailable or needs a supported disc group.');
         system=source.systemId;name=source.name;title=source.name;size=source.size;
         targets=items.filter(item=>item.libraryId===source?.libraryId && item.systemIdentifier===system);
         if(targetId&&!targets.some(item=>item.id===targetId))throw new Error('The selected save target must belong to the source library and system.');
@@ -218,7 +218,7 @@
         if(!file)throw new Error('The selected game file is unavailable.');
         system=item.systemIdentifier;name=file.relativePath;title=item.title;size=file.size;targets=[item];
       }
-      if(/\.(gdi|ccd|m3u)$/i.test(name))throw new Error('This disc layout needs a compatible media profile.');
+      if(/\.(ccd|m3u)$/i.test(name))throw new Error('This disc layout needs a compatible media profile.');
       const compatibleProfiles=available.filter(profile=>{try{validateProfile(profile);return profile.systems.includes(system??'') && size>0 && size<=profile.maxContentBytes && supportsContentName(profile,name);}catch{return false;}});
       if(!compatibleProfiles.length)throw new Error('No installed emulator supports this game file. Download it to use another emulator.');
       if(profileId&&!compatibleProfiles.some(profile=>profile.id===profileId))throw new Error('The selected emulator profile does not support this game.');
@@ -310,8 +310,8 @@
           <details class="player-starting-saves" open={!!(batteryId || stateId)}>
             <summary>Starting saves <span class="dim">{batteryId || stateId ? 'Saved progress selected' : 'Start fresh'}</span></summary>
             <div class="player-setup-fields">
-              <label>Compatible battery save<select bind:value={batteryId} disabled={working}>
-                <option value="">Start without a battery save</option>
+              <label>{usesDreamcastVmu(core??undefined) ? 'Compatible VMU image' : 'Compatible battery save'}<select bind:value={batteryId} disabled={working}>
+                <option value="">{usesDreamcastVmu(core??undefined) ? 'Start with an empty VMU' : 'Start without a battery save'}</option>
                 {#each files.filter(file => file.kind === 'battery_save') as file (file.id)}<option value={file.id}>{file.relativePath}{file.conflictOf ? ' (conflict copy)' : ' (live)'}</option>{/each}
               </select></label>
               <label>Compatible slot-0 state<select bind:value={stateId} disabled={working}>
@@ -362,7 +362,7 @@
         <div class="player-tool-panel" id="player-tools-panel" role="tabpanel" tabindex="-1" aria-labelledby={`player-tool-${selectedTool}`}>
           <div hidden={selectedTool !== 'saves'}>
             <SaveControls bind:this={saveControls} saves={session.saves} runtime={session.runtime} hasState={!!session.prepared.state} coreName={session.prepared.core.name}
-              supportsSaves={session.prepared.core.saveCompletion !== 'none'} {captureReady} {refresh} showQuickActions={false} disabled={playerBusy} onchange={refreshSaves} onbusy={operationBusy} />
+              supportsSaves={session.prepared.core.saveCompletion !== 'none'} dreamcastVmu={usesDreamcastVmu(session.prepared.core)} {captureReady} {refresh} showQuickActions={false} disabled={playerBusy} onchange={refreshSaves} onbusy={operationBusy} />
             {#if targetId && core && core.saveCompletion !== 'none'}<StateBrowser {client} itemId={targetId} {core} {refresh} active saves={session.saves} disabled={working || playerBusy || pendingSave} onbusy={operationBusy} />{/if}
           </div>
           <div hidden={selectedTool !== 'controls'}>

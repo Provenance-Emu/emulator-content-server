@@ -152,7 +152,7 @@ const catalogEntries: readonly TrustedPlayer[] = [
       'Experimental Nintendo 64 interpreter with WebGL2 and real WASM fibers. Real-game boot and menu input verified; performance, broader compatibility and synchronized saves remain unverified.',
     available: false,
     reason:
-      'Use the operator-local source build; renderer redistribution permission remains unresolved.',
+      'The server can offer a custom WASM package. The bundled catalog has no distributable renderer build.',
     downloadBytes: null,
     url: null,
     sha256: null,
@@ -164,7 +164,8 @@ const catalogEntries: readonly TrustedPlayer[] = [
     description:
       'Dreamcast with a real SH4-to-WASM JIT and WebGL2. Original-program execution verified; game, firmware and save compatibility remain experimental.',
     available: false,
-    reason: 'Use a local source build; the combined binary redistribution grant is unresolved.',
+    reason:
+      'The server can offer a custom WASM package. The combined binary redistribution grant is unresolved.',
     downloadBytes: null,
     url: null,
     sha256: null,
@@ -176,8 +177,7 @@ const catalogEntries: readonly TrustedPlayer[] = [
     description:
       'GameCube and Wii with a real PPC-to-WASM JIT, disk-backed files up to 9 GiB, software video and GameCube-controller input. Wii Remote input and synchronized saves are unavailable.',
     available: false,
-    reason:
-      'Use the verified operator-local package; public distribution awaits a corresponding-source rebuild.',
+    reason: 'The server can offer the verified WASM package. A public build needs matching source.',
     downloadBytes: null,
     url: null,
     sha256: null,

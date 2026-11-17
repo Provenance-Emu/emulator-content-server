@@ -44,7 +44,7 @@ export async function blobRoot(context: ServerContext, sha256: string): Promise<
   return location.path;
 }
 
-async function storedBlob(
+export async function storedBlob(
   context: ServerContext,
   sha256: string,
 ): Promise<{ path: string; size: number }> {

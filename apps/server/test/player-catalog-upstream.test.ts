@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parseManifest } from '@ecs/plugins';
 import { playerCatalog } from '../src/player-catalog.js';
+import { pairs20261115 } from '../src/player-catalog-2026-11-15.js';
 import { upstreamCorePins } from '../src/player-catalog-upstream-data.js';
 
 test('PCSX ReARMed defaults to one matched official pair while retaining existing media/runtime limits', () => {
@@ -20,7 +21,7 @@ test('PCSX ReARMed defaults to one matched official pair while retaining existin
   assert.equal(web.saveCompletion, 'none');
   assert.equal(web.maxContentBytes, 512 * 1024 * 1024);
   assert.deepEqual(web.contentExtensions, ['exe', 'chd', 'pbp', 'iso']);
-  assert.match(web.buildVersion, /2026-11-04/);
+  assert.equal(web.buildVersion, 'web.libretro.com 2026-11-15');
   assert.deepEqual(
     entry.upstream.resources.map((resource) => resource.url),
     [
@@ -28,11 +29,9 @@ test('PCSX ReARMed defaults to one matched official pair while retaining existin
       'https://web.libretro.com/pcsx_rearmed_libretro.wasm',
     ],
   );
-  assert.equal(
-    web.loader.sha256,
-    'ae951cae109011f8bf44fa05e60ee289b0fe0f9869c02252aea0ed27f6106262',
-  );
-  assert.equal(web.wasm.sha256, '664646841190f0ee5ea4af8cfc6c97d15fab30e161ede3b592b51da699a4a371');
+  const [loader, wasm] = pairs20261115['pcsx_rearmed_libretro.wasm'];
+  assert.equal(web.loader.sha256, loader[1]);
+  assert.equal(web.wasm.sha256, wasm[1]);
   assert.match(entry.provenance?.sourceInfo ?? '', /43c6483ae90d5c5a9a6073465ec0902515a6ef8a/);
   assert.ok(entry.provenance?.license);
 });
@@ -113,18 +112,17 @@ test('Jaguar catalog pins the 3.10.0 HLE package with Jaguar CD support', () => 
 test('upstream player catalog entries have valid pinned web-player manifests', () => {
   const entries = playerCatalog.filter((entry) => entry.upstream);
   assert.equal(entries.length, 50);
-  for (const id of [
-    'org.libretro.prboom',
-    'org.libretro.ecwolf',
-    'org.libretro.tyrquake',
-    'org.libretro.vitaquake2',
-  ]) {
+  for (const id of ['org.libretro.ecwolf', 'org.libretro.tyrquake', 'org.libretro.vitaquake2']) {
     const entry = entries.find((e) => e.id === id);
     assert.ok(entry);
     assert.equal(entry.available, false);
     assert.ok(entry.reason);
   }
   assert.ok(entries.some((entry) => entry.id === 'org.libretro.pcsx-rearmed'));
+  const prboom = entries.find((entry) => entry.id === 'org.libretro.prboom');
+  assert.equal(prboom?.available, true);
+  assert.deepEqual(prboom?.upstream?.manifest.player?.web?.contentExtensions, ['wad', 'iwad']);
+  assert.deepEqual(prboom?.provenance?.firmware, [{ path: 'prboom.wad', optional: false }]);
   for (const id of [
     'org.libretro.gearboy',
     'org.libretro.mgba',
@@ -243,10 +241,6 @@ test('catalog refresh retains byte caps, immutable metadata provenance and expli
   for (const pin of upstreamCorePins) {
     assert.ok(pin.loaderBytes <= 8 * 1024 * 1024);
     assert.ok(pin.wasmBytes <= 64 * 1024 * 1024);
-    assert.equal(
-      pin.buildVersion,
-      `web.libretro.com ${pin.id === 'org.libretro.pcsx-rearmed' ? '2026-11-04' : '2026-10-31'}`,
-    );
     assert.match(
       pin.sourceInfo,
       /^https:\/\/raw\.githubusercontent\.com\/libretro\/libretro-super\/[a-f0-9]{40}\/dist\/info\/[A-Za-z0-9_]+_libretro\.info$/,
@@ -254,6 +248,10 @@ test('catalog refresh retains byte caps, immutable metadata provenance and expli
     assert.match(pin.infoSha256, /^[a-f0-9]{64}$/);
     assert.ok(pin.license);
     const entry = playerCatalog.find((entry) => entry.id === pin.id);
+    assert.equal(
+      entry?.upstream?.manifest.player?.web?.buildVersion,
+      'web.libretro.com 2026-11-15',
+    );
     assert.match(entry?.description ?? '', /Experimental.*startup verified.*unverified/);
     assert.equal(entry?.upstream?.manifest.player?.web?.saveCompletion, 'none');
   }
@@ -268,11 +266,11 @@ test('catalog refresh retains byte caps, immutable metadata provenance and expli
     assert.ok(entry?.available);
     assert.ok(entry.description.includes(firmware ?? ''));
   }
-  for (const id of ['vecx']) {
-    const entry = playerCatalog.find((entry) => entry.id === `org.libretro.${id}`);
-    assert.equal(entry?.available, false);
-    assert.ok(entry?.reason);
-  }
+  const vecx = playerCatalog.find((entry) => entry.id === 'org.libretro.vecx');
+  assert.equal(vecx?.available, true);
+  assert.deepEqual(vecx?.upstream?.manifest.player?.web?.defaultCoreOptions, {
+    vecx_use_hw: 'Software',
+  });
   for (const system of ['segacd', 'pcecd'])
     for (const entry of playerCatalog.filter(
       (entry) => entry.upstream && entry.systems.includes(`com.provenance.${system}`),

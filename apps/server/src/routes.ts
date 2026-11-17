@@ -58,6 +58,8 @@ import {
 } from './content.js';
 import type { ServerContext } from './context.js';
 import { registerDevicePairing } from './device-pairing.js';
+import { registerDiscConversion } from './disc-conversion.js';
+import { registerGameCopies } from './game-copies.js';
 import {
   assetDecision,
   itemDecision,
@@ -118,6 +120,8 @@ export function registerRoutes(
   registerTrashRoutes(app, context);
   registerLibraryBrowse(app, context);
   registerSourceGroups(app, context);
+  registerDiscConversion(app, context);
+  registerGameCopies(app, context);
   const matching = registerSourceMatching(app, context, (rootId, sourceId) =>
     checkSourceDetails(catalog, rootId, sourceId),
   );

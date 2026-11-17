@@ -15,6 +15,7 @@ import {
   type PlayerCatalogSnapshot,
 } from './player-catalog-snapshot.js';
 import { MAX_PLAYER_PROFILES, MAX_PLAYER_SNAPSHOT_BYTES } from './player-limits.js';
+import { LocalPlayerCatalog } from './player-local-catalog.js';
 import { loadPlayerProfiles, type PlayerProfileAssets } from './player-profiles.js';
 
 interface Settings {
@@ -34,6 +35,7 @@ export class PlayerManager {
   private catalog: readonly TrustedPlayer[];
   private catalogSnapshot: PlayerCatalogSnapshot;
   private packageCache: PlayerPackageCache;
+  private localCatalog = new LocalPlayerCatalog();
   constructor(
     private context: ServerContext,
     private operators: ReadonlyMap<string, PlayerProfileAssets>,
@@ -66,6 +68,7 @@ export class PlayerManager {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
+    await this.localCatalog.initialize(this.context.dataDir);
     const initial = await this.reload();
     this.all = initial.all;
     this.managed = initial.managed;
@@ -145,9 +148,12 @@ export class PlayerManager {
         removable: this.managed.has(id),
       })),
       defaultProfileId: this.context.defaultPlayerProfileId,
-      available: this.catalog.map(
-        ({ url: _, sha256: __, upstream: ___, provenance: ____, ...entry }) => entry,
-      ),
+      available: [
+        ...this.localCatalog.entries(),
+        ...this.catalog
+          .filter((entry) => !this.localCatalog.has(entry.id))
+          .map(({ url: _, sha256: __, upstream: ___, provenance: ____, ...entry }) => entry),
+      ],
     };
   }
   private serial<T>(operation: () => Promise<T>): Promise<T> {
@@ -378,7 +384,7 @@ export class PlayerManager {
   async installCatalog(id: string) {
     await this.serial(async () => {
       const entry = this.catalog.find((p) => p.id === id && p.available);
-      if (!entry)
+      if (!entry && !this.localCatalog.has(id))
         throw new DomainError('not-found', 404, 'This emulator is not available to install yet');
       if (this.all.has(id)) throw new DomainError('conflict', 409, 'Emulator is already installed');
     });
@@ -387,7 +393,9 @@ export class PlayerManager {
     if (this.catalogPreparations < 3) this.catalogPreparations++;
     else await new Promise<void>((resolve) => this.catalogWaiters.push(resolve));
     try {
-      const bytes = await this.packageCache.download(this.catalogSnapshot, id);
+      const bytes = this.localCatalog.has(id)
+        ? await this.localCatalog.read(id)
+        : await this.packageCache.download(this.catalogSnapshot, id);
       // Recheck conflicts against current state before atomically activating.
       return await this.serial(() => this.installBytes(bytes));
     } finally {

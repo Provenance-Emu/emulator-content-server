@@ -102,6 +102,11 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
     `(c.is_guest = 0 OR c.restricted = 1 OR (${alias}.shareable = 1 AND ${alias}.kind NOT IN ('bios','system_file')))`;
   const system = (column: string) => `(json_array_length(c.system_ids) = 0 OR EXISTS (
     SELECT 1 FROM json_each(c.system_ids) selected WHERE selected.value = COALESCE(NULLIF(${column},''),'unknown')))`;
+  const rootAccess = `c.guest_item IS NULL AND (c.see_all = 1 OR c.is_guest = 1 OR EXISTS
+    (SELECT 1 FROM memberships m WHERE m.library_id = i.library_id AND m.user_id = c.user_id))`;
+  const linkedSources = `SELECT 1 FROM game_source_copies g JOIN live_source_files f ON f.id = g.source_id
+    JOIN content_roots fr ON fr.id = f.root_id WHERE g.item_id = i.id AND fr.library_id = i.library_id
+    AND f.kind = 'rom' AND f.group_anchor IS NULL`;
   const projection = `WITH c AS (SELECT ? AS library_id, ? AS is_owner, ? AS can_read,
     ? AS see_all, ? AS user_id, ? AS is_guest, ? AS guest_library, ? AS guest_item,
     ? AS restricted, ? AS root_id, ? AS system_ids, ? AS search),
@@ -113,9 +118,12 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
     WHERE ${input.category === 'games' ? '1' : '0'} = 1
       AND i.library_id = c.library_id AND l.deleted_at IS NULL AND i.deleted_at IS NULL
       AND c.root_id IS NULL AND ${itemAccess} AND ${system('i.system_identifier')}
-      AND ecs_browse_fold(i.title) LIKE c.search ESCAPE '\\'
+      AND (ecs_browse_fold(i.title) LIKE c.search ESCAPE '\\'
+        OR (${rootAccess} AND EXISTS (${linkedSources}
+          AND ecs_browse_fold(f.display_name) LIKE c.search ESCAPE '\\')))
       AND (EXISTS (SELECT 1 FROM assets r WHERE r.item_id = i.id AND r.deleted_at IS NULL
         AND r.kind = 'rom' AND ${assetAccess('r')})
+        OR (${rootAccess} AND EXISTS (${linkedSources}))
         OR NOT EXISTS (SELECT 1 FROM assets a WHERE a.item_id = i.id AND a.deleted_at IS NULL))
     UNION ALL
     SELECT 'asset', a.id, ecs_browse_fold(a.display_name), COALESCE(NULLIF(i.system_identifier,''),'unknown'), NULL
@@ -133,7 +141,14 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
       AND ((c.is_guest = 0 AND (c.see_all = 1 OR EXISTS (SELECT 1 FROM memberships m WHERE m.library_id = r.library_id AND m.user_id = c.user_id)))
         OR (c.is_guest = 1 AND r.library_id = c.guest_library AND c.guest_item IS NULL))
       AND (c.is_guest = 0 OR c.restricted = 1 OR s.kind NOT IN ('bios','system_file'))
-      AND ${input.category === 'games' ? 's.group_anchor IS NULL' : '1'}
+      AND ${
+        input.category === 'games'
+          ? `s.group_anchor IS NULL AND (c.root_id IS NOT NULL OR NOT EXISTS (
+        SELECT 1 FROM game_source_copies g JOIN items i ON i.id = g.item_id
+        WHERE g.source_id = s.id AND i.deleted_at IS NULL AND i.library_id = r.library_id
+        AND ${system('i.system_identifier')}))`
+          : '1'
+      }
       AND s.kind IN (${kinds}) AND ${system(sourceSystemSql)}
       AND ecs_browse_fold(${sourceTitleSql}) LIKE c.search ESCAPE '\\'
   )`;

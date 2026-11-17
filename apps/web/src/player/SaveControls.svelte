@@ -6,7 +6,7 @@
   import type { SaveKind, SaveSynchronizer } from './saves.js';
 
   let {
-    saves, runtime, hasState, coreName = 'FCEUmm', supportsSaves = true,
+    saves, runtime, hasState, coreName = 'FCEUmm', supportsSaves = true, dreamcastVmu = false,
     captureReady = false, disabled = false, refresh = 0, showQuickActions = true,
     onchange = () => {}, onbusy = () => {},
   }: {
@@ -15,6 +15,7 @@
     hasState: boolean;
     coreName?: string;
     supportsSaves?: boolean;
+    dreamcastVmu?: boolean;
     captureReady?: boolean;
     disabled?: boolean;
     refresh?: number;
@@ -84,7 +85,7 @@
     <p class="dim">Upload in-game progress or keep a separate state snapshot.</p>
     <div class="player-controls">
       {#if showQuickActions}<button type="button" disabled={blocked} onclick={() => save('save_state')}>Save state</button>{/if}
-      <button type="button" disabled={blocked} onclick={() => save('battery_save')}>Save battery</button>
+      <button type="button" disabled={blocked} onclick={() => save('battery_save')}>{dreamcastVmu ? 'Save VMU to library' : 'Save battery'}</button>
       <button type="button" disabled={blocked || !hasState} onclick={() => act(() => saves.loadSelectedState())}>Load selected state</button>
     </div>
     <p class="dim">Saves belong to {coreName} and this profile’s build.</p>

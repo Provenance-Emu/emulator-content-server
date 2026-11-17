@@ -213,7 +213,7 @@ const manifest = {
       filesystem: 'memfs',
       threaded: false,
       saveCompletion: 'none',
-      contentExtensions: ['chd', 'cdi', 'elf', 'zip'],
+      contentExtensions: ['chd', 'cdi', 'cue', 'elf', 'gdi', 'zip'],
       maxContentBytes: 536870912,
       buildVersion: 'Flycast2c48c018/SH4-WASM16e9c7b4/RetroArch4d4bfc0f/emcc3.1.46',
       loader: artifact('flycast_wasm_libretro.js', 'loader.js'),

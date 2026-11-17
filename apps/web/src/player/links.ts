@@ -9,7 +9,7 @@ function supported(
   kind: string,
   size: number,
 ): BrowserCore | undefined {
-  if (!cores || system === null || kind !== 'rom' || size <= 0 || /\.(gdi|ccd|m3u)$/i.test(name))
+  if (!cores || system === null || kind !== 'rom' || size <= 0 || /\.(ccd|m3u)$/i.test(name))
     return;
   for (const core of Array.isArray(cores) ? cores : [cores as BrowserCore]) {
     try {
@@ -40,7 +40,7 @@ export function sourcePlayHref(cores: PlayableCores, source: SourceFile): string
   const core =
     source.availability === 'local' &&
     !source.groupError &&
-    ((source.groupFileCount ?? 1) <= 1 || /\.cue$/i.test(source.name))
+    ((source.groupFileCount ?? 1) <= 1 || /\.(cue|gdi)$/i.test(source.name))
       ? supported(cores, source.systemId, source.name, source.kind, source.size)
       : undefined;
   return core ? `/play/?source=${encodeURIComponent(source.id)}${profileQuery(core)}` : null;
@@ -96,7 +96,7 @@ export function sourcePlayUnavailableReason(
     return 'Bring this library folder online and download the game on the server first.';
   if (source.groupError)
     return 'Fix this disc set’s missing or invalid files, then rescan the library folder.';
-  if ((source.groupFileCount ?? 1) > 1 && !/\.cue$/i.test(source.name))
-    return 'Open the disc set’s CUE file to play it, or choose a supported single-file disc image.';
+  if ((source.groupFileCount ?? 1) > 1 && !/\.(cue|gdi)$/i.test(source.name))
+    return 'Open the disc set’s CUE or GDI file to play it, or choose a supported single-file disc image.';
   return playUnavailableReason(cores, source.systemId, source.name, source.kind, source.size);
 }
