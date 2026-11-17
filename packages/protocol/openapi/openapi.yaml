@@ -3868,6 +3868,15 @@ components:
         requiresSystemFiles: { type: boolean }
         filename: { type: string }
         sizeBytes: { type: integer, format: int64, minimum: 0 }
+        linkedSource: { $ref: '#/components/schemas/LinkedRomDownloadSummary' }
+    LinkedRomDownloadSummary:
+      type: object
+      description: An authorized indexed folder copy selected when no uploaded ROM or required system file is present. Availability is based on the last scan.
+      required: [filename, grouped]
+      properties:
+        filename: { type: string }
+        grouped: { type: boolean }
+        sizeBytes: { type: integer, format: int64, minimum: 0 }
     CompanionList:
       type: object
       required: [supportedKinds, items]

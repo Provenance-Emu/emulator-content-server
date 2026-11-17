@@ -1914,6 +1914,7 @@
     "RomDownloadSummary": {
       "properties": [
         "filename",
+        "linkedSource",
         "requiresSystemFiles",
         "romFileCount",
         "sizeBytes"
@@ -1921,6 +1922,17 @@
       "required": [
         "requiresSystemFiles",
         "romFileCount"
+      ]
+    },
+    "LinkedRomDownloadSummary": {
+      "properties": [
+        "filename",
+        "grouped",
+        "sizeBytes"
+      ],
+      "required": [
+        "filename",
+        "grouped"
       ]
     },
     "CompanionList": {

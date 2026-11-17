@@ -27,6 +27,10 @@ test('RomM browse, byte ranges and extractable GameCube and arcade downloads', a
   const base = await realpath(await mkdtemp(join(tmpdir(), 'ecs-romm-')));
   t.after(() => rm(base, { recursive: true, force: true }));
   const server = await openServer({ dataDir: join(base, 'data'), automaticMatching: false });
+  const paths: string[] = [];
+  server.app.addHook('onRequest', async (request) => {
+    paths.push(request.url.split('?')[0] ?? '');
+  });
   const origin = await server.app.listen({ host: '127.0.0.1', port: 0 });
   t.after(() => server.close());
 
@@ -56,6 +60,7 @@ test('RomM browse, byte ranges and extractable GameCube and arcade downloads', a
   const single = Buffer.from('generated single GameCube fixture');
   for (const [path, bytes] of [
     ['GameCube/Single Game.iso', single],
+    ['GameCube/Backup/Single Game.iso', single],
     ['GameCube/Disc Set/Collection.m3u', playlist],
     ['GameCube/Disc Set/Discs/Disc 1.iso', discOne],
     ['GameCube/Disc Set/Discs/Disc 2.iso', discTwo],
@@ -78,11 +83,27 @@ test('RomM browse, byte ranges and extractable GameCube and arcade downloads', a
     headers: { authorization: `Bearer ${setup.json().token}` },
   });
   assert.equal(scan.statusCode, 200);
-  const grant = (libraryId: string) => {
+  const sources = server.catalog.listSources(root.id);
+  for (const name of ['Single Game.iso', 'Collection.m3u']) {
+    const copies = sources.filter((source) => source.displayName === name);
+    assert.equal(copies.length, name === 'Single Game.iso' ? 2 : 1);
+    const [first] = copies;
+    assert.ok(first?.systemId);
+    const item = server.catalog.createItem({
+      libraryId: library.id,
+      systemIdentifier: first.systemId,
+      title: name,
+      md5: null,
+      crc: null,
+      actorId: owner.id,
+    });
+    for (const source of copies) server.catalog.linkGameSource(source.id, item.id, owner.id);
+  }
+  const grant = (libraryId: string, itemId: string | null = null) => {
     const issued = issueToken();
     const grant = server.catalog.createGuestGrant({
       libraryId,
-      itemId: null,
+      itemId,
       capabilities: ['read'],
       tokenHash: issued.hash,
       expiresAt: new Date(Date.now() + 300_000).toISOString(),
@@ -92,6 +113,11 @@ test('RomM browse, byte ranges and extractable GameCube and arcade downloads', a
   };
   const shared = grant(library.id);
   const other = grant(server.catalog.createLibrary(owner.id, 'Other').id);
+  const singleSource = sources.find((source) => source.displayName === 'Single Game.iso');
+  assert.ok(singleSource);
+  const singleItem = server.catalog.gameForSource(singleSource.id);
+  assert.ok(singleItem);
+  const itemOnly = grant(library.id, singleItem.id);
   const indexPath = join(base, 'ids.sqlite');
   let gateway = openGateway({ origin, indexPath });
   t.after(() => gateway.close());
@@ -119,7 +145,9 @@ test('RomM browse, byte ranges and extractable GameCube and arcade downloads', a
 
   const page = (query: string) => json<{ items: Rom[]; total?: number }>(`/api/roms?${query}`);
   const gcQuery = `platform_ids=${gc.id}&platform_id=${gc.id}`;
+  paths.length = 0;
   const gameCube = await page(`${gcQuery}&limit=250`);
+  assert.deepEqual(paths, ['/api/v1/browse-libraries', '/api/v1/browse']);
   assert.equal(gameCube.total, 2);
   const firstPage = await page(`${gcQuery}&limit=1&offset=0`);
   const secondPage = await page(`${gcQuery}&limit=1&offset=1`);
@@ -139,6 +167,10 @@ test('RomM browse, byte ranges and extractable GameCube and arcade downloads', a
   assert.deepEqual(await json(`/api/roms/${game.id}`), game);
   assert.deepEqual(await json(`/api/saves?rom_id=${game.id}`), []);
   assert.equal((await request(downloadPath(game), {}, other.authorization)).status, 404);
+  const restricted = await request(`/api/roms?${gcQuery}`, {}, itemOnly.authorization);
+  assert.equal(restricted.status, 200);
+  assert.deepEqual(await restricted.json(), { items: [], limit: 50, offset: 0, total: 0 });
+  assert.equal((await request(downloadPath(game), {}, itemOnly.authorization)).status, 409);
   assert.equal((await request(`/api/roms/${game.id}/content/wrong.iso`)).status, 404);
 
   const plain = await request(downloadPath(game));

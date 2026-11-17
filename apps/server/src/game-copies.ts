@@ -41,7 +41,12 @@ function capabilities(input: unknown) {
   return systems;
 }
 
-async function copies(context: ServerContext, actor: Actor, itemId: string, refresh: boolean) {
+export async function gameCopies(
+  context: ServerContext,
+  actor: Actor,
+  itemId: string,
+  refresh: boolean,
+) {
   const { catalog } = context;
   const item = catalog.getItem(itemId);
   if (!item) throw new DomainError('not-found', 404, 'Game not found');
@@ -121,7 +126,13 @@ async function copies(context: ServerContext, actor: Actor, itemId: string, refr
         availability = error.code === 'source-evicted' ? 'evicted' : 'offline';
       }
     }
-    if (source.groupError || (source.groupMembers?.length ?? 0) > members.length)
+    if (
+      source.groupError ||
+      (source.groupMembers?.length ?? 0) > members.length ||
+      (!refresh &&
+        availability === 'local' &&
+        members.some((member) => member.availability !== 'local'))
+    )
       availability = 'offline';
     const grouped = members.length > 1;
     if (grouped)
@@ -146,7 +157,7 @@ async function copies(context: ServerContext, actor: Actor, itemId: string, refr
 export function registerGameCopies(app: FastifyInstance, context: ServerContext) {
   const itemId = (params: unknown) => (params as { itemId: string }).itemId;
   app.get('/api/v1/items/:itemId/rom-copies', async (request) =>
-    copies(context, requireActor(request), itemId(request.params), false),
+    gameCopies(context, requireActor(request), itemId(request.params), false),
   );
   app.post('/api/v1/items/:itemId/rom-selection', async (request) => {
     const actor = requireActor(request);
@@ -159,7 +170,7 @@ export function registerGameCopies(app: FastifyInstance, context: ServerContext)
       (typeof maxBytes !== 'number' || !Number.isSafeInteger(maxBytes) || maxBytes < 1)
     )
       throw new DomainError('invalid-body', 400, 'Invalid maximum ROM size');
-    const { systemId, items } = await copies(context, actor, itemId(request.params), true);
+    const { systemId, items } = await gameCopies(context, actor, itemId(request.params), true);
     const order = supported.get(systemId) ?? [];
     const location = (copy: Copy) => Number(copy.medium === 'network' || copy.medium === 'icloud');
     const result = items

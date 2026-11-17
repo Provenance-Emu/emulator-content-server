@@ -917,6 +917,13 @@ export interface RomDownloadSummary {
   requiresSystemFiles: boolean;
   filename?: string;
   sizeBytes?: number;
+  linkedSource?: LinkedRomDownloadSummary;
+}
+
+export interface LinkedRomDownloadSummary {
+  filename: string;
+  grouped: boolean;
+  sizeBytes?: number;
 }
 
 export interface CompanionList {

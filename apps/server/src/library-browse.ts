@@ -6,6 +6,7 @@ import { decodeBrowseCursor, encodeBrowseCursor } from '@ecs/protocol';
 import { probeFile, probeRoot, resolveInside } from '@ecs/storage';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ServerContext } from './context.js';
+import { gameCopies } from './game-copies.js';
 import {
   assetDecision,
   itemDecision,
@@ -281,57 +282,81 @@ export function registerLibraryBrowse(
       });
     });
     return {
-      items: page.items.map((row) => {
-        if (row.entityType === 'item') {
-          itemDecision(catalog, actor, row.item, 'read');
-          if (row.previewAsset) assetDecision(catalog, actor, row.item, row.previewAsset, 'read');
-          return {
-            entityType: 'item',
-            id: row.item.id,
-            name: row.item.title,
-            libraryId: row.item.libraryId,
-            systemId: row.item.systemIdentifier,
-            item: row.item,
-            ...(row.previewAsset ? { previewAsset: row.previewAsset } : {}),
-            ...(row.romDownload ? { romDownload: row.romDownload } : {}),
-            canUpload: canWrite(catalog, actor, row.item),
-            canAdopt: false,
-          };
-        }
-        if (row.entityType === 'asset') {
-          assetDecision(catalog, actor, row.item, row.asset, 'read');
-          let canAdopt = false;
-          if (row.asset.conflictOf) {
-            try {
-              assetDecision(catalog, actor, row.item, row.asset, 'write');
-              canAdopt = true;
-            } catch (error) {
-              if (!(error instanceof DomainError)) throw error;
+      items: await Promise.all(
+        page.items.map(async (row) => {
+          if (row.entityType === 'item') {
+            itemDecision(catalog, actor, row.item, 'read');
+            if (row.previewAsset) assetDecision(catalog, actor, row.item, row.previewAsset, 'read');
+            const summary = row.romDownload;
+            const linked =
+              summary && summary.romFileCount === 0 && !summary.requiresSystemFiles
+                ? (await gameCopies(context, actor, row.item.id, false)).items.find(
+                    (copy) => copy.kind === 'source' && copy.availability === 'local',
+                  )
+                : undefined;
+            return {
+              entityType: 'item',
+              id: row.item.id,
+              name: row.item.title,
+              libraryId: row.item.libraryId,
+              systemId: row.item.systemIdentifier,
+              item: row.item,
+              ...(row.previewAsset ? { previewAsset: row.previewAsset } : {}),
+              ...(summary
+                ? {
+                    romDownload: {
+                      ...summary,
+                      ...(linked
+                        ? {
+                            linkedSource: {
+                              filename: linked.name,
+                              grouped: linked.grouped,
+                              ...(linked.grouped ? {} : { sizeBytes: linked.sizeBytes }),
+                            },
+                          }
+                        : {}),
+                    },
+                  }
+                : {}),
+              canUpload: canWrite(catalog, actor, row.item),
+              canAdopt: false,
+            };
+          }
+          if (row.entityType === 'asset') {
+            assetDecision(catalog, actor, row.item, row.asset, 'read');
+            let canAdopt = false;
+            if (row.asset.conflictOf) {
+              try {
+                assetDecision(catalog, actor, row.item, row.asset, 'write');
+                canAdopt = true;
+              } catch (error) {
+                if (!(error instanceof DomainError)) throw error;
+              }
             }
+            return {
+              entityType: 'asset',
+              id: row.asset.id,
+              name: row.asset.displayName,
+              libraryId: row.item.libraryId,
+              systemId: row.item.systemIdentifier,
+              asset: row.asset,
+              parentItem: row.item,
+              canUpload: canWrite(catalog, actor, row.item),
+              canAdopt,
+            };
           }
           return {
-            entityType: 'asset',
-            id: row.asset.id,
-            name: row.asset.displayName,
-            libraryId: row.item.libraryId,
-            systemId: row.item.systemIdentifier,
-            asset: row.asset,
-            parentItem: row.item,
-            canUpload: canWrite(catalog, actor, row.item),
-            canAdopt,
+            entityType: 'source',
+            id: row.source.id,
+            name: row.source.title ?? row.source.displayName,
+            libraryId: row.source.libraryId,
+            systemId: row.source.systemId,
+            source: sources.get(row.source.id),
+            canUpload: false,
+            canAdopt: false,
           };
-        }
-        return {
-          entityType: 'source',
-          id: row.source.id,
-          name: row.source.title ?? row.source.displayName,
-          libraryId: row.source.libraryId,
-          systemId: row.source.systemId,
-          source: sources.get(row.source.id),
-          canUpload: false,
-          canAdopt: false,
-        };
-      }),
+        }),
+      ),
       systemCounts: page.systemCounts,
       nextCursor: page.next ? encodeBrowseCursor(fingerprint, page.next) : null,
     };

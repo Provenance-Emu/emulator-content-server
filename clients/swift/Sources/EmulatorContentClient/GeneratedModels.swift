@@ -1831,11 +1831,25 @@ public struct RomDownloadSummary: Codable, Equatable, Sendable {
     public var requiresSystemFiles: Bool
     public var filename: String?
     public var sizeBytes: Int64?
+    public var linkedSource: LinkedRomDownloadSummary?
 
-    public init(romFileCount: Int, requiresSystemFiles: Bool, filename: String? = nil, sizeBytes: Int64? = nil) {
+    public init(romFileCount: Int, requiresSystemFiles: Bool, filename: String? = nil, sizeBytes: Int64? = nil, linkedSource: LinkedRomDownloadSummary? = nil) {
         self.romFileCount = romFileCount
         self.requiresSystemFiles = requiresSystemFiles
         self.filename = filename
+        self.sizeBytes = sizeBytes
+        self.linkedSource = linkedSource
+    }
+}
+
+public struct LinkedRomDownloadSummary: Codable, Equatable, Sendable {
+    public var filename: String
+    public var grouped: Bool
+    public var sizeBytes: Int64?
+
+    public init(filename: String, grouped: Bool, sizeBytes: Int64? = nil) {
+        self.filename = filename
+        self.grouped = grouped
         self.sizeBytes = sizeBytes
     }
 }

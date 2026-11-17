@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import type {
   CompanionList,
+  GameRomCopies,
   LibraryBrowseEntry,
   LibraryBrowsePage,
   LibraryList,
@@ -131,53 +132,79 @@ async function visiblePlatforms(ecs: Upstream, libraries: string[]) {
   });
 }
 
+async function resolveSource(
+  ecs: Upstream,
+  entry: IndexEntry,
+  sourceId: string,
+): Promise<Download> {
+  const group = await ecs.json<SourceGroup>(sourcePath(sourceId, 'group'));
+  const primary = group.files[0];
+  if (
+    group.error ||
+    group.sourceId !== sourceId ||
+    primary?.id !== sourceId ||
+    group.files.some((file) => file.availability !== 'local')
+  )
+    throw new GatewayError(409, 'The game set is incomplete or unavailable.');
+  const archive = group.files.length > 1;
+  return {
+    rom: rom(
+      entry,
+      archive ? archiveName(primary.name) : primary.name,
+      archive ? undefined : primary.size,
+    ),
+    path: sourcePath(sourceId, archive ? 'bundle' : 'content'),
+    archive,
+    ...(archive && /\.m3u$/i.test(primary.name)
+      ? {
+          members: group.files.map((file) => ({
+            name: file.relativePath ?? file.name,
+            path: sourcePath(file.id, 'content'),
+            size: file.size,
+          })),
+        }
+      : {}),
+    ...(entry.artwork ? { cover: sourcePath(sourceId, 'matches/selections/artwork/content') } : {}),
+  };
+}
+
 async function resolve(ecs: Upstream, entry: IndexEntry): Promise<Download> {
-  if (entry.kind === 'source') {
-    const group = await ecs.json<SourceGroup>(sourcePath(entry.ecsId, 'group'));
-    const primary = group.files[0];
-    if (
-      group.error ||
-      group.sourceId !== entry.ecsId ||
-      primary?.id !== entry.ecsId ||
-      group.files.some((file) => file.availability !== 'local')
-    )
-      throw new GatewayError(409, 'The game set is incomplete or unavailable.');
-    const archive = group.files.length > 1;
-    return {
-      rom: rom(
-        entry,
-        archive ? archiveName(primary.name) : primary.name,
-        archive ? undefined : primary.size,
-      ),
-      path: sourcePath(entry.ecsId, archive ? 'bundle' : 'content'),
-      archive,
-      ...(archive && /\.m3u$/i.test(primary.name)
-        ? {
-            members: group.files.map((file) => ({
-              name: file.relativePath ?? file.name,
-              path: sourcePath(file.id, 'content'),
-              size: file.size,
-            })),
-          }
-        : {}),
-      ...(entry.artwork
-        ? { cover: sourcePath(entry.ecsId, 'matches/selections/artwork/content') }
-        : {}),
-    };
-  }
+  if (entry.kind === 'source') return resolveSource(ecs, entry, entry.ecsId);
   const id = encodeURIComponent(entry.ecsId);
   const manifest = await ecs.json<Manifest>(`items/${id}/manifest`);
   const files = manifest.files.filter((file) => file.kind === 'rom');
   const first = files[0];
   if (
     manifest.itemId !== entry.ecsId ||
-    !first ||
     files.length > 512 ||
     manifest.files.some((file) => file.required && file.kind !== 'rom')
   )
     throw new GatewayError(409, 'The game has no compatible ROM download.');
   const artwork = manifest.files.find((file) => file.kind === 'artwork');
   const cover = artwork ? assetPath(artwork.id) : undefined;
+  if (!first) {
+    let copies: GameRomCopies | undefined;
+    try {
+      copies = await ecs.json<GameRomCopies>(`items/${id}/rom-copies`);
+    } catch (error) {
+      // Older ECS servers do not have a copies endpoint.
+      if (!(error instanceof GatewayError) || error.status !== 404) throw error;
+    }
+    const copy = copies?.items.find(
+      (copy) => copy.kind === 'source' && copy.availability === 'local',
+    );
+    if (!copy) throw new GatewayError(409, 'The game has no compatible ROM download.');
+    const download = await resolveSource(ecs, { ...entry, artwork: 0 }, copy.id);
+    return {
+      ...download,
+      rom: rom(
+        { ...entry, artwork: Number(Boolean(cover)) },
+        download.rom.fs_name,
+        download.rom.fs_size_bytes,
+      ),
+      cover,
+    };
+  }
   const archive = files.length > 1;
   return {
     rom: rom(
@@ -226,11 +253,20 @@ async function browseRom(
     const summary = row.romDownload;
     if (
       summary &&
-      (summary.romFileCount < 1 || summary.romFileCount > 512 || summary.requiresSystemFiles)
+      (summary.requiresSystemFiles ||
+        summary.romFileCount > 512 ||
+        (summary.romFileCount < 1 && !summary.linkedSource))
     )
       return null;
     const entry = entryFor('item', Boolean(row.previewAsset));
     if (summary) {
+      const linked = summary.linkedSource;
+      if (linked)
+        return rom(
+          entry,
+          linked.grouped ? archiveName(linked.filename) : linked.filename,
+          linked.sizeBytes,
+        );
       if (summary.romFileCount > 1) return rom(entry, archiveName(entry.title));
       if (summary.filename !== undefined) return rom(entry, summary.filename, summary.sizeBytes);
     }
