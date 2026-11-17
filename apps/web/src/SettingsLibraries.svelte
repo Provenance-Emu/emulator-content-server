@@ -100,7 +100,7 @@
     {#each libraries as library}<option value={library.id}>{library.name}</option>{/each}
   </select>
 </label>{/if}
-{#each displayedLibraries as library (library.id)}<section>
+{#each displayedLibraries as library (library.id)}<section class="settings-library">
     <h2>{selectedLibrary ? 'Game folders' : library.name}</h2>
     {#if mode === 'libraries' && !selectedLibrary}<button type="button" aria-label={`Rename ${library.name}`} onclick={() => onrename(library)}>Rename library</button>{/if}
     <LibraryFolders {client} {context} {library} {libraries}

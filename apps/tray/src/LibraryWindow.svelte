@@ -239,20 +239,22 @@
 {/snippet}
 <style>
   .computer-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.5rem; }
-  .computer-choices section { display: flex; flex-direction: column; align-items: start; padding: 1.25rem; border: 1px solid var(--line); border-radius: .6rem; }
+  .computer-choices section { display: flex; flex-direction: column; align-items: start; margin: 0; padding: var(--space-5); border: var(--border-width) solid var(--line); border-radius: var(--radius-panel); background: var(--color-surface-muted); box-shadow: none; }
   .computer-choices h2 { font-size: 1.15rem; margin-top: 0; }
   .computer-choices p { flex: 1; margin-bottom: 1rem; }
   .known-computers { margin-block: 1.5rem; }
   .known-computers button { margin: .25rem; }
   .startup-verification { padding: 1rem; }
-  .desktop-server { padding: .6rem 1rem; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
-  .desktop-connect { display: block; max-width: 52rem; margin: 2rem auto; padding: 1.5rem; border: 1px solid var(--line); border-radius: .75rem; }
+  .desktop-server { --control-height: var(--control-height-desktop); --control-padding-block: .35rem; --control-font-size: var(--text-label); padding: var(--space-2) var(--space-4); border-bottom: var(--border-width) solid var(--line); background: var(--color-sidebar); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); font-size: var(--text-label); }
+  .desktop-connect { --control-height: var(--control-height-touch); --control-padding-block: .6rem; --control-font-size: inherit; display: block; max-width: 52rem; margin: 2rem auto; padding: var(--space-8); border: var(--border-width) solid var(--line); border-radius: var(--radius-dialog); background: var(--color-surface); box-shadow: var(--shadow-raised); font-size: var(--text-body); }
   .desktop-connect h1 { margin: .5rem 0; }
   .connection-help { max-width: 46rem; line-height: 1.6; }
   .connection-summary { display: flex; flex: 1; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; min-width: 0; }
   .connection-summary p { flex: 1; min-width: 12rem; overflow-wrap: anywhere; }
-  .connection-summary strong { margin-left: .5rem; font-weight: 500; }
-  .connection-details summary { padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .45rem; cursor: pointer; }
+  .connection-summary strong { margin-left: .35rem; font-weight: var(--weight-semibold); }
+  .connection-summary button { background: transparent; border-color: transparent; box-shadow: none; color: var(--ink-dim); }
+  .connection-summary button:hover { background: var(--color-hover); color: var(--ink); }
+  .connection-details summary { display: flex; align-items: center; min-height: var(--control-height); padding: var(--control-padding-block) var(--control-padding-inline); border: var(--border-width) solid var(--line); border-radius: var(--radius-control); background: var(--color-control); box-shadow: var(--shadow-control); font-weight: var(--weight-medium); cursor: pointer; }
   .connection-details[open] { flex: 1 1 100%; }
   .connection-details[open] summary { width: fit-content; }
   .connection-details form { margin-top: 1rem; }

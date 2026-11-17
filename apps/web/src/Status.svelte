@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Capabilities } from '@ecs/client';
+  import Icon from './components/Icon.svelte';
 
   let { capabilities, reachable }: { capabilities: Capabilities | null; reachable: boolean } =
     $props();
@@ -20,27 +21,34 @@
   );
 
   function megabytes(bytes: number): string {
-    return `${Math.round(bytes / (1024 * 1024))} MB`;
+    const megabytes = Math.round(bytes / (1024 * 1024));
+    return megabytes >= 1024 ? `${Math.round(megabytes / 102.4) / 10} GB` : `${megabytes} MB`;
   }
 </script>
 
-<section>
-  <div class="row">
-    <h2>Server</h2>
-    <span class="dim">
+<section class="status-panel">
+  <div class="status-headline">
+    <span class="status-badge" class:down={!reachable}><Icon name="server" /></span>
+    <div>
+      <h2>Server</h2>
+      <p class="dim">
+        {reachable ? 'Answering requests from this device.' : 'Not answering. Check that it is running and on the same network.'}
+      </p>
+    </div>
+    <span class="status-state">
       <span class="dot" class:up={reachable} class:down={!reachable}></span>
       {reachable ? 'Reachable' : 'Unreachable'}
     </span>
   </div>
   {#if capabilities}
-    <p class="dim">
-      Protocol {capabilities.protocol.major}.{capabilities.protocol.minor} at
-      <code>{capabilities.protocol.path}</code>, uploads up to
-      {megabytes(capabilities.limits.maxUploadBytes)}.
-    </p>
-    <ul class="tags">
+    <dl class="status-facts">
+      <div><dt>Protocol</dt><dd>{capabilities.protocol.major}.{capabilities.protocol.minor}</dd></div>
+      <div><dt>API path</dt><dd><code>{capabilities.protocol.path}</code></dd></div>
+      <div><dt>Largest upload</dt><dd>{megabytes(capabilities.limits.maxUploadBytes)}</dd></div>
+    </dl>
+    <ul class="status-features" aria-label="Features">
       {#each features as [name, on] (name)}
-        <li class:on>{name}{#if !on} <span class="dim">off</span>{/if}</li>
+        <li class:on><Icon name={on ? 'check' : 'minus'} />{name}{#if !on} <span class="dim">off</span>{/if}</li>
       {/each}
     </ul>
     {#if !capabilities.features.webdav}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LibraryTiles from './components/LibraryTiles.svelte';
   import { ContentError } from '@ecs/client';
   import type {
     ContentRootSummary,
@@ -366,13 +367,8 @@
       </header>
       {#if owner && !libraries.length}<UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} />{/if}
       {#if libraries.length}
-        <div class="library-choice-grid" aria-label="Choose a library">
-          {#each libraries as library (library.id)}
-            <button type="button" class="library-choice" aria-label={`Open library ${library.name}`} onclick={() => onchoose({ libraryId: library.id })}>
-              <span class="eyebrow">Game library</span><strong>{library.name}</strong><span>Open library →</span>
-            </button>
-          {/each}
-        </div>
+        <LibraryTiles client={context.client} {libraries} invalidation={$application.invalidation}
+          onchoose={(libraryId) => onchoose({ libraryId })} onsignedout={() => rejectAccess(401)} />
         {#if owner}<details class="home-management"><summary>Unassigned folders</summary><UnassignedFolders client={context.client} context={folderContext} {libraries} invalidation={$application.invalidation} onview={(_,id)=>{if(id)onchoose({libraryId:id});}} /></details>{/if}
       {:else if owner}
         <ol class="welcome-steps">
