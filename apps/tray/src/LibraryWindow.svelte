@@ -141,6 +141,12 @@
     }
   });
   onDestroy(() => { disposed = true; verificationGeneration++; selection.dispose(); });
+  // The shared shell pins its sidebar below this bar, so it needs the bar's height.
+  let connectionBarHeight = $state(0);
+  $effect(() => {
+    const pinned = !!$selection && !welcome;
+    document.documentElement.style.setProperty('--shell-offset', `${pinned ? connectionBarHeight : 0}px`);
+  });
 </script>
 <header class="desktop-server" class:desktop-connect={!$selection || welcome} bind:offsetHeight={connectionBarHeight}>
   {#if welcome}
@@ -191,12 +197,6 @@
     revealSetupCode={canSetUpMac && ['127.0.0.1', '[::1]'].includes(new URL($selection.origin).hostname) ? revealSetupCode : undefined}
   />{/if}
 {/if}
-  // The shared shell pins its sidebar below this bar, so it needs the bar's height.
-  let connectionBarHeight = $state(0);
-  $effect(() => {
-    const pinned = !!$selection && !welcome;
-    document.documentElement.style.setProperty('--shell-offset', `${pinned ? connectionBarHeight : 0}px`);
-  });
 {#snippet desktopUpdates()}
   <section aria-label="Desktop app updates">
     <h2>Desktop app updates</h2>
@@ -252,6 +252,7 @@
   .known-computers button { margin: .25rem; }
   .startup-verification { padding: 1rem; }
   .desktop-server { --control-height: var(--control-height-desktop); --control-padding-block: .35rem; --control-font-size: var(--text-label); padding: var(--space-2) var(--space-4); border-bottom: var(--border-width) solid var(--line); background: var(--color-sidebar); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); font-size: var(--text-label); }
+  .desktop-server:not(.desktop-connect) { position: sticky; top: 0; z-index: 6; }
   .desktop-connect { --control-height: var(--control-height-touch); --control-padding-block: .6rem; --control-font-size: inherit; display: block; max-width: 52rem; margin: 2rem auto; padding: var(--space-8); border: var(--border-width) solid var(--line); border-radius: var(--radius-dialog); background: var(--color-surface); box-shadow: var(--shadow-raised); font-size: var(--text-body); }
   .desktop-connect h1 { margin: .5rem 0; }
   .connection-help { max-width: 46rem; line-height: 1.6; }
@@ -278,4 +279,3 @@
     .desktop-server label { min-width: 0; flex-basis: 100%; }
   }
 </style>
-  .desktop-server:not(.desktop-connect) { position: sticky; top: 0; z-index: 6; }
