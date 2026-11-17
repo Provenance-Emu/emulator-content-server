@@ -133,11 +133,15 @@ test('Add folder registers in the chooser, preserves failed paths, and scan retr
   await chooser.getByRole('textbox', { name: 'Server folder path', exact: true }).fill(folder);
   await chooser.getByRole('button', { name: 'Add folder', exact: true }).click();
   await expect(chooser).toHaveCount(0);
-  await expect(page.getByText('Scan failed', { exact: true })).toBeVisible();
+  await expect(page.getByText('File check stopped', { exact: true })).toBeVisible();
   const registrations = fixture.requests.filter((r) => r === 'POST /api/v1/roots').length;
   await page.unroute('**/api/v1/roots/*/scan');
-  await page.getByRole('button', { name: 'Retry scan New games', exact: true }).click();
-  await expect(page.getByText('Scan failed', { exact: true })).toHaveCount(0);
+  // A stopped check is retried from Scans & details; the folder row only reports it.
+  await page.getByRole('button', { name: 'Open Scans & details', exact: true }).click();
+  await page.getByRole('button', { name: 'Check files in New games', exact: true }).click();
+  await page.getByRole('button', { name: 'Libraries', exact: true }).click();
+  await expect(page.getByText('Files checked', { exact: true })).toBeVisible();
+  await expect(page.getByText('File check stopped', { exact: true })).toHaveCount(0);
   expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots').length).toBe(registrations);
   await page.getByRole('button', { name: 'View files in New games', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Arcade', exact: true })).toBeVisible();

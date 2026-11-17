@@ -324,8 +324,8 @@ test('organization is opt-in, previews before copy or move, and retains moved re
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('button', { name: 'Open external.nes', exact: true }).click();
   const matching = page.getByRole('region', { name: 'Metadata and artwork matching' });
+  // A local companion match is saved by the search itself.
   await matching.getByRole('button', { name: 'Find matches', exact: true }).click();
-  await matching.getByRole('button', { name: 'Save metadata', exact: true }).click();
   await expect(
     matching.getByRole('button', { name: 'Remove saved metadata', exact: true }),
   ).toBeVisible();
@@ -454,7 +454,10 @@ test('automatic Copy needs preview opt-in, runs on saves, and can be disabled fr
   await policy
     .getByRole('button', { name: 'Turn off automatic organization', exact: true })
     .click();
-  await expect(policy.getByRole('status')).toContainText('Automatic organization is off');
+  // A transient "Updating…" status can sit beside the result, so match the result itself.
+  await expect(
+    policy.getByRole('status').filter({ hasText: 'Automatic organization is off' }),
+  ).toBeVisible();
   expect((await fixture.client.sourceOrganizationPolicy(root.id)).enabled).toBe(false);
 });
 
@@ -532,7 +535,10 @@ test('automatic Move waits for local artwork review and preserves the game and b
   await policy
     .getByRole('button', { name: 'Turn off automatic organization', exact: true })
     .click();
-  await expect(policy.getByRole('status')).toContainText('Automatic organization is off');
+  // A transient "Updating…" status can sit beside the result, so match the result itself.
+  await expect(
+    policy.getByRole('status').filter({ hasText: 'Automatic organization is off' }),
+  ).toBeVisible();
 });
 
 test('front, back, disc and manual choices coexist with role filtering and a PDF download', async ({
@@ -561,8 +567,10 @@ test('front, back, disc and manual choices coexist with role filtering and a PDF
     ['disc', 'disc label'],
     ['manual', 'manual'],
   ]) {
+    // The search saves local cover art itself; a manual is still an explicit choice.
     await filter.selectOption(role);
-    await matching.getByRole('button', { name: `Save ${label}`, exact: true }).click();
+    if (role === 'manual')
+      await matching.getByRole('button', { name: `Save ${label}`, exact: true }).click();
     await expect(
       matching.getByRole('button', { name: `Remove saved ${label}`, exact: true }),
     ).toBeVisible();

@@ -180,7 +180,7 @@ test('failed validation before dialog gives a recovery action without opening it
   assert.ok(adapter);
   await assert.rejects(
     () => adapter.choose({ contextKey: 'context', purpose: 'library-folder' }),
-    /Use local managed service|Connect/,
+    /Use the server on this computer|Connect/,
   );
   s.valid = true;
   s.pending = async () => {

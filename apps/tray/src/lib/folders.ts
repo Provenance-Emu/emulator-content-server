@@ -16,7 +16,7 @@ export interface NativeFolders {
   validate(verificationId: string): Promise<boolean>;
 }
 const RECOVERY =
-  'The local service changed or could not be verified. Use local managed service to verify again, or Connect to browse server folders.';
+  'The local service changed or could not be verified. Use the server on this computer to verify again, or Connect to browse server folders.';
 const UNAVAILABLE =
   'Local service verification is unavailable. Browsing folders on the selected server.';
 export const nativeFolders: NativeFolders = {
