@@ -142,7 +142,7 @@
   });
   onDestroy(() => { disposed = true; verificationGeneration++; selection.dispose(); });
 </script>
-<header class="desktop-server" class:desktop-connect={!$selection || welcome}>
+<header class="desktop-server" class:desktop-connect={!$selection || welcome} bind:offsetHeight={connectionBarHeight}>
   {#if welcome}
     <p class="eyebrow">Emulation Server</p>
     {#if remote}
@@ -191,6 +191,12 @@
     revealSetupCode={canSetUpMac && ['127.0.0.1', '[::1]'].includes(new URL($selection.origin).hostname) ? revealSetupCode : undefined}
   />{/if}
 {/if}
+  // The shared shell pins its sidebar below this bar, so it needs the bar's height.
+  let connectionBarHeight = $state(0);
+  $effect(() => {
+    const pinned = !!$selection && !welcome;
+    document.documentElement.style.setProperty('--shell-offset', `${pinned ? connectionBarHeight : 0}px`);
+  });
 {#snippet desktopUpdates()}
   <section aria-label="Desktop app updates">
     <h2>Desktop app updates</h2>
@@ -272,3 +278,4 @@
     .desktop-server label { min-width: 0; flex-basis: 100%; }
   }
 </style>
+  .desktop-server:not(.desktop-connect) { position: sticky; top: 0; z-index: 6; }

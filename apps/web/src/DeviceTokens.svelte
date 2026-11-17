@@ -75,7 +75,9 @@
 <h1>Devices</h1>
 <PairingRequests {client} {onrejected} oncompleted={() => void load()} />
 <PairDevice {client} initialPin={pairingPin} onpaired={() => { onpaired(); void load(); }} />
-<p>Give an app a separate token for your account. Tokens follow your library access and can be revoked without signing out your other apps.</p>
+<section>
+<h2>Device tokens</h2>
+<p class="dim">Give an app a separate token for your account. Tokens follow your library access and can be revoked without signing out your other apps.</p>
 {#if loaded}
   {#if devices.length}<div class="table-scroll"><table>
     <thead><tr><th>Name</th><th>Access</th><th>Expires</th><th>State</th><th>Action</th></tr></thead>
@@ -101,3 +103,4 @@
   </form>
 {:else if working}<InlineNotice kind="status">Loading devices…</InlineNotice>{:else}<button type="button" onclick={() => void load()}>Retry devices</button>{/if}
 {#if failure}<InlineNotice kind="error">{failure}</InlineNotice>{/if}
+</section>

@@ -30,6 +30,10 @@ The library sidebar and the Settings sidebar occupy the same `--sidebar-width` c
 
 Home shows one tile per library from `components/LibraryTiles.svelte`: up to four covers, the name, and a game count. `lib/library-tiles.ts` reads one bounded page of the same authorized `browse` the collection uses (the count is the sum of `systemCounts`), so a tile never counts a game its viewer cannot open, and it reloads when the catalog changes. A library that cannot be summarised keeps a plain tile.
 
+A settings page is a heading followed by panels (`section` with an `h2`); nothing sits loose on the canvas. A `section` inside a `section` is an inset, not a second card. Forms align their fields and button on the bottom edge. A status dot is green only for something that is working and red only for a failure; a feature that is simply switched off stays neutral.
+
+The desktop library window pins its connection bar and publishes its height as `--shell-offset`; the sidebars and the phone header sit below it. Leave the variable unset in the browser.
+
 `Status.svelte` (shared with the desktop status window) shows one headline state, then `.status-facts` and `.status-features`. `.link-list` is the row style for outbound documentation links.
 
 ### Light and dark

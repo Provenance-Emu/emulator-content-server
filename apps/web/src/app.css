@@ -246,7 +246,7 @@ th {
 }
 
 td {
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .game-files td {
@@ -343,7 +343,37 @@ form {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  align-items: center;
+  align-items: end;
+}
+input[type="file"]::file-selector-button {
+  margin: 0 var(--space-3) 0 0;
+  padding: 0.25rem 0.7rem;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--color-control);
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+/* A panel inside a panel is a quiet inset, not a second card. */
+section section {
+  background: var(--color-surface-muted);
+  box-shadow: none;
+}
+.account-list {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
+}
+.account-list li {
+  padding: var(--space-2) var(--space-3);
+}
+.account-list li + li {
+  border-top: var(--border-width) solid var(--line);
 }
 
 form.stack {
@@ -468,7 +498,7 @@ summary:focus-visible {
   display: none !important;
 }
 .application-shell {
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--shell-offset, 0px));
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
@@ -486,14 +516,15 @@ summary:focus-visible {
     transform: translateY(0.5rem);
   }
 }
+/* --shell-offset is the height of anything pinned above the shell, such as the desktop connection bar. */
 .library-sidebar,
 .settings-sidebar {
   border-right: var(--border-width) solid var(--line);
   padding: var(--space-4) var(--space-3);
   background: var(--color-sidebar);
   position: sticky;
-  top: 0;
-  height: 100dvh;
+  top: var(--shell-offset, 0px);
+  height: calc(100dvh - var(--shell-offset, 0px));
   overflow-y: auto;
 }
 .library-sidebar nav,
@@ -1046,7 +1077,7 @@ dialog input[type="file"] {
   }
   .mobile-header {
     position: sticky;
-    top: 0;
+    top: var(--shell-offset, 0px);
     z-index: 4;
     display: flex;
     align-items: center;
@@ -1626,14 +1657,6 @@ section.library-home {
 .add-games-option h2 {
   font-size: 1.1rem;
   margin: 0 0 0.4rem;
-}
-@media (min-width: 761px) {
-  .collection-options[open] > summary {
-    min-height: 0;
-    padding: 0.25rem 0;
-    border: 0;
-    font-size: var(--text-label);
-  }
 }
 @media (max-width: 760px) {
   .collection-toolbar {

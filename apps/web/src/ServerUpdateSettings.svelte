@@ -9,6 +9,7 @@
   const busy = $derived($updates.working || status?.phase === 'downloading' || status?.phase === 'restarting');
 </script>
 
+<section>
 <h2>Server updates</h2>
 {#if status?.supported}
   <dl class="update-dates">
@@ -76,6 +77,8 @@
 {:else}
   <p>{status?.message ?? 'Update settings are unavailable for this server.'}</p>
 {/if}
+
+</section>
 
 <style>
   .update-preferences, .update-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }

@@ -446,6 +446,7 @@
         empty={$browser.items.length === 0}
         {filtered}
         canAdd={canAdd}
+        unassigned={!!scope && 'unassigned' in scope}
       />
       {#if !$browser.loading && !$browser.failure && !$browser.items.length && !filtered && canAdd}
         <button class="primary" type="button" onclick={() => (addChoices = true)}>{$browser.filters.category === 'games' ? 'Add your first game' : 'Add your first file'}</button>
