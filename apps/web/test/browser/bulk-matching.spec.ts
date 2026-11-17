@@ -8,12 +8,20 @@ async function openActivity(page: Page): Promise<Locator> {
   await libraryTool(page, 'Library activity');
   return page.getByRole('dialog', { name: 'Library activity', exact: true });
 }
-async function useLocalMatching(panel: Locator): Promise<void> {
+async function useLocalMatching(panel: Locator, exactNames = false): Promise<void> {
   await panel
     .locator('summary')
     .filter({ hasText: /^Matching options$/ })
     .click();
   await panel.getByRole('checkbox', { name: 'Include online providers', exact: true }).uncheck();
+  // Exact filenames are saved automatically; without them a local suggestion waits for review.
+  if (exactNames) return;
+  await panel
+    .getByRole('checkbox', {
+      name: 'For new jobs, use exact filenames when a game ID is unavailable',
+      exact: true,
+    })
+    .uncheck();
 }
 async function openLibraryActions(panel: Locator): Promise<void> {
   const actions = panel.locator('details.matching-secondary-actions');
@@ -146,7 +154,7 @@ test('unmatched games retry on the same durable job after a sidecar is discovere
   ).toHaveLength(1);
 });
 
-test('review saves categories before acknowledging the shared result and updates the collection', async ({
+test('review saves local matches, waits for acknowledgement, and updates the collection', async ({
   page,
   fixture,
 }) => {
@@ -173,33 +181,11 @@ test('review saves categories before acknowledging the shared result and updates
     .getByRole('combobox', { name: 'Server activity', exact: true })
     .inputValue();
   await panel.getByRole('button', { name: 'Review', exact: true }).click();
-  let failSave = true;
-  await page.route(
-    (url) => /^\/api\/v1\/sources\/[^/]+\/matches\/selections$/.test(url.pathname),
-    async (route) => {
-      if (route.request().method() === 'PUT' && failSave) {
-        failSave = false;
-        return route.fulfill({
-          status: 503,
-          json: {
-            type: 'urn:ecs:problem:unavailable',
-            title: 'Generated failed save',
-            status: 503,
-          },
-        });
-      }
-      return route.continue();
-    },
-  );
-  await panel.getByRole('button', { name: 'Save and next category', exact: true }).click();
-  await expect(panel.getByRole('alert')).toContainText('Generated failed save');
+  // Opening a game for review saves its local companion matches straight away.
+  // The job keeps waiting until the owner says the game is done.
+  await expect(panel.getByText('Saved 2 matches automatically.', { exact: true })).toBeVisible();
   expect((await fixture.client.libraryJob(id)).job.review).toBe(1);
-  await panel.getByRole('button', { name: 'Save and next category', exact: true }).click();
-  await expect(panel.getByRole('button', { name: 'Artwork (1)', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await panel.getByRole('button', { name: 'Save and next game', exact: true }).click();
+  await panel.getByRole('button', { name: 'Done reviewing this game', exact: true }).click();
   await expect(panel.getByRole('region', { name: 'Library job progress' })).toContainText(
     '0 need review',
   );
@@ -258,7 +244,7 @@ test('filename fallback is an explicit per-job choice', async ({ page, fixture }
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
   const panel = await openActivity(page);
-  await useLocalMatching(panel);
+  await useLocalMatching(panel, true);
   const policy = panel.getByRole('checkbox', {
     name: 'For new jobs, use exact filenames when a game ID is unavailable',
     exact: true,
@@ -302,12 +288,10 @@ test('catalog updates use one shared matching job and stay unavailable in offlin
       kind: 'match',
       options: { online: true, refreshCatalogs: true, checksum: true },
     });
-    expect(route.request().postDataJSON().options.providerIds).not.toContain(
-      'org.ecs.catalog.patches',
-    );
-    expect(route.request().postDataJSON().options.providerIds).not.toContain(
-      'org.ecs.catalog.cheats',
-    );
+    // The page omits providerIds when every provider is selected and the server picks its defaults.
+    const requested: string[] = route.request().postDataJSON().options.providerIds ?? [];
+    expect(requested).not.toContain('org.ecs.catalog.patches');
+    expect(requested).not.toContain('org.ecs.catalog.cheats');
     return route.fulfill({
       status: 503,
       json: {

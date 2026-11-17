@@ -17,7 +17,9 @@ test('home offers direct library choices and a complete first-game path on a pho
   await expect(choices.getByRole('button', { name: 'Upload files', exact: true })).toBeVisible();
   await expect(choices.getByRole('button', { name: 'Upload folder', exact: true })).toBeVisible();
   await expect(
-    choices.getByText('Files stay on the server computer. Nothing is copied.'),
+    choices.getByText(
+      'Register a server folder and choose watching and organization options. Metadata and artwork fill in automatically.',
+    ),
   ).toBeVisible();
   fixture.requests.length = 0;
   await choices.getByRole('button', { name: 'Add server folder', exact: true }).click();

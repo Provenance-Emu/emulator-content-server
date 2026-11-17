@@ -147,7 +147,7 @@ test('desktop native adapter cancels without fallback, registers once, and recov
       (window as unknown as { __nativeFolders: { valid: boolean } }).__nativeFolders.valid = false;
     });
     await addServerFolder();
-    await expect(page.getByRole('alert')).toContainText('Use local managed service');
+    await expect(page.getByRole('alert')).toContainText('Use the server on this computer');
     expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
     await page.evaluate(() => {
       const state = (
@@ -220,7 +220,7 @@ test('desktop native adapter cancels without fallback, registers once, and recov
       (window as unknown as { __nativeFolders: { valid: boolean } }).__nativeFolders.valid = false;
     });
     await add.click();
-    await expect(page.getByRole('alert')).toContainText('Use local managed service');
+    await expect(page.getByRole('alert')).toContainText('Use the server on this computer');
     expect(fixture.requests.filter((r) => r === 'POST /api/v1/roots')).toHaveLength(1);
     await page.getByText('Change connection', { exact: true }).click();
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
@@ -251,7 +251,9 @@ test('desktop unavailable native verification uses the actual server chooser for
     await page.getByLabel('Server address', { exact: true }).fill(fixture.origin);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await page.getByText('Change connection', { exact: true }).click();
-    await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Use the server on this computer', exact: true })
+      .click();
     await expect(
       page.getByRole('status').filter({ hasText: 'verification is unavailable' }),
     ).toBeVisible();
@@ -388,9 +390,10 @@ for (const action of ['library-folder', 'library-editor', 'upload-storage'] as c
         await editor.getByRole('button', { name: 'Create library', exact: true }).click();
         await expect(editor).toHaveCount(0);
       } else {
-        // If context retirement remounts the app, reopen its fresh Settings view.
-        // On the buggy code this is idempotent and leaves the captured stale controller mounted.
-        await page.getByRole('button', { name: 'Settings', exact: true }).click();
+        // Settings stays open across the reconnect. If context retirement ever remounts the app
+        // on the library instead, reopen Settings; either way the stale controller must be gone.
+        const settings = page.getByRole('button', { name: 'Settings', exact: true });
+        if (await settings.isVisible()) await settings.click();
         if (action === 'upload-storage') {
           await page.getByRole('button', { name: 'Storage', exact: true }).click();
           await page.getByRole('tab', { name: 'Upload destinations', exact: true }).click();
@@ -462,7 +465,7 @@ test('restored managed profile verifies on reload and opens the native folder pi
   );
   await withDesktop(page, async (desktop) => {
     await page.goto(`${desktop}/library.html`);
-    await page.getByRole('button', { name: 'Use local managed service', exact: true }).click();
+    // An available local service is selected at startup; no click is needed.
     await page.getByLabel('Username', { exact: true }).fill('browser-owner');
     await page.getByLabel('Password', { exact: true }).fill(fixture.password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -534,6 +537,8 @@ test('restored manual loopback profile remains a server-folder fallback even whe
   );
   await withDesktop(page, async (desktop) => {
     await page.goto(`${desktop}/library.html`);
+    // The local service is selected at startup; switch to a typed address instead.
+    await page.getByText('Change connection', { exact: true }).click();
     await page.getByLabel('Server address', { exact: true }).fill(fixture.origin);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await page.getByLabel('Username', { exact: true }).fill('browser-owner');
