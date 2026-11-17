@@ -27,10 +27,12 @@ export interface LibraryBrowserState {
   filters: BrowseFilters;
   items: LibraryBrowseEntry[];
   systemCounts: SystemCount[];
-  page: number;
-  hasPrevious: boolean;
-  hasNext: boolean;
+  /** More of this collection is waiting on the server. */
+  hasMore: boolean;
+  /** The first read, or a re-read of everything already on screen. */
   loading: boolean;
+  /** The next batch is being added below the ones already shown. */
+  loadingMore: boolean;
   failure: string | null;
   status: number | null;
   requiresRefresh: boolean;
@@ -39,8 +41,8 @@ export interface LibraryBrowserState {
 export interface LibraryBrowserController extends Readable<LibraryBrowserState> {
   selectScope(scope: LibraryScope | null): Promise<void>;
   setQuery(filters: Partial<BrowseFilters>): Promise<void>;
-  next(): Promise<void>;
-  previous(): Promise<void>;
+  /** Adds the next batch below the entries already shown. */
+  more(): Promise<void>;
   refresh(options?: { restart?: boolean; clear?: boolean }): Promise<void>;
   open(entry: LibraryBrowseEntry, position: ReturnPosition): void;
   back(): ReturnPosition | null;
@@ -56,7 +58,13 @@ const defaults = (): BrowseFilters => ({
   view: 'grid',
 });
 
-/** Reads only the visible page. The application owns discovery and invalidation cadence. */
+const BATCH = 50;
+const key = (entry: LibraryBrowseEntry) => `${entry.entityType}:${entry.id}`;
+
+/**
+ * Reads the collection in bounded batches and keeps what has been read, so the page can
+ * keep scrolling. The application owns discovery and invalidation cadence.
+ */
 export function createLibraryBrowser(
   client: ContentClient,
   scope: LibraryScope | null,
@@ -66,17 +74,17 @@ export function createLibraryBrowser(
     filters: defaults(),
     items: [],
     systemCounts: [],
-    page: 1,
-    hasPrevious: false,
-    hasNext: false,
+    hasMore: false,
     loading: false,
+    loadingMore: false,
     failure: null,
     status: null,
     requiresRefresh: false,
     active: null,
   };
   const store = writable(current);
-  let cursors: (string | null)[] = [null];
+  /** Batches currently on screen; a re-read fetches this many again from the start. */
+  let batches = 0;
   let nextCursor: string | null = null;
   let position: ReturnPosition | null = null;
   let epoch = 0;
@@ -89,58 +97,74 @@ export function createLibraryBrowser(
   function clear() {
     epoch++;
     pending = null;
-    cursors = [null];
+    batches = 0;
     nextCursor = null;
     position = null;
     update({
       items: [],
       systemCounts: [],
       active: null,
-      page: 1,
-      hasPrevious: false,
-      hasNext: false,
+      hasMore: false,
       loading: false,
+      loadingMore: false,
       failure: null,
       status: null,
       requiresRefresh: false,
     });
   }
-  function read(page: number, cursor: string | null): Promise<void> {
+  /**
+   * `append` adds one batch after the last one. Otherwise every batch already on screen is
+   * read again from the start and swapped in together, so a refresh never empties the page.
+   */
+  function read(append: boolean): Promise<void> {
     const selected = current.scope;
     if (disposed || !selected) return Promise.resolve();
     const run = ++epoch;
     const filters = current.filters;
-    update({ loading: true, failure: null, status: null });
+    update({ loading: !append, loadingMore: append, failure: null, status: null });
     const operation = (async () => {
       try {
-        const result = await client.browse({
-          ...selected,
-          category: filters.category,
-          search: filters.search || undefined,
-          systemId: filters.systemId || undefined,
-          systemIds: filters.systemIds.length ? filters.systemIds : undefined,
-          rootId: filters.rootId || undefined,
-          sort: filters.sort,
-          limit: 50,
-          cursor: cursor ?? undefined,
-        });
-        if (disposed || run !== epoch) return;
-        cursors = cursors.slice(0, page);
-        cursors[page - 1] = cursor;
-        nextCursor = result.nextCursor;
+        const wanted = append ? 1 : Math.max(1, batches);
+        let cursor = append ? nextCursor : null;
+        const fetched: LibraryBrowseEntry[] = [];
+        let systemCounts = current.systemCounts;
+        let count = 0;
+        do {
+          const result = await client.browse({
+            ...selected,
+            category: filters.category,
+            search: filters.search || undefined,
+            systemId: filters.systemId || undefined,
+            systemIds: filters.systemIds.length ? filters.systemIds : undefined,
+            rootId: filters.rootId || undefined,
+            sort: filters.sort,
+            limit: BATCH,
+            cursor: cursor ?? undefined,
+          });
+          if (disposed || run !== epoch) return;
+          fetched.push(...result.items);
+          if (count === 0) systemCounts = result.systemCounts ?? [];
+          cursor = result.nextCursor;
+          count++;
+        } while (count < wanted && cursor !== null);
+        // Entries already shown keep their identity so their covers are not fetched again. A
+        // row that moved between two reads is shown once.
+        const seen = new Set(append ? current.items.map(key) : []);
+        const fresh = fetched.filter((entry) => !seen.has(key(entry)) && !!seen.add(key(entry)));
+        const items = append ? [...current.items, ...fresh] : fresh;
+        batches = append ? batches + 1 : count;
+        nextCursor = cursor;
         const active = current.active
-          ? (result.items.find(
+          ? (items.find(
               (entry) =>
                 entry.entityType === current.active?.entityType && entry.id === current.active.id,
             ) ?? null)
           : null;
         if (!active) position = null;
         update({
-          items: result.items,
-          systemCounts: result.systemCounts ?? [],
-          page,
-          hasPrevious: page > 1,
-          hasNext: nextCursor !== null,
+          items,
+          systemCounts,
+          hasMore: nextCursor !== null,
           active,
           requiresRefresh: false,
         });
@@ -158,8 +182,7 @@ export function createLibraryBrowser(
             items: [],
             systemCounts: [],
             active: null,
-            hasNext: false,
-            hasPrevious: false,
+            hasMore: false,
             requiresRefresh: invalid,
           });
         }
@@ -167,7 +190,7 @@ export function createLibraryBrowser(
       } finally {
         if (!disposed && run === epoch) {
           pending = null;
-          update({ loading: false });
+          update({ loading: false, loadingMore: false });
         }
       }
     })();
@@ -181,7 +204,7 @@ export function createLibraryBrowser(
         return Promise.resolve();
       clear();
       update({ scope: selected, filters: { ...defaults(), view: current.filters.view } });
-      return read(1, null);
+      return read(false);
     },
     setQuery(patch) {
       if (disposed) return Promise.resolve();
@@ -200,33 +223,28 @@ export function createLibraryBrowser(
       update({ filters });
       if (!changed) return Promise.resolve();
       clear();
-      return read(1, null);
+      return read(false);
     },
-    next() {
-      if (disposed || pending || current.requiresRefresh || !current.hasNext)
+    more() {
+      if (disposed || pending || current.requiresRefresh || !current.hasMore)
         return Promise.resolve();
-      return read(current.page + 1, nextCursor);
-    },
-    previous() {
-      if (disposed || pending || current.requiresRefresh || !current.hasPrevious)
-        return Promise.resolve();
-      return read(current.page - 1, cursors[current.page - 2] ?? null);
+      return read(true);
     },
     refresh(options = {}) {
       if (disposed) return Promise.resolve();
       if (options.restart) {
         clear();
-        return read(1, null);
+        return read(false);
       }
       if (options.clear) {
-        // Access rejection invalidates old requests and bodies without losing the saved page/query.
+        // Access rejection invalidates old requests and bodies without losing the saved query.
         epoch++;
         pending = null;
         position = null;
         update({ items: [], active: null });
       }
       if (current.requiresRefresh) return Promise.resolve();
-      return pending ?? read(current.page, cursors[current.page - 1] ?? null);
+      return pending ?? read(false);
     },
     open(entry, saved) {
       if (disposed) return;

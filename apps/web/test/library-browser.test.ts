@@ -11,7 +11,7 @@ test('switching from multiple systems to a single system clears the previous sel
   const browser = createLibraryBrowser(f.client, { libraryId: 'library' });
   t.after(() => browser.dispose());
   await browser.setQuery({ systemIds: ['com.provenance.nes', 'unknown'] });
-  await browser.next();
+  await browser.more();
   await browser.setQuery({ systemId: 'com.provenance.snes' });
   const query = f.requests.at(-1)?.searchParams;
   assert.equal(query?.get('systemId'), 'com.provenance.snes');
@@ -22,7 +22,7 @@ test('switching from multiple systems to a single system clears the previous sel
   assert.equal(f.requests.at(-1)?.searchParams.has('systemId'), false);
 });
 
-test('120 tied mixed identities are reachable in bounded pages with previous history and no manifests', async (t) => {
+test('120 tied mixed identities accumulate in bounded batches, keep their identity, and are re-read together', async (t) => {
   const rows = Array.from({ length: 120 }, (_, i) =>
     entry(['item', 'asset', 'source'][i % 3], String(Math.floor(i / 3))),
   );
@@ -39,25 +39,54 @@ test('120 tied mixed identities are reachable in bounded pages with previous his
   const browser = createLibraryBrowser(f.client, { libraryId: 'library' });
   t.after(() => browser.dispose());
   await browser.refresh();
+  assert.equal(get(browser).items.length, 50);
+  assert.equal(get(browser).hasMore, true);
+  const first = get(browser).items[0];
+  await browser.more();
+  assert.equal(get(browser).items.length, 100);
+  assert.equal(get(browser).items[0], first);
+  await browser.more();
   const seen = get(browser).items.map((r) => `${r.entityType}:${r.id}`);
-  assert.equal(seen.length, 50);
-  await browser.next();
-  seen.push(...get(browser).items.map((r) => `${r.entityType}:${r.id}`));
-  await browser.next();
-  seen.push(...get(browser).items.map((r) => `${r.entityType}:${r.id}`));
+  assert.equal(seen.length, 120);
   assert.equal(new Set(seen).size, 120);
-  assert.equal(get(browser).hasNext, false);
-  assert.equal(get(browser).page, 3);
-  await browser.previous();
-  assert.equal(get(browser).items[0]?.id, '16');
-  assert.equal(get(browser).items[0]?.entityType, 'source');
-  assert.equal(get(browser).page, 2);
+  assert.equal(get(browser).hasMore, false);
+  const count = f.requests.length;
+  await browser.more();
+  assert.equal(f.requests.length, count);
   await browser.refresh();
-  assert.equal(f.requests.at(-1)?.searchParams.get('cursor'), '50');
-  assert.equal(get(browser).page, 2);
+  assert.deepEqual(
+    f.requests.slice(count).map((request) => request.searchParams.get('cursor')),
+    [null, '50', '100'],
+  );
+  assert.equal(get(browser).items.length, 120);
+  assert.equal(get(browser).hasMore, false);
 });
 
-test('all filters reset cursor; view stays client-side; detail back preserves page query scroll and discriminated focus', async (t) => {
+test('a row that moves between two reads is listed once', async (t) => {
+  const f = transport((url) =>
+    Response.json(
+      url.searchParams.has('cursor')
+        ? { items: [entry('source', 'b'), entry('source', 'c')], nextCursor: null }
+        : { items: [entry('source', 'a'), entry('source', 'b')], nextCursor: 'next' },
+    ),
+  );
+  t.after(f.restore);
+  const browser = createLibraryBrowser(f.client, { libraryId: 'library' });
+  t.after(() => browser.dispose());
+  await browser.refresh();
+  await browser.more();
+  assert.deepEqual(
+    get(browser).items.map((row) => row.id),
+    ['a', 'b', 'c'],
+  );
+  await browser.refresh();
+  assert.deepEqual(
+    get(browser).items.map((row) => row.id),
+    ['a', 'b', 'c'],
+  );
+});
+
+test('all filters reset cursor; view stays client-side; detail back preserves the list, query, scroll and discriminated focus', async (t) => {
   const f = transport(() =>
     Response.json({ items: [entry('source', 'same'), entry('item', 'same')], nextCursor: 'page2' }),
   );
@@ -65,7 +94,7 @@ test('all filters reset cursor; view stays client-side; detail back preserves pa
   const b = createLibraryBrowser(f.client, { libraryId: 'library' });
   t.after(() => b.dispose());
   await b.refresh();
-  await b.next();
+  await b.more();
   await b.setQuery({
     category: 'media',
     search: 'same & title',
@@ -85,16 +114,16 @@ test('all filters reset cursor; view stays client-side; detail back preserves pa
   const count = f.requests.length;
   await b.setQuery({ view: 'grid' });
   assert.equal(f.requests.length, count);
-  await b.next();
+  await b.more();
   const selected = get(b).items[1];
   assert.ok(selected);
   b.open(selected, { scrollTop: 987, focusKey: 'item:same' });
   assert.equal(get(b).active?.entityType, 'item');
   assert.deepEqual(b.back(), { scrollTop: 987, focusKey: 'item:same' });
-  assert.equal(get(b).page, 2);
+  assert.equal(get(b).items.length, 2);
   assert.equal(get(b).filters.search, 'same & title');
   await b.selectScope({ unassigned: true });
-  assert.equal(get(b).page, 1);
+  assert.equal(f.requests.at(-1)?.searchParams.has('cursor'), false);
   assert.equal(get(b).filters.search, '');
   assert.equal(get(b).filters.systemId, '');
   assert.equal(f.requests.at(-1)?.searchParams.get('unassigned'), 'true');
@@ -103,29 +132,29 @@ test('all filters reset cursor; view stays client-side; detail back preserves pa
   assert.equal(get(b).active, null);
 });
 
-test('transient refresh retains page but denied and invalid-cursor responses clear private bodies and require explicit restart', async (t) => {
+test('transient refresh retains the list but denied and invalid-cursor responses clear private bodies and require explicit restart', async (t) => {
   let response = () => Response.json({ items: [entry()], nextCursor: 'page2' });
   const f = transport(() => response());
   t.after(f.restore);
   const b = createLibraryBrowser(f.client, { libraryId: 'library' });
   t.after(() => b.dispose());
   await b.refresh();
-  await b.next();
+  await b.more();
   response = () => problem(503);
   await b.refresh();
   assert.equal(get(b).items.length, 1);
-  assert.equal(get(b).page, 2);
+  assert.equal(get(b).hasMore, true);
   response = () => problem(400, 'invalid-cursor');
   await b.refresh();
   assert.deepEqual(get(b).items, []);
   assert.equal(get(b).requiresRefresh, true);
   const n = f.requests.length;
   await b.refresh();
-  await b.next();
+  await b.more();
   assert.equal(f.requests.length, n);
   response = () => Response.json({ items: [entry()], nextCursor: null });
   await b.refresh({ restart: true });
-  assert.equal(get(b).page, 1);
+  assert.equal(get(b).hasMore, false);
   assert.equal(get(b).items.length, 1);
   for (const status of [401, 403, 404]) {
     response = () => problem(status);
@@ -167,14 +196,14 @@ test('scope changes and disposal defeat deferred refreshes; concurrent invalidat
   assert.equal(get(old).scope, null);
 });
 
-test('refresh revalidates the return page during detail, updates source metadata and clears moved/revoked selection', async (t) => {
+test('refresh revalidates the list during detail, updates source metadata and clears moved/revoked selection', async (t) => {
   let rows = [entry('source', 'source')];
   const f = transport(() => Response.json({ items: rows, nextCursor: 'second' }));
   t.after(f.restore);
   const b = createLibraryBrowser(f.client, { libraryId: 'library' });
   t.after(() => b.dispose());
   await b.refresh();
-  await b.next();
+  await b.more();
   const selected = rows[0];
   assert.ok(selected?.source);
   b.open(selected, { scrollTop: 50, focusKey: 'source:source' });
@@ -184,7 +213,7 @@ test('refresh revalidates the return page during detail, updates source metadata
   await b.refresh();
   assert.equal(f.requests.at(-1)?.searchParams.get('cursor'), 'second');
   assert.equal(get(b).active?.source?.availability, 'offline');
-  assert.equal(get(b).page, 2);
+  assert.equal(get(b).items.length, 1);
   rows = [];
   await b.refresh();
   assert.equal(get(b).active, null);

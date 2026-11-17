@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LibraryBrowseEntry, SystemSummary } from '@ecs/client';
+  import { onDestroy } from 'svelte';
   import { availabilityLabel, entryKey, kindLabel, systemLabel } from '../lib/content-format';
   import { bytes } from '../lib/format';
   let {
@@ -8,14 +9,58 @@
     urls,
     grid,
     onopen,
+    onvisible,
   }: {
     items: LibraryBrowseEntry[];
     systems: SystemSummary[];
     urls: Record<string, string>;
     grid: boolean;
     onopen: (entry: LibraryBrowseEntry) => void;
+    /** Cards on or near the screen. Called again when they are read again. */
+    onvisible?: (entries: LibraryBrowseEntry[]) => void;
   } = $props();
   let failed = $state<Record<string, string>>({});
+  const byKey = $derived(new Map(items.map((entry) => [entryKey(entry), entry])));
+  const near = new Set<string>();
+  let observer: IntersectionObserver | null = null;
+  let scheduled = false;
+  function report() {
+    scheduled = false;
+    const entries = [...near].flatMap((key) => byKey.get(key) ?? []);
+    if (entries.length) onvisible?.(entries);
+  }
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(report);
+  }
+  /** Covers are only asked for while their card is within a screen or so of the viewport. */
+  function watch(node: HTMLElement, key: string) {
+    observer ??= new IntersectionObserver(
+      (records) => {
+        for (const record of records) {
+          const target = (record.target as HTMLElement).dataset.entryKey ?? '';
+          if (record.isIntersecting) near.add(target);
+          else near.delete(target);
+        }
+        schedule();
+      },
+      { rootMargin: '800px 0px' },
+    );
+    observer.observe(node);
+    return {
+      destroy() {
+        observer?.unobserve(node);
+        near.delete(key);
+      },
+    };
+  }
+  $effect(() => {
+    // A refresh replaces the entries behind cards that stay on screen.
+    void byKey;
+    schedule();
+  });
+  onDestroy(() => observer?.disconnect());
 </script>
 
 {#if grid}
@@ -24,6 +69,7 @@
         <button
           type="button"
           class="game-card"
+          use:watch={entryKey(entry)}
           data-entry-key={entryKey(entry)}
           aria-label={`Open ${entry.name}`}
           onclick={() => onopen(entry)}

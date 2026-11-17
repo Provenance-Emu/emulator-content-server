@@ -64,7 +64,7 @@ test('preview 401 can synchronously clear application collection and detail thro
   assert.equal(get(application).signedIn, false);
 });
 
-test('preview 403 clears only its view and revalidates the saved bounded page while superseding an older pending read', async (t) => {
+test('preview 403 clears only its view and re-reads the saved list while superseding an older pending read', async (t) => {
   const f = serverFixture();
   t.after(f.restore);
   const delegate = globalThis.fetch;
@@ -96,7 +96,7 @@ test('preview 403 clears only its view and revalidates the saved bounded page wh
     sort: 'name_desc',
     view: 'list',
   });
-  await browser.next();
+  await browser.more();
   const filters = get(browser).filters;
   const selected = get(browser).items[1];
   assert.ok(selected);
@@ -123,9 +123,9 @@ test('preview 403 clears only its view and revalidates the saved bounded page wh
   assert.equal(get(application).signedIn, true);
   assert.deepEqual(get(browser).filters, filters);
   assert.deepEqual(get(browser).scope, { libraryId: 'library' });
-  assert.equal(get(browser).page, 2);
   assert.equal(browseRequests.length, 5);
-  assert.equal(browseRequests.at(-1)?.searchParams.get('cursor'), 'next');
+  // Everything on screen is read again from the start.
+  assert.equal(browseRequests.at(-1)?.searchParams.has('cursor'), false);
   assert.equal(browseRequests.at(-1)?.searchParams.get('limit'), '50');
   assert.equal(browseRequests.at(-1)?.searchParams.get('search'), 'Same');
   old.resolve(Response.json({ items: [entry('source', 'private-old')], nextCursor: 'old-next' }));
@@ -137,8 +137,7 @@ test('preview 403 clears only its view and revalidates the saved bounded page wh
     get(browser).items.map((row) => row.id),
     ['authorized'],
   );
-  assert.equal(get(browser).page, 2);
-  assert.equal(get(browser).hasPrevious, true);
+  assert.equal(get(browser).hasMore, false);
   assert.deepEqual(get(browser).filters, filters);
   assert.equal(
     f.requests.some((request) => request.path === '/api/v1/auth/logout'),

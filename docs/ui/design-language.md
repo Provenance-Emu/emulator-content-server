@@ -44,7 +44,11 @@ Never write a colour in a component. Covers and placeholders use `--color-artwor
 
 ### Collection toolbar
 
-One row: search, **Filter & sort**, and the Grid/List switch. Filters open as a panel over the grid on wide screens and inline below 1000px, so opening them does not push the games down. System chips and active-filter chips are 1.75rem pills for a mouse and full touch height on any coarse pointer. Add a new filter inside `.collection-option-fields`, not to the row.
+Everything is on the page; nothing opens. One row holds search, **Library folder**, **Sort**, and the Grid/List switch. Search filters as you type after a short pause (Enter applies it at once), so there is no Search button. Under that row the systems that have games are always visible as chips with their counts. One click shows one system and clicking it again shows all; Shift, Ctrl, or Command adds to the choice. On a mouse the chips fold to two rows behind **More systems**, and never hide a chosen system; on a phone they scroll sideways in one row. Chips are 1.75rem pills for a mouse and full touch height on any coarse pointer. **Clear filters** appears beside the chips only while something is filtered. Add a new filter to `.collection-view-options`, not behind a disclosure.
+
+### Long lists
+
+A collection never has Previous and Next. `lib/library-browser.ts` reads bounded batches and keeps them, `LibraryBrowser.svelte` asks for the next batch while the end of the list is within a screen of the viewport, and the foot of the list says how much is shown (`Showing 100 of 1,240`, then `1,240 games`). **Show more** is the same action for a keyboard, and becomes **Try again** after a failed read, which is never retried on its own. The browse contract pages by cursor and reports no offsets, so numbered pages are not available. A refresh reads everything on screen again and swaps it in together. Covers are requested only for cards near the viewport (`CollectionPage.svelte` reports them, `previews.request` keeps at most 240 and releases the oldest), so a long scroll does not hold every image in memory.
 
 Existing `--ink`, `--ink-dim`, `--paper`, `--panel`, `--line`, `--accent`, and `--warn` are compatibility aliases. Prefer semantic tokens in new components. Apply theme overrides to `:root`; scoped overrides can directly use the compatibility names where old components need them.
 

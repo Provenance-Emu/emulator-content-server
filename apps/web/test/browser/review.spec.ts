@@ -159,7 +159,7 @@ for (const assigned of [false, true])
       root.id,
     );
     await page.getByRole('searchbox', { name: 'Search collection' }).fill('external');
-    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'Back to library', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Library folder', exact: true })).toHaveValue(
@@ -198,7 +198,7 @@ test('authenticated invalidation refreshes folder options and clears a removed r
   await expect(page.locator(`option[value="${added.id}"]`)).toHaveCount(1);
   await page.getByRole('combobox', { name: 'Library folder', exact: true }).selectOption(first.id);
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('external');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   fixture.requests.length = 0;
   await fixture.client.removeRoot(first.id);
   await page.clock.runFor(16_000);
@@ -244,7 +244,7 @@ test('folder option transient errors retain the selected folder and other filter
   await page.getByRole('button', { name: 'Unassigned folders', exact: true }).click();
   await page.getByRole('combobox', { name: 'Library folder', exact: true }).selectOption(root.id);
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('external');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   await page.route('**/api/v1/root-summaries?**', (route) => route.fulfill(problem(503)));
   await libraryTool(page, 'Refresh');
   await expect(page.getByRole('alert')).toContainText('Access denied');
@@ -283,6 +283,10 @@ test('a completed page refresh preserves an unsubmitted search draft and submits
   const returned = page.waitForResponse(
     (response) => new URL(response.url()).pathname === '/api/v1/browse',
   );
+  const submitted = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/v1/browse' && url.searchParams.get('search') === 'external';
+  });
   await libraryTool(page, 'Refresh');
   await started;
   try {
@@ -293,10 +297,6 @@ test('a completed page refresh preserves an unsubmitted search draft and submits
   await (await returned).finished();
   await page.evaluate(() => new Promise(requestAnimationFrame));
   await expect(page.getByRole('searchbox', { name: 'Search collection' })).toHaveValue('external');
-  const submitted = page.waitForRequest((request) => {
-    const url = new URL(request.url());
-    return url.pathname === '/api/v1/browse' && url.searchParams.get('search') === 'external';
-  });
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  // The list follows the typing on its own; there is no Search button to press.
   expect(new URL((await submitted).url()).searchParams.get('search')).toBe('external');
 });

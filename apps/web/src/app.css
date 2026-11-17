@@ -797,12 +797,17 @@ dialog label {
   font-size: var(--text-small);
   color: var(--color-warning);
 }
-.pagination {
+.collection-more {
   display: flex;
-  justify-content: center;
-  gap: 1rem;
+  flex-direction: column;
   align-items: center;
-  margin-top: 2rem;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  min-height: var(--control-height-touch);
+}
+.collection-more p {
+  margin: 0;
+  font-size: var(--text-small);
 }
 .empty-state {
   border: var(--border-width) dashed var(--color-border-strong);
@@ -1665,15 +1670,6 @@ section.library-home {
   .collection-toolbar form {
     gap: 0.5rem;
   }
-  .collection-options {
-    flex-basis: 100%;
-  }
-  .collection-options summary {
-    width: 100%;
-  }
-  .collection-option-fields > label {
-    flex: 1 1 10rem;
-  }
   .game-grid {
     gap: 1rem 0.5rem;
   }
@@ -1935,7 +1931,7 @@ section.library-home {
   }
 }
 
-/* Collection toolbar: one row. Filters open as a panel over the grid instead of pushing it down. */
+/* Collection toolbar: search, sort and view on one row; systems always visible underneath. */
 .visually-hidden,
 .view-switch legend {
   position: absolute;
@@ -1967,12 +1963,20 @@ section.library-home {
 .search-field input {
   width: 100%;
 }
-.collection-options {
-  position: relative;
-  flex: 0 0 auto;
+.collection-view-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
   margin-left: auto;
 }
-.collection-options summary,
+.toolbar-select {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-dim);
+  font-size: var(--text-small);
+}
 .library-tools summary {
   width: fit-content;
   padding: var(--control-padding-block) var(--control-padding-inline);
@@ -1990,9 +1994,7 @@ section.library-home {
     border-color var(--motion-control) var(--ease-out),
     color var(--motion-control) var(--ease-out);
 }
-.collection-options summary:hover,
-.library-tools summary:hover,
-.collection-options[open] summary {
+.library-tools summary:hover {
   color: var(--ink);
   border-color: var(--color-border-strong);
 }
@@ -2019,84 +2021,49 @@ summary::before {
 details[open] > summary::before {
   transform: rotate(45deg);
 }
-.filter-count {
-  margin-left: var(--space-1);
-  color: var(--accent);
-}
-.collection-option-fields {
-  position: absolute;
-  z-index: 5;
-  top: calc(100% + var(--space-1));
-  right: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: var(--space-3);
-  width: min(34rem, calc(100vw - 2rem));
-  max-height: min(26rem, 70vh);
-  overflow: auto;
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--radius-panel);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-popover);
-  animation: popover-in var(--motion-control) var(--ease-out) both;
-  transform-origin: top right;
-}
-.collection-option-fields label {
-  flex: 1 1 10rem;
-}
-.collection-option-fields select {
-  width: 100%;
-}
 .system-filter {
+  --chip-height: 1.75rem;
+  display: flex;
   flex: 1 1 100%;
+  align-items: flex-start;
+  gap: var(--space-1) var(--space-3);
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
-.system-filter legend {
-  margin-bottom: var(--space-1);
-  padding: 0;
-  color: var(--ink-dim);
-  font-size: var(--text-small);
-}
-.system-chips,
-.active-filters {
+.system-chips {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1);
+  min-width: 0;
 }
-.active-filters {
-  flex: 1 1 100%;
-  gap: var(--space-1) var(--space-2);
+/* Two rows until More systems is opened. */
+.system-chips.folded {
+  max-height: calc(2 * var(--chip-height) + var(--space-1));
+  overflow: hidden;
 }
-.system-chips button,
-.filter-chip {
-  min-height: 1.75rem;
-  padding: 0.1rem 0.7rem;
+.system-chips button {
+  flex: 0 0 auto;
+  min-height: var(--chip-height);
+  padding: 0 0.7rem;
   border-radius: var(--radius-pill);
   box-shadow: none;
   font-size: var(--text-small);
+  white-space: nowrap;
 }
-.system-chips button[aria-pressed="true"],
-.filter-chip {
+.system-chips button[aria-pressed="true"] {
   background: var(--color-selected);
   border-color: var(--color-selected-border);
   color: var(--color-selected-text);
 }
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-.active-filters .text-button {
-  min-height: 1.75rem;
+.system-filter .text-button {
+  flex: 0 0 auto;
+  min-height: var(--chip-height);
   font-size: var(--text-small);
+  white-space: nowrap;
 }
 .view-switch {
   position: relative;
@@ -2143,31 +2110,34 @@ details[open] > summary::before {
   outline: var(--focus-width) solid var(--focus-color);
   outline-offset: var(--focus-offset);
 }
-/* Touch keeps full-size targets, and a narrow page gets the filters inline. */
+/* Touch keeps full-size targets; a phone scrolls the systems sideways in one row. */
 @media (any-pointer: coarse) {
+  .system-filter {
+    --chip-height: var(--control-height-touch);
+  }
   .system-chips button,
-  .filter-chip,
-  .active-filters .text-button {
-    min-height: var(--control-height-touch);
+  .system-filter .text-button {
     padding-inline: var(--space-3);
     font-size: var(--text-label);
   }
 }
-@media (max-width: 1000px) {
-  .collection-options[open] {
-    flex-basis: 100%;
-    order: 3;
+@media (max-width: 760px) {
+  .system-filter {
+    flex-wrap: wrap;
   }
-  .collection-option-fields {
-    position: static;
-    width: auto;
+  .system-chips,
+  .system-chips.folded {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
     max-height: none;
-    margin-top: var(--space-2);
-    box-shadow: none;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  .system-chips {
-    max-height: 14rem;
-    overflow-y: auto;
+  .system-more {
+    display: none;
+  }
+  .collection-view-options {
+    margin-left: 0;
   }
 }
 .theme-picker {

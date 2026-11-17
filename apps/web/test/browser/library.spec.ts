@@ -48,9 +48,15 @@ test('all games remain reachable in a bounded collection and detail back restore
   const results = page.getByRole('button', { name: /^Open Game / });
   await expect(results).toHaveCount(50);
   await page.screenshot({ path: testInfo.outputPath('library-desktop.png') });
-  await page.getByRole('button', { name: 'Next page' }).click();
-  await expect(results.first()).toHaveAccessibleName('Open Game 050');
-  const opened = results.nth(49);
+  // More games are added as the end of the list comes near; nothing is paged away.
+  await results.nth(49).scrollIntoViewIfNeeded();
+  await expect(results).toHaveCount(100);
+  await expect(page.getByText('Showing 100 of 120', { exact: true })).toBeVisible();
+  const opened = results.nth(99);
+  await opened.scrollIntoViewIfNeeded();
+  await expect(results).toHaveCount(120);
+  await expect(page.getByText('120 games', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show more', exact: true })).toHaveCount(0);
   await opened.scrollIntoViewIfNeeded();
   const savedScroll = await page.evaluate(() => window.scrollY);
   await opened.click();
@@ -58,23 +64,19 @@ test('all games remain reachable in a bounded collection and detail back restore
   await page.getByRole('button', { name: 'Back to collection' }).click();
   await expect(opened).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(savedScroll);
-  await page.getByRole('button', { name: 'Next page' }).click();
-  await expect(results).toHaveCount(20);
+  await expect(results).toHaveCount(120);
   await expect(results.last()).toHaveAccessibleName('Open Game 119');
-  await page.getByRole('button', { name: 'Previous page' }).click();
-  await expect(results).toHaveCount(50);
-  await page.locator('.collection-options summary').click();
   await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('name_desc');
   await expect(results.first()).toHaveAccessibleName('Open Game 119');
   await page.getByRole('radio', { name: 'List', exact: true }).check();
   await expect(page.getByRole('table', { name: 'Collection results' })).toBeVisible();
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('Game 119');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   await expect(results).toHaveCount(1);
   await page
     .getByRole('searchbox', { name: 'Search collection' })
     .fill('No generated game matches');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   await expect(page.getByText('No matching files or games.')).toBeVisible();
 });
 
@@ -319,7 +321,7 @@ test('upload waits for an explicit system and keeps its dialog open while sendin
   await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
   await dialog.getByRole('button', { name: 'Close Upload files', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('Uploaded game');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   await expect(page.getByRole('button', { name: 'Open Uploaded game', exact: true })).toBeVisible();
 });
 

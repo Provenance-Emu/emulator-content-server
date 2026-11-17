@@ -132,7 +132,6 @@ test('desktop native adapter cancels without fallback, registers once, and recov
     ).toBeChecked();
     await quickPicker.getByRole('button', { name: 'Add folder', exact: true }).click();
     await expect(quickPicker).toHaveCount(0);
-    await page.locator('.collection-options summary').click();
     await expect(
       page
         .getByRole('combobox', { name: /^Library folder/ })

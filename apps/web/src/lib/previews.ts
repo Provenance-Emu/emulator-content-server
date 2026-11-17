@@ -6,13 +6,24 @@ export interface PreviewState {
   loading: boolean;
 }
 export interface PreviewController extends Readable<PreviewState> {
+  /** Replaces every cover with the ones for these entries. */
   setPage(entries: LibraryBrowseEntry[]): Promise<void>;
+  /**
+   * Adds covers for entries that have come on screen and keeps the ones already loaded. An
+   * entry that was read again (a new object for the same key) has its cover fetched again
+   * while the old one stays visible. The least recently requested covers are released.
+   */
+  request(entries: LibraryBrowseEntry[]): Promise<void>;
   dispose(): void;
 }
 export interface PreviewOptions {
   authorizationRejected?(status: 401 | 403): void;
 }
 const MAX_BYTES = 2 * 1024 * 1024;
+/** Covers kept for a scrolling collection. Each is up to MAX_BYTES of image held in memory. */
+const MAX_KEPT = 240;
+/** Waiting cover reads. Older ones belong to cards that have scrolled away. */
+const MAX_WAITING = 120;
 
 /** Derive MIME from a raster signature, never from its extension or a remote response header. */
 function imageType(bytes: Uint8Array): string | null {
@@ -46,9 +57,34 @@ export function createPreviews(
   interface Work {
     entry: LibraryBrowseEntry;
     run: number;
+    /** Requested for a scrolling collection: tracked in `wanted` and released by age. */
+    kept?: boolean;
     finish(): void;
   }
   let queue: Work[] = [];
+  /** The entry each kept or wanted cover was read for, oldest request first. */
+  const wanted = new Map<string, LibraryBrowseEntry>();
+  function eligible(entry: LibraryBrowseEntry): boolean {
+    if (entry.entityType === 'source') return entry.source?.artworkAvailable === true;
+    const art = entry.previewAsset;
+    return (
+      entry.entityType === 'item' &&
+      !!entry.item &&
+      !!art &&
+      art.itemId === entry.item.id &&
+      art.kind === 'artwork' &&
+      art.size > 0 &&
+      art.size <= MAX_BYTES
+    );
+  }
+  function release(key: string) {
+    wanted.delete(key);
+    const url = current.urls[key];
+    if (!url) return;
+    URL.revokeObjectURL(url);
+    const { [key]: _released, ...urls } = current.urls;
+    update({ urls });
+  }
   function update(patch: Partial<PreviewState>) {
     current = { ...current, ...patch };
     store.set(current);
@@ -57,6 +93,7 @@ export function createPreviews(
     epoch++;
     for (const work of queue) work.finish();
     queue = [];
+    wanted.clear();
     for (const url of Object.values(current.urls)) URL.revokeObjectURL(url);
     update({ urls: {}, loading: false });
   }
@@ -80,12 +117,23 @@ export function createPreviews(
               : id
                 ? await client.collect(id, { maxBytes: MAX_BYTES })
                 : null;
-          if (!result) return;
           if (disposed || work.run !== epoch) return;
-          const type = imageType(result.bytes);
-          if (!type) return;
+          const key = entryKey(work.entry);
+          // A newer read of the same game owns this cover now.
+          if (work.kept && wanted.get(key) !== work.entry) return;
+          const type = result ? imageType(result.bytes) : null;
+          const previous = current.urls[key];
+          if (!result || !type) {
+            if (work.kept && previous) {
+              URL.revokeObjectURL(previous);
+              const { [key]: _gone, ...urls } = current.urls;
+              update({ urls });
+            }
+            return;
+          }
           const url = URL.createObjectURL(new Blob([result.bytes], { type }));
-          update({ urls: { ...current.urls, [entryKey(work.entry)]: url } });
+          if (previous) URL.revokeObjectURL(previous);
+          update({ urls: { ...current.urls, [key]: url } });
         } catch (error) {
           if (
             !disposed &&
@@ -152,6 +200,41 @@ export function createPreviews(
       );
       drain();
       return Promise.all(results).then(() => undefined);
+    },
+    request(entries) {
+      if (disposed) return Promise.resolve();
+      const run = epoch;
+      const added: Promise<void>[] = [];
+      const works: Work[] = [];
+      for (const entry of entries) {
+        const key = entryKey(entry);
+        if (!eligible(entry)) {
+          if (wanted.has(key)) release(key);
+          continue;
+        }
+        const same = wanted.get(key) === entry;
+        // Re-inserting moves the key to the newest end of the release order.
+        wanted.delete(key);
+        wanted.set(key, entry);
+        if (same) continue;
+        added.push(
+          new Promise<void>((resolve) => {
+            works.push({ entry, run, kept: true, finish: resolve });
+          }),
+        );
+      }
+      // The newest request is what the viewer is looking at, so it goes first.
+      queue = [...works, ...queue];
+      for (const dropped of queue.splice(MAX_WAITING)) {
+        if (wanted.get(entryKey(dropped.entry)) === dropped.entry) release(entryKey(dropped.entry));
+        dropped.finish();
+      }
+      for (const key of wanted.keys()) {
+        if (wanted.size <= MAX_KEPT) break;
+        release(key);
+      }
+      drain();
+      return Promise.all(added).then(() => undefined);
     },
     dispose() {
       if (disposed) return;

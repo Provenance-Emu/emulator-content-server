@@ -69,7 +69,7 @@ test('home and empty-state help respect reader permissions', async ({ page, fixt
   await page
     .getByRole('searchbox', { name: 'Search collection', exact: true })
     .fill('missing game');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   await expect(page.getByText('No matching files or games.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add your first game', exact: true })).toHaveCount(
     0,

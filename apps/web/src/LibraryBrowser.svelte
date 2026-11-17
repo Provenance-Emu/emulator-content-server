@@ -156,17 +156,17 @@
     rejectAccess(status);
     if (status === 403) void application.revalidate();
   }
-  let previousItems: LibraryBrowseEntry[] | null = null;
+  let reading = false;
   const unsubscribeBrowser = browser.subscribe((state) => {
     if (disposed) return;
     if (state.status === 401) {
       rejectAccess(401);
       return;
     }
-    if (previousItems !== state.items) {
-      previousItems = state.items;
-      void previews.setPage(state.items);
-    }
+    const busy = state.loading || state.loadingMore;
+    // Once a read has landed and the page has grown, see whether the end is still close.
+    if (reading && !busy) void tick().then(measureEnd);
+    reading = busy;
     const envelope = state.active ? JSON.stringify(state.active) : '';
     if (envelope !== detailEnvelope) {
       clearDetail();
@@ -314,6 +314,47 @@
         ? 'Unassigned folders'
         : 'Your libraries',
   );
+  /** The server counts each system before a system is chosen; add up the ones in view. */
+  const total = $derived(
+    $browser.systemCounts
+      .filter(
+        (row) =>
+          (!$browser.filters.systemIds.length || $browser.filters.systemIds.includes(row.systemId)) &&
+          (!$browser.filters.systemId || $browser.filters.systemId === row.systemId),
+      )
+      .reduce((sum, row) => sum + row.count, 0),
+  );
+  const shownLabel = $derived.by(() => {
+    const shown = $browser.items.length;
+    const noun = $browser.filters.category === 'games' ? (shown === 1 ? 'game' : 'games') : shown === 1 ? 'file' : 'files';
+    if (!$browser.hasMore) return `${shown.toLocaleString()} ${noun}`;
+    return total > shown
+      ? `Showing ${shown.toLocaleString()} of ${total.toLocaleString()}`
+      : `Showing the first ${shown.toLocaleString()}`;
+  });
+  let endObserver: IntersectionObserver | null = null;
+  let endNode: HTMLElement | null = null;
+  /** Adds the next batch if the end of the list is close. A failed read waits for the button. */
+  function addMore() {
+    const state = get(browser);
+    if (disposed || !state.hasMore || state.loading || state.loadingMore || state.failure || state.requiresRefresh) return;
+    void browser.more();
+  }
+  /** Observing again reports where the end is now, after a batch has moved it. */
+  function measureEnd() {
+    if (!endObserver || !endNode) return;
+    endObserver.unobserve(endNode);
+    endObserver.observe(endNode);
+  }
+  function watchEnd(node: HTMLElement) {
+    endNode = node;
+    endObserver = new IntersectionObserver(
+      (records) => { if (records.some((record) => record.isIntersecting)) addMore(); },
+      { rootMargin: '800px 0px' },
+    );
+    endObserver.observe(node);
+    return { destroy() { endObserver?.disconnect(); endObserver = null; endNode = null; } };
+  }
   const canCreate = $derived(
     scope &&
       'libraryId' in scope &&
@@ -452,8 +493,8 @@
         <button class="primary" type="button" onclick={() => (addChoices = true)}>{$browser.filters.category === 'games' ? 'Add your first game' : 'Add your first file'}</button>
       {/if}
       {#if $browser.requiresRefresh}<p>
-          The saved page is no longer valid. Use Refresh to return to the first page with these
-          filters.
+          This list changed on the server.
+          <button type="button" onclick={refreshCollection}>Load it again</button>
         </p>{/if}
       <CollectionPage
         items={$browser.items}
@@ -461,31 +502,17 @@
         urls={$previews.urls}
         grid={$browser.filters.view === 'grid' && $browser.filters.category === 'games'}
         onopen={open}
+        onvisible={(entries) => void previews.request(entries)}
       />
     </div>
-    {#if $browser.items.length || $browser.hasPrevious || $browser.hasNext}<nav class="pagination" aria-label="Collection pages">
-      <button
-        type="button"
-        aria-label="Previous page"
-        disabled={!$browser.hasPrevious || $browser.loading}
-        onclick={() => {
-          void browser.previous();
-        }}
-      >
-        Previous
-      </button>
-      <span>Page {$browser.page}</span>
-      <button
-        type="button"
-        aria-label="Next page"
-        disabled={!$browser.hasNext || $browser.loading}
-        onclick={() => {
-          void browser.next();
-        }}
-      >
-        Next
-      </button>
-    </nav>{/if}
+    {#if $browser.items.length}<div class="collection-more" use:watchEnd>
+      <p class="dim" role="status">{shownLabel}</p>
+      {#if $browser.hasMore}<button
+          type="button"
+          disabled={$browser.loading || $browser.loadingMore}
+          onclick={() => void browser.more()}
+        >{$browser.loadingMore ? 'Loading more…' : $browser.failure ? 'Try again' : 'Show more'}</button>{/if}
+    </div>{/if}
   {/if}
   {#if folderAdder && owner && scope && 'libraryId' in scope}
     {#each Object.entries($folderAdder?.scanFailures??{}) as [id,message]}<p class="problem" role="alert">Folder saved. Scan failed: {message} <button type="button" onclick={()=>void folderAdder?.retryScan(id)}>Retry scan</button></p>{/each}

@@ -26,7 +26,7 @@ test('links alternate copies and plays the server-selected format from the game 
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('Second copy');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   await page.getByRole('button', { name: /Open Second copy/ }).click();
   await page.getByRole('button', { name: 'Link to a game', exact: true }).click();
   await page
@@ -39,7 +39,7 @@ test('links alternate copies and plays the server-selected format from the game 
   await page.goto(`${fixture.origin}/ui/`);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Search collection' }).fill('One GBA game');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search collection' }).press('Enter');
   await page.getByRole('button', { name: 'Open One GBA game', exact: true }).click();
   await page.getByRole('button', { name: 'View game copies', exact: true }).click();
   await expect(page.getByText(/Second copy.gba/).first()).toBeVisible();

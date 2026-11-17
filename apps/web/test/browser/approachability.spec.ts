@@ -1,6 +1,6 @@
 import { expect, signIn, test } from './fixture';
 
-test('phone library keeps optional filters behind a labelled disclosure and opens them on request', async ({
+test('phone library keeps search, sort and the systems on the page without overflowing', async ({
   page,
   fixture,
 }, testInfo) => {
@@ -11,24 +11,23 @@ test('phone library keeps optional filters behind a labelled disclosure and open
     .getByRole('dialog', { name: 'Library navigation' })
     .getByRole('button', { name: 'Arcade', exact: true })
     .click();
-  const options = page.locator('.collection-options');
-  await expect(options).not.toHaveAttribute('open');
   await expect(page.getByRole('searchbox', { name: 'Search collection' })).toBeVisible();
   const firstGame = page.getByRole('button', { name: 'Open Game 000', exact: true });
   await expect(firstGame).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('collection-mobile.png') });
-  await options.getByText('Filter & sort', { exact: true }).click();
-  await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toBeVisible();
+  // Sort and the systems are on the page without opening anything.
   await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('name_desc');
   await expect(page.getByRole('button', { name: /^Open Game / }).first()).toHaveAccessibleName(
     'Open Game 119',
   );
   const systems = page.getByRole('group', { name: 'Systems with games', exact: true });
   await systems.getByRole('button').nth(1).click();
-  await options.locator('summary').click();
-  await expect(options.locator('summary')).toContainText('1 active');
+  await expect(systems.getByRole('button').nth(1)).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
-  await expect(options.locator('summary')).not.toContainText('active');
+  await expect(systems.getByRole('button', { name: 'All systems', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
