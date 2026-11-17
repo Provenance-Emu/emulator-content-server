@@ -14,6 +14,7 @@
   import SourceOrganization from './SourceOrganization.svelte';
   import Upload from './Upload.svelte';
   import Modal from './components/Modal.svelte';
+  import { moveToTrash, undoToast } from './lib/trash';
   import SavedPatches from './components/SavedPatches.svelte';
   let {
     controller,
@@ -55,6 +56,22 @@
     disposed = true;
   });
   let saving = $state(false);
+  let trashing = $state(false);
+  /** Reversible, so there is no confirmation. The toast carries the undo. */
+  async function trash(target: { kind: 'item' | 'file'; id: string; name: string }) {
+    if (trashing || saving) return;
+    trashing = true;
+    saveFailure = null;
+    const leaving = target.kind === 'item';
+    const failure = await moveToTrash(context.client, undoToast, target, () => {
+      onchanged();
+      if (!disposed && !leaving) onrefresh();
+    });
+    if (disposed) return;
+    trashing = false;
+    if (failure) saveFailure = failure;
+    else if (leaving) onback();
+  }
   let saveFailure = $state<string | null>(null);
   async function download(file?: ManifestFile, memberId?: string) {
     if (saving || groupDownloading) return;
@@ -134,6 +151,16 @@
       >
         Add a file
       </button>{/if}
+    {#if $controller.canUpload && $controller.item && !$controller.asset}<button
+        type="button"
+        disabled={trashing || saving || $controller.loading || !!$controller.reading || $controller.adopting}
+        onclick={() => {
+          const item = $controller.item;
+          if (item) void trash({ kind: 'item', id: item.id, name: item.title });
+        }}
+      >
+        Move to trash
+      </button>{/if}
     <button
       type="button"
       disabled={saving || refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
@@ -183,9 +210,12 @@
 
 {:else if $controller.item}<Files
     detailState={$controller}
-    externalBusy={saving || groupDownloading}
+    externalBusy={saving || groupDownloading || trashing}
     {playerCore}
     {onemulators}
+    ontrash={$controller.canUpload
+      ? (file) => void trash({ kind: 'file', id: file.id, name: file.relativePath })
+      : undefined}
     ondownload={(file) => {
       void download(file);
     }}

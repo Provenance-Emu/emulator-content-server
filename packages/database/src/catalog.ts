@@ -45,6 +45,13 @@ import {
   sourceMatches,
   writeSourceMatch,
 } from './source-matches.js';
+import {
+  type PurgeResult,
+  purgeDate,
+  type TrashEntryRecord,
+  type TrashPosition,
+  TrashRepository,
+} from './trash.js';
 import { WorkflowApplicationRepository } from './workflow-applications.js';
 import { workflowDigest } from './workflow-data.js';
 import { WorkflowIdentityRepository } from './workflow-identities.js';
@@ -173,6 +180,7 @@ function futureIso(ms: number): string {
 export class CatalogDatabase {
   readonly limits: CatalogLimits;
   readonly libraryJobs: LibraryJobRepository;
+  private readonly trash: TrashRepository;
   readonly workflowRuns: WorkflowRunRepository;
   readonly workflowProposals: WorkflowProposalRepository;
   readonly investigators: InvestigatorRepository;
@@ -209,6 +217,24 @@ export class CatalogDatabase {
       );
       this.migrate();
       this.libraryJobs = new LibraryJobRepository(this.db);
+      this.trash = new TrashRepository(this.db, {
+        transaction: (fn) => this.transaction(fn),
+        change: (entityType, entityId, libraryId, itemId, sensitive, recordedAt, deviceId) =>
+          this.insertChange(
+            entityType,
+            entityId,
+            'upsert',
+            libraryId,
+            itemId,
+            sensitive,
+            recordedAt,
+            deviceId,
+          ),
+        audit: (actorId, action, resourceType, resourceId) =>
+          this.insertAudit(actorId, action, resourceType, resourceId, {}),
+        librarySize: (libraryId) => this.librarySize(libraryId),
+        maxLibraryBytes: this.limits.maxLibraryBytes,
+      });
       this.workflowRuns = new WorkflowRunRepository(this.db);
       this.workflowProposals = new WorkflowProposalRepository(this.db);
       this.investigators = new InvestigatorRepository(this.db);
@@ -2204,17 +2230,29 @@ export class CatalogDatabase {
     return this.transaction(() => {
       const current = this.itemRow(id);
       if (!current || current.deleted_at) return false;
-      const timestamp = nowIso();
+      // A file deleted on its own a moment ago must not share this timestamp,
+      // or restoring the game would bring it back too.
+      const latest = this.one<{ at: string | null }>(
+        'SELECT MAX(deleted_at) AS at FROM assets WHERE item_id = ?',
+        id,
+      )?.at;
+      const clock = nowIso();
+      const timestamp =
+        latest && latest >= clock ? new Date(Date.parse(latest) + 1).toISOString() : clock;
       this.db
         .prepare(
-          'UPDATE items SET deleted_at = ?, revision = revision + 1, updated_at = ? WHERE id = ?',
+          `UPDATE items SET deleted_at = ?, deleted_by = ?, purge_after = ?,
+             revision = revision + 1, updated_at = ? WHERE id = ?`,
         )
-        .run(timestamp, timestamp, id);
+        .run(timestamp, actorId, purgeDate(timestamp), timestamp, id);
+      // The files take the game's own timestamp. Restoring the game brings back
+      // exactly the rows that carry it.
       this.db
         .prepare(
-          'UPDATE assets SET deleted_at = ?, updated_at = ? WHERE item_id = ? AND deleted_at IS NULL',
+          `UPDATE assets SET deleted_at = ?, deleted_by = ?, purge_after = ?, updated_at = ?
+             WHERE item_id = ? AND deleted_at IS NULL`,
         )
-        .run(timestamp, timestamp, id);
+        .run(timestamp, actorId, purgeDate(timestamp), timestamp, id);
       this.insertChange('item', id, 'delete', current.library_id, id, false, timestamp, deviceId);
       this.insertAudit(actorId, 'delete-item', 'item', id, {});
       return true;
@@ -2626,8 +2664,11 @@ export class CatalogDatabase {
       if (!row) return false;
       const timestamp = nowIso();
       this.db
-        .prepare('UPDATE assets SET deleted_at = ?, updated_at = ? WHERE id = ?')
-        .run(timestamp, timestamp, id);
+        .prepare(
+          `UPDATE assets SET deleted_at = ?, deleted_by = ?, purge_after = ?, updated_at = ?
+             WHERE id = ?`,
+        )
+        .run(timestamp, actorId, purgeDate(timestamp), timestamp, id);
       this.insertChange(
         'asset',
         id,
@@ -2641,6 +2682,52 @@ export class CatalogDatabase {
       this.insertAudit(actorId, 'delete-asset', 'asset', id, {});
       return true;
     });
+  }
+
+  /** A file whether live or in the trash, for deciding access before a restore. */
+  assetIncludingDeleted(id: string): AssetRecord | null {
+    const row = this.one<AssetRow>('SELECT * FROM assets WHERE id = ?', id);
+    return row ? mapAsset(row) : null;
+  }
+
+  listTrash(input: { libraryId: string | null; after: TrashPosition | null; limit: number }): {
+    entries: TrashEntryRecord[];
+    next: TrashPosition | null;
+  } {
+    return this.trash.list(input);
+  }
+
+  restoreItem(id: string, actorId: string, deviceId: string | null = null): ItemRecord {
+    this.trash.restoreItem(id, actorId, deviceId);
+    const item = this.getItem(id);
+    if (!item) throw new DomainError('not-found', 404, 'Item not found');
+    return item;
+  }
+
+  restoreAsset(id: string, actorId: string, deviceId: string | null = null): AssetRecord {
+    this.trash.restoreAsset(id, actorId, deviceId);
+    const asset = this.getAsset(id);
+    if (!asset) throw new DomainError('not-found', 404, 'File not found');
+    return asset;
+  }
+
+  purgeExpired(now: string, limit: number): PurgeResult {
+    return this.trash.purgeExpired(now, limit);
+  }
+
+  unreferencedBlobs(
+    limit: number,
+    after: string | null = null,
+  ): { sha256: string; locationId: string | null }[] {
+    return this.trash.unreferencedBlobs(limit, after);
+  }
+
+  blobReferenced(sha256: string): boolean {
+    return this.trash.blobReferenced(sha256);
+  }
+
+  forgetBlob(sha256: string): boolean {
+    return this.trash.forgetBlob(sha256);
   }
 
   manifest(itemId: string): { revision: number; files: AssetRecord[] } | null {

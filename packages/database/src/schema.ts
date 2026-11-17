@@ -454,6 +454,22 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    // Rows deleted before this version are dated from the upgrade, not from the
+    // deletion, so nothing leaves the trash the moment the server is updated.
+    version: 23,
+    sql: `
+      ALTER TABLE items ADD COLUMN deleted_by TEXT;
+      ALTER TABLE items ADD COLUMN purge_after TEXT;
+      ALTER TABLE assets ADD COLUMN deleted_by TEXT;
+      ALTER TABLE assets ADD COLUMN purge_after TEXT;
+      UPDATE items SET purge_after=strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days') WHERE deleted_at IS NOT NULL;
+      UPDATE assets SET purge_after=strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days') WHERE deleted_at IS NOT NULL;
+      CREATE INDEX items_trash ON items(deleted_at, id) WHERE deleted_at IS NOT NULL;
+      CREATE INDEX assets_trash ON assets(deleted_at, id) WHERE deleted_at IS NOT NULL;
+      CREATE INDEX assets_blob ON assets(sha256);
+    `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

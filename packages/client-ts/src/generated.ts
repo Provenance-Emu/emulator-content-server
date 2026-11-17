@@ -51,6 +51,37 @@ export interface Capabilities {
   limits: Limits;
   authentication: string[];
   bootstrapped?: boolean;
+  trash?: TrashPolicy;
+}
+
+export interface TrashPolicy {
+  retentionDays: number;
+}
+
+export interface TrashEntry {
+  kind: string;
+  id: string;
+  name: string;
+  libraryId: string;
+  itemId: string;
+  itemTitle: string;
+  systemIdentifier: string;
+  size: number;
+  fileCount: number;
+  deletedAt: string;
+  deletedBy?: TrashActor;
+  purgeAfter: string;
+  itemDeleted: boolean;
+}
+
+export interface TrashActor {
+  id: string;
+  name?: string;
+}
+
+export interface TrashPage {
+  entries: TrashEntry[];
+  nextCursor: string | null;
 }
 
 export interface ProtocolInfo {

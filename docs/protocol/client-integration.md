@@ -79,6 +79,17 @@ printf 'Authorization: Bearer %s\n' "$ECS_TOKEN" |
     --data-binary @cover.png "$base/api/v1/sources/SOURCE_ID/details/cover"
 ```
 
+## Delete with an undo
+
+`DELETE /api/v1/items/{itemId}` and `DELETE /api/v1/files/{assetId}` move an uploaded game or file to the trash. Nothing is removed from disk yet. `GET /api/v1/capabilities` reports `trash.retentionDays`; when the field is absent the server keeps no trash and a delete cannot be undone.
+
+- Offer an undo right after a delete: `POST /api/v1/items/{itemId}/restore` or `POST /api/v1/files/{assetId}/restore`. Both need a signed-in account with write access to the game; a guest grant cannot restore. Restoring something that is already live returns it unchanged, so a retry is safe.
+- `GET /api/v1/trash` pages through what the account may restore, newest first, with `purgeAfter` on each entry. A game deleted with its files is one entry. A file entry with `itemDeleted: true` answers `409` until its game is restored.
+- A restored file whose path was taken by a newer upload comes back as a conflict copy (`conflictOf` set), the same shape as a save conflict.
+- A restore appears in `GET /api/v1/changes` as ordinary `upsert` entries for the game and each file. After `purgeAfter` the row is gone and restore answers `404`.
+
+Games in a watched server folder are not deleted through the API and never appear in the trash.
+
 ## Pair a device with a TV interface
 
 Try the catalog without an Authorization header first if the user has not supplied a token. The server's network policy determines whether that request can browse. Existing bearer tokens still work.
