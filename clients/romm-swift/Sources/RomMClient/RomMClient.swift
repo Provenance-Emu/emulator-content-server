@@ -94,6 +94,31 @@ public struct RomMClient: Sendable {
         }
     }
 
+    /// The BIOS and firmware files RomM keeps, for one platform or for all of them.
+    /// Needs the `firmware.read` scope; a token without it is `accessDenied`.
+    public func firmware(platformID: Int? = nil) async throws -> [RomMFirmware] {
+        guard platformID.map({ $0 > 0 }) ?? true else { throw RomMError.invalidContent }
+        let query = platformID.map { [URLQueryItem(name: "platform_id", value: String($0))] } ?? []
+        return try await read(["firmware"], query: query)
+    }
+
+    /// Saves one firmware file to `destination`, which must not exist yet.
+    /// The file arrives unchanged; RomM serves no archive or range variant of it.
+    public func download(_ firmware: RomMFirmware, to destination: URL) async throws {
+        guard firmware.id > 0, firmware.isDownloadable, RomMPath.isComponent(firmware.fileName) else {
+            throw RomMError.unavailable
+        }
+        let request = try request(["firmware", String(firmware.id), "content", firmware.fileName], query: [])
+        let (temporary, response) = try await transport.download(for: request)
+        let manager = FileManager.default
+        defer { try? manager.removeItem(at: temporary) }
+        try Self.validate(response)
+        let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize.map(Int64.init)
+        guard size == firmware.fileSizeBytes else { throw RomMError.invalidContent }
+        try Task.checkCancellation()
+        try manager.moveItem(at: temporary, to: destination)
+    }
+
     private func read<T: Decodable>(_ route: [String], query: [URLQueryItem] = []) async throws -> T {
         let (data, response) = try await transport.data(for: request(route, query: query))
         try Self.validate(response)

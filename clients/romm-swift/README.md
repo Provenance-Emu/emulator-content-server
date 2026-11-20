@@ -9,6 +9,12 @@ The client uses `/api/platforms`, offset-paged `/api/roms`, ROM details, and
 each original file by ID and stages the files together with their relative paths.
 Callers own the returned temporary directory and remove it after import.
 
+`firmware(platformID:)` lists the BIOS and firmware files from `/api/firmware`
+and `download(_:to:)` saves one from `/api/firmware/{id}/content/{file_name}`.
+Both need the `firmware.read` scope. These two routes were checked against
+RomM 4.8.1 and 5.4.1 source; 4.8.1 omits `platform_id` from the list, so that
+field is optional. Fixtures cover them; the demo smoke test does not.
+
 The routes were checked against RomM 4.8.1 source and the 5.4.0 demo's OpenAPI
 schema. The public demo smoke test exercises anonymous browse, search, paging, and
 single-file and grouped downloads. Swift fixtures

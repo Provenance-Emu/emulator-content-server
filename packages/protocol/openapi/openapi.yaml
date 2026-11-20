@@ -1294,6 +1294,10 @@ paths:
       operationId: listSourceFiles
       tags: [Folders and sources]
       security: [{ bearerAuth: [] }, {}]
+      description: Without a filter this checks every file in every folder. A player looking for one BIOS file should pass kind and name.
+      parameters:
+        - { name: kind, in: query, schema: { type: string, enum: [rom, battery_save, save_state, screenshot, artwork, bios, system_file] }, description: Only files of this kind. }
+        - { name: name, in: query, schema: { type: string, maxLength: 255 }, description: Only files with exactly this file name, compared without case. }
       responses:
         '200':
           description: Files found in content roots. Filesystem paths are not included.

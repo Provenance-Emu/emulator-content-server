@@ -143,3 +143,88 @@ test('a scanned folder stays registered when the disk is gone and hides its path
     await rm(base, { recursive: true, force: true });
   }
 });
+
+test('a player can ask the file list for one BIOS file by kind and name', async () => {
+  const base = await mkdtemp(join(tmpdir(), 'ecs-bios-'));
+  const dataDir = join(base, 'content-data');
+  const collection = join(base, 'collection');
+  await mkdir(join(collection, 'Naomi'), { recursive: true });
+  await mkdir(join(collection, 'nes'), { recursive: true });
+  await writeFile(join(collection, 'Naomi', 'naomi.zip'), Buffer.from('bios-bytes'));
+  await writeFile(join(collection, 'Naomi', 'mvsc2.zip'), Buffer.from('game-bytes'));
+  await writeFile(join(collection, 'nes', 'sample.nes'), Buffer.from('nes-bytes'));
+
+  const server = await openServer({ dataDir });
+  try {
+    const bootstrap = issueToken();
+    server.catalog.saveBootstrapHash(bootstrap.hash);
+    const owner = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/bootstrap',
+      payload: { token: bootstrap.token, username: 'owner', password: 'correct-horse' },
+    });
+    assert.equal(owner.statusCode, 201);
+    const auth = { authorization: `Bearer ${(owner.json() as { token: string }).token}` };
+    const library = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/libraries',
+      headers: auth,
+      payload: { name: 'Shelf' },
+    });
+    const libraryId = (library.json() as { id: string }).id;
+    const created = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/roots',
+      headers: auth,
+      payload: { path: collection, label: 'Collection', libraryId },
+    });
+    assert.equal(created.statusCode, 201, created.body);
+    const rootId = (created.json() as { id: string }).id;
+    const scanned = await server.app.inject({
+      method: 'POST',
+      url: `/api/v1/roots/${rootId}/scan`,
+      headers: auth,
+    });
+    assert.equal(scanned.statusCode, 200, scanned.body);
+
+    type Listed = { items: Array<{ name: string; kind: string; contentPath: string }> };
+    const list = async (query: string) => {
+      const response = await server.app.inject({
+        method: 'GET',
+        url: `/api/v1/sources${query}`,
+        headers: auth,
+      });
+      assert.equal(response.statusCode, 200, response.body);
+      return (response.json() as Listed).items;
+    };
+
+    assert.equal((await list('')).length, 3);
+    const bios = await list('?kind=bios');
+    assert.deepEqual(
+      bios.map((item) => [item.name, item.kind]),
+      [['naomi.zip', 'bios']],
+    );
+    assert.equal((await list('?kind=bios&name=NAOMI.ZIP'))[0]?.name, 'naomi.zip');
+    assert.equal((await list('?name=mvsc2.zip'))[0]?.kind, 'rom');
+    assert.equal((await list('?kind=bios&name=awbios.zip')).length, 0);
+    assert.equal((await list('?kind=rom&name=naomi.zip')).length, 0);
+
+    const content = await server.app.inject({
+      method: 'GET',
+      url: bios[0]?.contentPath ?? '',
+      headers: auth,
+    });
+    assert.equal(content.statusCode, 200);
+    assert.equal(content.body, 'bios-bytes');
+
+    const invalid = await server.app.inject({
+      method: 'GET',
+      url: '/api/v1/sources?kind=firmware',
+      headers: auth,
+    });
+    assert.equal(invalid.statusCode, 400);
+  } finally {
+    await server.close();
+    await rm(base, { recursive: true, force: true });
+  }
+});

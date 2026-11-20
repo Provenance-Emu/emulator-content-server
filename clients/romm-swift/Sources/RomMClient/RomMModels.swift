@@ -103,6 +103,20 @@ public struct RomMGame: Decodable, Identifiable, Hashable, Sendable {
     }
 }
 
+/// A BIOS or firmware file RomM keeps for a platform.
+public struct RomMFirmware: Decodable, Identifiable, Hashable, Sendable {
+    public let id: Int
+    /// Absent from the list RomM 4.x returns.
+    public let platformId: Int?
+    public let fileName: String
+    public let fileSizeBytes: Int64
+    public let md5Hash: String?
+    public let sha1Hash: String?
+    public let missingFromFs: Bool?
+
+    public var isDownloadable: Bool { missingFromFs != true && fileSizeBytes > 0 }
+}
+
 public struct RomMPage: Decodable, Sendable {
     public let items: [RomMGame]
     public let total: Int

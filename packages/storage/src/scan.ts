@@ -52,6 +52,26 @@ export async function inspectRoot(
 // Firmware that otherwise looks like a ROM or disc archive by extension.
 const firmwareNames = new Set([
   'dc_boot.bin',
+  'dc_flash.bin',
+  // Arcade BIOS sets Flycast loads by this exact name. As plain zips beside
+  // the games they were listed as Naomi or Atomiswave games, and a player had
+  // no way to ask for them.
+  'naomi.zip',
+  'naomi.7z',
+  'naomi2.zip',
+  'naomi2.7z',
+  'awbios.zip',
+  'awbios.7z',
+  'segasp.zip',
+  'segasp.7z',
+  'hod2bios.zip',
+  'hod2bios.7z',
+  'f355bios.zip',
+  'f355bios.7z',
+  'f355dlx.zip',
+  'f355dlx.7z',
+  'airlbios.zip',
+  'airlbios.7z',
   'disksys.rom',
   'prboom.wad',
   'scph5500.bin',

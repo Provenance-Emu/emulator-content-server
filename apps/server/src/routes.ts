@@ -1123,12 +1123,27 @@ export function registerRoutes(
     if (actor.kind === 'user' && !actor.scopes.includes('read')) {
       throw new DomainError('forbidden', 403, 'This token cannot read');
     }
+    // Both filters apply before a file is probed, so asking for one BIOS file
+    // does not stat the whole collection.
+    const kindFilter = queryString(request, 'kind');
+    if (kindFilter !== undefined && !validateAssetKind(kindFilter)) {
+      throw new DomainError('invalid-body', 400, 'Invalid kind');
+    }
+    const nameFilter = queryString(request, 'name')?.toLowerCase();
+    if (nameFilter !== undefined && (nameFilter.length === 0 || nameFilter.length > 255)) {
+      throw new DomainError('invalid-body', 400, 'Invalid name');
+    }
+    const wanted = (source: { kind: string; displayName: string }) =>
+      (kindFilter === undefined || source.kind === kindFilter) &&
+      (nameFilter === undefined || source.displayName.toLowerCase() === nameFilter);
     const items = [];
     for (const root of catalog.listContentRoots()) {
       if (!canSeeRoot(actor, root.libraryId, catalog)) continue;
+      const sources = catalog.listSources(root.id).filter(wanted);
+      if (sources.length === 0 && (kindFilter !== undefined || nameFilter !== undefined)) continue;
       const probe = await probeRoot(root.path);
       if (!probe.online) catalog.markRootOffline(root.id);
-      for (const source of catalog.listSources(root.id)) {
+      for (const source of sources) {
         if (!canSeeSource(actor, source.libraryId, source.kind)) continue;
         let availability: SourceAvailability = probe.online ? source.availability : 'offline';
         let size = source.size;

@@ -36,6 +36,12 @@ Stream large downloads to disk. To resume, send `Range: bytes=<local size>-` and
 
 For NAOMI and NAOMI 2 GD-ROM games, browse `com.provenance.naomi` or `com.provenance.naomi2`, then read `/api/v1/sources/{sourceId}/group`. A scanned `cart.zip` with a `cart/gdrom.chd` companion returns both files in that layout, with the ZIP first. Check `error`, require local availability for every member, and stage both downloads before registering the ZIP. Each member downloads through `/api/v1/sources/{id}/content`. Flycast clients should validate the expected GD-ROM name against their game metadata. Uploaded items use the existing v1 manifest with two required ROM assets, whose `relativePath` values are `cart.zip` and `cart/gdrom.chd`. The server preserves paths supplied on upload and does not infer a missing asset in a newly created item.
 
+## Find a BIOS file
+
+A player that needs a BIOS it does not have asks the file list for it by name: `GET /api/v1/sources?kind=bios&name=naomi.zip`. `name` is the exact file name, compared without case. `kind` takes any asset kind. Both filters apply before a file is checked on disk, so the request does not stat the whole collection the way an unfiltered list does. Download the match through its `contentPath`, with the same Range rules as a game.
+
+The scanner files a BIOS as `bios` when its name starts with `[BIOS]`, when it sits under a `bios`, `bioses` or `firmware` folder, or when it is one of the names in `firmwareNames` (`packages/storage/src/scan.ts`). That list includes the arcade sets Flycast loads by name (`naomi.zip`, `naomi2.zip`, `awbios.zip`, `segasp.zip`, `hod2bios.zip`, `f355bios.zip`, `f355dlx.zip`, `airlbios.zip`) and `dc_flash.bin`, so they are firmware wherever they sit and no longer appear among the games. A file indexed before a name was added keeps its old kind until the folder is scanned again. `bios` is a restricted kind: a guest sees it only with `share_restricted`.
+
 ## Show a library with covers
 
 A game grid needs one request per page and no ROM downloads. Each `source` row in a `GET /api/v1/browse` page carries what a card shows:

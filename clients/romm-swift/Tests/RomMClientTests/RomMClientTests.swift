@@ -125,9 +125,70 @@ import Testing
     await #expect(throws: RomMError.invalidContent) { try await makeClient(escaping).cover(for: hostile) }
 }
 
+@Test func firmwareListsAndDownloads() async throws {
+    let transport = FixtureTransport()
+    let client = try makeClient(transport)
+    let all = try await client.firmware()
+    #expect(all.map(\.fileName) == ["naomi.zip", "dc_boot.bin", "gone.zip"])
+    #expect(all.map(\.isDownloadable) == [true, true, false])
+    // RomM 4.x sends no platform_id; 5.x does.
+    #expect(all.map(\.platformId) == [9, nil, 9])
+    _ = try await client.firmware(platformID: 9)
+    await #expect(throws: RomMError.invalidContent) { try await client.firmware(platformID: 0) }
+
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let destination = folder.appendingPathComponent("naomi.zip")
+    try await client.download(all[0], to: destination)
+    #expect(try Data(contentsOf: destination) == Data([1, 2, 3]))
+
+    let requests = await transport.requests
+    #expect(requests[0].url?.absoluteString == "https://romm.example/install/api/firmware")
+    #expect(requests[1].url?.absoluteString == "https://romm.example/install/api/firmware?platform_id=9")
+    #expect(requests[2].url?.absoluteString == "https://romm.example/install/api/firmware/31/content/naomi.zip")
+    #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer rmm_fixture" })
+}
+
+@Test func firmwareRejectsMissingShortAndUnsafeFiles() async throws {
+    let client = try makeClient(FixtureTransport())
+    let all = try await client.firmware()
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    // The fixture download is 3 bytes; dc_boot.bin claims 20.
+    await #expect(throws: RomMError.invalidContent) {
+        try await client.download(all[1], to: folder.appendingPathComponent("dc_boot.bin"))
+    }
+    await #expect(throws: RomMError.unavailable) {
+        try await client.download(all[2], to: folder.appendingPathComponent("gone.zip"))
+    }
+    #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
+
+    let hostile = try JSONDecoder.snakeCase.decode(RomMFirmware.self, from: Data(
+        #"{"id":5,"file_name":"../naomi.zip","file_size_bytes":3}"#.utf8
+    ))
+    await #expect(throws: RomMError.unavailable) {
+        try await client.download(hostile, to: folder.appendingPathComponent("naomi.zip"))
+    }
+}
+
+@Test func firmwareWithoutTheScopeIsAccessDenied() async throws {
+    let client = try makeClient(FixtureTransport(status: 403))
+    await #expect(throws: RomMError.accessDenied) { try await client.firmware() }
+}
+
 @Test func rejectedAuthentication() async throws {
     let client = try makeClient(FixtureTransport(status: 401))
     await #expect(throws: RomMError.accessDenied) { try await client.platforms() }
+}
+
+private extension JSONDecoder {
+    static var snakeCase: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }
 }
 
 private func makeClient(_ transport: FixtureTransport) throws -> RomMClient {
@@ -170,6 +231,13 @@ private actor FixtureTransport: RomMTransport {
         switch url.path {
         case "/install/api/platforms":
             body = [["id": 7, "slug": "dc", "fs_slug": "dreamcast", "name": "Sega Dreamcast", "display_name": "Dreamcast", "rom_count": 2]]
+        case "/install/api/firmware":
+            body = [
+                ["id": 31, "platform_id": 9, "file_name": "naomi.zip", "file_size_bytes": 3,
+                 "md5_hash": "abc", "sha1_hash": "def", "missing_from_fs": false],
+                ["id": 32, "file_name": "dc_boot.bin", "file_size_bytes": 20],
+                ["id": 33, "platform_id": 9, "file_name": "gone.zip", "file_size_bytes": 3, "missing_from_fs": true]
+            ]
         case "/install/api/roms":
             let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
             let offset = Int(query.first { $0.name == "offset" }?.value ?? "") ?? 0

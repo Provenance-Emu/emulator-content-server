@@ -302,3 +302,24 @@ test('explicit BIOS filenames are system firmware even inside a games folder', (
   assert.equal(inferSource('Atari Jaguar/Biosphere.j64').kind, 'rom');
   assert.equal(inferSource('Atari Jaguar/Game [BIOS].j64').kind, 'rom');
 });
+
+test('arcade BIOS sets beside the games are firmware, not games', () => {
+  for (const path of [
+    'Naomi/naomi.zip',
+    'Naomi/NAOMI.ZIP',
+    'Naomi 2/naomi2.zip',
+    'Atomiswave/awbios.zip',
+    'Naomi/hod2bios.zip',
+    'Naomi/f355bios.zip',
+    'Naomi/f355dlx.zip',
+    'Naomi/airlbios.zip',
+    'Naomi/segasp.zip',
+    'Naomi/naomi.7z',
+    'Dreamcast/dc_flash.bin',
+    'naomi.zip',
+  ])
+    assert.equal(inferSource(path).kind, 'bios', path);
+  assert.equal(inferSource('Naomi/naomi.zip').systemId, 'com.provenance.naomi');
+  assert.equal(inferSource('Naomi/mvsc2.zip').kind, 'rom');
+  assert.equal(inferSource('Naomi/naomigd.zip').kind, 'rom');
+});
