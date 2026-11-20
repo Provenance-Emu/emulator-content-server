@@ -1,7 +1,7 @@
 <script lang="ts">
   import { type ContentClient, ContentError } from '@ecs/client';
   import Icon from './components/Icon.svelte';
-  import Modal from './components/Modal.svelte';
+  import PictureViewer from './components/PictureViewer.svelte';
   import type { MatchingController } from './lib/matching';
   import { artworkRoles, roleOf } from './lib/matching-slots';
   import { explain } from './lib/problems';
@@ -50,7 +50,6 @@
       .filter((slot) => slot.match || canEdit),
   );
   const filled = $derived(slots.filter((slot) => slot.match));
-  const current = $derived(filled.find((slot) => slot.role === viewing));
   const busy = $derived(
     !!$matching.saving || $matching.savedLoading || $matching.savedLoadFailed || !$matching.saved,
   );
@@ -64,10 +63,6 @@
       asked.add(key);
       void matching.previewSaved(slot.role);
     }
-  });
-  $effect(() => {
-    // The picture on show was removed: move to another, or close.
-    if (viewing && !current) viewing = filled[0]?.role ?? null;
   });
   /** Opens the viewer on a saved picture, or the file chooser for one that is missing. */
   export function open(role = 'front') {
@@ -119,21 +114,7 @@
       notice = explain(error);
     }
   }
-  function step(delta: number) {
-    const index = filled.findIndex((slot) => slot.role === viewing);
-    const next = filled[(index + delta + filled.length) % filled.length];
-    if (!next) return;
-    viewing = next.role;
-    confirming = false;
-  }
-  function keys(event: KeyboardEvent) {
-    if (!viewing || filled.length < 2) return;
-    if (event.key === 'ArrowLeft') step(-1);
-    else if (event.key === 'ArrowRight') step(1);
-  }
 </script>
-
-<svelte:window onkeydown={keys} />
 
 {#if slots.length}
   <section class="game-artwork" aria-label="Artwork">
@@ -188,85 +169,61 @@
   </section>
 {/if}
 
-{#if viewing && current?.match}
-  <Modal title={`Artwork for ${name}`} busy={!!$matching.saving} onclose={() => (viewing = null)}>
-    <div class="art-viewer">
-      <div class="art-stage">
-        {#if filled.length > 1}<button
-            type="button"
-            class="art-step"
-            aria-label="Previous picture"
-            onclick={() => step(-1)}
-          ><Icon name="back" /></button>{/if}
-        <figure>
-          {#if current.url}<img src={current.url} alt={`${current.label} for ${name}`} />
-          {:else if current.image}<p class="dim" role="status">Loading picture…</p>
-          {:else}<p class="dim">This is a document, not a picture. Download it to read it.</p>{/if}
-        </figure>
-        {#if filled.length > 1}<button
-            type="button"
-            class="art-step"
-            aria-label="Next picture"
-            onclick={() => step(1)}
-          ><Icon name="forward" /></button>{/if}
-      </div>
-      <div class="art-bar">
-        <p>
-          <strong>{current.label}</strong>
-          <span class="dim">{current.match.providerId === 'manual' ? 'Added by hand' : 'From a lookup'}</span>
-        </p>
-        <div class="art-tools">
-          {#if confirming}
-            <span>Remove this picture?</span>
-            <button type="button" disabled={busy} onclick={() => void remove(current.role)}>Remove</button>
-            <button type="button" onclick={() => (confirming = false)}>Keep</button>
-          {:else}
-            <button
-              type="button"
-              class="icon-button"
-              aria-label={`Download ${current.label.toLowerCase()}`}
-              title="Download"
-              onclick={() => void download(current.role, current.match?.fileName ?? null)}
-            ><Icon name="download" /></button>
-            {#if canEdit}
-              <button
-                type="button"
-                class="icon-button"
-                aria-label={`Replace ${current.label.toLowerCase()}`}
-                title="Replace"
-                disabled={busy}
-                onclick={() => choose(current.role)}
-              ><Icon name="upload" /></button>
-              <button
-                type="button"
-                class="icon-button"
-                aria-label={`Remove ${current.label.toLowerCase()}`}
-                title="Remove"
-                disabled={busy}
-                onclick={() => (confirming = true)}
-              ><Icon name="trash" /></button>
-            {/if}
-          {/if}
-        </div>
-      </div>
-      {#if notice}<p class="problem" role="alert">{notice}</p>{/if}
-      {#if filled.length > 1}
-        <div class="art-rail" role="group" aria-label="Pictures of this game">
-          {#each filled as slot (slot.role)}
-            <button
-              type="button"
-              aria-label={slot.label}
-              aria-pressed={slot.role === viewing}
-              onclick={() => { viewing = slot.role; confirming = false; }}
-            >
-              {#if slot.url}<img src={slot.url} alt="" />{:else}<span>{slot.label}</span>{/if}
-            </button>
-          {/each}
-        </div>
+<PictureViewer
+  title={`Artwork for ${name}`}
+  pictures={filled.map((slot) => ({
+    key: slot.role,
+    label: slot.label,
+    alt: `${slot.label} for ${name}`,
+    url: slot.url,
+    pending: slot.image && !slot.url,
+    note: 'This is a document, not a picture. Download it to read it.',
+  }))}
+  bind:viewing
+  busy={!!$matching.saving}
+  onstep={() => (confirming = false)}
+>
+  {#snippet caption(picture)}
+    <strong>{picture.label}</strong>
+    <span class="dim">{saved.get(picture.key)?.providerId === 'manual' ? 'Added by hand' : 'From a lookup'}</span>
+  {/snippet}
+  {#snippet tools(picture)}
+    {#if confirming}
+      <span>Remove this picture?</span>
+      <button type="button" disabled={busy} onclick={() => void remove(picture.key)}>Remove</button>
+      <button type="button" onclick={() => (confirming = false)}>Keep</button>
+    {:else}
+      <button
+        type="button"
+        class="icon-button"
+        aria-label={`Download ${picture.label.toLowerCase()}`}
+        title="Download"
+        onclick={() => void download(picture.key, saved.get(picture.key)?.fileName ?? null)}
+      ><Icon name="download" /></button>
+      {#if canEdit}
+        <button
+          type="button"
+          class="icon-button"
+          aria-label={`Replace ${picture.label.toLowerCase()}`}
+          title="Replace"
+          disabled={busy}
+          onclick={() => choose(picture.key)}
+        ><Icon name="upload" /></button>
+        <button
+          type="button"
+          class="icon-button"
+          aria-label={`Remove ${picture.label.toLowerCase()}`}
+          title="Remove"
+          disabled={busy}
+          onclick={() => (confirming = true)}
+        ><Icon name="trash" /></button>
       {/if}
-    </div>
-  </Modal>
-{/if}
+    {/if}
+  {/snippet}
+  {#snippet footer()}
+    {#if notice}<p class="problem" role="alert">{notice}</p>{/if}
+  {/snippet}
+</PictureViewer>
 
 <style>
   .art-strip {
@@ -339,79 +296,5 @@
     .art-replace {
       display: none;
     }
-  }
-  .art-viewer {
-    display: grid;
-    gap: var(--space-3);
-    width: min(56rem, 100%);
-  }
-  .art-stage {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .art-stage figure {
-    display: grid;
-    grid-column: 2;
-    place-items: center;
-    min-height: 12rem;
-    margin: 0;
-    border-radius: var(--radius-control);
-    background: var(--color-surface-inset);
-  }
-  .art-stage img {
-    max-width: 100%;
-    max-height: min(62vh, 40rem);
-    object-fit: contain;
-  }
-  .art-step,
-  .icon-button {
-    display: grid;
-    place-items: center;
-    width: var(--control-height-touch);
-    min-width: 0;
-    padding: 0;
-  }
-  .art-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-  .art-bar p {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin: 0;
-  }
-  .art-tools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .art-rail {
-    display: flex;
-    gap: var(--space-2);
-    overflow-x: auto;
-  }
-  .art-rail button {
-    flex: 0 0 3.5rem;
-    height: 3.5rem;
-    min-height: 0;
-    padding: 0;
-    overflow: hidden;
-    font-size: var(--text-small);
-  }
-  .art-rail button[aria-pressed='true'] {
-    border-color: var(--color-selected-border);
-    background: var(--color-selected);
-  }
-  .art-rail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
   }
 </style>

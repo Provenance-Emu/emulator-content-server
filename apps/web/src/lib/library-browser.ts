@@ -59,6 +59,8 @@ const defaults = (): BrowseFilters => ({
 });
 
 const BATCH = 50;
+/** Extra batches a refresh reads when the open game is no longer among the ones on screen. */
+const SEARCH_BATCHES = 3;
 const key = (entry: LibraryBrowseEntry) => `${entry.entityType}:${entry.id}`;
 
 /**
@@ -129,6 +131,11 @@ export function createLibraryBrowser(
         const fetched: LibraryBrowseEntry[] = [];
         let systemCounts = current.systemCounts;
         let count = 0;
+        // The game that is open. A rename or new details can sort it past what was on screen.
+        const open = append ? null : current.active;
+        const isOpen = (entry: LibraryBrowseEntry) =>
+          !!open && entry.entityType === open.entityType && entry.id === open.id;
+        let found = false;
         do {
           const result = await client.browse({
             ...selected,
@@ -143,10 +150,15 @@ export function createLibraryBrowser(
           });
           if (disposed || run !== epoch) return;
           fetched.push(...result.items);
+          found ||= result.items.some(isOpen);
           if (count === 0) systemCounts = result.systemCounts ?? [];
           cursor = result.nextCursor;
           count++;
-        } while (count < wanted && cursor !== null);
+          // Look a little further for the open game before giving up on finding it.
+        } while (
+          cursor !== null &&
+          (count < wanted || (!!open && !found && count < wanted + SEARCH_BATCHES))
+        );
         // Entries already shown keep their identity so their covers are not fetched again. A
         // row that moved between two reads is shown once.
         const seen = new Set(append ? current.items.map(key) : []);
@@ -158,7 +170,10 @@ export function createLibraryBrowser(
           ? (items.find(
               (entry) =>
                 entry.entityType === current.active?.entityType && entry.id === current.active.id,
-            ) ?? null)
+            ) ??
+            // Not in what was read, but there is more: it may only have moved further down, so
+            // it stays open. Its own page still checks that it exists and may be read.
+            (open && cursor !== null ? open : null))
           : null;
         if (!active) position = null;
         update({

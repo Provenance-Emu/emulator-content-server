@@ -40,15 +40,18 @@ test('supported game puts one Play action before files and keeps mobile download
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Arcade', exact: true }).click();
   await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();
-  const launch = page.getByRole('region', { name: 'Play this game' });
-  await expect(launch.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveCount(1);
+  const play = page.getByRole('button', { name: 'Play', exact: true });
+  await expect(play).toHaveCount(1);
   const files = page.getByRole('table', { name: 'Game files', exact: true });
   await expect(files.getByRole('row').nth(1)).toContainText('sample.nes');
+  // Play is in the page header, ahead of the file table.
   expect(
-    await launch.evaluate((element) =>
-      Boolean(element.nextElementSibling?.matches('.detail-tabs')),
-    ),
+    await play.evaluate((button) => {
+      const table = document.querySelector('table[aria-label="Game files"]');
+      return (
+        !!table && !!(button.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING)
+      );
+    }),
   ).toBe(true);
   await page.setViewportSize({ width: 390, height: 844 });
   const name = page.locator('.file-name').filter({ hasText: 'sample.nes' });

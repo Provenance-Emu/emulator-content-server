@@ -673,6 +673,20 @@ export class ContentClient {
     if (!response.ok) throw await failure(response);
     return (await response.json()) as Library;
   }
+  /** Renames an uploaded game. `baseRevision` is the revision of the item being renamed. */
+  async renameItem(id: string, title: string, baseRevision: number): Promise<Item> {
+    const response = await fetch(this.url(`/api/v1/items/${encodeURIComponent(id)}`), {
+      method: 'PATCH',
+      headers: {
+        ...this.headers(),
+        'content-type': 'application/json',
+        'if-match': `"rev-${baseRevision}"`,
+      },
+      body: JSON.stringify({ title }),
+    });
+    if (!response.ok) throw await failure(response);
+    return (await response.json()) as Item;
+  }
   rootSummaries(
     filter: { libraryId?: string; unassigned?: boolean } = {},
   ): Promise<ContentRootSummaryList> {

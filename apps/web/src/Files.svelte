@@ -12,6 +12,7 @@
     externalBusy = false,
     onemulators,
     ontrash,
+    launch = true,
   }: {
     detailState: DetailState;
     playerCore: import('./player/links').PlayableCores;
@@ -21,6 +22,8 @@
     onemulators?: () => void;
     /** Present when this account may delete files from the game. */
     ontrash?: (file: ManifestFile) => void;
+    /** The game page has Play in its own header and leaves this section out. */
+    launch?: boolean;
   } = $props();
   let selected = $state('overview');
   const playable = $derived.by(() => {
@@ -59,7 +62,7 @@
   );
 </script>
 
-<section class="game-launch" aria-label="Play this game">
+{#if launch}<section class="game-launch" aria-label="Play this game">
   {#if playable.length === 1}
     <div>
       <h2>Ready to play</h2>
@@ -82,7 +85,7 @@
     <h2>This game needs a game file</h2>
     <p>{detailState.canUpload ? 'Choose Add a file above to add the game. Saves and pictures can stay here too.' : 'Ask the library owner to add the game file. You can still download any saves or pictures below.'}</p>
   {/if}
-</section>
+</section>{/if}
 <nav class="detail-tabs" aria-label="Detail file sections">
   <button
     type="button"

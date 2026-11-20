@@ -80,3 +80,45 @@ test('a server-folder game leads with details and pictures, edits them in place,
   );
   await page.screenshot({ path: testInfo.outputPath('game-page-mobile.png'), fullPage: true });
 });
+
+test('an uploaded game leads with its cover and Play, renames in place, and keeps its files below', async ({
+  page,
+  fixture,
+}, testInfo) => {
+  await keepTasksFolded(page);
+  await fixture.artwork();
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveCount(1);
+  const pictures = page.getByRole('region', { name: 'Pictures', exact: true });
+  await expect(pictures.getByRole('button', { name: 'View cover.png', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'View pictures of Game 000', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Game files', exact: true })).toBeVisible();
+  const manage = page.getByRole('region', { name: 'Manage this game', exact: true });
+  await expect(manage.locator('details[open]')).toHaveCount(0);
+  await expect(manage.getByRole('button', { name: 'Move to trash', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Rename', exact: true }).click();
+  await page.getByLabel('Game title', { exact: true }).fill('Renamed Game');
+  await page.getByRole('button', { name: 'Save title', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Renamed Game', exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'View pictures of Renamed Game', exact: true }).click();
+  const viewer = page.getByRole('dialog', { name: 'Pictures of Renamed Game', exact: true });
+  await expect(viewer.getByRole('img', { name: 'cover.png for Renamed Game' })).toBeVisible();
+  await expect(
+    viewer.getByRole('button', { name: 'Move picture cover.png to trash', exact: true }),
+  ).toBeVisible();
+  await viewer.getByRole('button', { name: 'Close Pictures of Renamed Game' }).click();
+  await expect(viewer).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('item-page-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});

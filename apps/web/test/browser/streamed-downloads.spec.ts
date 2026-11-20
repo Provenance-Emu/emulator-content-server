@@ -70,6 +70,18 @@ async function saved(page: Page) {
   );
 }
 
+/** The page loads the game's pictures on its own; only reads of the game file itself count. */
+async function gameFileRequests(fixture: {
+  client: { manifest(id: string): Promise<{ files: { id: string; kind: string }[] }> };
+  game: { id: string };
+  requests: string[];
+}) {
+  const game = (await fixture.client.manifest(fixture.game.id)).files.find(
+    (file) => file.kind === 'rom',
+  );
+  return fixture.requests.filter((request) => request === `GET /api/v1/files/${game?.id}/content`);
+}
+
 test('supported save picker streams authenticated game bytes to the chosen file without a blob download', async ({
   page,
   fixture,
@@ -110,9 +122,7 @@ test('canceling a save destination makes no file request and leaves the game usa
   await expect(
     page.getByRole('button', { name: 'Download sample.nes', exact: true }),
   ).toBeEnabled();
-  expect(
-    fixture.requests.filter((request) => /^GET \/api\/v1\/files\/[^/]+\/content$/.test(request)),
-  ).toHaveLength(0);
+  expect(await gameFileRequests(fixture)).toHaveLength(0);
   expect(await saved(page)).toMatchObject({ closed: 0, opened: 0 });
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
@@ -136,9 +146,7 @@ test('leaving a game while its save picker is open cannot start a stale download
   // Let the stale async picker continuation settle before checking network and filesystem boundaries.
   await page.evaluate(() => new Promise(requestAnimationFrame));
   expect(await saved(page)).toMatchObject({ opened: 0, closed: 0 });
-  expect(
-    fixture.requests.filter((request) => /^GET \/api\/v1\/files\/[^/]+\/content$/.test(request)),
-  ).toHaveLength(0);
+  expect(await gameFileRequests(fixture)).toHaveLength(0);
 });
 
 for (const status of [401, 403])
@@ -149,6 +157,10 @@ for (const status of [401, 403])
     await signIn(page, fixture);
     await page.getByRole('button', { name: 'Open library Arcade', exact: true }).click();
     await page.getByRole('button', { name: 'Open Game 000', exact: true }).click();
+    // Let the page finish reading the game's own picture, so the refusal below is the download's.
+    await expect(page.getByRole('button', { name: 'View sample.png', exact: true })).toHaveText(
+      'sample.png',
+    );
     await fakeSavePicker(page);
     await page.route('**/api/v1/files/*/content', (route) =>
       route.fulfill({
@@ -182,9 +194,7 @@ test('a browser without direct saving explains a large download before requestin
   await page.getByRole('button', { name: 'Download sample.nes', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('256 MB');
   await expect(page.getByRole('alert')).toContainText('Chrome or Edge');
-  expect(
-    fixture.requests.filter((request) => /^GET \/api\/v1\/files\/[^/]+\/content$/.test(request)),
-  ).toHaveLength(0);
+  expect(await gameFileRequests(fixture)).toHaveLength(0);
   await expect(
     page.getByRole('button', { name: 'Download sample.nes', exact: true }),
   ).toBeEnabled();

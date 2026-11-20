@@ -26,7 +26,7 @@ const MAX_KEPT = 240;
 const MAX_WAITING = 120;
 
 /** Derive MIME from a raster signature, never from its extension or a remote response header. */
-function imageType(bytes: Uint8Array): string | null {
+export function imageType(bytes: Uint8Array): string | null {
   const matches = (values: number[], offset = 0) =>
     values.every((value, i) => bytes[offset + i] === value);
   if (bytes.length >= 8 && matches([137, 80, 78, 71, 13, 10, 26, 10])) return 'image/png';

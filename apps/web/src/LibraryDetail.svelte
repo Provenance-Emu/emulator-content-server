@@ -8,6 +8,7 @@
   import { chooseBrowserDownload } from './lib/browser-download';
   import { boundedDownloadBlob } from './lib/download-limits';
   import GameCopies from './GameCopies.svelte';
+  import GameItem from './GameItem.svelte';
   import GameSource from './GameSource.svelte';
   import Files from './Files.svelte';
   import Upload from './Upload.svelte';
@@ -158,6 +159,30 @@
       ondownloadset={() => void downloadBundle()}
     />
   {/key}
+{:else if $controller.entry?.entityType === 'item'}
+  <GameItem
+    {controller}
+    {context}
+    {playerCore}
+    {systems}
+    {owner}
+    {refreshing}
+    externalBusy={saving || groupDownloading || trashing}
+    {onrefresh}
+    {onchanged}
+    {onauthorization}
+    {onemulators}
+    ondownload={(file) => void download(file)}
+    onaddfile={() => {
+      uploadTarget = $controller.item;
+      upload = !!$controller.item;
+    }}
+    ontrashitem={() => {
+      const item = $controller.item;
+      if (item) void trash({ kind: 'item', id: item.id, name: item.title });
+    }}
+    ontrashfile={(file) => void trash({ kind: 'file', id: file.id, name: file.relativePath })}
+  />
 {:else}
   <header class="page-heading">
     <div>

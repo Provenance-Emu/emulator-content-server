@@ -198,7 +198,8 @@ test('scope changes and disposal defeat deferred refreshes; concurrent invalidat
 
 test('refresh revalidates the list during detail, updates source metadata and clears moved/revoked selection', async (t) => {
   let rows = [entry('source', 'source')];
-  const f = transport(() => Response.json({ items: rows, nextCursor: 'second' }));
+  let more: string | null = 'second';
+  const f = transport(() => Response.json({ items: rows, nextCursor: more }));
   t.after(f.restore);
   const b = createLibraryBrowser(f.client, { libraryId: 'library' });
   t.after(() => b.dispose());
@@ -214,10 +215,46 @@ test('refresh revalidates the list during detail, updates source metadata and cl
   assert.equal(f.requests.at(-1)?.searchParams.get('cursor'), 'second');
   assert.equal(get(b).active?.source?.availability, 'offline');
   assert.equal(get(b).items.length, 1);
+  // The whole list was read and the game is not in it: it is gone, so its page closes.
   rows = [];
+  more = null;
   await b.refresh();
   assert.equal(get(b).active, null);
   assert.deepEqual(get(b).items, []);
+});
+
+test('a game that sorts further down after a rename stays open, and is picked up fresh when it is near', async (t) => {
+  let names = Array.from({ length: 400 }, (_, i) => `row-${String(i).padStart(3, '0')}`);
+  const f = transport((url) => {
+    const offset = Number(url.searchParams.get('cursor') ?? 0);
+    return Response.json({
+      items: names.slice(offset, offset + 50).map((id) => entry('source', id)),
+      nextCursor: offset + 50 < names.length ? String(offset + 50) : null,
+    });
+  });
+  t.after(f.restore);
+  const b = createLibraryBrowser(f.client, { libraryId: 'library' });
+  t.after(() => b.dispose());
+  await b.refresh();
+  const opened = get(b).items[0];
+  assert.ok(opened, get(b).failure ?? 'nothing was read');
+  b.open(opened, { scrollTop: 0, focusKey: 'source:row-000' });
+
+  // Renamed so it now sorts just past the first batch: found by reading a little further.
+  names = [...names.slice(1, 61), 'row-000', ...names.slice(61)];
+  await b.refresh();
+  assert.equal(get(b).active?.id, 'row-000');
+  assert.notEqual(get(b).active, opened);
+  assert.equal(get(b).items.length, 100);
+
+  // Renamed so it sorts at the very end: not searched for forever, and still open.
+  names = [...names.filter((id) => id !== 'row-000'), 'row-000'];
+  const before = f.requests.length;
+  const kept = get(b).active;
+  await b.refresh();
+  assert.equal(f.requests.length - before, 5);
+  assert.equal(get(b).active, kept);
+  assert.equal(get(b).hasMore, true);
 });
 
 test('multi-system selection resets paging, preserves full-scope counts and clears together', async (t) => {

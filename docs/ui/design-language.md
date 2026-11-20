@@ -60,7 +60,9 @@ One matching controller is created for the page and shared with `MatchingPanel` 
 - **Details** (`GameDetails.svelte`) lists the saved fields and is absent when there are none. **Edit details** turns it into a form in place; every field is sent, so emptying one clears it.
 - **Manage** holds the occasional tasks as disclosures, each with a name and one line saying what it does: look up details and artwork, other copies, convert a disc, organize the file. A new task goes here, not in the action row. Inside the lookup task the saved matches are one compact row each; the big cards are for the review flow in Library activity only.
 
-Uploaded games (items) still use the earlier file table layout.
+Uploaded games use the same page through `GameItem.svelte`: the cover is the picture the collection shows for the game, the action row is **Play**, **Add a file**, **Rename**, and refresh, and **Pictures** lists the game's artwork and screenshot files with the same viewer (`components/PictureViewer.svelte`, shared by both pages). The file table follows without its own Play section, and **Manage** holds other copies and **Move to trash**. Moving a picture or the game to the trash has no confirmation because the trash keeps it for 30 days. A single save or other file opened from the Saves, Media, or System files tabs keeps the plain file page.
+
+A game stays open when a rename or new details sort it somewhere else in the collection. `lib/library-browser.ts` reads up to three batches further to find it, and otherwise keeps the open game as it was; its own page still checks that it exists and may be read. Both pages show the title that was just saved without waiting for the collection.
 
 Existing `--ink`, `--ink-dim`, `--paper`, `--panel`, `--line`, `--accent`, and `--warn` are compatibility aliases. Prefer semantic tokens in new components. Apply theme overrides to `:root`; scoped overrides can directly use the compatibility names where old components need them.
 
