@@ -50,7 +50,10 @@ test('missing metadata blocks upload and unsupported folders explain the files f
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog.getByText('2 succeeded · 0 unfinished')).toBeVisible();
 });
-test('large selections render only fifty review entries', async ({ page, fixture }) => {
+test('large selections show fifty review entries and more as the list is scrolled', async ({
+  page,
+  fixture,
+}) => {
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Empty shelf', exact: true }).click();
   await openAddContent(page, 'Upload files');
@@ -63,10 +66,19 @@ test('large selections render only fifty review entries', async ({ page, fixture
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await expect(dialog.locator('.upload-entries li')).toHaveCount(50);
-  await dialog.getByRole('button', { name: 'Next files', exact: true }).click();
+  await expect(dialog.getByText('Showing 50 of 10,000', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /^(Previous|Next) files$/ })).toHaveCount(0);
+  // Reaching the end of the list adds the next fifty below the ones already there.
+  await dialog
+    .getByRole('button', { name: 'Show more files', exact: true })
+    .scrollIntoViewIfNeeded();
+  await expect(dialog.getByText('Showing 100 of 10,000', { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByRole('textbox', { name: 'Title for game-0.nes', exact: true }),
+  ).toHaveCount(1);
   await expect(
     dialog.getByRole('textbox', { name: 'Title for game-50.nes', exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(1);
 });
 test('stop after current completes one file and leaves later entries waiting', async ({
   page,
@@ -138,7 +150,7 @@ test('authorization loss stops later uploads and removes private UI', async ({ p
   await expect(dialog).not.toBeVisible();
   expect(opens).toBe(1);
 });
-test('library saves require an explicit managed target selected from bounded item pages', async ({
+test('library saves require an explicit managed target selected from a list that grows in bounded batches', async ({
   page,
   fixture,
 }) => {
@@ -153,10 +165,13 @@ test('library saves require an explicit managed target selected from bounded ite
     .getByRole('button', { name: 'Choose target for associated files', exact: true })
     .click();
   const picker = dialog.getByRole('region', { name: 'Choose managed item', exact: true });
-  await expect(picker.getByRole('button').filter({ hasText: '· ID ' })).toHaveCount(50);
-  await picker.getByRole('button', { name: 'Next items', exact: true }).click();
-  await expect(picker.getByText('Page 2', { exact: true })).toBeVisible();
-  const selected = picker.getByRole('button').filter({ hasText: '· ID ' }).first();
+  const listed = picker.getByRole('button').filter({ hasText: '· ID ' });
+  await expect(listed.first()).toBeVisible();
+  await expect(picker.getByRole('button', { name: /^(Previous|Next) items$/ })).toHaveCount(0);
+  // The end of the list coming into view adds the next batch below.
+  await picker.locator('.list-more').scrollIntoViewIfNeeded();
+  await expect.poll(() => listed.count()).toBeGreaterThan(50);
+  const selected = listed.nth(50);
   const label = await selected.textContent();
   const id = label?.split('ID ')[1] ?? 'missing';
   await selected.click();

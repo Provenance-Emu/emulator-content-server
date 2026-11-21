@@ -11,6 +11,7 @@
   import { get } from 'svelte/store';
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import type { ApplicationController, ServerContext } from './lib/application';
+  import { shownLabel } from './lib/batches';
   import { createLibraryBrowser } from './lib/library-browser';
   import { createDetail, type DetailController } from './lib/detail';
   import { createPreviews } from './lib/previews';
@@ -19,6 +20,7 @@
   import CategoryTabs from './components/CategoryTabs.svelte';
   import CollectionToolbar from './components/CollectionToolbar.svelte';
   import CollectionPage from './components/CollectionPage.svelte';
+  import ListMore from './components/ListMore.svelte';
   import ViewState from './components/ViewState.svelte';
   import Modal from './components/Modal.svelte';
   import LibraryDetail from './LibraryDetail.svelte';
@@ -156,17 +158,12 @@
     rejectAccess(status);
     if (status === 403) void application.revalidate();
   }
-  let reading = false;
   const unsubscribeBrowser = browser.subscribe((state) => {
     if (disposed) return;
     if (state.status === 401) {
       rejectAccess(401);
       return;
     }
-    const busy = state.loading || state.loadingMore;
-    // Once a read has landed and the page has grown, see whether the end is still close.
-    if (reading && !busy) void tick().then(measureEnd);
-    reading = busy;
     const envelope = state.active ? JSON.stringify(state.active) : '';
     if (envelope !== detailEnvelope) {
       clearDetail();
@@ -324,37 +321,14 @@
       )
       .reduce((sum, row) => sum + row.count, 0),
   );
-  const shownLabel = $derived.by(() => {
-    const shown = $browser.items.length;
-    const noun = $browser.filters.category === 'games' ? (shown === 1 ? 'game' : 'games') : shown === 1 ? 'file' : 'files';
-    if (!$browser.hasMore) return `${shown.toLocaleString()} ${noun}`;
-    return total > shown
-      ? `Showing ${shown.toLocaleString()} of ${total.toLocaleString()}`
-      : `Showing the first ${shown.toLocaleString()}`;
-  });
-  let endObserver: IntersectionObserver | null = null;
-  let endNode: HTMLElement | null = null;
-  /** Adds the next batch if the end of the list is close. A failed read waits for the button. */
-  function addMore() {
-    const state = get(browser);
-    if (disposed || !state.hasMore || state.loading || state.loadingMore || state.failure || state.requiresRefresh) return;
-    void browser.more();
-  }
-  /** Observing again reports where the end is now, after a batch has moved it. */
-  function measureEnd() {
-    if (!endObserver || !endNode) return;
-    endObserver.unobserve(endNode);
-    endObserver.observe(endNode);
-  }
-  function watchEnd(node: HTMLElement) {
-    endNode = node;
-    endObserver = new IntersectionObserver(
-      (records) => { if (records.some((record) => record.isIntersecting)) addMore(); },
-      { rootMargin: '800px 0px' },
-    );
-    endObserver.observe(node);
-    return { destroy() { endObserver?.disconnect(); endObserver = null; endNode = null; } };
-  }
+  const shown = $derived(
+    shownLabel(
+      $browser.items.length,
+      $browser.hasMore,
+      $browser.filters.category === 'games' ? ['game', 'games'] : ['file', 'files'],
+      total,
+    ),
+  );
   const canCreate = $derived(
     scope &&
       'libraryId' in scope &&
@@ -506,14 +480,15 @@
         onvisible={(entries) => void previews.request(entries)}
       />
     </div>
-    {#if $browser.items.length}<div class="collection-more" use:watchEnd>
-      <p class="dim" role="status">{shownLabel}</p>
-      {#if $browser.hasMore}<button
-          type="button"
-          disabled={$browser.loading || $browser.loadingMore}
-          onclick={() => void browser.more()}
-        >{$browser.loadingMore ? 'Loading more…' : $browser.failure ? 'Try again' : 'Show more'}</button>{/if}
-    </div>{/if}
+    {#if $browser.items.length}<ListMore
+        label={shown}
+        more={$browser.hasMore}
+        busy={$browser.loading || $browser.loadingMore}
+        failed={!!$browser.failure}
+        auto={!$browser.requiresRefresh}
+        announce
+        onmore={() => void browser.more()}
+      />{/if}
   {/if}
   {#if folderAdder && owner && scope && 'libraryId' in scope}
     {#each Object.entries($folderAdder?.scanFailures??{}) as [id,message]}<p class="problem" role="alert">Folder saved. Scan failed: {message} <button type="button" onclick={()=>void folderAdder?.retryScan(id)}>Retry scan</button></p>{/each}

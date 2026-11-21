@@ -3,6 +3,8 @@
   import { onMount, untrack } from 'svelte';
   import type { ServerContext } from './lib/application';
   import { createLibraryJobs } from './lib/library-jobs';
+  import { shownLabel } from './lib/batches';
+  import ListMore from './components/ListMore.svelte';
   import { canAttemptChecksum } from './lib/bulk-matching';
   import { explain } from './lib/problems';
   import MatchingProviders from './components/MatchingProviders.svelte';
@@ -50,11 +52,14 @@
     reviewBusy=true;
     try {
       const id=reviewing.sourceId;
-      const next=$controller.items.find(item=>item.sourceId!==id&&['review','unmatched','failed'].includes(item.status));
+      // The next unresolved game is one below this one, not the first in the list again.
+      const rows=$controller.items;
+      const passed=new Set(rows.slice(0,rows.findIndex(item=>item.sourceId===id)+1).map(item=>item.sourceId));
+      const below=()=>$controller.items.find(item=>item.sourceId!==id&&!passed.has(item.sourceId)&&['review','unmatched','failed'].includes(item.status));
+      let next=below();
       if(done){await controller.reviewed(id);if($controller.failure)return;}
-      if(next)reviewing=next;
-      else if($controller.nextCursor){await controller.next();reviewing=$controller.items.find(item=>['review','unmatched','failed'].includes(item.status))??null;}
-      else reviewing=null;
+      if(!next&&$controller.nextCursor){await controller.more();next=below();}
+      reviewing=next??null;
     }finally{reviewBusy=false;}
   }
 </script>
@@ -122,7 +127,7 @@
       {#each $controller.items as item(item.sourceId)}<li><div><strong>{itemName(item)}</strong><p class="dim">{item.status}{item.suggestions?` · ${item.suggestions} suggestions`:''}{item.error?` · ${item.error}`:''}</p></div>{#if selected.kind==='match'&&(['review','unmatched','failed'].includes(item.status)||item.suggestions>0)}<button type="button" onclick={()=>reviewing=item}>Review</button>{/if}</li>{/each}
     </ul>
     {#if !$controller.items.length}<p>No results in this category yet.</p>{/if}
-    <div class="matching-actions"><button type="button" onclick={()=>void controller.first()}>First page</button><button type="button" disabled={!$controller.nextCursor} onclick={()=>void controller.next()}>Next results</button></div>
+    {#if $controller.items.length}<ListMore label={shownLabel($controller.items.length,!!$controller.nextCursor,['result','results'])} more={!!$controller.nextCursor} busy={$controller.loadingMore} failed={!!$controller.failure} action="Show more results" onmore={()=>void controller.more()} />{/if}
   {/if}
 {/if}
   {#if cleanupScope}<div class="matching-actions"><button type="button" bind:this={cleanupButton} onclick={()=>cleanup=true}>Review library cleanup</button></div>{/if}

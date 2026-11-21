@@ -8,6 +8,8 @@
   import MatchingProviders from './components/MatchingProviders.svelte';
   import FormField from './components/FormField.svelte';
   import MatchMetadata from './components/MatchMetadata.svelte';
+  import ListMore from './components/ListMore.svelte';
+  import { shownLabel } from './lib/batches';
   import {artworkRoles,roleOf,matchSlot,matchLabel} from './lib/matching-slots';
   let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy,showLegacyPatchDownload=true,controller:shared}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void;showLegacyPatchDownload?:boolean;
     /** The game page's own controller. It loads, reports failures and is disposed there. */
@@ -28,11 +30,11 @@
   let lookupSystem = $state<string | undefined>();
   let lookupNotice = $state(false);
   let category=$state('metadata');
-  let page=$state(0);
+  let shown=$state(8);
   let artworkFilter=$state('all');
   const categories=[['metadata','Metadata'],['artwork','Artwork'],['patch','Patches'],['rom','System matching'],['cheats','Cheats']] as const;
   const candidates=$derived($controller.result?.candidates.filter((c)=>c.kind===category&&(category!=='artwork'||artworkFilter==='all'||roleOf(c)===artworkFilter)) ?? []);
-  const visibleCandidates=$derived(candidates.slice(page*8,page*8+8));
+  const visibleCandidates=$derived(candidates.slice(0,shown));
   $effect(()=>{
     if(category==='artwork'&&!$controller.suggestionsStale){
       for(const candidate of visibleCandidates)void controller.preview(candidate.id);
@@ -76,7 +78,7 @@
     onchanged();
     if(get(controller).suggestionsStale || get(controller).failure)return;
     const next=nextCategory();
-    if(next){category=next;artworkFilter='all';page=0;}
+    if(next){category=next;artworkFilter='all';shown=8;}
     else onnext?.();
   }
   async function remove(slot:string){if(await controller.remove(slot))onchanged();}
@@ -86,7 +88,7 @@
   }
   async function find(){
     if(!activeProviders)return;
-    page=0;failure=null;
+    shown=8;failure=null;
     await controller.find({online,checksum:checksum&&!container,providerIds,managerId,allowExactNames:true,autoSave:true});
     const state=get(controller);
     if(state.result?.automatic?.saved)onchanged();
@@ -173,10 +175,10 @@
     {#if $controller.result.automatic?.saved}<p role="status">Saved {$controller.result.automatic.saved} matches automatically.</p>{/if}
     {#each $controller.result.problems as problem}<p class="problem">{providerName(problem.providerId)} could not complete its lookup. Other results are still available.</p>{/each}
     <div class="actions matching-tabs" aria-label="Match categories">
-      {#each categories as [id,label]}<button type="button" class:active={category===id} aria-pressed={category===id} onclick={()=>{category=id;page=0;}}>{label} ({$controller.result.candidates.filter((c)=>c.kind===id).length})</button>{/each}
+      {#each categories as [id,label]}<button type="button" class:active={category===id} aria-pressed={category===id} onclick={()=>{category=id;shown=8;}}>{label} ({$controller.result.candidates.filter((c)=>c.kind===id).length})</button>{/each}
     </div>
     {#if !candidates.length}<p>No {categories.find(([id])=>id===category)?.[1]?.toLowerCase()} suggestions from the selected providers.</p>{/if}
-    {#if category==='artwork'}<div class="matching-field"><FormField label="Artwork type">{#snippet children(attributes)}<select {...attributes} bind:value={artworkFilter} onchange={()=>page=0}><option value="all">All artwork</option>{#each artworkRoles as [role,label]}<option value={role}>{label}</option>{/each}</select>{/snippet}</FormField></div>{/if}
+    {#if category==='artwork'}<div class="matching-field"><FormField label="Artwork type">{#snippet children(attributes)}<select {...attributes} bind:value={artworkFilter} onchange={()=>shown=8}><option value="all">All artwork</option>{#each artworkRoles as [role,label]}<option value={role}>{label}</option>{/each}</select>{/snippet}</FormField></div>{/if}
     <div class="matching-card-grid">
       {#each visibleCandidates as candidate (candidate.id)}
         <article class="matching-card">
@@ -193,7 +195,7 @@
         </article>
       {/each}
     </div>
-    {#if candidates.length>8}<div class="matching-actions"><button type="button" disabled={page===0} onclick={()=>page--}>Previous matches</button><span>Page {page+1}</span><button type="button" disabled={(page+1)*8>=candidates.length} onclick={()=>page++}>Next matches</button></div>{/if}
+    {#if candidates.length>8}<ListMore label={shownLabel(visibleCandidates.length,shown<candidates.length,['match','matches'],candidates.length)} more={shown<candidates.length} auto={false} action="Show more matches" onmore={()=>shown+=8} />{/if}
   {/if}
   {/if}
 </section>

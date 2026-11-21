@@ -119,13 +119,17 @@ function fixture() {
   };
   return { client, p, q, approvals, applications, decisions };
 }
-test('selected exact versions survive paging and approval never adds an unselected proposal', async () => {
+test('selected exact versions survive showing more and approval never adds an unselected proposal', async () => {
   const f = fixture(),
     c = createWorkflowRuns(f.client, { libraryId: 'a' });
   await c.choose(run.id);
   c.select(f.p, true);
-  await c.nextProposals();
-  assert.deepEqual(get(c).proposals, [f.q]);
+  await c.moreProposals();
+  assert.deepEqual(get(c).proposals, [f.p, f.q]);
+  assert.equal(get(c).nextProposalsCursor, null);
+  // A reload reads both batches again instead of falling back to the first.
+  await c.refresh();
+  assert.deepEqual(get(c).proposals, [f.p, f.q]);
   assert.deepEqual(get(c).selected, [f.p]);
   await c.approve();
   assert.deepEqual(f.approvals[0]?.refs, [{ id: f.p.id, version: 1, digest: f.p.digest }]);
@@ -225,7 +229,7 @@ test('an interrupted partial batch retains approval and replays the same applica
   const c = createWorkflowRuns(f.client, { libraryId: 'a' });
   await c.choose(run.id);
   c.select(f.p, true);
-  await c.nextProposals();
+  await c.moreProposals();
   c.select(f.q, true);
   await c.approve();
   await c.apply();

@@ -26,9 +26,9 @@ export interface UploadQueueEntry extends Omit<UploadReviewEntry, 'file'> {
 }
 export interface UploadQueueState {
   entries: UploadQueueEntry[];
+  /** The first rows of the queue: fifty, and fifty more each time more is asked for. */
   visible: UploadQueueEntry[];
-  page: number;
-  pages: number;
+  hasMore: boolean;
   running: boolean;
   stopping: boolean;
   status: number | null;
@@ -45,7 +45,7 @@ export interface UploadQueue extends Readable<UploadQueueState> {
   stopAfterCurrent(): void;
   retryUnfinished(): Promise<void>;
   reconcile(id: string, item: Item): Promise<void>;
-  page(index: number): void;
+  more(): void;
   dispose(): void;
 }
 class CheckpointFailure extends Error {}
@@ -63,8 +63,7 @@ export function createUploadQueue(
   let current: UploadQueueState = {
     entries: [],
     visible: [],
-    page: 0,
-    pages: 1,
+    hasMore: false,
     running: false,
     stopping: false,
     status: null,
@@ -76,6 +75,7 @@ export function createUploadQueue(
   const store = writable(current);
   let disposed = false;
   let started = false;
+  let shown = 50;
   let revision: number | null = null;
   const touched = new Set<string>();
   const live = () => !disposed && (context.isCurrent?.() ?? true);
@@ -87,6 +87,7 @@ export function createUploadQueue(
         ...current,
         entries: [],
         visible: [],
+        hasMore: false,
         running: false,
         checking: null,
         stopping: true,
@@ -99,8 +100,8 @@ export function createUploadQueue(
     current = {
       ...current,
       entries: [...current.entries],
-      visible: current.entries.slice(current.page * 50, current.page * 50 + 50),
-      pages: Math.max(1, Math.ceil(current.entries.length / 50)),
+      visible: current.entries.slice(0, shown),
+      hasMore: shown < current.entries.length,
     };
     store.set(current);
   }
@@ -423,8 +424,9 @@ export function createUploadQueue(
         if (live() && !current.stopping) publish({ failure: explain(error) });
       }
     },
-    page(index) {
-      publish({ page: Math.max(0, Math.min(index, current.pages - 1)) });
+    more() {
+      shown += 50;
+      publish({});
     },
     dispose() {
       disposed = true;

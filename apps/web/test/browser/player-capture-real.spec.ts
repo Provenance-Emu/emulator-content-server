@@ -543,10 +543,10 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
       r.fulfill({ status: 403, headers: { 'access-control-allow-origin': '*' }, body: 'blocked' }),
     );
     await skinDialog.getByRole('button', { name: 'Browse emuskins', exact: true }).click();
-    await expect(skinDialog.getByText('53 skins · page 1 of 2', { exact: true })).toBeVisible();
-    await expect(skinDialog.locator('.skin-card')).toHaveCount(50);
-    await skinDialog.getByRole('button', { name: 'Next skins', exact: true }).click();
-    await expect(skinDialog.locator('.skin-card')).toHaveCount(3);
+    await expect(skinDialog.locator('.skin-card').first()).toBeVisible();
+    await skinDialog.locator('.list-more').scrollIntoViewIfNeeded();
+    await expect(skinDialog.getByText('53 skins', { exact: true })).toBeVisible();
+    await expect(skinDialog.locator('.skin-card')).toHaveCount(53);
     await skinDialog.getByLabel('Search skins', { exact: true }).fill('Blocked provider');
     await expect(skinDialog.locator('.skin-card')).toHaveCount(1);
     await skinDialog.getByRole('button', { name: 'Inspect download', exact: true }).click();

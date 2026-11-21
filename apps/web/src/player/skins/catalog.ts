@@ -83,12 +83,13 @@ export function thumbnailUrl(e: CatalogEntry): string | null {
     return u.href;
   return null;
 }
-export function catalogPage(
+/** The first `limit` skins that match, and how many match in all. */
+export function catalogResults(
   c: SkinCatalog,
   query: string,
   system: string,
   format: string,
-  page: number,
+  limit = 50,
 ) {
   const q = query.trim().toLowerCase().slice(0, 160),
     all = c.entries.filter(
@@ -97,9 +98,7 @@ export function catalogPage(
         (format !== 'delta' || e.format === 'delta') &&
         (!q || (e.name + ' ' + e.author).toLowerCase().includes(q)),
     );
-  const pages = Math.max(1, Math.ceil(all.length / 50)),
-    index = Math.max(0, Math.min(pages - 1, Math.floor(page) || 0));
-  return { items: all.slice(index * 50, index * 50 + 50), total: all.length, page: index, pages };
+  return { items: all.slice(0, Math.max(1, Math.floor(limit) || 50)), total: all.length };
 }
 export async function loadCatalog(
   cache: CatalogCache,

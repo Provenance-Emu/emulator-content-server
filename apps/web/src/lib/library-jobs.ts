@@ -7,6 +7,7 @@ import type {
 } from '@ecs/client';
 import { ContentError } from '@ecs/client';
 import { writable } from 'svelte/store';
+import { readBatches } from './batches.js';
 import { explain } from './problems.js';
 
 export function createLibraryJobs(
@@ -34,6 +35,7 @@ export function createLibraryJobs(
     nextCursor: string | null;
     nextJobsCursor: string | null;
     loading: boolean;
+    loadingMore: boolean;
     failure: string | null;
   } = {
     jobs: [],
@@ -42,6 +44,7 @@ export function createLibraryJobs(
     nextCursor: null,
     nextJobsCursor: null,
     loading: false,
+    loadingMore: false,
     failure: null,
   };
   const store = writable(current);
@@ -52,7 +55,17 @@ export function createLibraryJobs(
   let historyExpanded = false;
   let itemEpoch = 0,
     status: string | undefined = 'review',
-    cursor: string | undefined;
+    // How many batches of results are shown. A refresh reads that many again.
+    depth = 1;
+  const distinct = (rows: LibraryJobItem[]) => [
+    ...new Map(rows.map((row) => [row.sourceId, row])).values(),
+  ];
+  const batch = (id: string, cursor?: string) =>
+    client.libraryJobItems(id, {
+      limit: 20,
+      ...(status ? { status } : {}),
+      ...(cursor ? { cursor } : {}),
+    });
   const update = (patch: Partial<typeof current>) => {
     if (!disposed && !denied) {
       current = { ...current, ...patch };
@@ -71,21 +84,36 @@ export function createLibraryJobs(
       hooks.rejected?.(error.status);
     }
   }
-  async function items(next?: string) {
+  /** Reads everything shown again, so a result that changed or moved is where it belongs. */
+  async function items() {
     if (!current.selectedId || disposed || denied) return;
     const epoch = ++itemEpoch,
       id = current.selectedId;
-    cursor = next;
     try {
-      const page = await client.libraryJobItems(id, {
-        limit: 20,
-        ...(status ? { status } : {}),
-        ...(next ? { cursor: next } : {}),
-      });
+      const page = await readBatches(depth, (cursor) => batch(id, cursor));
       if (epoch === itemEpoch && id === current.selectedId)
-        update({ items: page.items, nextCursor: page.nextCursor });
+        update({ items: distinct(page.items), nextCursor: page.nextCursor });
     } catch (error) {
       if (epoch === itemEpoch) fail(error);
+    }
+  }
+  /** Adds the next batch below what is shown. A refresh that starts meanwhile wins. */
+  async function more() {
+    const id = current.selectedId,
+      from = current.nextCursor;
+    if (!id || !from || current.loadingMore || disposed || denied) return;
+    const epoch = ++itemEpoch;
+    update({ loadingMore: true, failure: null });
+    try {
+      const page = await batch(id, from);
+      if (epoch === itemEpoch && id === current.selectedId) {
+        depth++;
+        update({ items: distinct([...current.items, ...page.items]), nextCursor: page.nextCursor });
+      }
+    } catch (error) {
+      if (epoch === itemEpoch) fail(error);
+    } finally {
+      update({ loadingMore: false });
     }
   }
   async function refresh() {
@@ -124,8 +152,8 @@ export function createLibraryJobs(
           (next?.kind === 'scan' && next.state === 'completed' && previous?.state !== 'completed')
         )
           hooks.changed?.();
-        await items(cursor);
-      } else if (!current.items.length && selectedId) await items(cursor);
+        await items();
+      } else if (!current.items.length && selectedId) await items();
     } catch (error) {
       fail(error);
     } finally {
@@ -137,13 +165,14 @@ export function createLibraryJobs(
     update({ loading: true, failure: null });
     try {
       const { job } = await work();
+      // Marking one result reviewed keeps the list where it was; another job starts a new list.
+      const same = job.id === current.selectedId;
+      if (!same) depth = 1;
       update({
         jobs: [job, ...current.jobs.filter((j) => j.id !== job.id)].slice(0, 20),
         selectedId: job.id,
-        items: [],
-        nextCursor: null,
+        ...(same ? {} : { items: [], nextCursor: null }),
       });
-      cursor = undefined;
       await items();
       hooks.changed?.();
     } catch (error) {
@@ -182,19 +211,16 @@ export function createLibraryJobs(
     },
     async choose(id: string) {
       itemEpoch++;
+      depth = 1;
       update({ selectedId: id, items: [], nextCursor: null });
       await items();
     },
     async filter(value: string) {
       status = value || undefined;
+      depth = 1;
       await items();
     },
-    next() {
-      return current.nextCursor ? items(current.nextCursor) : Promise.resolve();
-    },
-    first() {
-      return items();
-    },
+    more,
     start(kind: 'match' | 'scan', options: MatchingOptions = {}) {
       return action(() => client.createLibraryJob({ kind, ...scope, options }));
     },

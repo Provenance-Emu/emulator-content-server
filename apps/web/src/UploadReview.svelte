@@ -3,6 +3,8 @@
   import type { UploadReview } from './lib/upload-review';
   import { KIND_ORDER, kindLabel } from './lib/content-format';
   import UploadTargetPicker from './UploadTargetPicker.svelte';
+  import ListMore from './components/ListMore.svelte';
+  import { shownLabel } from './lib/batches';
   let {
     controller,
     systems,
@@ -28,7 +30,7 @@
   </div>
   {#if $controller.entries.some(e=>e.kind && e.kind!=='rom')}<button type="button" onclick={()=>picking='all'}>Choose target for associated files</button>{/if}
   {#if picking}<UploadTargetPicker {client} {libraryId} {onauthorization} oncancel={()=>picking=null} onchoose={(target)=>{if(picking==='all'){controller.setCommonMetadata({target});}else if(picking){controller.setEntryMetadata(picking,{target});}picking=null;}} />{/if}
-  <ol start={$controller.page*50+1} class="upload-entries">
+  <ol class="upload-entries">
     {#each $controller.visible as entry (entry.id)}
       <li>
         <p><strong>{entry.file.name}</strong> · {entry.relativePath}</p>
@@ -43,11 +45,15 @@
       </li>
     {/each}
   </ol>
-  <nav aria-label="Review pages"><button type="button" disabled={$controller.page===0} onclick={()=>controller.page($controller.page-1)}>Previous files</button><span>Page {$controller.page+1} of {$controller.pages}</span><button type="button" disabled={$controller.page+1===$controller.pages} onclick={()=>controller.page($controller.page+1)}>Next files</button></nav>
+  {#if $controller.entries.length > $controller.visible.length || $controller.visible.length > 50}<ListMore
+      label={shownLabel($controller.visible.length, $controller.hasMore, ['file', 'files'], $controller.entries.length)}
+      more={$controller.hasMore}
+      action="Show more files"
+      onmore={() => controller.more()}
+    />{/if}
 </section>
 <style>
   .upload-entries { padding-inline-start: 1.5rem; }
   .upload-entries li { padding: 1rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,12rem),1fr)); gap: .75rem; }
-  nav { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; margin-block:1rem; }
 </style>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  catalogPage,
+  catalogResults,
   loadCatalog,
   parseCatalog,
   thumbnailUrl,
@@ -16,7 +16,7 @@ const entry = (i: number) => ({
   thumbnailURL:
     'https://github.com/Provenance-Emu/skins/releases/download/thumbnails/7335d72cce544432.png',
 });
-test('catalog skips malformed records, normalizes systems and pages before loading thumbnails', () => {
+test('catalog skips malformed records, normalizes systems and shows fifty before loading thumbnails', () => {
   const c = parseCatalog(
     JSON.stringify({
       version: 2,
@@ -26,8 +26,10 @@ test('catalog skips malformed records, normalizes systems and pages before loadi
   assert.equal(c.entries.length, 53);
   assert.equal(c.dropped, 2);
   assert.equal(c.entries[0]?.systems[0], 'nes');
-  assert.equal(catalogPage(c, '', 'nes', 'delta', 1).items.length, 3);
-  assert.equal(catalogPage(c, 'Pebble 12', 'nes', 'delta', 0).total, 1);
+  assert.equal(catalogResults(c, '', 'nes', 'delta').items.length, 50);
+  assert.equal(catalogResults(c, '', 'nes', 'delta', 100).items.length, 53);
+  assert.equal(catalogResults(c, '', 'nes', 'delta', 100).total, 53);
+  assert.equal(catalogResults(c, 'Pebble 12', 'nes', 'delta').total, 1);
   assert.equal(
     thumbnailUrl(c.entries[0]!),
     'https://raw.githubusercontent.com/Provenance-Emu/skins/main/thumbnails/7335d72cce544432.png',

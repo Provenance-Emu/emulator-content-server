@@ -61,17 +61,23 @@ test('non-ROM association is explicit, library-scoped, and common metadata never
   review.setCommonMetadata({ target: { ...item(), libraryId: 'other' } });
   assert.equal(review.validate(), null);
 });
-test('item context supplies an explicit upload target and 10,000 files expose only fifty visible rows', () => {
+test('item context supplies an explicit upload target and 10,000 files show fifty rows and fifty more when asked', () => {
   const review = createUploadReview({ libraryId: 'library', item: item(), systems });
   review.selectFiles(Array.from({ length: 10_000 }, (_, i) => file(`save-${i}.sav`)));
   assert.equal(get(review).visible.length, 50);
   assert.equal(get(review).entries.length, 10_000);
   const id = get(review).entries[51]?.id ?? '';
   review.setEntryMetadata(id, { kind: 'save_state' });
-  review.page(1);
-  assert.equal(get(review).visible[1]?.id, id);
-  assert.equal(get(review).visible[1]?.kind, 'save_state');
-  assert.equal(get(review).visible[1]?.target?.id, 'item');
+  assert.equal(get(review).hasMore, true);
+  review.more();
+  // Showing more adds rows below; what was already on screen stays where it was.
+  assert.equal(get(review).visible.length, 100);
+  assert.equal(get(review).visible[51]?.id, id);
+  assert.equal(get(review).visible[51]?.kind, 'save_state');
+  assert.equal(get(review).visible[51]?.target?.id, 'item');
+  review.selectFiles([file('one.sav')]);
+  assert.equal(get(review).visible.length, 1);
+  assert.equal(get(review).hasMore, false);
 });
 
 test('common metadata chosen before file selection remains applied when files are replaced', () => {

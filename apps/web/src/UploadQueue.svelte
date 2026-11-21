@@ -2,6 +2,8 @@
   import type { ContentClient } from '@ecs/client';
   import type { UploadQueue } from './lib/upload-queue';
   import UploadTargetPicker from './UploadTargetPicker.svelte';
+  import ListMore from './components/ListMore.svelte';
+  import { shownLabel } from './lib/batches';
   let {
     controller,
     client,
@@ -49,11 +51,15 @@
       {/each}
     </ul>
   {/each}
-  <nav aria-label="Queue pages"><button type="button" disabled={$controller.page===0} onclick={()=>controller.page($controller.page-1)}>Previous queue files</button><span>Page {$controller.page+1} of {$controller.pages}</span><button type="button" disabled={$controller.page+1===$controller.pages} onclick={()=>controller.page($controller.page+1)}>Next queue files</button></nav>
+  {#if $controller.entries.length > $controller.visible.length || $controller.visible.length > 50}<ListMore
+      label={shownLabel($controller.visible.length, $controller.hasMore, ['file', 'files'], $controller.entries.length)}
+      more={$controller.hasMore}
+      action="Show more files"
+      onmore={() => controller.more()}
+    />{/if}
 </section>
 <style>
   .upload-entries { padding-inline-start:1.5rem; }
   li { padding:.75rem 0; border-top:1px solid var(--line); overflow-wrap:anywhere; }
   progress { display:block; width:100%; margin-block:.5rem; }
-  nav { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; margin-block:1rem; }
 </style>

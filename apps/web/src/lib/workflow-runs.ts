@@ -12,6 +12,7 @@ import {
   type WorkflowScope,
 } from '@ecs/client';
 import { writable } from 'svelte/store';
+import { readBatches } from './batches.js';
 import { explain } from './problems.js';
 
 type CleanupClient = Pick<
@@ -83,10 +84,11 @@ export function createWorkflowRuns(
     disposed = false,
     denied = false,
     timer: ReturnType<typeof setTimeout> | undefined;
-  let proposalCursor: string | undefined,
-    findingCursor: string | undefined,
-    applicationCursor: string | undefined,
-    runsCursor: string | undefined;
+  // How many batches of each list are shown. Every reload reads that many again.
+  const depth = { proposals: 1, findings: 1, applications: 1, runs: 1 };
+  const distinct = <T>(rows: T[], key: (row: T) => string) => [
+    ...new Map(rows.map((row) => [key(row), row])).values(),
+  ];
   let startAttempt: { signature: string; key: string } | undefined,
     approvalAttempt: { signature: string; key: string; revision: number } | undefined,
     applicationId: string | undefined;
@@ -129,11 +131,17 @@ export function createWorkflowRuns(
     emit({ approval: null });
   }
   async function load(e: number, id: string) {
+    // Each batch of fixes carries the findings its fixes answer.
+    const proposalFindings: WorkflowFinding[] = [];
     const [r, p, f, a, results] = await Promise.all([
       client.workflowRun(id),
-      client.workflowProposals(id, proposalCursor),
-      client.workflowFindings(id, findingCursor),
-      client.workflowApplications(id, applicationCursor),
+      readBatches(depth.proposals, async (cursor) => {
+        const batch = await client.workflowProposals(id, cursor);
+        proposalFindings.push(...(batch.findings ?? []));
+        return batch;
+      }),
+      readBatches(depth.findings, (cursor) => client.workflowFindings(id, cursor)),
+      readBatches(depth.applications, (cursor) => client.workflowApplications(id, cursor)),
       client.workflowResults(id),
     ]);
     if (!valid(e)) return;
@@ -148,7 +156,7 @@ export function createWorkflowRuns(
       }),
     );
     if (!valid(e)) return;
-    const findingMap = new Map([...f.items, ...(p.findings ?? [])].map((row) => [row.id, row]));
+    const findingMap = new Map([...f.items, ...proposalFindings].map((row) => [row.id, row]));
     const selected = current.selected.filter(
       (saved) =>
         !p.items.some(
@@ -162,11 +170,11 @@ export function createWorkflowRuns(
     }
     emit({
       run: r.run,
-      proposals: p.items,
+      proposals: distinct(p.items, (row) => `${row.id}:${row.version}`),
       findings: [...findingMap.values()],
       selected,
       selections,
-      applications: a.items,
+      applications: distinct(a.items, (row) => row.id + row.sourceId),
       results: results.items,
       nextProposalsCursor: p.nextCursor,
       nextFindingsCursor: f.nextCursor,
@@ -176,9 +184,14 @@ export function createWorkflowRuns(
   async function history(e: number) {
     const [h, r] = await Promise.all([
       client.workflowHosts(),
-      client.workflowRuns({ ...current.scope, cursor: runsCursor }),
+      readBatches(depth.runs, (cursor) => client.workflowRuns({ ...current.scope, cursor })),
     ]);
-    if (valid(e)) emit({ hosts: h.items, runs: r.items, nextRunsCursor: r.nextCursor });
+    if (valid(e))
+      emit({
+        hosts: h.items,
+        runs: distinct(r.items, (row) => row.id),
+        nextRunsCursor: r.nextCursor,
+      });
   }
   async function refresh() {
     await action(async (e) => {
@@ -191,7 +204,7 @@ export function createWorkflowRuns(
   async function choose(id: string) {
     if (disposed || denied) return;
     epoch++;
-    proposalCursor = findingCursor = applicationCursor = undefined;
+    depth.proposals = depth.findings = depth.applications = 1;
     approvalAttempt = undefined;
     applicationId = undefined;
     emit({
@@ -207,25 +220,23 @@ export function createWorkflowRuns(
     });
     await action((e) => load(e, id));
   }
-  async function page(which: 'proposals' | 'findings' | 'applications' | 'runs') {
+  /** Shows one more batch of a list, below what is already there. */
+  async function more(which: keyof typeof depth) {
     await action(async (e) => {
       if (which === 'runs') {
-        runsCursor = current.nextRunsCursor ?? undefined;
+        if (!current.nextRunsCursor) return;
+        depth.runs++;
         await history(e);
         return;
       }
       const id = current.run?.id;
-      if (!id) return;
-      if (which === 'proposals') {
-        if (!current.nextProposalsCursor) return;
-        proposalCursor = current.nextProposalsCursor;
-      } else if (which === 'findings') {
-        if (!current.nextFindingsCursor) return;
-        findingCursor = current.nextFindingsCursor;
-      } else {
-        if (!current.nextApplicationsCursor) return;
-        applicationCursor = current.nextApplicationsCursor;
-      }
+      const next = {
+        proposals: current.nextProposalsCursor,
+        findings: current.nextFindingsCursor,
+        applications: current.nextApplicationsCursor,
+      }[which];
+      if (!id || !next) return;
+      depth[which]++;
       await load(e, id);
     });
   }
@@ -343,7 +354,7 @@ export function createWorkflowRuns(
         startAttempt = { signature, key: crypto.randomUUID() };
       const { run } = await client.createWorkflowRun(draft, startAttempt.key);
       if (valid(e)) {
-        proposalCursor = findingCursor = applicationCursor = undefined;
+        depth.proposals = depth.findings = depth.applications = 1;
         emit({ run, selected: [], approval: null });
         await load(e, run.id);
         await history(e);
@@ -382,7 +393,7 @@ export function createWorkflowRuns(
   async function setScope(next: WorkflowScope) {
     epoch++;
     scope = { ...next };
-    proposalCursor = findingCursor = applicationCursor = runsCursor = undefined;
+    depth.proposals = depth.findings = depth.applications = depth.runs = 1;
     startAttempt = approvalAttempt = undefined;
     applicationId = undefined;
     current = empty();
@@ -402,10 +413,10 @@ export function createWorkflowRuns(
     undo,
     cancel: () => lifecycle('cancel'),
     resume: () => lifecycle('resume'),
-    nextProposals: () => page('proposals'),
-    nextFindings: () => page('findings'),
-    nextApplications: () => page('applications'),
-    nextRuns: () => page('runs'),
+    moreProposals: () => more('proposals'),
+    moreFindings: () => more('findings'),
+    moreApplications: () => more('applications'),
+    moreRuns: () => more('runs'),
     dispose,
   };
 }

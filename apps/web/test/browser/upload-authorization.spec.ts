@@ -7,9 +7,11 @@ const generated = (name: string) => ({
   mimeType: 'application/octet-stream',
   buffer: Buffer.from([1, 2, 3, 4]),
 });
+/** Brings the end of the target list into view, which is what asks for its next batch. */
+const MORE_ITEMS_INTO_VIEW = `document.querySelector('section[aria-label="Choose managed item"] .list-more')?.scrollIntoView()`;
 for (const phase of ['review', 'reconciliation']) {
   for (const status of [401, 403]) {
-    test(`${phase} picker ${status} on Next removes private targets and rejects upload access immediately`, async ({
+    test(`${phase} picker ${status} on the next batch removes private targets and rejects upload access immediately`, async ({
       page,
       fixture,
     }) => {
@@ -46,19 +48,32 @@ for (const phase of ['review', 'reconciliation']) {
       await dialog
         .getByLabel('File', { exact: true })
         .setInputFiles(generated(phase === 'review' ? 'private.sav' : 'uncertain.nes'));
-      if (phase === 'review')
+      let baseline = 0;
+      if (phase === 'review') {
+        baseline = accessReads;
         await dialog
           .getByRole('button', { name: 'Choose target for associated files', exact: true })
           .click();
-      else {
+      } else {
         await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
-        await dialog.getByRole('button', { name: 'Reconcile uncertain.nes', exact: true }).click();
+        const reconcile = dialog.getByRole('button', {
+          name: 'Reconcile uncertain.nes',
+          exact: true,
+        });
+        await expect(reconcile).toBeVisible();
+        baseline = accessReads;
+        await reconcile.click();
       }
-      const picker = dialog.getByRole('region', { name: 'Choose managed item', exact: true });
-      await expect(picker.getByRole('button').filter({ hasText: '· ID ' })).toHaveCount(50);
-      const baseline = accessReads;
-      await picker.getByRole('button', { name: 'Next items', exact: true }).click();
-      await expect(dialog).not.toBeVisible();
+      // The list asks for its next batch as its end comes into view; that read is the rejected one.
+      await expect
+        .poll(
+          async () => {
+            await page.evaluate(MORE_ITEMS_INTO_VIEW);
+            return dialog.isVisible();
+          },
+          { timeout: 20_000 },
+        )
+        .toBe(false);
       await expect(page.getByRole('button').filter({ hasText: '· ID ' })).toHaveCount(0);
       await expect(
         page.getByRole('button', { name: 'Retry unfinished uploads', exact: true }),
@@ -163,15 +178,17 @@ test('Games folder upload keeps saves associated with an explicit target instead
   const target = dialog.getByRole('button', { name: new RegExp(`ID ${fixture.game.id}$`) });
   const listed = dialog.getByRole('button').filter({ hasText: '· ID ' });
   await expect(listed.first()).toBeEnabled();
-  // Managed targets are bounded and sorted by random IDs, so this game can be on any page.
-  for (let pageIndex = 0; pageIndex < 3 && !(await target.count()); pageIndex++) {
-    const loaded = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === '/api/v1/items',
-    );
-    await dialog.getByRole('button', { name: 'Next items', exact: true }).click();
-    await loaded;
-    await expect(listed.first()).toBeEnabled();
-  }
+  // Managed targets are sorted by random IDs, so this game can be in any batch.
+  await expect
+    .poll(
+      async () => {
+        if (await target.count()) return true;
+        await page.evaluate(MORE_ITEMS_INTO_VIEW);
+        return false;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true);
   await target.click();
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog.getByText('3 succeeded · 0 unfinished')).toBeVisible();

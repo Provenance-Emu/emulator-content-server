@@ -16,15 +16,15 @@ export type UploadMetadata = Partial<
 >;
 export interface UploadReviewState {
   entries: UploadReviewEntry[];
+  /** The first rows of the selection: fifty, and fifty more each time more is asked for. */
   visible: UploadReviewEntry[];
-  page: number;
-  pages: number;
+  hasMore: boolean;
 }
 export interface UploadReview extends Readable<UploadReviewState> {
   selectFiles(files: File[]): void;
   setEntryMetadata(id: string, patch: UploadMetadata): void;
   setCommonMetadata(patch: UploadMetadata): void;
-  page(index: number): void;
+  more(): void;
   validate(): UploadReviewEntry[] | null;
 }
 /** The path is browser-provided metadata, never a trusted local filesystem path. */
@@ -68,12 +68,10 @@ export function createUploadReview(context: {
 }): UploadReview {
   let entries: UploadReviewEntry[] = [];
   let common: UploadMetadata = {};
-  let index = 0;
-  const store = writable<UploadReviewState>({ entries, visible: [], page: 0, pages: 1 });
+  let shown = 50;
+  const store = writable<UploadReviewState>({ entries, visible: [], hasMore: false });
   function publish() {
-    const pages = Math.max(1, Math.ceil(entries.length / 50));
-    index = Math.max(0, Math.min(index, pages - 1));
-    store.set({ entries, visible: entries.slice(index * 50, index * 50 + 50), page: index, pages });
+    store.set({ entries, visible: entries.slice(0, shown), hasMore: shown < entries.length });
   }
   function errors(e: UploadReviewEntry): string[] {
     const result: string[] = [];
@@ -105,7 +103,7 @@ export function createUploadReview(context: {
   return {
     subscribe: store.subscribe,
     selectFiles(files) {
-      index = 0;
+      shown = 50;
       entries = files.map((file) => {
         const extension = file.name.split('.').at(-1)?.toLowerCase() ?? '';
         const inferred = extensionSystems[extension] ?? '';
@@ -144,8 +142,8 @@ export function createUploadReview(context: {
       common = { ...common, ...patch };
       edit(null, patch);
     },
-    page(page) {
-      index = page;
+    more() {
+      shown = Math.min(entries.length, shown + 50);
       publish();
     },
     validate() {

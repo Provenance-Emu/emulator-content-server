@@ -2,11 +2,11 @@
 
 Open `/ui/` on the content server and choose an accessible library in the sidebar.
 Games, Saves, Media, and System files share search, system filtering, name sorting,
-grid/list display, and Next/Previous navigation. Each collection request contains
-at most 50 entries. Opening details retains the collection page, filters, scroll,
-and focused result for Back to collection.
+and grid/list display. The list grows as it is scrolled; each collection request
+contains at most 50 entries. Opening details retains what is loaded, the filters,
+the scroll position, and the focused result for Back to collection.
 
-**Refresh details** refreshes the bounded collection page before reading the
+**Refresh details** refreshes the loaded collection before reading the
 opened game's details, so a disconnected or reconnected source folder updates
 availability and download controls without a scan.
 
