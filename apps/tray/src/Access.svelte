@@ -122,6 +122,13 @@
       </form>
     {/if}
 
+    {#if $desk.localSignInPaused && !$desk.session}
+      <p class="row">
+        <span class="dim">You signed out. This Mac runs the server, so it can sign in without a password.</span>
+        <button type="button" disabled={$desk.working} onclick={() => void desk.signInHere()}>Sign in on this Mac</button>
+      </p>
+    {/if}
+
     {#if $desk.session}
       <p class="row">
         <span class="dim">Signed in to this server in the desktop app.</span>

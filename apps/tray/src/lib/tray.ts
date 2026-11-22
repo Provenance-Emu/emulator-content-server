@@ -3,7 +3,14 @@ import { Menu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { exit } from '@tauri-apps/plugin-process';
 import { get } from 'svelte/store';
-import { canStart, canStop, type ServiceControl, serviceSummary } from './service';
+import {
+  canRepair,
+  canRestart,
+  canStart,
+  canStop,
+  type ServiceControl,
+  serviceSummary,
+} from './service';
 import type { ServerWatch } from './watch.svelte';
 import { openExternal, showLibrary } from './windows';
 
@@ -44,7 +51,7 @@ export async function installTray(
     action: () => void window.show().then(() => window.setFocus()),
   });
   const localStatus = await MenuItem.new({ text: serviceSummary(get(service)), enabled: false });
-  const operate = async (action: 'start' | 'stop') => {
+  const operate = async (action: 'start' | 'stop' | 'restart' | 'repair') => {
     await service[action]();
     if (get(service).failure) await window.show().then(() => window.setFocus());
   };
@@ -57,6 +64,18 @@ export async function installTray(
     text: 'Stop local service',
     enabled: canStop(get(service)),
     action: () => void operate('stop'),
+  });
+  const restartService = await MenuItem.new({
+    text: 'Restart local service',
+    enabled: canRestart(get(service)),
+    action: () => void operate('restart'),
+  });
+  // Shown enabled only when the service cannot run as it is; the status window has it always.
+  const needsRepair = () => canRepair(get(service)) && get(service).state === 'broken';
+  const repairService = await MenuItem.new({
+    text: 'Repair local service',
+    enabled: needsRepair(),
+    action: () => void operate('repair'),
   });
   const serviceDetails = await MenuItem.new({
     text: get(service).state === 'absent' ? 'Set up a server…' : 'Local service details…',
@@ -90,7 +109,9 @@ export async function installTray(
       await PredefinedMenuItem.new({ item: 'Separator' }),
       localStatus,
       startService,
+      restartService,
       stopService,
+      repairService,
       serviceDetails,
       ...cliItems,
       await PredefinedMenuItem.new({ item: 'Separator' }),
@@ -107,6 +128,8 @@ export async function installTray(
     );
     await startService.setEnabled(canStart(local));
     await stopService.setEnabled(canStop(local));
+    await restartService.setEnabled(canRestart(local));
+    await repairService.setEnabled(needsRepair());
     // The tooltip is the only place with room for the time of the last check.
     await invoke('set_live_tray_tooltip', {
       tooltip: watch.checkedAt ? `${watch.summary}, checked ${watch.checkedAt}` : watch.summary,

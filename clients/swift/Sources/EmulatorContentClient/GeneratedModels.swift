@@ -196,8 +196,9 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var gameCompanions: Bool?
     public var gameCopySelection: Bool?
     public var sourceDetailsWrite: Bool?
+    public var localOwnerSignIn: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, gameCopySelection: Bool? = nil, sourceDetailsWrite: Bool? = nil) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, gameCopySelection: Bool? = nil, sourceDetailsWrite: Bool? = nil, localOwnerSignIn: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -211,6 +212,7 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.gameCompanions = gameCompanions
         self.gameCopySelection = gameCopySelection
         self.sourceDetailsWrite = sourceDetailsWrite
+        self.localOwnerSignIn = localOwnerSignIn
     }
 }
 
@@ -1305,6 +1307,14 @@ public struct BootstrapRequest: Codable, Equatable, Sendable {
         self.token = token
         self.username = username
         self.password = password
+    }
+}
+
+public struct LocalSignInRequest: Codable, Equatable, Sendable {
+    public var key: String
+
+    public init(key: String) {
+        self.key = key
     }
 }
 

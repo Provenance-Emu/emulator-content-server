@@ -43,6 +43,16 @@ impl Snapshot {
     }
 
     pub fn mac_setup_code_path(&self) -> Result<std::path::PathBuf, String> {
+        self.mac_data_file("bootstrap.token")
+    }
+
+    /// The key the verified server wrote for whoever owns its data folder.
+    pub fn mac_owner_key_path(&self) -> Result<std::path::PathBuf, String> {
+        self.mac_data_file("local-owner.key")
+    }
+
+    /// A fixed file name in the data folder the verified registration names.
+    fn mac_data_file(&self, name: &'static str) -> Result<std::path::PathBuf, String> {
         if !cfg!(target_os = "macos") {
             return Err(UNAVAILABLE.into());
         }
@@ -55,7 +65,7 @@ impl Snapshot {
         if &current()? != self {
             return Err(UNAVAILABLE.into());
         }
-        Ok(data.join("bootstrap.token"))
+        Ok(data.join(name))
     }
 }
 

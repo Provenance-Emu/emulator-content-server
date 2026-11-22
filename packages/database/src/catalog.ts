@@ -541,6 +541,22 @@ export class CatalogDatabase {
     return { expiresAt };
   }
 
+  /** The one owner account, or null before bootstrap. */
+  ownerUserId(): string | null {
+    return this.one<{ id: string }>('SELECT id FROM users WHERE is_owner = 1 LIMIT 1')?.id ?? null;
+  }
+
+  /** An owner session for someone who proved they can read the data folder. No key is recorded. */
+  createLocalSession(userId: string, sessionHash: string): { expiresAt: string } {
+    const expiresAt = this.insertSession(userId, sessionHash, nowIso());
+    this.insertAudit(userId, 'local-sign-in', 'session', userId, {});
+    return { expiresAt };
+  }
+
+  recordLocalSignInFailure(): void {
+    this.insertAudit(null, 'local-sign-in-failed', 'session', null, {});
+  }
+
   revokeToken(tokenHash: string, actorId: string | null): boolean {
     const session = this.db
       .prepare('UPDATE sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL')

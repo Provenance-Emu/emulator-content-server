@@ -341,3 +341,143 @@ test('desktop connection accepts computer names and UI URLs without accepting cr
   ])
     assert.throws(() => connectionAddress(value));
 });
+
+function ownServer(features: Record<string, boolean>, manages: boolean) {
+  const calls: { path: string; token: string | null }[] = [];
+  let valid: string | null = null;
+  const fetcher: typeof fetch = async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    const token = new Headers(init?.headers).get('authorization');
+    calls.push({ path, token });
+    if (path.endsWith('/capabilities'))
+      return Response.json({
+        protocol: { major: 1, minor: 0, path: '/api/v1' },
+        minClientVersion: '0.1.0',
+        features: { rangeRequests: true, ...features },
+        limits: { maxUploadBytes: 1, maxPageSize: 100 },
+        authentication: ['bearer', 'bootstrap'],
+        bootstrapped: true,
+      });
+    if (path.endsWith('/access'))
+      return Response.json({ mode: 'token', subnets: [], applies: true, trusted: false, manages });
+    if (path.endsWith('/auth/logout')) return new Response(null, { status: 204 });
+    if (valid === null || token !== `Bearer ${valid}`)
+      return Response.json({ status: 401, title: 'Unauthorized' }, { status: 401 });
+    return Response.json({ items: [] });
+  };
+  return {
+    calls,
+    fetcher,
+    accept: (token: string | null) => {
+      valid = token;
+    },
+  };
+}
+
+test('this computer signs in to its own server without a password, and only when it is offered', async () => {
+  const f = fixture();
+  const previous = globalThis.fetch;
+  const server = ownServer({ localOwnerSignIn: true }, false);
+  globalThis.fetch = server.fetcher;
+  const asked: string[] = [];
+  let clock = 0;
+  let issued = 0;
+  const local = async (origin: string) => {
+    asked.push(origin);
+    const token = `local-session-${++issued}`;
+    server.accept(token);
+    return { token, expiresAt: '2099-01-01T00:00:00Z' };
+  };
+  const context = createDesktopContext(profile('http://127.0.0.1:8473'), f.dependencies);
+  const desk = new AccessDesk(context, local, () => clock);
+  try {
+    await desk.refresh();
+    assert.deepEqual(asked, ['http://127.0.0.1:8473']);
+    assert.equal(get(desk).session?.token, 'local-session-1');
+    // Stored the same way a typed sign-in is, so the library window picks it up.
+    assert.equal(context.sessions.load()?.token, 'local-session-1');
+    assert.equal(server.calls.at(-1)?.token, 'Bearer local-session-1');
+
+    // Already signed in: nothing more is asked of the shell.
+    await desk.refresh();
+    assert.equal(asked.length, 1);
+
+    // The session ran out on the server. It is replaced, but not on every ten-second poll.
+    server.accept(null);
+    clock = 5_000;
+    await desk.refresh();
+    assert.equal(get(desk).session, null);
+    await desk.refresh();
+    assert.equal(asked.length, 1);
+    clock = 40_000;
+    await desk.refresh();
+    assert.equal(asked.length, 2);
+    assert.equal(get(desk).session?.token, 'local-session-2');
+
+    // Signing out here stays signed out until someone asks to come back.
+    clock = 400_000;
+    await desk.signOut();
+    await desk.refresh();
+    assert.equal(get(desk).session, null);
+    assert.equal(get(desk).localSignInPaused, true);
+    assert.equal(asked.length, 2);
+    await desk.signInHere();
+    assert.equal(asked.length, 3);
+    assert.equal(get(desk).session?.token, 'local-session-3');
+    assert.equal(get(desk).localSignInPaused, false);
+  } finally {
+    desk.dispose();
+    globalThis.fetch = previous;
+  }
+});
+
+test('a server that does not offer local sign-in, or a shell with nothing to give, shows the form', async () => {
+  const f = fixture();
+  const previous = globalThis.fetch;
+  try {
+    // An older or public server: the shell is never asked.
+    const older = ownServer({}, false);
+    globalThis.fetch = older.fetcher;
+    let asked = 0;
+    const first = new AccessDesk(
+      createDesktopContext(profile('https://a.test'), f.dependencies),
+      async () => {
+        asked++;
+        return null;
+      },
+    );
+    await first.refresh();
+    assert.equal(asked, 0);
+    assert.equal(get(first).session, null);
+    first.dispose();
+
+    // Another computer's server offers it to its own desktop, not to this one: the shell says no.
+    const remote = ownServer({ localOwnerSignIn: true }, false);
+    globalThis.fetch = remote.fetcher;
+    const second = new AccessDesk(
+      createDesktopContext(profile('https://b.test'), f.dependencies),
+      async () => {
+        asked++;
+        return null;
+      },
+    );
+    await second.refresh();
+    assert.equal(asked, 1);
+    assert.equal(get(second).session, null);
+    assert.equal(get(second).failure, null);
+    // A shell that fails is the same as one with nothing to give.
+    const third = new AccessDesk(
+      createDesktopContext(profile('https://c.test'), f.dependencies),
+      async () => {
+        throw new Error('shell unavailable');
+      },
+    );
+    await third.refresh();
+    assert.equal(get(third).session, null);
+    assert.equal(get(third).failure, null);
+    second.dispose();
+    third.dispose();
+  } finally {
+    globalThis.fetch = previous;
+  }
+});

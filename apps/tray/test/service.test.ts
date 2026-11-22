@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { get } from 'svelte/store';
-import { canStart, canStop, createServiceControl, type ServiceInvoke } from '../src/lib/service.js';
+import {
+  canRepair,
+  canRestart,
+  canStart,
+  canStop,
+  createServiceControl,
+  type ServiceInvoke,
+  serviceSummary,
+} from '../src/lib/service.js';
 
 test('a browser cannot invoke service commands', async () => {
   const service = createServiceControl(null);
@@ -114,4 +122,100 @@ test('a slow HTTP refresh never keeps local service actions pending', async () =
   assert.equal(refreshing, true);
   assert.equal(finished, true);
   assert.equal(get(service).busy, false);
+});
+
+test('a failed action says why and leaves the controls on what the service really is', async () => {
+  const calls: string[] = [];
+  const service = createServiceControl(async (command) => {
+    calls.push(command);
+    if (command === 'service_stop') throw new Error('launchctl bootout failed (code 5).');
+    return 'running';
+  });
+  await service.check();
+  await service.stop();
+  assert.deepEqual(calls, ['service_status', 'service_stop', 'service_status']);
+  assert.match(get(service).failure ?? '', /bootout failed/);
+  assert.equal(get(service).state, 'running');
+  assert.equal(canStop(get(service)), true);
+  assert.equal(canRestart(get(service)), true);
+  assert.equal(canRepair(get(service)), true);
+  assert.equal(serviceSummary(get(service)), 'Local service running');
+  // The routine status poll keeps the reason on screen; the next action replaces it.
+  await service.check();
+  assert.match(get(service).failure ?? '', /bootout failed/);
+  await service.restart();
+  assert.equal(get(service).failure, null);
+});
+
+test('a registration whose server build is gone offers repair, and repair re-reads the state', async () => {
+  const calls: string[] = [];
+  let repaired = false;
+  let refreshed = 0;
+  const service = createServiceControl(
+    async (command) => {
+      calls.push(command);
+      if (command === 'service_repair') repaired = true;
+      return repaired ? 'running' : 'broken';
+    },
+    async () => {
+      refreshed++;
+    },
+  );
+  await service.check();
+  assert.equal(serviceSummary(get(service)), 'Local service needs repair');
+  assert.equal(canStart(get(service)), false);
+  assert.equal(canRestart(get(service)), false);
+  assert.equal(canRepair(get(service)), true);
+  await service.start();
+  await service.repair();
+  assert.deepEqual(calls, ['service_status', 'service_repair']);
+  assert.equal(get(service).state, 'running');
+  assert.equal(refreshed, 1);
+});
+
+test('a service that keeps stopping can be restarted, stopped or repaired', async () => {
+  const calls: string[] = [];
+  const service = createServiceControl(async (command) => {
+    calls.push(command);
+    return command === 'service_status' ? 'failing' : 'starting';
+  });
+  await service.check();
+  assert.equal(serviceSummary(get(service)), 'Local service keeps stopping');
+  assert.equal(canStop(get(service)), true);
+  assert.equal(canRepair(get(service)), true);
+  await service.restart();
+  assert.deepEqual(calls, ['service_status', 'service_restart']);
+});
+
+test('the boot service starts, stops and restarts, and is never repaired from the tray', async () => {
+  let state = 'boot-stopped';
+  const calls: string[] = [];
+  const service = createServiceControl(async (command) => {
+    calls.push(command);
+    if (command === 'service_start' || command === 'service_restart') state = 'boot-running';
+    if (command === 'service_stop') state = 'boot-stopped';
+    return state;
+  });
+  await service.check();
+  assert.equal(canStart(get(service)), true);
+  assert.equal(canStop(get(service)), false);
+  assert.equal(canRepair(get(service)), false);
+  await service.start();
+  assert.equal(get(service).state, 'boot-running');
+  assert.equal(canRestart(get(service)), true);
+  await service.restart();
+  await service.repair();
+  await service.stop();
+  assert.deepEqual(calls, ['service_status', 'service_start', 'service_restart', 'service_stop']);
+  assert.equal(get(service).state, 'boot-stopped');
+});
+
+test('with no readable state, repair is still offered', async () => {
+  const service = createServiceControl(async () => {
+    throw new Error('Could not contact or control your per-user service manager.');
+  });
+  await service.check();
+  assert.equal(get(service).state, 'unknown');
+  assert.equal(canStart(get(service)), false);
+  assert.equal(canRepair(get(service)), true);
 });

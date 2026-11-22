@@ -15,6 +15,8 @@ When the server runs with `--advertise`, browse `_pvcontent._tcp` and resolve th
 3. Call `GET /api/v1/browse-libraries`. Use an ID from `items` to call `GET /api/v1/browse` with `libraryId` and `category=games`. Add `systemId` to narrow the list. Send `nextCursor` verbatim with the same filters until it is `null`.
 4. For an `entityType` of `item`, call `GET /api/v1/items/{itemId}/manifest` and download the required files from their `contentPath` values. Keep the manifest's relative layout in a contained local staging directory and verify each file's SHA-256 before launching. For `source`, use `source.contentPath` for the original file. For an `asset`, use `/api/v1/files/{assetId}/content`. Resolve every content path against the configured server origin before attaching the token.
 
+`POST /api/v1/auth/local` is for the desktop app on the computer that runs the server. It needs a key from the server's data folder and a loopback connection; an app on a phone, a TV, or another computer cannot use it and should not offer it, whatever `features.localOwnerSignIn` says.
+
 For example, with `ECS_TOKEN` already set, use `curl` to list libraries and find Atari Jaguar cartridges. Replace `LIBRARY_ID` and `SOURCE_ID` with values from the responses.
 
 ```sh

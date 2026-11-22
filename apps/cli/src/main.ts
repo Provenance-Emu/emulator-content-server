@@ -265,6 +265,8 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       tlsTerminated: listen.tlsTerminated,
     });
     await server.app.listen({ host: listen.host, port: listen.port });
+    // Only the process that owns the listener writes the key the desktop app reads.
+    await server.offerLocalOwnerSignIn();
   } catch (error) {
     await server.close();
     await logging?.close();

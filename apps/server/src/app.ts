@@ -24,6 +24,7 @@ import { registerFolderWatchRoutes } from './folder-watch-routes.js';
 import { FolderWatcher } from './folder-watcher.js';
 import { sendProblem } from './http.js';
 import { admitLocal, peerAddress, trayOrigin } from './local-access.js';
+import { writeLocalOwnerKey } from './local-owner-key.js';
 import { loadPlayerAssets, registerPlayerAssets } from './player-assets.js';
 import { loadPlayerCatalogSnapshot } from './player-catalog-file.js';
 import { registerPlayerIsolation } from './player-isolation.js';
@@ -76,6 +77,13 @@ export async function openServer(options: OpenServerOptions): Promise<{
   app: FastifyInstance;
   catalog: CatalogDatabase;
   close: () => Promise<void>;
+  /**
+   * Writes `local-owner.key` in the data folder so the desktop app on this computer can sign in
+   * as the owner without a password. Call it once the listener is bound, so a second process
+   * that fails to start never replaces a running server's key. False when it is not offered:
+   * a server without local trust, Windows, or a folder that cannot take the file.
+   */
+  offerLocalOwnerSignIn: () => Promise<boolean>;
   /** Purges what is past its date and collects unreferenced bytes. Also runs hourly. */
   runRetention: (now?: Date) => Promise<RetentionResult>;
 }> {
@@ -126,6 +134,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     limiter: new RateLimiter(options.loginLimit ?? 10, 60_000),
     uiDir: options.uiDir ?? null,
     localTrust: options.localTrust !== false,
+    localOwnerKey: null,
   };
   context.playerManager = new PlayerManager(context, profiles.items, selectedCatalog?.entries);
   try {
@@ -164,7 +173,13 @@ export async function openServer(options: OpenServerOptions): Promise<{
   return {
     app,
     catalog,
+    offerLocalOwnerSignIn: async () => {
+      if (!context.localTrust || context.localOwnerKey) return !!context.localOwnerKey;
+      context.localOwnerKey = await writeLocalOwnerKey(dataDir);
+      return context.localOwnerKey !== null;
+    },
     close: async () => {
+      await context.localOwnerKey?.remove();
       await app.close();
     },
     runRetention: (now) => app.runRetention(now),

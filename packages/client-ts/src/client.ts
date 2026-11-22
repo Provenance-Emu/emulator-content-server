@@ -920,6 +920,17 @@ export class ContentClient {
     return session;
   }
 
+  /**
+   * Exchanges the key from `local-owner.key` in the server's data folder for an owner session.
+   * Only works from the computer that runs the server, and only while
+   * `features.localOwnerSignIn` is true. The key goes in the body, never in a URL or a log.
+   */
+  async localSignIn(key: string): Promise<SessionResponse> {
+    const session = await this.post<SessionResponse>('/api/v1/auth/local', { key });
+    this.setToken(session.token);
+    return session;
+  }
+
   /** Who may use the server without a token, including whether this connection may. */
   access(): Promise<AccessPolicy> {
     return this.getJson('/api/v1/access');

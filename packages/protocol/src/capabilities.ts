@@ -21,6 +21,8 @@ export interface Capabilities {
     gameCompanions?: boolean;
     gameCopySelection?: boolean;
     sourceDetailsWrite?: boolean;
+    /** The server wrote a local owner key this run, so `localSignIn` works from this computer. */
+    localOwnerSignIn?: boolean;
   };
   limits: {
     maxUploadBytes: number;
@@ -37,6 +39,8 @@ export function buildCapabilities(input: {
   bootstrapped?: boolean;
   /** True when this process will admit the local network without a token. */
   lanOpen?: boolean;
+  /** True when this run wrote a local owner key. */
+  localOwnerSignIn?: boolean;
   webdavEnabled?: boolean;
   webPlayback?: boolean;
   /** Days a deleted game or file stays restorable. Omit when the server keeps no trash. */
@@ -59,6 +63,7 @@ export function buildCapabilities(input: {
       gameCompanions: true,
       gameCopySelection: true,
       sourceDetailsWrite: true,
+      localOwnerSignIn: input.localOwnerSignIn === true,
     },
     limits: {
       maxUploadBytes: input.maxUploadBytes,

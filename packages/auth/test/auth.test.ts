@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { UserActor } from '@ecs/domain';
 import { authorize } from '../src/acl.js';
 import { assertListenPolicy } from '../src/listen-policy.js';
-import { canonicalCidr, trustedLevel } from '../src/network.js';
+import { canonicalCidr, isLoopbackAddress, trustedLevel } from '../src/network.js';
 import { hashPassword, verifyPassword } from '../src/passwords.js';
 import { RateLimiter } from '../src/rate-limit.js';
 import { redactSecrets } from '../src/redact.js';
@@ -175,4 +175,22 @@ test('local trust covers private ranges and refuses the whole internet', () => {
     }),
     true,
   );
+});
+
+test('only loopback addresses count as this computer', () => {
+  for (const address of ['127.0.0.1', '127.9.9.9', '::1', '[::1]', '::ffff:127.0.0.1'])
+    assert.equal(isLoopbackAddress(address), true, address);
+  for (const address of [
+    '10.0.0.1',
+    '192.168.1.20',
+    '8.8.8.8',
+    '::ffff:10.0.0.4',
+    'fe80::1',
+    '0.0.0.0',
+    '::',
+    'localhost',
+    '127.0.0.1.evil.test',
+    '',
+  ])
+    assert.equal(isLoopbackAddress(address), false, address);
 });

@@ -26,6 +26,8 @@ export interface ServerContext {
    * facing the public internet, where the socket address is the proxy.
    */
   localTrust: boolean;
+  /** This run's local owner key, or null when local owner sign-in is not offered. */
+  localOwnerKey?: import('./local-owner-key.js').LocalOwnerKey | null;
   /** Created on first use. See `blobGate` in `trash.ts`. */
   blobGate?: import('./trash.js').BlobGate;
 }

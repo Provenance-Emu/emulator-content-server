@@ -41,6 +41,12 @@ export function canonicalCidr(input: string): string | null {
   return formatCidr(parsed);
 }
 
+/** True for 127.0.0.0/8 and ::1, including an IPv4 loopback address mapped into IPv6. */
+export function isLoopbackAddress(ip: string): boolean {
+  const address = parseAddress(ip);
+  return address !== null && isLoopback(address);
+}
+
 function isLoopback(address: Address): boolean {
   const v4 = v4of(address);
   if (v4 !== null) return v4 >>> 24 === 127;

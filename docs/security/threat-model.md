@@ -32,6 +32,12 @@ authentication on those networks.
 - Forwarded address headers are ignored for local access and peer rate limiting.
   A loopback reverse proxy must use `--public --tls-terminated` or remote requests
   can inherit tokenless loopback owner access.
+- `local-owner.key` in the data directory lets the desktop app on the server's computer
+  obtain an owner session without a password. Reading it requires the same file access
+  that already allows rewriting the catalog, so it grants nothing new to that person. It
+  is refused from any non-loopback peer, is never written for `--public`, is replaced at
+  every start, and never appears in a log, an audit row, or a URL. A remote request that
+  inherits loopback through a misconfigured proxy still cannot produce the key.
 - WebDAV is disabled by default and requires bearer or Digest authentication when
   enabled. It never inherits tokenless LAN access. See [WebDAV](../webdav.md).
 - The web UI shares the API's origin and carries a strict content security policy.

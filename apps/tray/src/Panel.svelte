@@ -3,7 +3,15 @@
   import type { Readable } from 'svelte/store';
   import type { DesktopSelection } from './lib/application';
   import Access from './Access.svelte';
-  import { canStart, canStop, type ServiceControl, serviceSummary } from './lib/service';
+  import {
+    canRepair,
+    canRestart,
+    canStart,
+    canStop,
+    isBootService,
+    type ServiceControl,
+    serviceSummary,
+  } from './lib/service';
   import { DEFAULT_ORIGIN, type ServerWatch } from './lib/watch.svelte';
 
   let {
@@ -87,8 +95,21 @@
     <p class="service-summary" aria-live="polite">
       <span class="dot" class:up={canStop($service)} class:down={!!$service.failure}></span>{serviceSummary($service)}
     </p>
-    {#if $service.state === 'boot-running' || $service.state === 'boot-stopped'}
-      <p class="dim">Use launchctl as an administrator to start or stop the boot service.</p>
+    {#if isBootService($service)}
+      <p class="dim">
+        This server starts with the computer. Starting, stopping or restarting it asks for an
+        administrator password.
+      </p>
+    {:else if $service.state === 'broken'}
+      <p>
+        The server build this service starts is no longer installed. Repair registers the service
+        again with an installed build and keeps your library and settings.
+      </p>
+    {:else if $service.state === 'failing'}
+      <p>
+        The server starts and then stops. Restart tries again now; Repair registers the service
+        again with an installed build.
+      </p>
     {/if}
     {#if $service.native}
       {#if $service.state === 'absent'}
@@ -96,9 +117,18 @@
         <button type="button" onclick={canOpen}>Open server setup</button>
       {/if}
       <div class="service-actions">
-        <button type="button" disabled={!canStart($service)} onclick={() => void service.start()}>
-          Start service
-        </button>
+        {#if $service.state === 'broken'}
+          <button type="button" class="primary" disabled={!canRepair($service)} onclick={() => void service.repair()}>
+            Repair service
+          </button>
+        {:else}
+          <button type="button" disabled={!canStart($service)} onclick={() => void service.start()}>
+            Start service
+          </button>
+          <button type="button" disabled={!canRestart($service)} onclick={() => void service.restart()}>
+            Restart service
+          </button>
+        {/if}
         <button type="button" disabled={!canStop($service)} onclick={() => void service.stop()}>
           Stop service
         </button>
@@ -108,6 +138,16 @@
       </div>
       {#if $service.failure}
         <p class="problem" role="alert">{$service.failure}</p>
+      {/if}
+      {#if $service.state !== 'broken' && canRepair($service)}
+        <details class="service-repair">
+          <summary>Something not working?</summary>
+          <p class="dim">
+            Repair registers the login service again with an installed server build. Your library,
+            saves and settings stay where they are. The server restarts.
+          </p>
+          <button type="button" onclick={() => void service.repair()}>Repair service</button>
+        </details>
       {/if}
     {/if}
   </section>
@@ -145,4 +185,6 @@
     flex-wrap: wrap;
     gap: var(--space-2);
   }
+  .service-repair { margin-top: var(--space-3); }
+  .service-repair summary { cursor: pointer; font-size: var(--text-small); color: var(--color-text-muted); }
 </style>

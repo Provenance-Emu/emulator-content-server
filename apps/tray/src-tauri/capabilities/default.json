@@ -25,6 +25,9 @@
     "allow-service-status",
     "allow-service-start",
     "allow-service-stop",
+    "allow-service-restart",
+    "allow-service-repair",
+    "allow-local-owner-session",
     "allow-install-cli-tools"
   ]
 }

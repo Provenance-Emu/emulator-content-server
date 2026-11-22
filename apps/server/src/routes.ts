@@ -2,7 +2,14 @@ import { readFileSync } from 'node:fs';
 import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { canonicalCidr, hashPassword, hashToken, issueToken, verifyPassword } from '@ecs/auth';
+import {
+  canonicalCidr,
+  hashPassword,
+  hashToken,
+  isLoopbackAddress,
+  issueToken,
+  verifyPassword,
+} from '@ecs/auth';
 import type { CatalogDatabase, UploadRecord } from '@ecs/database';
 import { type Actor, DomainError, type SourceAvailability } from '@ecs/domain';
 import {
@@ -85,7 +92,7 @@ import {
   registerLibraryJobs,
   rootScanInProgress,
 } from './library-jobs.js';
-import { accessView } from './local-access.js';
+import { accessView, peerAddress } from './local-access.js';
 import { reserveContentRoots } from './root-mutations.js';
 import { registerSourceGroups } from './source-groups.js';
 import { registerSourceMatching } from './source-matching.js';
@@ -299,6 +306,7 @@ export function registerRoutes(
       virtualFormats: context.virtual.formats(),
       bootstrapped: catalog.server().bootstrapped,
       lanOpen: context.localTrust && policy.mode !== 'token',
+      localOwnerSignIn: context.localTrust && !!context.localOwnerKey,
       webdavEnabled: context.webdavEnabled,
       webPlayback: Boolean(context.player || context.playerProfiles.size),
       trashRetentionDays: TRASH_RETENTION_DAYS,
@@ -369,6 +377,40 @@ export function registerRoutes(
       token: session.token,
       tokenType: 'Bearer',
       userId: user.id,
+      expiresAt: created.expiresAt,
+    });
+  });
+
+  // The key proves the caller can read this server's data folder; loopback keeps it on this computer.
+  app.post('/api/v1/auth/local', async (request, reply) => {
+    reply.header('cache-control', 'no-store');
+    const key = context.localTrust ? (context.localOwnerKey ?? null) : null;
+    if (!key)
+      throw new DomainError(
+        'local-sign-in-unavailable',
+        409,
+        'Local owner sign-in is not available on this server',
+      );
+    if (!isLoopbackAddress(peerAddress(request)))
+      throw new DomainError(
+        'forbidden',
+        403,
+        'Local owner sign-in only works on the computer that runs the server',
+      );
+    limit(context, request, 'local');
+    const candidate = requiredString(jsonObject(request.body), 'key');
+    const owner = catalog.ownerUserId();
+    if (!owner) throw new DomainError('not-bootstrapped', 409, 'Create the owner account first');
+    if (!key.matches(candidate)) {
+      catalog.recordLocalSignInFailure();
+      throw new DomainError('unauthorized', 401, "That is not this server's current local key");
+    }
+    const session = issueToken();
+    const created = catalog.createLocalSession(owner, session.hash);
+    return reply.send({
+      token: session.token,
+      tokenType: 'Bearer',
+      userId: owner,
       expiresAt: created.expiresAt,
     });
   });

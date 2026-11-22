@@ -17,6 +17,8 @@ export interface AccessState {
   grants: GuestGrant[];
   libraries: Library[];
   session: StoredSession | null;
+  /** The server offers sign-in from its own computer, and someone signed out of it here. */
+  localSignInPaused: boolean;
   failure: string | null;
   issuedGrant: string | null;
   working: boolean;
@@ -28,10 +30,19 @@ const empty = (): AccessState => ({
   grants: [],
   libraries: [],
   session: null,
+  localSignInPaused: false,
   failure: null,
   issuedGrant: null,
   working: false,
 });
+
+/**
+ * Asks the desktop shell for an owner session on this computer's own server. The shell answers
+ * only for the server it has verified at `origin`, and `null` when there is nothing to offer.
+ */
+export type LocalSignIn = (origin: string) => Promise<StoredSession | null>;
+/** A refused or failed local sign-in is not retried on every ten-second poll. */
+const LOCAL_SIGN_IN_PAUSE_MS = 30_000;
 
 /** Status controls own a fixed context. Replacement disposes their subscription and pending responses. */
 export class AccessDesk {
@@ -41,7 +52,14 @@ export class AccessDesk {
   private epoch = 0;
   private disposed = false;
   private unsubscribe?: () => void;
-  constructor(private readonly context: ServerContext) {
+  private localTriedAt = Number.NEGATIVE_INFINITY;
+  /** Signing out here is a decision; it is not undone ten seconds later. */
+  private localPaused = false;
+  constructor(
+    private readonly context: ServerContext,
+    private readonly localSignIn?: LocalSignIn,
+    private readonly now: () => number = Date.now,
+  ) {
     this.key = context.key;
     this.restore();
     this.unsubscribe = context.sessions.subscribe?.(() => {
@@ -86,6 +104,16 @@ export class AccessDesk {
       const capabilities = await client.capabilities();
       if (!this.live(run)) return;
       this.patch({ policy, bootstrapped: capabilities.bootstrapped ?? null, failure: null });
+      if (
+        capabilities.bootstrapped === true &&
+        capabilities.features.localOwnerSignIn === true &&
+        !get(this.state).session &&
+        this.localSignIn
+      ) {
+        if (this.localPaused) this.patch({ localSignInPaused: true });
+        else await this.signInLocally(run);
+        if (!this.live(run)) return;
+      }
       if (capabilities.bootstrapped !== true || (!policy.manages && !get(this.state).session))
         return;
       try {
@@ -99,6 +127,24 @@ export class AccessDesk {
     } catch (error) {
       if (this.live(run)) this.patch({ failure: explain(error) });
     }
+  }
+  /** The person at the server's own computer is its owner; they are not asked to prove it again. */
+  private async signInLocally(run: number) {
+    if (!this.localSignIn || this.now() - this.localTriedAt < LOCAL_SIGN_IN_PAUSE_MS) return;
+    this.localPaused = false;
+    this.localTriedAt = this.now();
+    const session = await this.localSignIn(this.context.origin).catch(() => null);
+    if (!session || !this.live(run)) return;
+    this.context.client.setToken(session.token);
+    this.remember(session, run);
+  }
+  /** Signs back in after a sign-out on this computer. */
+  async signInHere(): Promise<void> {
+    if (!this.live()) return;
+    this.localPaused = false;
+    this.localTriedAt = Number.NEGATIVE_INFINITY;
+    this.patch({ localSignInPaused: false });
+    await this.refresh();
   }
   bootstrap(token: string, username: string, password: string) {
     return this.attempt(async (client, run) =>
@@ -114,6 +160,7 @@ export class AccessDesk {
     if (!this.live()) return;
     const token = get(this.state).session?.token;
     const revoke = new ContentClient(this.context.origin, token).logout().catch(() => undefined);
+    this.localPaused = true;
     this.forget();
     const run = this.epoch;
     await revoke;

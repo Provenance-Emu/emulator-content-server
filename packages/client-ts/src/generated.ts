@@ -104,6 +104,7 @@ export interface FeatureFlags {
   gameCompanions?: boolean;
   gameCopySelection?: boolean;
   sourceDetailsWrite?: boolean;
+  localOwnerSignIn?: boolean;
 }
 
 export interface PlayerCoreResource {
@@ -651,6 +652,10 @@ export interface BootstrapRequest {
   token: string;
   username: string;
   password: string;
+}
+
+export interface LocalSignInRequest {
+  key: string;
 }
 
 export interface LoginRequest {

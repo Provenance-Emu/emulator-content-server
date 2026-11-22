@@ -4,7 +4,7 @@ Download the **Desktop app** installer for your platform from the GitHub release
 
 ## macOS
 
-Open the DMG and drag **Emulation Server.app** onto **Applications**. Open it from Applications; its icon appears in the menu bar. Click it for **Open library**, **Server status and settings**, or **Quit**. The full status menu loads when the status interface initializes. The native menu remains available if the interface cannot initialize or the server is offline. Reopening the app from Finder/Dock reveals the library when no windows are visible.
+Open the DMG and drag **Emulation Server.app** onto **Applications**. Open it from Applications; its icon appears in the menu bar. Click it for **Open library**, **Server status and settings**, **Start or restart local service**, **Repair local service…**, or **Quit**. The full status menu loads when the status interface initializes. The native menu remains available if the interface cannot initialize or the server is offline. Reopening the app from Finder/Dock reveals the library when no windows are visible.
 
 The macOS installer targets Apple Silicon and is Developer ID signed and Apple notarized. The current DMG carries a stapled notarization ticket, so Gatekeeper can validate it offline. Intel/universal builds are not a current priority. The bundle identifier, service registration, profiles and stored sessions retain their existing identifiers through the rename from Content Server Status.
 
@@ -12,7 +12,9 @@ The 0.1.2 update includes the new Home, guided Add games, mobile filters and pro
 
 On first open, the app checks for a verified local service. Choose **Set up this Mac** to download the nightly server, install its login service, and open the owner form with the setup code filled in. If you reopened the app before creating the owner account, choose **Find setup code in Finder** on the owner form. Open the selected `bootstrap.token` file and paste its contents into the form. For a default installation, the file is under `~/Library/Application Support/Emulation Server/data`.
 
-To use a server on another computer, enter its URL and select **Connect**. Use **Status and settings → Servers** to switch between saved servers. The local service controls apply to this Mac.
+On the Mac that runs the server, the app signs in as the owner by itself once the owner account exists. It reads a key the server keeps in its data folder for your macOS account only, so there is no password to type and server updates, plugins and players can be managed straight away. **Sign out** in **Status and settings** stays signed out until you choose **Sign in on this Mac** or reopen the app. Other computers and devices sign in as before.
+
+To use a server on another computer, enter its URL and select **Connect**. Use **Status and settings → Servers** to switch between saved servers. The local service controls apply to this Mac: start, restart, stop and repair, described in [Service](service.md#controlling-it-from-the-menu-bar).
 
 Choose **Install CLI Tools** from the menu bar to use `ecs` and `ecs-plugins`
 in Terminal. It installs per-user commands in `~/.local/bin` and adds that

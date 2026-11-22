@@ -489,6 +489,34 @@ paths:
               schema: { $ref: '#/components/schemas/SessionResponse' }
         '401': { description: Username or password is incorrect. }
         '429': { description: Too many attempts. }
+  /api/v1/auth/local:
+    post:
+      operationId: localSignIn
+      tags: [Authentication]
+      summary: Sign in as the owner from the computer that runs the server.
+      description: >-
+        Exchanges the key the server wrote to `local-owner.key` in its data folder for an ordinary
+        owner session. Only a loopback connection is accepted, and only while
+        `features.localOwnerSignIn` is true. The key proves the caller can read the server's own
+        files; it is replaced every time the server starts. Send it in the body, never in a URL.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"key": "REPLACE_WITH_LOCAL_OWNER_KEY"}
+            schema: { $ref: '#/components/schemas/LocalSignInRequest' }
+      responses:
+        '200':
+          description: Owner session created.
+          content:
+            application/json:
+              example: {"token": "REPLACE_WITH_RETURNED_SESSION_TOKEN", "tokenType": "Bearer", "userId": "user-demo", "expiresAt": "2026-11-10T20:00:00Z"}
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        '401': { description: The key is not this server's current key. }
+        '403': { description: The connection is not from this computer. }
+        '409': { description: Local owner sign-in is unavailable, or no owner account exists yet. }
+        '429': { description: Too many attempts. }
   /api/v1/auth/logout:
     post:
       operationId: logout
@@ -2819,6 +2847,7 @@ components:
         gameCompanions: { type: boolean, description: Supports companion discovery and authorized downloads. Inspect supportedKinds on each game. }
         gameCopySelection: { type: boolean, description: Supports game copy links and per-system ROM format negotiation. }
         sourceDetailsWrite: { type: boolean, description: Supports saving a game's title and details and cover from a device with saveSourceDetails and saveSourceCover. }
+        localOwnerSignIn: { type: boolean, description: The server wrote a local owner key this run, so localSignIn works from this computer. }
     PlayerCoreResource:
       type: object
       required: [url, sha256, sizeBytes]
@@ -3530,6 +3559,11 @@ components:
         token: { type: string }
         username: { type: string }
         password: { type: string }
+    LocalSignInRequest:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string, minLength: 43, maxLength: 43 }
     LoginRequest:
       type: object
       required: [username, password]

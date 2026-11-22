@@ -3,6 +3,7 @@ import { type Capabilities, ContentClient } from '@ecs/client';
 import type { ServerContext } from '../../../web/src/lib/application';
 import { AccessDesk } from './access.svelte';
 import type { DesktopSelection } from './application';
+import { localOwnerSignIn } from './local-owner';
 
 /** A suggested manual address only. Never evidence that this is the managed service endpoint. */
 export const DEFAULT_ORIGIN = 'http://127.0.0.1:8473';
@@ -22,7 +23,7 @@ export class ServerWatch {
       this.unsubscribeDesk?.();
       this.desk?.dispose();
       this.context = context;
-      this.desk = context ? new AccessDesk(context) : null;
+      this.desk = context ? new AccessDesk(context, localOwnerSignIn) : null;
       this.reachable = null;
       this.capabilities = null;
       this.checkedAt = null;

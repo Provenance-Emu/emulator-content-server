@@ -7,6 +7,7 @@ mod companion_apps;
 mod desktop_update;
 mod downloads;
 mod local_endpoint;
+mod local_owner;
 mod navigation;
 mod service;
 mod setup;
@@ -85,6 +86,40 @@ async fn reveal_local_setup_code(
     })
     .await
     .map_err(|_| "The setup code file could not be located.".to_string())?
+}
+/// Signs the bundled windows in to this computer's own server. `null` means it offers no
+/// local sign-in, and the ordinary sign-in form is what to show.
+#[tauri::command]
+async fn local_owner_session(
+    window: tauri::WebviewWindow,
+    origin: String,
+) -> Result<Option<serde_json::Value>, String> {
+    let trusted = |window: &tauri::WebviewWindow| {
+        window.url().is_ok_and(|url| {
+            navigation::trusted_library(window.label(), &url)
+                || navigation::trusted_status(window.label(), &url)
+        })
+    };
+    if !trusted(&window) {
+        return Err("Local sign-in requires a bundled window.".into());
+    }
+    let prepared = tauri::async_runtime::spawn_blocking(local_owner::prepare)
+        .await
+        .map_err(|_| "Local service verification is unavailable.".to_string())??;
+    let Some((server, key)) = prepared else {
+        return Ok(None);
+    };
+    // The page says which server it is showing only so nothing is minted for another one.
+    // It is compared here and never used as a destination.
+    if server.origin() != origin {
+        return Ok(None);
+    }
+    let session = local_owner::exchange(&server.origin(), key).await?;
+    // The window may have navigated while the server answered.
+    if !trusted(&window) {
+        return Err("Local sign-in requires a bundled window.".into());
+    }
+    Ok(session)
 }
 #[tauri::command]
 async fn validate_managed_selection(
@@ -182,6 +217,24 @@ async fn service_stop(window: tauri::WebviewWindow) -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn service_restart(window: tauri::WebviewWindow) -> Result<String, String> {
+    require_status_window(&window)?;
+    service_command(service::Action::Restart).await
+}
+
+#[tauri::command]
+async fn service_repair(window: tauri::WebviewWindow) -> Result<String, String> {
+    require_status_window(&window)?;
+    let home = window
+        .path()
+        .home_dir()
+        .map_err(|_| "Your home folder is unavailable.")?;
+    tauri::async_runtime::spawn_blocking(move || service::repair(&home))
+        .await
+        .map_err(|_| "The local service repair could not finish.".to_string())?
+}
+
+#[tauri::command]
 async fn install_cli_tools(window: tauri::WebviewWindow) -> Result<bool, String> {
     require_status_window(&window)?;
     let home = window
@@ -224,11 +277,29 @@ fn install_startup_menu(app: &tauri::App) -> tauri::Result<()> {
         setup::available(),
         None::<&str>,
     )?;
+    // These two work with no interface at all, which is when they are needed most.
+    let restart = MenuItem::with_id(
+        app,
+        "startup-service-restart",
+        "Start or restart local service",
+        true,
+        None::<&str>,
+    )?;
+    let repair = MenuItem::with_id(
+        app,
+        "startup-service-repair",
+        "Repair local service…",
+        cfg!(target_os = "macos"),
+        None::<&str>,
+    )?;
     let menu = Menu::with_items(
         app,
         &[
             &library,
             &status,
+            &PredefinedMenuItem::separator(app)?,
+            &restart,
+            &repair,
             &cli,
             &PredefinedMenuItem::separator(app)?,
             &quit,
@@ -243,8 +314,49 @@ fn startup_menu_action(app: &tauri::AppHandle, id: &str) {
         let id = id.to_owned();
         tauri::async_runtime::spawn_blocking(move || {
             if let Some(Err(error)) = companion_apps::menu_action(&handle, &id) {
-                handle.dialog().message(error).title("Companion apps").show(|_| {});
+                handle
+                    .dialog()
+                    .message(error)
+                    .title("Companion apps")
+                    .show(|_| {});
             }
+        });
+        return;
+    }
+    if id == "startup-service-restart" || id == "startup-service-repair" {
+        let handle = app.clone();
+        let repair = id == "startup-service-repair";
+        tauri::async_runtime::spawn(async move {
+            let home = handle.path().home_dir();
+            let result = tauri::async_runtime::spawn_blocking(move || {
+                if repair {
+                    service::repair(&home.map_err(|_| "Your home folder is unavailable.")?)
+                } else {
+                    service::execute(service::Action::Restart)
+                }
+            })
+            .await
+            .unwrap_or_else(|_| Err("The local service command could not finish.".into()));
+            let (message, kind) = match result.as_deref() {
+                Ok("running" | "starting" | "boot-running") => (
+                    "The local service is starting.".to_string(),
+                    tauri_plugin_dialog::MessageDialogKind::Info,
+                ),
+                Ok(_) => (
+                    "The local service is not running yet. Open Server status and settings for the reason.".to_string(),
+                    tauri_plugin_dialog::MessageDialogKind::Warning,
+                ),
+                Err(error) => (
+                    error.to_string(),
+                    tauri_plugin_dialog::MessageDialogKind::Error,
+                ),
+            };
+            handle
+                .dialog()
+                .message(message)
+                .title("Local service")
+                .kind(kind)
+                .show(|_| {});
         });
         return;
     }
@@ -354,6 +466,9 @@ fn main() {
             service_status,
             service_start,
             service_stop,
+            service_restart,
+            service_repair,
+            local_owner_session,
             install_cli_tools,
             managed_endpoint,
             install_local_server,
