@@ -11,7 +11,7 @@
   import { type BrowserCore, importBrowserRuntime, usesDreamcastVmu, validateProfile } from './runtime.js';
   import SaveControls from './SaveControls.svelte';
   import SaveRecovery from './SaveRecovery.svelte';
-  import Tabs from '../components/Tabs.svelte';
+  import Icon from '../components/Icon.svelte';
   import { systemLabel } from '../lib/content-format';
   import type { SaveKind } from './saves.js';
   import StateBrowser from './StateBrowser.svelte';
@@ -47,6 +47,25 @@
     { id: 'options', label: 'Core options' },
   ] as const;
   let selectedTool = $state<PlayerTool>('saves');
+  // The game has the window to itself; a tool is opened when it is wanted and put away after.
+  let toolsOpen = $state(false);
+  async function toggleTool(tool: PlayerTool) {
+    if (toolsOpen && selectedTool === tool) return closeTools();
+    await chooseTool(tool);
+    if (selectedTool !== tool) return;
+    toolsOpen = true;
+    await tick();
+    document.getElementById('player-tools-panel')?.focus({ preventScroll: true });
+  }
+  function closeTools() {
+    if (inputSession?.draft) {
+      toolNotice = 'Apply or cancel your layout edits before closing the tools.';
+      return;
+    }
+    toolsOpen = false;
+    toolNotice = '';
+    session?.runtime.focus?.();
+  }
   let toolNotice = $state('');
   let saveControls = $state<{ save: (kind: SaveKind) => void; capture: () => void }>();
   let core = $state<BrowserCore | null>(null);
@@ -106,6 +125,7 @@
   async function chooseTool(tool: PlayerTool) {
     if (inputSession?.draft && tool !== 'controls') {
       toolNotice = 'Apply or cancel your layout edits before changing tools.';
+      toolsOpen = true;
       document.getElementById('player-tool-controls')?.focus();
       return;
     }
@@ -120,11 +140,14 @@
   function quickSave() {
     if (gameViewBlocked) return;
     selectedTool = 'saves';
+    // What was saved, and anything that went wrong, is shown in the Saves tool.
+    toolsOpen = true;
     saveControls?.save('save_state');
   }
   function quickCapture() {
     if (gameViewBlocked || !captureReady) return;
     selectedTool = 'saves';
+    toolsOpen = true;
     saveControls?.capture();
   }
   async function fullscreen() {
@@ -270,7 +293,7 @@
   });
 </script>
 <svelte:head><title>{gameName} · Emulation Server</title></svelte:head>
-<a class="player-skip-link" href={gameView ? '#game-view-controls' : session ? '#player-tools-panel' : '#player-content'}>Skip to player controls</a>
+<a class="player-skip-link" href={gameView ? '#game-view-controls' : session ? '#player-toolbar' : '#player-content'}>Skip to player controls</a>
 <main id="player-content" tabindex="-1" class="browser-player" class:game-view={gameView}>
   <div class="player-chrome" hidden={gameView}>
     <header class="player-session-header">
@@ -335,7 +358,7 @@
     {#if attempted && !session && !working}<p><a href={window.location.href}>Reload player</a></p>{/if}
   </div>
 
-  <div class="player-workbench" class:running={!!session} class:starting={attempted}>
+  <div class="player-workbench" class:running={!!session} class:starting={attempted} class:tools-open={toolsOpen}>
     <div class="player-stage-column">
       <div class="player-stage" bind:this={stage}>
         <div class="player-game" bind:this={gameMount}><canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas></div>
@@ -352,14 +375,31 @@
         <button class="text-button" type="button" onclick={showAirPlay}>AirPlay / Screen Mirroring</button>
       </div>{/if}
       {#if session && gameViewBlocked}<p class="player-game-view-reason dim" id="game-view-reason" hidden={gameView}>{gameViewBlocked}</p>{/if}
+      {#if session && stage}
+        <div class="player-toolbar" id="player-toolbar" role="toolbar" aria-label="Player tools" tabindex="-1" hidden={gameView}>
+          {#each toolTabs as tool (tool.id)}
+            <button type="button" id={`player-tool-${tool.id}`} aria-controls="player-tools-panel"
+              aria-expanded={toolsOpen && selectedTool === tool.id} onclick={() => void toggleTool(tool.id)}>{tool.label}</button>
+          {/each}
+        </div>
+        <!-- Unsaved progress is never tucked away with the tools. -->
+        <div hidden={gameView}>
+          {#if session.saves}<SaveRecovery saves={session.saves} {refresh} disabled={playerBusy} onbusy={operationBusy} onchange={refreshSaves} />{/if}
+          {#if toolNotice}<p class="player-tool-notice" role="status">{toolNotice}</p>{/if}
+        </div>
+      {/if}
     </div>
 
     {#if session && stage}
-      <aside class="player-inspector" hidden={gameView} aria-label="Player workspace">
-        {#if session.saves}<SaveRecovery saves={session.saves} {refresh} disabled={playerBusy} onbusy={operationBusy} onchange={refreshSaves} />{/if}
-        {#if toolNotice}<p class="player-tool-notice" role="status">{toolNotice}</p>{/if}
-        <Tabs tabs={toolTabs} selected={selectedTool} onchange={tool => void chooseTool(tool)} label="Player tools" idPrefix="player-tool" panelId="player-tools-panel" />
-        <div class="player-tool-panel" id="player-tools-panel" role="tabpanel" tabindex="-1" aria-labelledby={`player-tool-${selectedTool}`}>
+      <!-- Kept mounted while closed: saves in flight and option choices live in these components. -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions (Escape puts the panel away from anywhere inside it) -->
+      <aside class="player-inspector" hidden={gameView || !toolsOpen} aria-label="Player workspace"
+        onkeydown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); closeTools(); } }}>
+        <div class="player-inspector-head">
+          <h2 id="player-tools-title">{toolTabs.find(tool => tool.id === selectedTool)?.label}</h2>
+          <button type="button" class="icon-only" aria-label="Hide tools" title="Hide" onclick={closeTools}><Icon name="close" /></button>
+        </div>
+        <div class="player-tool-panel" id="player-tools-panel" role="group" tabindex="-1" aria-labelledby="player-tools-title">
           <div hidden={selectedTool !== 'saves'}>
             <SaveControls bind:this={saveControls} saves={session.saves} runtime={session.runtime} hasState={!!session.prepared.state} coreName={session.prepared.core.name}
               supportsSaves={session.prepared.core.saveCompletion !== 'none'} dreamcastVmu={usesDreamcastVmu(session.prepared.core)} {captureReady} {refresh} showQuickActions={false} disabled={playerBusy} onchange={refreshSaves} onbusy={operationBusy} />
@@ -374,7 +414,7 @@
           </div>
           <div hidden={selectedTool !== 'options' && selectedTool !== 'video'}>
             {#if preferenceStore}<SettingsControls runtime={session.runtime} commands={session.commands} store={preferenceStore} initial={preferences}
-              view={selectedTool === 'video' ? 'video' : 'options'} active={selectedTool === 'options' && !gameView}
+              view={selectedTool === 'video' ? 'video' : 'options'} active={toolsOpen && selectedTool === 'options' && !gameView}
               disabled={playerBusy || pendingSave} onbusy={operationBusy} onready={() => settingsReady = true} />{/if}
           </div>
         </div>

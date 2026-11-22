@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Item, ManifestFile, SourceFile, SystemSummary } from '@ecs/client';
+  import Icon from './components/Icon.svelte';
+  import { bytes } from './lib/format';
   import { onDestroy } from 'svelte';
   import type { ServerContext } from './lib/application';
   import type { DetailController } from './lib/detail';
@@ -199,7 +201,7 @@
           type="button"
           onclick={() => {uploadTarget=$controller.item;upload=true;}}
         >
-          Add a file
+          <Icon name="plus" /> Add a file
         </button>{/if}
       {#if $controller.canUpload && $controller.item && !$controller.asset}<button
           type="button"
@@ -209,20 +211,24 @@
             if (item) void trash({ kind: 'item', id: item.id, name: item.title });
           }}
         >
-          Move to trash
+          <Icon name="trash" /> Move to trash
         </button>{/if}
       <button
         type="button"
+        class="icon-only"
+        aria-label="Refresh details"
+        title="Refresh details"
         disabled={saving || refreshing || $controller.loading || !!$controller.reading || $controller.adopting}
         onclick={onrefresh}
       >
-        Refresh details
+        <Icon name="refresh" />
       </button>
     </div>
   </header>
   {#if $controller.item}<Files
       detailState={$controller}
       externalBusy={saving || groupDownloading || trashing}
+      launch={!$controller.asset}
       {playerCore}
       {onemulators}
       ontrash={$controller.canUpload
@@ -248,15 +254,16 @@
           {$controller.adopting ? 'Choosing…' : 'Use this copy'}
         </button>
       </section>{/if}
-    {#key `${context.key}:${$controller.item.id}`}
+    <!-- A save, picture or system file opened on its own is not where a game's copies are managed. -->
+    {#if !$controller.asset}{#key `${context.key}:${$controller.item.id}`}
       <GameCopies client={context.client} item={$controller.item} source={null}
         cores={playerCore} {owner} onchanged={() => { onchanged(); onrefresh(); }} onplay={(href) => context.openPlayer(href)} />
-    {/key}
+    {/key}{/if}
   {/if}
 {/if}
 {#if $controller.reading}<p role="status">
-    Downloading {$controller.reading.received} bytes{#if $controller.reading.total !== null}
-      of {$controller.reading.total}{/if}
+    Downloading {bytes($controller.reading.received)}{#if $controller.reading.total !== null}
+      of {bytes($controller.reading.total)}{/if}
   </p>{/if}
 {#if upload && uploadTarget}<Modal
     title="Add a file"

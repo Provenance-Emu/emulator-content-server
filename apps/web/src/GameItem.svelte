@@ -238,7 +238,7 @@
             aria-label={`View ${fileName(file)}`}
             onclick={() => (viewing = file.id)}
           >
-            {#if $gallery.urls[file.id]}<img src={$gallery.urls[file.id]} alt="" />
+            {#if $gallery.urls[file.id]}<img src={$gallery.urls[file.id]} alt="" decoding="async" />
             {:else if $gallery.pending[file.id]}<span class="dim">Loading…</span>
             {:else}<span class="dim">{fileName(file)}</span>{/if}
           </button>

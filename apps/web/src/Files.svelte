@@ -2,6 +2,7 @@
   import type { ManifestFile } from '@ecs/client';
   import type { DetailState } from './lib/detail';
   import { KIND_ORDER, kindLabel, saveGroups } from './lib/content-format';
+  import Icon from './components/Icon.svelte';
   import { bytes } from './lib/format';
   import { assetPlayHref, playUnavailableReason } from './player/links';
   let {
@@ -145,21 +146,24 @@
             disabled={busy}
             aria-label={`Play ${file.relativePath}`}
             onclick={() => onplay(play)}
-          >Play</button>{/if}
+          ><Icon name="play" /> Play</button>{/if}
+        {#if detailState.reading?.id === file.id}<span class="dim" role="status">Downloading…</span>{/if}
         <button
           type="button"
+          class="icon-only"
           aria-label={`Download ${file.relativePath}`}
+          title="Download"
           disabled={busy}
           onclick={() => ondownload(file)}
-        >
-          {detailState.reading?.id === file.id ? 'Downloading…' : 'Download'}
-        </button>
+        ><Icon name="download" /></button>
         {#if ontrash}<button
             type="button"
+            class="icon-only"
             aria-label={`Move ${file.relativePath} to trash`}
+            title="Move to trash"
             disabled={busy}
             onclick={() => ontrash(file)}
-          >Move to trash</button>{/if}
+          ><Icon name="trash" /></button>{/if}
       </div>
     </td>
   </tr>

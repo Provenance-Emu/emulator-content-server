@@ -101,6 +101,13 @@ inaccessible from outside the host. For a separate proxy host or container, use 
 private backend network and firewall rules that admit only that proxy; loopback
 belongs to each host/container and does not cross that boundary.
 
+The proxy is also where HTTP/2 and HTTP/3 come from. ECS speaks HTTP/1.1 and keeps
+connections open between requests; a proxy such as Caddy serves the same content to
+phones and browsers over HTTP/2 or HTTP/3 with no change here. Let it pass
+`Accept-Encoding` through and leave compression to ECS: listings and the interface
+arrive already compressed (Brotli or gzip), and game files must not be compressed
+again, because that would break resumed and ranged downloads.
+
 `--tls-terminated` records the operator's assertion that TLS is provided upstream;
 ECS itself still speaks HTTP. `--public` requires that flag and disables tokenless
 socket trust, including for `127.0.0.1`. Omitting `--public` behind a loopback proxy

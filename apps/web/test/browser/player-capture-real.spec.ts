@@ -103,9 +103,12 @@ test('real core preserves captures, saves and settings while keyboard, mouse, co
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     const capture = page.getByRole('button', { name: 'Capture screenshot', exact: true });
     await expect(capture).toBeEnabled({ timeout: 45000 });
-    const tools = page.getByRole('tablist', { name: 'Player tools', exact: true });
-    const selectTool = async (name: string) =>
-      tools.getByRole('tab', { name, exact: true }).click();
+    const tools = page.getByRole('toolbar', { name: 'Player tools', exact: true });
+    // Pressing an open tool's button puts it away, so only press it when it is closed.
+    const selectTool = async (name: string) => {
+      const button = tools.getByRole('button', { name, exact: true });
+      if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
+    };
     await selectTool('Controls');
     const input = page.getByRole('region', { name: 'Input mappings' });
     await expect(page.getByRole('region', { name: 'Skins', exact: true })).toBeVisible();

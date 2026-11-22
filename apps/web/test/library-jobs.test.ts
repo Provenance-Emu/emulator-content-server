@@ -189,3 +189,70 @@ test('showing more results adds a batch, and a refresh reads every batch shown a
   assert.equal(get(jobs).items.length, 20);
   jobs.dispose();
 });
+
+test('work that was just started is watched at once, not at the next idle check', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+  const idle = {
+    id: 'older',
+    kind: 'scan',
+    scope: { libraryId: 'library' },
+    options: {},
+    state: 'completed',
+    total: 1,
+    processed: 1,
+    saved: 0,
+    review: 0,
+    unmatched: 0,
+    failed: 0,
+    skipped: 0,
+    currentSourceId: null,
+    error: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: 'a',
+    interruptedCount: 0,
+  } as LibraryJob;
+  const started = {
+    ...idle,
+    id: 'started',
+    kind: 'match',
+    state: 'running',
+    createdAt: '2026-01-02T00:00:00Z',
+  } as LibraryJob;
+  let listed = 0;
+  let running = false;
+  const client = {
+    libraryJobs: async () => {
+      listed++;
+      return { jobs: running ? [started, idle] : [idle], nextCursor: null };
+    },
+    libraryJob: async () => ({ job: running ? started : idle }),
+    libraryJobItems: async () => ({ items: [], nextCursor: null }),
+    createLibraryJob: async () => {
+      running = true;
+      return { job: started, reused: false };
+    },
+    cancelLibraryJob: async () => ({ job: started }),
+    resumeLibraryJob: async () => ({ job: started }),
+    reviewLibraryJobItem: async () => ({ job: started }),
+  };
+  const jobs = createLibraryJobs(client, { libraryId: 'library' });
+  jobs.connect();
+  await settle();
+  assert.equal(listed, 1);
+  // Nothing is running, so the next look is a long way off.
+  t.mock.timers.tick(5000);
+  await settle();
+  assert.equal(listed, 1);
+
+  await jobs.start('match');
+  assert.equal(get(jobs).selectedId, 'started');
+  t.mock.timers.tick(1000);
+  await settle();
+  assert.equal(listed, 2);
+  // While it runs, progress is read every two seconds.
+  t.mock.timers.tick(2000);
+  await settle();
+  assert.equal(listed, 3);
+  jobs.dispose();
+});

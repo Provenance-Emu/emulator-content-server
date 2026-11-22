@@ -19,8 +19,10 @@ test('folder review preserves relative paths and the queue retains successful re
   await openAddContent(page, 'Upload folder');
   const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true });
   await dialog.getByLabel('Folder', { exact: true }).setInputFiles(folder);
+  // One line per file: its name, what uploading it does, and the folder it came with.
+  await expect(dialog.getByText('Folder game.nes', { exact: true })).toBeVisible();
   await expect(
-    dialog.getByText('Device collection/nested/Folder game.nes', { exact: false }),
+    dialog.getByText('New game · NES · in Device collection/nested', { exact: true }),
   ).toBeVisible();
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
@@ -74,10 +76,14 @@ test('large selections show fifty review entries and more as the list is scrolle
     .scrollIntoViewIfNeeded();
   await expect(dialog.getByText('Showing 100 of 10,000', { exact: true })).toBeVisible();
   await expect(
-    dialog.getByRole('textbox', { name: 'Title for game-0.nes', exact: true }),
+    dialog.getByRole('textbox', { name: 'Title for game-0.nes', exact: true, includeHidden: true }),
   ).toHaveCount(1);
   await expect(
-    dialog.getByRole('textbox', { name: 'Title for game-50.nes', exact: true }),
+    dialog.getByRole('textbox', {
+      name: 'Title for game-50.nes',
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveCount(1);
 });
 test('stop after current completes one file and leaves later entries waiting', async ({
@@ -162,18 +168,23 @@ test('library saves require an explicit managed target selected from a list that
   await dialog.getByLabel('File', { exact: true }).setInputFiles(generated('chosen.sav'));
   await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeDisabled();
   await dialog
-    .getByRole('button', { name: 'Choose target for associated files', exact: true })
+    .getByRole('button', { name: 'Choose the game for these files', exact: true })
     .click();
-  const picker = dialog.getByRole('region', { name: 'Choose managed item', exact: true });
-  const listed = picker.getByRole('button').filter({ hasText: '· ID ' });
+  const picker = dialog.getByRole('region', { name: 'Choose a game', exact: true });
+  const listed = picker.locator('.picker-row');
   await expect(listed.first()).toBeVisible();
-  await expect(picker.getByRole('button', { name: /^(Previous|Next) items$/ })).toHaveCount(0);
+  // People pick a game by its name and system, never by an identifier.
+  await expect(picker.getByText(/ID [0-9a-f]{8}-/)).toHaveCount(0);
+  await expect(picker.getByText('com.provenance', { exact: false })).toHaveCount(0);
   // The end of the list coming into view adds the next batch below.
   await picker.locator('.list-more').scrollIntoViewIfNeeded();
   await expect.poll(() => listed.count()).toBeGreaterThan(50);
-  const selected = listed.nth(50);
-  const label = await selected.textContent();
-  const id = label?.split('ID ')[1] ?? 'missing';
+  // Searching narrows it to the game someone is looking for.
+  await picker.getByRole('searchbox', { name: 'Search games', exact: true }).fill('Game 087');
+  await expect(listed).toHaveCount(1);
+  const selected = listed.first();
+  await expect(selected).toContainText('Game 087');
+  const id = (await selected.getAttribute('data-item-id')) ?? 'missing';
   await selected.click();
   await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();

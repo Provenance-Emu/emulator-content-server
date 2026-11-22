@@ -19,6 +19,7 @@ import { stopLibraryJobs } from './library-jobs.js';
 import { PlayerManager, registerPlayerManagement } from './player-manager.js';
 import { type PluginManagementBridge, registerPluginManagement } from './plugin-management.js';
 import './actor.js';
+import { registerJsonCompression } from './compression.js';
 import type { ServerContext } from './context.js';
 import { registerFolderWatchRoutes } from './folder-watch-routes.js';
 import { FolderWatcher } from './folder-watcher.js';
@@ -210,6 +211,7 @@ export async function buildApp(
     },
     bodyLimit: 1024 * 1024,
   });
+  registerJsonCompression(app);
   app.decorateRequest('actor', null);
   app.decorateRequest('investigator', null);
   app.decorateRequest('workflowPrincipal', null);

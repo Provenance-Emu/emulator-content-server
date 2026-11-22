@@ -77,6 +77,7 @@
           <span class="artwork">
             {#if urls[entryKey(entry)] && failed[entryKey(entry)] !== urls[entryKey(entry)]}<img
                 src={urls[entryKey(entry)]}
+                decoding="async"
                 alt=""
                 onerror={() => {
                   failed = {

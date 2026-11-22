@@ -292,19 +292,31 @@ test('a rejected inline option restores the accepted value beside its error', as
   expect((await page.evaluate(() => window.settingsView.preferences())).options.region).toBe('PAL');
 });
 
-test('choice loading stays bounded and search hydrates the matching row without player busy changes', async ({
+test('every core option is listed at once and its choices load without player busy changes', async ({
   page,
   fixture,
 }) => {
   const settings = await mountView(page, fixture, 130);
-  await expect(settings.getByRole('combobox', { name: 'option15', exact: true })).toBeEnabled();
-  expect(await page.evaluate(() => window.settingsView.choiceReads().length)).toBe(16);
+  // No paging: the last option is on the page from the start.
+  await expect(settings.getByRole('combobox', { name: 'option129', exact: true })).toHaveCount(1);
+  await expect(
+    settings.getByRole('button', { name: 'Show more options', exact: true }),
+  ).toHaveCount(0);
+  await expect(settings.getByText('130 options', { exact: true })).toBeVisible();
   const busy = await page.evaluate(() => window.settingsView.busyChanges());
+  // Searching narrows the list, and the match is ready to change.
   await settings
     .getByRole('searchbox', { name: 'Search core options', exact: true })
     .fill('option110');
-  const option = settings.getByRole('combobox', { name: 'option110', exact: true });
-  await expect(option).toBeEnabled();
-  expect(await page.evaluate(() => window.settingsView.choiceReads().length)).toBe(17);
+  await expect(settings.getByRole('combobox', { name: 'option110', exact: true })).toBeEnabled();
+  await settings.getByRole('searchbox', { name: 'Search core options', exact: true }).fill('');
+  // Choices are read once each, in the background, and never put the player into a busy state.
+  await expect(settings.getByRole('combobox', { name: 'option129', exact: true })).toBeEnabled({
+    timeout: 30_000,
+  });
+  // One read per option; a search that lands mid-read may repeat the one in flight.
+  const reads = await page.evaluate(() => window.settingsView.choiceReads());
+  expect(new Set(reads).size).toBe(130);
+  expect(reads.length).toBeLessThanOrEqual(132);
   expect(await page.evaluate(() => window.settingsView.busyChanges())).toEqual(busy);
 });

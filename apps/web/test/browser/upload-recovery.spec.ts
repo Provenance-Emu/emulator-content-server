@@ -113,13 +113,16 @@ test('a lost game-creation response requires checking the library rather than bl
   await expect(
     dialog.getByRole('button', { name: 'Retry unfinished uploads', exact: true }),
   ).toHaveCount(0);
-  await expect(dialog.getByText(/may have created this game/)).toBeVisible();
+  await expect(dialog.getByText(/server may already have it/)).toBeVisible();
   expect(creations).toBe(1);
-  await dialog.getByRole('button', { name: 'Reconcile Uncertain game.nes', exact: true }).click();
+  await dialog
+    .getByRole('button', { name: 'Choose game for Uncertain game.nes', exact: true })
+    .click();
   const result = await fixture.client.items({ libraryId: fixture.empty.id });
   const created = result.items[0];
   expect(created).toBeTruthy();
-  await dialog.getByRole('button', { name: new RegExp(`ID ${created?.id}$`) }).click();
+  // The game the server made has no files yet; it is still listed, by name.
+  await dialog.locator(`.picker-row[data-item-id="${created?.id}"]`).click();
   await dialog.getByRole('button', { name: 'Retry unfinished uploads', exact: true }).click();
   await expect(dialog.getByText('1 succeeded · 0 unfinished')).toBeVisible();
   expect(creations).toBe(1);

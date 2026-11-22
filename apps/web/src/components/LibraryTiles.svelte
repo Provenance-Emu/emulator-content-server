@@ -43,7 +43,7 @@
       <span class="library-choice-plate">
         <span class="library-choice-covers" class:empty={!covers.length}>
           {#each covers as cover (entryKey(cover))}
-            <img src={$tiles.urls[entryKey(cover)]} alt="" loading="lazy" />
+            <img src={$tiles.urls[entryKey(cover)]} alt="" loading="lazy" decoding="async" />
           {:else}
             <Icon name="games" />
           {/each}

@@ -22,7 +22,6 @@
     onready?: () => void;
   } = $props();
 
-  const batchSize = 16;
   let working = $state(false);
   let initialized = $state(false);
   let failure = $state<string | null>(null);
@@ -33,7 +32,6 @@
   let rowErrors = $state<Record<string, string>>({});
   let rowMessages = $state<Record<string, string>>({});
   let search = $state('');
-  let limit = $state(batchSize);
   let updatingKey = $state<string | null>(null);
   let commandFailed = $state(false);
   let choiceRetry = $state(0);
@@ -141,7 +139,8 @@
       if (!commands || choices[option.key] || rowErrors[option.key]) continue;
       try {
         const detailed = await commands.option(option.key);
-        if (!mounted || generation !== hydrationGeneration) return;
+        if (!mounted) return;
+        // An answer that arrives after the search changed is still that option's choices.
         choices = { ...choices, [option.key]: detailed };
         if (option.value !== detailed.value) {
           options = options.map(row => row.key === option.key ? { ...row, value: detailed.value } : row);
@@ -160,7 +159,9 @@
 
   $effect(() => {
     choiceRetry;
-    const rows = matches.slice(0, limit);
+    // Every option is listed at once. Their choices are read one after another in the
+    // background, the ones matching the search first, and never pause the game.
+    const rows = matches;
     const paused = !initialized || blocked || commandFailed || !active || view === 'video';
     const generation = ++hydrationGeneration;
     if (!paused) untrack(() => void hydrate(rows, generation));
@@ -271,13 +272,13 @@
     <p class="dim">Change a value to apply it to this session.</p>
     {#if unavailable}<p class="dim">{unavailable}</p>{/if}
     {#if options.length}
-      <label class="core-option-search">Search core options<input type="search" bind:value={search} oninput={() => limit = batchSize} /></label>
-      <p class="core-option-count dim" role="status">{matches.length} option{matches.length === 1 ? '' : 's'}{#if matches.length > limit} · showing {limit}{/if}</p>
+      <label class="core-option-search">Search core options<input type="search" bind:value={search} /></label>
+      <p class="core-option-count dim" role="status">{matches.length} option{matches.length === 1 ? '' : 's'}</p>
       <div class="core-option-list">
-        {#each matches.slice(0, limit) as option (option.key)}
+        {#each matches as option (option.key)}
           {@const detailed = choices[option.key]}
           {@const error = rowErrors[option.key]}
-          <div class="core-option-row" aria-busy={updatingKey === option.key}>
+          <div class="core-option-row" aria-busy={updatingKey === option.key || (!detailed && !error && !commandFailed)}>
             <label for={`core-option-${option.key}`}>{option.description || option.key}</label>
             <select id={`core-option-${option.key}`} value={option.value}
               disabled={blocked || commandFailed || !detailed}
@@ -293,13 +294,11 @@
               {:else if error}<span class="problem" role="alert">{error}</span>
                 {#if !detailed && !commandFailed}<button type="button" disabled={blocked} aria-label={`Retry choices for ${option.description || option.key}`}
                   onclick={() => { rowErrors = { ...rowErrors, [option.key]: '' }; choiceRetry++; }}>Retry choices</button>{/if}
-              {:else if !detailed && !commandFailed}<span class="dim">Loading choices…</span>
               {:else if rowMessages[option.key]}<span role="status">{rowMessages[option.key]}</span>{/if}
             </div>
           </div>
         {/each}
       </div>
-      {#if matches.length > limit}<button type="button" onclick={() => limit += batchSize}>Show more options</button>{/if}
       {#if !matches.length}<p class="dim">No options match this search.</p>{/if}
     {/if}
   {/if}
@@ -329,7 +328,7 @@
         <button type="button" disabled={blocked} onclick={() => clear('core')}>Clear core preferences</button>
       </div>
       {#if view !== 'video' && options.length}<p class="dim">The runtime reports choices without defaults or categories. Search also matches these technical keys.</p>
-        <dl class="core-option-keys">{#each matches.slice(0, limit) as option (option.key)}<div><dt>{option.description || option.key}</dt><dd><code>{option.key}</code></dd></div>{/each}</dl>
+        <dl class="core-option-keys">{#each matches as option (option.key)}<div><dt>{option.description || option.key}</dt><dd><code>{option.key}</code></dd></div>{/each}</dl>
       {/if}
       {#if view !== 'options'}<p class="dim">Screenshots include the shader. State previews may show raw game pixels. Sharp/smooth display filtering is separate. Off uses the least graphics work.</p>{/if}
     </details>

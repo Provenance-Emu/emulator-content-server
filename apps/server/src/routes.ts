@@ -199,7 +199,11 @@ export function registerRoutes(
       // clear of /api/v1, and the plugin refuses a path that leaves the
       // asset directory.
       wildcard: true,
-      setHeaders: (response, path) => {
+      // The build writes .br and .gz beside each text asset; a client that accepts one gets it.
+      preCompressed: true,
+      setHeaders: (response, served) => {
+        // A compressed sibling is the same asset: the rules below go by its real name.
+        const path = served.replace(/\.(?:br|gz)$/, '');
         /**
          * The page keeps its bearer token in local storage, so the thing that
          * has to be impossible is injected script reading it and sending it
@@ -224,6 +228,14 @@ export function registerRoutes(
         }
         response.header('x-content-type-options', 'nosniff');
         response.header('referrer-policy', 'no-referrer');
+        // The build names every file under assets/ after its content, so it never changes.
+        // The documents that point at them are checked on every visit.
+        response.header(
+          'cache-control',
+          /[/\\]assets[/\\][^/\\]+-[A-Za-z0-9_-]{8}\.[A-Za-z0-9.]+$/.test(path)
+            ? 'public, max-age=31536000, immutable'
+            : 'no-cache',
+        );
       },
     });
     app.get('/ui', async (_request, reply) => reply.redirect('/ui/', 308));

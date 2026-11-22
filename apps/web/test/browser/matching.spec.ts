@@ -86,7 +86,11 @@ for (const bulk of [false, true])
     const online = panel.getByRole('checkbox', { name: 'Include online providers', exact: true });
     await expect(online).toBeChecked();
     await online.uncheck();
-    const local = panel.getByRole('checkbox', { name: /\(local\)$/ });
+    await panel
+      .locator('summary')
+      .filter({ hasText: /^Choose where to look$/ })
+      .click();
+    const local = panel.getByRole('checkbox', { name: /on this server$/ });
     expect(await local.count()).toBeGreaterThan(0);
     for (const checkbox of await local.all()) await checkbox.uncheck();
     await expect(action).toBeDisabled();

@@ -423,7 +423,7 @@
           <summary aria-label="Manage library">Manage</summary>
           <div class="library-management-actions">
             {#if owner}
-              <button type="button" onclick={() => onsettings({ section: 'libraries', libraryId: scope && 'libraryId' in scope ? scope.libraryId : undefined })}>Folders</button>
+              <button type="button" onclick={() => onsettings({ section: 'libraries', libraryId: scope && 'libraryId' in scope ? scope.libraryId : undefined })}>Library settings</button>
               <button type="button" onclick={() => (bulkOpen = true)}>Library activity</button>{/if}
             <button type="button" disabled={$browser.loading} onclick={refreshCollection}>Refresh</button>
           </div>

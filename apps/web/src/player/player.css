@@ -88,11 +88,42 @@
 .player-workbench:not(.starting) {
   display: none;
 }
+/* The game has the whole width. Opening a tool makes room for it beside the game. */
 .player-workbench.running {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(21rem, 26rem);
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
+}
+.player-workbench.running.tools-open {
+  grid-template-columns: minmax(0, 1fr) minmax(21rem, 26rem);
+}
+.player-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.player-toolbar button[aria-expanded="true"] {
+  border-color: var(--color-selected-border);
+  background: var(--color-selected);
+  color: var(--color-selected-text);
+}
+.player-inspector-head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0.75rem 0.75rem 0 1.25rem;
+}
+/* The panel already says which tool this is. */
+.player-tool-panel section[aria-label="Core options"] > h2:first-of-type {
+  display: none;
+}
+.player-inspector-head h2 {
+  margin: 0;
+  font-size: var(--text-body);
 }
 .player-stage-column {
   min-width: 0;
@@ -159,19 +190,6 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
-}
-.player-inspector > .category-tabs {
-  flex-wrap: nowrap;
-  gap: 0;
-  margin: 0;
-  padding: 0.6rem 0.35rem;
-  overflow-x: auto;
-}
-.player-inspector > .category-tabs button {
-  flex: 1;
-  padding: 0.55rem 0.6rem;
-  white-space: nowrap;
-  font-size: var(--text-small);
 }
 .player-tool-panel {
   min-width: 0;
@@ -406,10 +424,6 @@
     flex-direction: column;
     max-height: calc(100svh - 2.5rem);
   }
-  .player-inspector > .category-tabs,
-  .player-inspector > .save-recovery {
-    flex-shrink: 0;
-  }
   .player-tool-panel {
     min-height: 0;
     overflow-y: auto;
@@ -417,7 +431,8 @@
   }
 }
 @media (max-width: 1050px) {
-  .player-workbench.running {
+  .player-workbench.running,
+  .player-workbench.running.tools-open {
     grid-template-columns: minmax(0, 1fr);
   }
   .player-stage {
@@ -620,7 +635,8 @@
   cursor: move;
 }
 @media (max-width: 900px) {
-  .player-workbench.running {
+  .player-workbench.running,
+  .player-workbench.running.tools-open {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
   }

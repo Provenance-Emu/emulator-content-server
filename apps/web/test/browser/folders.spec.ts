@@ -178,7 +178,7 @@ test('unassigned folders require explicit assignment with a permissions warning'
   const root = await fixture.legacy();
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.locator('.settings-unassigned > summary').click();
+  // A folder that belongs to no library is shown without having to open anything.
   await page.getByRole('button', { name: 'Assign External folder', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Assign folder', exact: true });
   await expect(dialog.getByText(/library permissions/i)).toBeVisible();

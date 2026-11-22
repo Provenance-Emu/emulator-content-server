@@ -124,7 +124,10 @@ test('unmatched games retry on the same durable job after a sidecar is discovere
   const id = await panel
     .getByRole('combobox', { name: 'Server activity', exact: true })
     .inputValue();
-  await panel.getByRole('combobox', { name: 'Results', exact: true }).selectOption('unmatched');
+  await panel
+    .getByRole('group', { name: 'Job results' })
+    .getByRole('button', { name: /unmatched$/ })
+    .click();
   await expect(panel.getByText('external.nes', { exact: true })).toBeVisible();
   await writeFile(
     join(root.path, 'external.json'),
@@ -144,7 +147,10 @@ test('unmatched games retry on the same durable job after a sidecar is discovere
   await expect(panel.getByRole('region', { name: 'Library job progress' })).toContainText(
     '1 need review',
   );
-  await panel.getByRole('combobox', { name: 'Results', exact: true }).selectOption('review');
+  await panel
+    .getByRole('group', { name: 'Job results' })
+    .getByRole('button', { name: /need review$/ })
+    .click();
   await expect(panel.getByText('external.nes', { exact: true })).toBeVisible();
   await expect(
     panel.getByRole('button', { name: 'Retry unmatched games', exact: true }),

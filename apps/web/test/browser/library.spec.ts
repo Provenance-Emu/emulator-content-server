@@ -147,6 +147,13 @@ test('narrow navigation supports keyboard, contained dialog focus and explicit u
   await openAddContent(page, 'Upload files');
   const dialog = page.getByRole('dialog', { name: 'Upload files' });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Choose files', exact: true })).toBeVisible();
+  // Nothing is assumed about the system until a file or the person says so.
+  await dialog.getByLabel('File', { exact: true }).setInputFiles({
+    name: 'unknown.bin',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from([1]),
+  });
   await expect(dialog.getByRole('combobox', { name: 'System', exact: true })).toHaveValue('');
   await page.keyboard.press('Tab');
   await expect(dialog.locator(':focus')).toHaveCount(1);

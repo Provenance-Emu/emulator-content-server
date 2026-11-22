@@ -192,11 +192,21 @@ export function createLibraryJobs(
       });
       await items();
       hooks.changed?.();
+      if (job.state === 'queued' || job.state === 'running') wake();
     } catch (error) {
       fail(error);
     } finally {
       update({ loading: false });
     }
+  }
+  /**
+   * Work that was just started is watched straight away. Without this the screen would sit on
+   * "Waiting" until the next idle check, a quarter of a minute later.
+   */
+  function wake() {
+    if (disposed || denied || timer === undefined) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => void poll(), Math.max(1000, retryAt - Date.now()));
   }
   async function poll() {
     if (typeof document === 'undefined' || !document.hidden) await refresh(true);

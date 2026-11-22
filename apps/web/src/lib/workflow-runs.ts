@@ -125,6 +125,8 @@ export function createWorkflowRuns(
       fail(error, e);
     } finally {
       if (valid(e)) emit({ loading: false });
+      // Starting or resuming an inspection changes how soon to look again.
+      if (timer !== undefined && !disposed && !denied) schedule();
     }
   }
   function invalidateApproval() {
@@ -386,20 +388,25 @@ export function createWorkflowRuns(
       if (valid(e)) emit({ run: result.run });
     });
   }
+  /** Looks again soon while an inspection runs, and seldom when nothing is happening. */
+  function schedule() {
+    clearTimeout(timer);
+    const active = current.runs.some(({ state }) => state === 'queued' || state === 'running');
+    timer = setTimeout(
+      async () => {
+        if (typeof document === 'undefined' || !document.hidden) await refresh(true);
+        if (!disposed && !denied) schedule();
+      },
+      Math.max(active ? 2500 : 15_000, retryAt - Date.now()),
+    );
+  }
   function connect() {
     if (timer || disposed) return;
-    void refresh();
-    const tick = () => {
-      const active = current.runs.some(({ state }) => state === 'queued' || state === 'running');
-      timer = setTimeout(
-        async () => {
-          if (typeof document === 'undefined' || !document.hidden) await refresh(true);
-          if (!disposed && !denied) tick();
-        },
-        Math.max(active ? 2500 : 15_000, retryAt - Date.now()),
-      );
-    };
-    tick();
+    schedule();
+    // What is running is only known once the first read lands; pace the next look by that.
+    void refresh().finally(() => {
+      if (!disposed && !denied) schedule();
+    });
   }
   function dispose() {
     disposed = true;

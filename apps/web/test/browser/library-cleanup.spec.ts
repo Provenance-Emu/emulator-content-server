@@ -42,7 +42,7 @@ test('Scans & details exposes folder policies, scan history and cleanup review',
 
   await page.getByRole('combobox', { name: 'Cleanup library' }).selectOption(fixture.library.id);
   await page.getByRole('button', { name: 'Start cleanup inspection', exact: true }).click();
-  await expect(page.getByTestId('cleanup-progress')).toContainText('completed', { timeout: 15000 });
+  await expect(page.getByTestId('cleanup-progress')).toContainText('Finished', { timeout: 15000 });
   await expect(page.getByRole('combobox', { name: 'Cleanup activity' })).toBeVisible();
   await expect(scanHistory).toBeVisible();
   await expect(page.getByTestId('cleanup-proposal')).toHaveCount(2);
@@ -64,12 +64,12 @@ test('native no-key cleanup reviews a subset, applies once and can undo after re
   await page.getByRole('button', { name: 'Start cleanup inspection', exact: true }).click();
   await page.getByRole('button', { name: 'Close cleanup review', exact: true }).click();
   await page.getByRole('button', { name: 'Review library cleanup', exact: true }).click();
-  await expect(page.getByTestId('cleanup-progress')).toContainText('completed', { timeout: 15000 });
+  await expect(page.getByTestId('cleanup-progress')).toContainText('Finished', { timeout: 15000 });
   const cards = page.getByTestId('cleanup-proposal');
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText('Current');
   await expect(cards.first()).toContainText('Proposed');
-  await expect(cards.first()).toContainText('missing');
+  await expect(cards.first()).toContainText(/missing/i);
   await cards.first().getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Approve 1 selected fix', exact: true }).click();
   await page.getByRole('button', { name: 'Apply approved fixes', exact: true }).click();
@@ -141,7 +141,7 @@ test('the owner reviews and applies a proposal submitted by an investigator', as
   await page.getByRole('button', { name: 'Open library Arcade', exact: true }).click();
   await libraryTool(page, 'Library activity');
   await page.getByRole('button', { name: 'Review library cleanup', exact: true }).click();
-  await expect(page.getByTestId('cleanup-progress')).toContainText('completed');
+  await expect(page.getByTestId('cleanup-progress')).toContainText('Finished');
   const card = page.getByTestId('cleanup-proposal');
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('The investigator found a local front cover.');

@@ -1,10 +1,13 @@
 <script lang="ts">
   import type { AuditEvent, ContentClient } from '@ecs/client';
+  import Icon from './components/Icon.svelte';
+  import { auditLabel, auditNeedsAttention } from './lib/audit-labels';
   import { explain } from './lib/problems';
 
   let { client, noted }: { client: ContentClient; noted: number } = $props();
 
   let events = $state<AuditEvent[]>([]);
+  let names = $state<Record<string, string>>({});
   let failure = $state<string | null>(null);
 
   async function load(): Promise<void> {
@@ -14,12 +17,24 @@
     } catch (error) {
       failure = explain(error);
     }
+    // Names make the log readable; without them it still says what happened.
+    try {
+      names = Object.fromEntries((await client.users()).items.map((user) => [user.id, user.username]));
+    } catch {
+      /* Only the owner may list accounts. */
+    }
   }
 
+  /** Today is a time; anything earlier carries its date. */
   function when(value: string): string {
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? value : new Date(parsed).toLocaleString();
+    const at = new Date(value);
+    if (Number.isNaN(at.getTime())) return value;
+    const time = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return at.toDateString() === new Date().toDateString()
+      ? time
+      : `${at.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
   }
+  const who = (event: AuditEvent) => (event.actorId ? (names[event.actorId] ?? 'Someone') : 'Not signed in');
 
   // `noted` changes when the owner creates or revokes a grant, which is the
   // event the log should show without a manual refresh.
@@ -29,34 +44,93 @@
   });
 </script>
 
-<section>
+<section class="audit">
   <div class="row">
-    <h2>Audit</h2>
-    <button type="button" onclick={() => void load()}>Refresh</button>
+    <h2>What happened</h2>
+    <button type="button" class="icon-only" aria-label="Refresh" title="Refresh" onclick={() => void load()}>
+      <Icon name="refresh" />
+    </button>
   </div>
   {#if events.length === 0}
-    <p class="dim">No events yet.</p>
+    <p class="dim">Nothing has been recorded yet.</p>
   {:else}
-    <table>
-      <thead>
-        <tr><th>When</th><th>Action</th><th>Resource</th><th>Actor</th></tr>
-      </thead>
-      <tbody>
-        {#each events as event (event.id)}
-          <tr>
-            <td>{when(event.at)}</td>
-            <td>{event.action}</td>
-            <td class="dim">
-              {event.resourceType ?? ''}
-              <span class="path">{event.resourceId ?? ''}</span>
-            </td>
-            <td class="path dim">{event.actorId ?? ''}</td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+    <ul class="audit-rows">
+      {#each events as event (event.id)}
+        <li class:attention={auditNeedsAttention(event.action)}>
+          <div class="audit-main">
+            <strong>{auditLabel(event.action)}</strong>
+            <span class="dim">{who(event)} · <time datetime={event.at}>{when(event.at)}</time></span>
+          </div>
+          <details>
+            <summary>Details</summary>
+            <dl>
+              <div><dt>Recorded as</dt><dd><code>{event.action}</code></dd></div>
+              {#if event.resourceId}<div><dt>{event.resourceType ?? 'Item'}</dt><dd><code>{event.resourceId}</code></dd></div>{/if}
+              {#if event.actorId}<div><dt>Account</dt><dd><code>{event.actorId}</code></dd></div>{/if}
+              <div><dt>When</dt><dd>{new Date(event.at).toLocaleString()}</dd></div>
+            </dl>
+          </details>
+        </li>
+      {/each}
+    </ul>
   {/if}
   {#if failure}
-    <p class="problem">{failure}</p>
+    <p class="problem" role="alert">{failure}</p>
   {/if}
 </section>
+
+<style>
+  .audit-rows {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .audit-rows li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-4);
+    padding: var(--space-3) 0;
+    border-top: var(--border-width) solid var(--color-border);
+  }
+  .audit-rows li.attention {
+    padding-inline-start: var(--space-3);
+    border-inline-start: 3px solid var(--color-warning);
+  }
+  .audit-main {
+    display: grid;
+    min-width: 0;
+  }
+  .audit-main .dim {
+    font-size: var(--text-small);
+  }
+  .audit-rows details {
+    font-size: var(--text-small);
+  }
+  .audit-rows details[open] {
+    grid-column: 1 / -1;
+  }
+  .audit-rows summary {
+    cursor: pointer;
+    color: var(--color-text-muted);
+  }
+  .audit-rows dl {
+    display: grid;
+    gap: var(--space-1);
+    margin: var(--space-2) 0 0;
+  }
+  .audit-rows dl div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .audit-rows dt {
+    color: var(--color-text-muted);
+    text-transform: capitalize;
+  }
+  .audit-rows dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+</style>

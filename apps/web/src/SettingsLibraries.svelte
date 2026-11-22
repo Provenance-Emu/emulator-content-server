@@ -108,7 +108,8 @@
       {onview}
     />
   </section>{/each}
-<details class="settings-unassigned" open={!libraries.length} hidden={!!libraryId}>
+<!-- A folder that belongs to no library is waiting for a decision, so it is never folded away. -->
+<details class="settings-unassigned" open={!libraries.length || summaries.some((summary) => summary.root.libraryId === null)} hidden={!!libraryId}>
   <summary>Unassigned folders</summary>
   <UnassignedFolders {client} {context} {libraries} cached={summaries.filter(row=>row.root.libraryId===null)} {onview} />
   <p class="dim">These folders are not linked to a library yet. Choose a library above to scan and display their games.</p>

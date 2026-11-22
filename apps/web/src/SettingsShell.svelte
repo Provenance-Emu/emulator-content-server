@@ -26,7 +26,7 @@
     client, appState, updates, desktopUpdates, onback, onview, onrejected, context, server,
     pairingPin = '', onpaired = () => {},
     serverLabel = 'Emulation Server',
-    onrename, onplayerschange, onsignin = () => {}, onsetup, onopendocumentation,
+    onrename, onplayerschange, onsignin = () => {}, onsignout, onsetup, onopendocumentation,
     selected = $bindable<SettingsSection>('libraries'),
     libraryId = $bindable(''),
     onselect = () => {},
@@ -48,6 +48,7 @@
     onplayerschange?: () => void | Promise<void>;
     onsignin?: () => void;
     onsetup?: () => void;
+    onsignout?: () => void;
     onopendocumentation?: (href: string) => void;
     selected?: SettingsSection;
     libraryId?: string;
@@ -100,7 +101,10 @@
         </div>{/if}
       {/each}
     </nav>
-    {#if onsetup}<button type="button" class="settings-back settings-setup" onclick={onsetup}><Icon name="guide" />Setup guide</button>{/if}
+    <div class="settings-setup">
+      {#if onsetup}<button type="button" class="settings-back" onclick={onsetup}><Icon name="guide" />Setup guide</button>{/if}
+      {#if onsignout && appState.hasSession}<button type="button" class="settings-back" onclick={onsignout}><Icon name="sign-out" />Sign out</button>{/if}
+    </div>
   </aside>
   <div class="settings-content">
     {#if appState.owner && !appState.hasSession && ['emulators', 'plugins'].includes(active)}

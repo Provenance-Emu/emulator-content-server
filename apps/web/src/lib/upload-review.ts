@@ -76,14 +76,16 @@ export function createUploadReview(context: {
   function errors(e: UploadReviewEntry): string[] {
     const result: string[] = [];
     if (!safeUploadPath(e.relativePath))
-      result.push('Unsafe relative path. Select this file again with a safe name.');
-    if (!KIND_ORDER.includes(e.kind as (typeof KIND_ORDER)[number])) result.push('Choose a kind.');
+      result.push("This file's name or folder cannot be used. Rename it, then choose it again.");
+    if (!KIND_ORDER.includes(e.kind as (typeof KIND_ORDER)[number]))
+      result.push('Choose what this file is.');
     if (e.target && e.target.libraryId !== context.libraryId)
-      result.push('Choose an item in this library.');
-    if (e.kind !== 'rom' && !e.target) result.push('Choose an existing managed item.');
+      result.push('Choose a game in this library.');
+    if (e.kind !== 'rom' && !e.target) result.push('Choose the game this file belongs to.');
     if (e.kind === 'rom' && !e.target) {
-      if (!e.title.trim()) result.push('Enter a title.');
-      if (!context.systems.some((s) => s.identifier === e.system)) result.push('Choose a system.');
+      if (!e.title.trim()) result.push('Give the game a name.');
+      if (!context.systems.some((s) => s.identifier === e.system))
+        result.push('Choose its system.');
     }
     return result;
   }

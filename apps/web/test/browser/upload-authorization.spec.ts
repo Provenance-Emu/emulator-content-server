@@ -7,11 +7,11 @@ const generated = (name: string) => ({
   mimeType: 'application/octet-stream',
   buffer: Buffer.from([1, 2, 3, 4]),
 });
-/** Brings the end of the target list into view, which is what asks for its next batch. */
-const MORE_ITEMS_INTO_VIEW = `document.querySelector('section[aria-label="Choose managed item"] .list-more')?.scrollIntoView()`;
+/** Brings the end of the game list into view, which is what asks for its next batch. */
+const MORE_GAMES_INTO_VIEW = `document.querySelector('section[aria-label="Choose a game"] .list-more')?.scrollIntoView()`;
 for (const phase of ['review', 'reconciliation']) {
   for (const status of [401, 403]) {
-    test(`${phase} picker ${status} on the next batch removes private targets and rejects upload access immediately`, async ({
+    test(`${phase} game list ${status} on a search removes private games and rejects upload access immediately`, async ({
       page,
       fixture,
     }) => {
@@ -25,8 +25,9 @@ for (const phase of ['review', 'reconciliation']) {
         for (const item of listing.items) item.canCreateItems = false;
         await route.fulfill({ json: listing });
       });
-      await page.route('**/api/v1/items?**', async (route) => {
-        if (new URL(route.request().url()).searchParams.has('cursor')) {
+      // The library behind the dialog reads the same listing; only the game list searches it.
+      await page.route('**/api/v1/browse?**', async (route) => {
+        if (new URL(route.request().url()).searchParams.has('search')) {
           denied = true;
           await route.fulfill({
             status,
@@ -52,29 +53,24 @@ for (const phase of ['review', 'reconciliation']) {
       if (phase === 'review') {
         baseline = accessReads;
         await dialog
-          .getByRole('button', { name: 'Choose target for associated files', exact: true })
+          .getByRole('button', { name: 'Choose the game for these files', exact: true })
           .click();
       } else {
         await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
         const reconcile = dialog.getByRole('button', {
-          name: 'Reconcile uncertain.nes',
+          name: 'Choose game for uncertain.nes',
           exact: true,
         });
         await expect(reconcile).toBeVisible();
         baseline = accessReads;
         await reconcile.click();
       }
-      // The list asks for its next batch as its end comes into view; that read is the rejected one.
-      await expect
-        .poll(
-          async () => {
-            await page.evaluate(MORE_ITEMS_INTO_VIEW);
-            return dialog.isVisible();
-          },
-          { timeout: 20_000 },
-        )
-        .toBe(false);
-      await expect(page.getByRole('button').filter({ hasText: '· ID ' })).toHaveCount(0);
+      const picker = dialog.getByRole('region', { name: 'Choose a game', exact: true });
+      await expect(picker.locator('.picker-row').first()).toBeVisible();
+      baseline = accessReads;
+      await picker.getByRole('searchbox', { name: 'Search games', exact: true }).fill('Game');
+      await expect(dialog).not.toBeVisible();
+      await expect(page.locator('.picker-row')).toHaveCount(0);
       await expect(
         page.getByRole('button', { name: 'Retry unfinished uploads', exact: true }),
       ).toHaveCount(0);
@@ -166,24 +162,31 @@ test('Games folder upload keeps saves associated with an explicit target instead
     .getByRole('combobox', { name: 'System', exact: true })
     .selectOption('com.provenance.nes');
   await expect(
-    dialog.getByRole('combobox', { name: 'Kind for Progress.sav', exact: true }),
+    dialog.getByRole('combobox', {
+      name: 'Kind for Progress.sav',
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveValue('battery_save');
   await expect(
-    dialog.getByRole('combobox', { name: 'Kind for Progress.state', exact: true }),
+    dialog.getByRole('combobox', {
+      name: 'Kind for Progress.state',
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveValue('save_state');
   await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeDisabled();
   await dialog
-    .getByRole('button', { name: 'Choose target for associated files', exact: true })
+    .getByRole('button', { name: 'Choose the game for these files', exact: true })
     .click();
-  const target = dialog.getByRole('button', { name: new RegExp(`ID ${fixture.game.id}$`) });
-  const listed = dialog.getByRole('button').filter({ hasText: '· ID ' });
-  await expect(listed.first()).toBeEnabled();
-  // Managed targets are sorted by random IDs, so this game can be in any batch.
+  const target = dialog.locator(`.picker-row[data-item-id="${fixture.game.id}"]`);
+  await expect(dialog.locator('.picker-row').first()).toBeVisible();
+  // Games are listed by name, so this one can be in any batch.
   await expect
     .poll(
       async () => {
         if (await target.count()) return true;
-        await page.evaluate(MORE_ITEMS_INTO_VIEW);
+        await page.evaluate(MORE_GAMES_INTO_VIEW);
         return false;
       },
       { timeout: 20_000 },

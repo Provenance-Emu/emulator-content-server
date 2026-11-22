@@ -51,10 +51,41 @@ Everything is on the page; nothing opens. One row holds search, **Library folder
 No list has Previous and Next. A long list starts with one bounded batch and grows downward: more is added while its end is within a screen of the viewport, and the foot of the list says how much is shown (`Showing 100 of 1,240`, then `1,240 games`). `components/ListMore.svelte` is that foot for every list. Its button (**Show more**, or a named one such as **Show more files**) is the same action for a keyboard, and becomes **Try again** after a failed read, which is never retried on its own. Nothing already on screen moves or is replaced when more arrives. The contracts page by cursor and report no offsets, so numbered pages are not available.
 
 - The collection: `lib/library-browser.ts` reads batches of 50 and keeps them. A refresh reads everything on screen again and swaps it in together. Covers are requested only for cards near the viewport (`CollectionPage.svelte` reports them, `previews.request` keeps at most 240 and releases the oldest), so a long scroll does not hold every image in memory. This is the one list whose count is announced (`announce`).
-- Lists the server pages (Library activity results, cleanup fixes, findings and saved batches, the upload target list): the controller remembers how many batches are shown and a refresh reads that many again with `readBatches` in `lib/batches.ts`, so a list that refreshes on a timer does not fall back to its first batch. Marking one result reviewed keeps the list where it was; another filter or another job starts a new list.
+- Lists the server pages (Library activity results, cleanup fixes, findings and saved batches, the game list when adding files): the controller remembers how many batches are shown and a refresh reads that many again with `readBatches` in `lib/batches.ts`, so a list that refreshes on a timer does not fall back to its first batch. Marking one result reviewed keeps the list where it was; another filter or another job starts a new list.
 - Lists already in memory (upload review, the upload queue, player skins): fifty rows, and fifty more each time.
 - Lookup suggestions show eight and add eight only when **Show more matches** is pressed (`auto={false}`), because each suggested picture is fetched from its provider.
 - A footer with nothing more to offer is left out of a short secondary list. Use `shownLabel` for the wording so every list counts the same way.
+
+### Adding games
+
+**Upload files** (`Upload.svelte`) is three steps in one dialog, and each shows only what needs a decision.
+
+- **Choose.** A drop zone with **Choose files** and **Choose a folder**. The file inputs stay in the page with the names `File` and `Folder`, visually hidden behind the buttons. Once something is chosen the zone shrinks to one row.
+- **Review** (`UploadReview.svelte`). One line per file: its name, then what uploading it does (`New game · NES`, `Battery save for Sonic`), then the folder it came with. A file that still needs a choice gets a warning edge and one sentence saying what is missing; the head of the list counts them. **Choose game** sits on the row; **Edit** opens the title, kind and system fields, which stay in the page while closed. **System** applies one system to every game; **Kind for all files** is under **More options**.
+- **Queue** (`UploadQueue.svelte`). Overall progress, then unfinished files first with plain states (Waiting, Uploading, Did not finish, Needs a check) and sizes in readable units. Uploaded files fold away once there are more than twelve. The queue changes its rows in place, so its lists read the store directly; a `$derived` list of the same row objects is not drawn again.
+
+A game is chosen from `UploadTargetPicker.svelte`: a search box and rows of cover, name and system, read from the same listing the collection uses, twenty-odd rows tall and scrolling inside the dialog. It never shows an identifier. Games kept in a server folder cannot take uploaded files yet, so they are left out and a line says so when any were.
+
+### Library activity
+
+`LibraryJobs.svelte` has two faces and shows one at a time.
+
+- **Overview.** The two things to start (**Find missing artwork and details**, **Check folder files**), then one card for the selected run: its state, a progress bar, and its result counts as a row of toggles (`2 need review`, `2 unmatched`, `0 failed`, `0 saved`, `0 skipped`, **All**). A count is the filter for the list under it; there is no second control. Rows say what happened in words (`Needs review · 1 suggestion`). Options are one disclosure: the two choices people make are on top, and **Choose where to look** holds the sources by name, without versions or identifiers.
+- **Review.** Choosing **Review** replaces the overview with one game: its name, what is saved for it as compact rows, and the lookup. **Back to job results** is at the top with how many are left; **Next unresolved game** and **Done reviewing this game** stay pinned to the bottom of the dialog, and Next moves down the list.
+- **Cleanup** (`LibraryCleanup.svelte`, `CleanupProposal.svelte`) says the run's state in words, compares Current and Proposed side by side, names what each finding is about (`lib/cleanup-labels.ts`), and keeps the approve and apply bar pinned while the fixes scroll. Games are named, never shown as identifiers. The host picker appears only when there is more than one; the setup command sits behind **How to set it up**.
+
+Both screens look again two seconds after work starts and every two seconds while it runs, and only every fifteen when nothing is happening (`wake` in `lib/library-jobs.ts`, `schedule` in `lib/workflow-runs.ts`). A screen that starts work must not wait for the idle interval to show it.
+
+### Player window
+
+The game has the window. `Player.svelte` keeps the tools (**Saves**, **Controls**, **Video**, **Core options**) closed, behind a toolbar under the game; pressing one opens it beside the game on a wide window and below it on a narrow one, and pressing it again, the close button, or Escape puts it away and returns focus to the game. The tools stay mounted while closed, because saves in flight and option choices live in them. **Save state** and **Capture screenshot** open Saves so the result is in view. Unsaved-progress notices sit under the game, never inside a closed tool.
+
+Core options are all listed at once with a search box; there is no paging. Each option's choices are read in the background, one after another, matching rows first, without putting the game into a busy state.
+
+### Settings
+
+- **Activity** (`Audit.svelte`) is a list of sentences (`lib/audit-labels.ts`), who did it and when; the recorded code and identifiers are under **Details**. A refused sign-in is marked.
+- **Libraries** never folds away a folder that belongs to no library.
 
 ### Game page
 
@@ -105,7 +136,7 @@ This first pass audited global styles, Settings, Storage, Locations, FolderPicke
 
 The second pass applies FormField to Devices and Access, and InlineNotice to Devices, Access, and storage feedback. It keeps all existing form labels, button actions, defaults, validation attributes, and request logic. Helper text now has explicit control associations; long controls shrink within the page. Both components use global classes in `app.css`, so theme and spacing changes reach every instance.
 
-The matching pass applies the same tokens to LibraryJobs, BulkMatching, MatchingPanel, and MatchingProviders. Main actions and review navigation use consistent wrapping action rows, and result lists end in the shared `ListMore` foot; provider controls and matching guidance share one options disclosure per screen; repeated candidate and job rows share spacing and borders. LibraryJobs keeps active progress above advanced options, with result counts in a compact token row. Candidate cards show publisher, developer, year, genre, region, language, and description first; technical identifiers and catalog references remain available under Match evidence. Keep status announcements and native checkbox/select semantics in place when extending these screens. The matching browser test checks primary actions, phone touch targets, visible job progress, narrow-viewport overflow, and progressive evidence disclosure.
+The matching pass applies the same tokens to LibraryJobs, BulkMatching, MatchingPanel, and MatchingProviders. Main actions and review navigation use consistent wrapping action rows, and result lists end in the shared `ListMore` foot; provider controls and matching guidance share one options disclosure per screen; repeated candidate and job rows share spacing and borders. LibraryJobs keeps active progress above advanced options, with result counts as the filter for the list below them. Candidate cards show publisher, developer, year, genre, region, language, and description first; technical identifiers and catalog references remain available under Match evidence. Keep status announcements and native checkbox/select semantics in place when extending these screens. The matching browser test checks primary actions, phone touch targets, visible job progress, narrow-viewport overflow, and progressive evidence disclosure.
 
 `test/browser/settings-forms.spec.ts` checks accessible names/descriptions, label-click focus, native required validation before requests, disabled controls during a delayed failure, preserved values afterward, conditional fields, Tab order, and viewport overflow on desktop and touch-phone sizes. It captures Devices and Access using generated fixtures without issuing credentials or saving policy changes. Existing Devices and owner Access browser tests cover actual create/revoke and membership/password/policy behavior.
 

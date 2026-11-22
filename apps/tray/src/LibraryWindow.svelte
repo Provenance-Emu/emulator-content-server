@@ -44,11 +44,15 @@
 
   onMount(() => {
     if (!('__TAURI_INTERNALS__' in window)) return;
+    // Companion apps are an extra. A window that cannot subscribe still has to open the library.
+    const subscribe = (start: () => Promise<() => void>) => {
+      try { return start(); } catch (error) { return Promise.reject(error); }
+    };
     const subscriptions = [
-      listen('companion-catalog-changed', () => void refreshCompanions()),
-      getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      subscribe(() => listen('companion-catalog-changed', () => void refreshCompanions())),
+      subscribe(() => getCurrentWindow().onFocusChanged(({ payload: focused }) => {
         if (focused) void refreshCompanions();
-      }),
+      })),
     ];
     const ready = Promise.allSettled(subscriptions);
     void ready.then(() => { if (!disposed) void refreshCompanions(); });

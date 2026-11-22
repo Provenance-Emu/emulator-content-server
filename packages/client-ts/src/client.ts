@@ -1879,6 +1879,7 @@ export class ContentClient {
           )
             throw error;
           if (error instanceof DownloadChangedError) restart = true;
+          else await retryPause(error, attempt, options.signal);
         }
       }
     } catch (error) {
@@ -1956,6 +1957,7 @@ export class ContentClient {
         return { bytes: concat(held, received), etag: etag ?? null };
       } catch (error) {
         if (options.signal?.aborted || attempt >= attempts || !isRetryable(error)) throw error;
+        await retryPause(error, attempt, options.signal);
       }
     }
   }
@@ -2000,6 +2002,7 @@ export class ContentClient {
         return await this.commit(session.id, request, `${key}.done`);
       } catch (error) {
         if (attempt >= attempts || !isRetryable(error)) throw error;
+        await retryPause(error, attempt);
         received = offset(await this.uploadSession(session.id));
       }
     }
@@ -2143,6 +2146,32 @@ function isRetryable(error: unknown): boolean {
   if (!(error instanceof ContentError)) return true;
   if (error.status >= 500) return true;
   return error.status === 409 && error.problem?.type.endsWith('upload-gap') === true;
+}
+
+/**
+ * Waits before another attempt, so a server that is busy is not asked again at once. The
+ * server's own `Retry-After` is used when it sent one, up to ten seconds; otherwise a short
+ * wait that doubles. An offset that moved under an upload is retried straight away: the
+ * server is fine and already told us where to continue.
+ */
+async function retryPause(error: unknown, attempt: number, signal?: AbortSignal): Promise<void> {
+  if (error instanceof ContentError && error.status === 409) return;
+  const asked = error instanceof ContentError ? error.retryAfterMs : undefined;
+  const wait = Math.min(asked ?? 200 * 2 ** (attempt - 1), 10_000);
+  if (wait <= 0) return;
+  await new Promise<void>((resolve, reject) => {
+    const done = () => {
+      signal?.removeEventListener('abort', stop);
+      resolve();
+    };
+    const timer = setTimeout(done, wait);
+    const stop = () => {
+      clearTimeout(timer);
+      reject(signal?.reason ?? new DOMException('Aborted', 'AbortError'));
+    };
+    if (signal?.aborted) stop();
+    else signal?.addEventListener('abort', stop, { once: true });
+  });
 }
 
 async function failure(response: Response): Promise<ContentError> {

@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, libraryTool, signIn, test } from './fixture';
 
 const problem = (status: number) => ({
@@ -26,6 +27,21 @@ test('the production interface starts on a real insecure HTTP nonloopback origin
   expect(errors).toEqual([]);
 });
 
+/**
+ * Lets an idle page make its regular checks. It reads the folder list again on every fourth one,
+ * and each check is only scheduled once the one before it has been answered.
+ */
+async function idleChecks(page: Page, count = 4) {
+  for (let check = 0; check < count; check++) {
+    const answered = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/changes',
+    );
+    await page.clock.runFor(15_500);
+    await answered;
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+  }
+}
+
 for (const status of [401, 403] as const)
   test(`settings summary ${status} clears private paths and propagates current authority`, async ({
     page,
@@ -34,7 +50,10 @@ for (const status of [401, 403] as const)
     const root = await fixture.legacy();
     await signIn(page, fixture);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await expect(page.getByText(root.path, { exact: true })).toBeVisible();
+    // The folder is listed to tick and again in the table below; either shows its path.
+    await expect(
+      page.getByText(root.path, { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible();
     await page.route('**/api/v1/root-summaries', (route) => route.fulfill(problem(status)));
     if (status === 403) await page.route('**/api/v1/roots', (route) => route.fulfill(problem(403)));
     await page.getByRole('button', { name: 'Refresh summaries' }).click();
@@ -61,11 +80,17 @@ test('summary transient failure retains rows and an obsolete pending summary can
   const authorized = await fixture.client.rootSummaries();
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(page.getByText(root.path, { exact: true })).toBeVisible();
+  // The folder is listed to tick and again in the table below; either shows its path.
+  await expect(
+    page.getByText(root.path, { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible();
   await page.route('**/api/v1/root-summaries', (route) => route.fulfill(problem(503)));
   await page.getByRole('button', { name: 'Refresh summaries' }).click();
   await expect(page.getByRole('alert')).toContainText('Access denied');
-  await expect(page.getByText(root.path, { exact: true })).toBeVisible();
+  // The folder is listed to tick and again in the table below; either shows its path.
+  await expect(
+    page.getByText(root.path, { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible();
   await page.unroute('**/api/v1/root-summaries');
   let release = () => {};
   const held = new Promise<void>((resolve) => {
@@ -76,6 +101,9 @@ test('summary transient failure retains rows and an obsolete pending summary can
     reached = resolve;
   });
   let reads = 0;
+  // The library page behind Settings keeps its own list of unassigned folders, read with a
+  // query. A real denial refuses that read too.
+  await page.route('**/api/v1/root-summaries?*', (route) => route.fulfill(problem(403)));
   await page.route('**/api/v1/root-summaries', async (route) => {
     if (++reads === 1) {
       reached();
@@ -90,7 +118,7 @@ test('summary transient failure retains rows and an obsolete pending summary can
       new URL(response.url()).pathname === '/api/v1/root-summaries' && response.status() === 200,
   );
   try {
-    await page.clock.runFor(16_000);
+    await idleChecks(page);
     await expect(page.getByText(root.path, { exact: true })).toHaveCount(0);
   } finally {
     release();
@@ -110,7 +138,10 @@ test('an obsolete summary denial cannot sign out a newer authorized settings gen
   const authorized = await fixture.client.rootSummaries();
   await signIn(page, fixture);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(page.getByText(root.path, { exact: true })).toBeVisible();
+  // The folder is listed to tick and again in the table below; either shows its path.
+  await expect(
+    page.getByText(root.path, { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible();
   let release = () => {};
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -134,14 +165,17 @@ test('an obsolete summary denial cannot sign out a newer authorized settings gen
       new URL(response.url()).pathname === '/api/v1/root-summaries' && response.status() === 401,
   );
   try {
-    await page.clock.runFor(16_000);
+    await idleChecks(page);
     await expect.poll(() => reads).toBe(2);
   } finally {
     release();
   }
   await (await resumed).finished();
   await page.evaluate(() => new Promise(requestAnimationFrame));
-  await expect(page.getByText(root.path, { exact: true })).toBeVisible();
+  // The folder is listed to tick and again in the table below; either shows its path.
+  await expect(
+    page.getByText(root.path, { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
 });
 

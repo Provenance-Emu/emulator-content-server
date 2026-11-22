@@ -11,7 +11,9 @@
   import ListMore from './components/ListMore.svelte';
   import { shownLabel } from './lib/batches';
   import {artworkRoles,roleOf,matchSlot,matchLabel} from './lib/matching-slots';
-  let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy,showLegacyPatchDownload=true,controller:shared}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void;showLegacyPatchDownload?:boolean;
+  let {context,sourceId,sourceName,owner,onchanged,reviewOptions,onnext,onbusy,showLegacyPatchDownload=true,compact=false,controller:shared}:{context:ServerContext;sourceId:string;sourceName:string;owner:boolean;onchanged:()=>void;reviewOptions?:MatchingOptions;onnext?:()=>void;onbusy?:(busy:boolean)=>void;showLegacyPatchDownload?:boolean;
+    /** One row per saved match instead of a card each. */
+    compact?:boolean;
     /** The game page's own controller. It loads, reports failures and is disposed there. */
     controller?:MatchingController}=$props();
   const controller=untrack(()=>shared ?? createMatching(context.client,sourceId));
@@ -112,7 +114,7 @@
 <section class="matching matching-page" aria-label="Metadata and artwork matching">
   <h2>Saved matches</h2>
   {#if $controller.savedLoading}<p role="status">Loading saved matches…</p>{/if}
-  {#if shared && $controller.saved?.matches.length}
+  {#if (shared||compact) && $controller.saved?.matches.length}
     <!-- The game page already shows the pictures and details; this is the list of what is kept. -->
     <ul class="saved-rows">{#each $controller.saved.matches as selected (matchSlot(selected))}
       {@const art=selected.kind==='artwork'?(roleOf(selected)==='front'?$controller.savedArtwork:$controller.savedArtworkByRole[roleOf(selected)]):null}
@@ -152,8 +154,8 @@
       </form>
     </details>
   {/if}
-  <h2>Find metadata, artwork, patches & cheats</h2>
-  <p class="dim">Search local and online providers, then save unique verified, exact-title, and local companion matches automatically. Fuzzy alternatives and conflicting identities stay available for review. Saved artwork is downloaded and kept with the game.</p>
+  <h2>Look up this game</h2>
+  <p class="dim">A match that is certain is saved on its own. Anything doubtful is listed below for you to choose.</p>
   <div class="matching-actions" aria-label="Matching actions">
     <button type="button" class="primary" disabled={!ready||$controller.loading||$controller.savedLoading||!!$controller.saving||!activeProviders} onclick={()=>void find()}>{$controller.loading ? 'Finding matches…' : 'Find matches'}</button>
     {#if $controller.result}<button type="button" disabled={!!$controller.saving} onclick={()=>controller.clear()}>Clear matches</button>{/if}
@@ -172,8 +174,8 @@
 
 
   {#if $controller.result}
-    {#if $controller.result.automatic?.saved}<p role="status">Saved {$controller.result.automatic.saved} matches automatically.</p>{/if}
-    {#each $controller.result.problems as problem}<p class="problem">{providerName(problem.providerId)} could not complete its lookup. Other results are still available.</p>{/each}
+    {#if $controller.result.automatic?.saved}<p role="status">Saved {$controller.result.automatic.saved} {$controller.result.automatic.saved===1?'match':'matches'} automatically.</p>{/if}
+    {#each $controller.result.problems as problem}<p class="problem">{providerName(problem.providerId).split(' · ')[0]} could not be reached. Other results are still shown.</p>{/each}
     <div class="actions matching-tabs" aria-label="Match categories">
       {#each categories as [id,label]}<button type="button" class:active={category===id} aria-pressed={category===id} onclick={()=>{category=id;shown=8;}}>{label} ({$controller.result.candidates.filter((c)=>c.kind===id).length})</button>{/each}
     </div>

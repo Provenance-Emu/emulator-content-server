@@ -256,6 +256,7 @@
             onpaired={() => { pairingPin = ''; }}
             onsignin={() => { signingIn = true; drawer = false; }}
             onsetup={() => { guide = $application.owner ? 'host' : 'join'; }}
+            onsignout={() => { void application.signOut(); }}
             onopendocumentation={context.openDocumentation}
             serverLabel={context.label}
             server={context}

@@ -554,10 +554,13 @@ test('restored manual loopback profile remains a server-folder fallback even whe
     await expect(
       page.getByRole('dialog', { name: 'Add server folder', exact: true }),
     ).toBeVisible();
+    // Listing companion apps is unrelated to folders and runs for every connection.
     expect(
-      await page.evaluate(
-        () => (window as unknown as { __startupCommands: string[] }).__startupCommands,
-      ),
+      (
+        await page.evaluate(
+          () => (window as unknown as { __startupCommands: string[] }).__startupCommands,
+        )
+      ).filter((command) => command !== 'companion_apps'),
     ).toEqual([]);
     expect(
       await page.evaluate(

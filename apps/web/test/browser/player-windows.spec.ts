@@ -213,7 +213,7 @@ test('pending uploads remain recoverable when leaving game view or cancelling St
   );
   await page.getByRole('button', { name: 'Save screenshot to library', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Retry upload', exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Core options', exact: true }).click();
+  await page.getByRole('button', { name: 'Core options', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Retry upload', exact: true })).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Download pending image', exact: true }),
@@ -258,17 +258,17 @@ test('player tools preserve the running session and captures across keyboard pan
     await page.locator('iframe').evaluate((element) => {
       element.setAttribute('data-original-session', 'true');
     });
-    const tools = page.getByRole('tablist', { name: 'Player tools', exact: true });
+    const tools = page.getByRole('toolbar', { name: 'Player tools', exact: true });
     for (const name of ['Controls', 'Video', 'Core options']) {
-      await tools.getByRole('tab', { name, exact: true }).click();
-      await expect(page.getByRole('tabpanel', { name, exact: true })).toBeVisible();
+      await tools.getByRole('button', { name, exact: true }).click();
+      await expect(page.getByRole('group', { name, exact: true })).toBeVisible();
       await expect(capture).toBeEnabled();
       await expect(page.locator('iframe[data-original-session=true]')).toHaveCount(1);
       await expect(
         page.getByRole('region', { name: 'Input mappings', includeHidden: true }),
       ).toHaveCount(1);
     }
-    await tools.getByRole('tab', { name: 'Controls', exact: true }).click();
+    await tools.getByRole('button', { name: 'Controls', exact: true }).click();
     await page.getByRole('button', { name: 'Import or browse skins', exact: true }).click();
     const skins = page.getByRole('dialog', { name: 'Skin library', exact: true });
     await expect(skins).toBeVisible();
@@ -276,14 +276,18 @@ test('player tools preserve the running session and captures across keyboard pan
     await expect(page.getByRole('button', { name: 'Save state', exact: true })).toBeDisabled();
     await skins.getByRole('button', { name: 'Close skins', exact: true }).click();
     await expect(capture).toBeEnabled();
-    await tools.getByRole('tab', { name: 'Core options', exact: true }).focus();
-    await page.keyboard.press('Home');
-    await expect(tools.getByRole('tab', { name: 'Saves', exact: true })).toBeFocused();
+    // Each tool is an ordinary button: Enter opens it, and Escape inside it puts it away.
+    await tools.getByRole('button', { name: 'Saves', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(tools.getByRole('button', { name: 'Saves', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     await expect(
       page.getByRole('button', { name: 'Download screenshot', exact: true }),
     ).toBeVisible();
     expect(f.starts()).toBe(1);
-    await tools.getByRole('tab', { name: 'Core options', exact: true }).click();
+    await tools.getByRole('button', { name: 'Core options', exact: true }).click();
     const region = page.getByRole('combobox', { name: 'Console region', exact: true });
     await expect(region).toBeEnabled();
     await region.selectOption('PAL');
@@ -293,8 +297,17 @@ test('player tools preserve the running session and captures across keyboard pan
       path: testInfo.outputPath('player-workspace-desktop.png'),
       fullPage: true,
     });
+    await page.screenshot({ path: '/tmp/ecs-player-tools-open.png' });
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('complementary', { name: 'Player workspace' })).toBeHidden();
+    await expect(tools.getByRole('button', { name: 'Core options', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await page.screenshot({ path: '/tmp/ecs-player-tools-closed.png' });
+    await tools.getByRole('button', { name: 'Core options', exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
-    await tools.getByRole('tab', { name: 'Core options', exact: true }).click();
+    await tools.getByRole('button', { name: 'Core options', exact: true }).click();
     await page.screenshot({
       path: testInfo.outputPath('player-workspace-phone.png'),
       fullPage: true,

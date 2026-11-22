@@ -129,7 +129,7 @@
               aria-label={`View ${slot.label.toLowerCase()}`}
               onclick={() => open(slot.role)}
             >
-              {#if slot.url}<img src={slot.url} alt="" />
+              {#if slot.url}<img src={slot.url} alt="" decoding="async" />
               {:else if slot.image}<span class="dim">Loading…</span>
               {:else}<span class="art-document">Document</span>{/if}
             </button>

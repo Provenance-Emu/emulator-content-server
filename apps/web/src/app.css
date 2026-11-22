@@ -847,6 +847,8 @@ small {
   gap: 2px;
 }
 .settings-sidebar .settings-setup {
+  display: grid;
+  gap: 2px;
   margin-top: auto;
 }
 .settings-heading {

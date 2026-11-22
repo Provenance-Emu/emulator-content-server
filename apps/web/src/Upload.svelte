@@ -9,6 +9,7 @@
   import { explain } from './lib/problems';
   import UploadReview from './UploadReview.svelte';
   import UploadQueue from './UploadQueue.svelte';
+  import Icon from './components/Icon.svelte';
   let { client, serverContext, libraryId, item, category, mode = 'files', oncomplete, onbusy = () => {}, onauthorization = () => {} }: {
     client: ContentClient; serverContext: ServerContext; libraryId: string; item: Item | null; category?: string;
     mode?: 'files' | 'folder'; oncomplete: () => void; onbusy?: (busy: boolean) => void;
@@ -56,8 +57,17 @@
     catch (error) { if (isCurrent()) savedFailure = explain(error); }
     finally { if (!disposed) loadingSaved = false; }
   }
+  let over = $state(false);
+  let fileInput = $state<HTMLInputElement>();
+  let folderInput = $state<HTMLInputElement>();
   function pick(event: Event) {
     const files = Array.from((event.currentTarget as HTMLInputElement).files ?? []);
+    if (files.length) review?.selectFiles(files);
+  }
+  function dropped(event: DragEvent) {
+    event.preventDefault();
+    over = false;
+    const files = Array.from(event.dataTransfer?.files ?? []);
     if (files.length) review?.selectFiles(files);
   }
   function start() {
@@ -84,8 +94,8 @@
   onDestroy(() => { disposed = true; unsubscribe(); queue.dispose(); });
   void load();
 </script>
-<section>
-  <h2>{item ? `Add files to ${item.title}` : 'Upload from this device'}</h2>
+<section class="upload">
+  {#if item}<p class="dim upload-for">Adding to {item.title}</p>{/if}
   {#if !started}
     {#if loadingSaved}<p role="status">Checking upload progress…</p>
     {:else if saved}<section aria-label="Saved uploads"><h3>Unfinished uploads found</h3>
@@ -97,17 +107,72 @@
       <p>Starting a temporary queue uploads from the beginning. Check your library first to avoid repeating an earlier upload.</p>
       <div class="actions"><button type="button" onclick={()=>void readSaved()}>Retry saved progress</button><button type="button" onclick={()=>void discard()}>Discard saved progress</button><button type="button" onclick={()=>{temporaryOnly=true;saveProgress=false;savedFailure=null;}}>Start a temporary queue</button></div>
     {:else if review}
-      <label>File<input type="file" multiple onchange={pick} /></label>
-      {#if folderSupported}<label>Folder<input type="file" multiple {...{webkitdirectory:true}} onchange={pick} /></label>
-      {:else}<p>Folder selection is unavailable in this browser. Use File to select multiple files.</p>{/if}
-      {#if mode==='folder' && folderSupported}<p>Select a folder using Folder. Relative folder paths will be preserved.</p>{/if}
-      <UploadReview controller={review} {systems} {client} {libraryId} onauthorization={rejectAuthorization} />
-      {#if journal && !temporaryOnly}<label><input type="checkbox" bind:checked={saveProgress} disabled={!!savedFailure || ($review?.entries.length ?? 0) > MAX_SAVED_UPLOADS} /> Save upload progress on this device</label>
-        <p class="dim">Saves file names, transfer progress and content checks for this signed-in session. Files themselves are not stored. After reopening, select the originals to resume.</p>
-        {#if ($review?.entries.length ?? 0) > MAX_SAVED_UPLOADS}<p>Save progress for up to {MAX_SAVED_UPLOADS} files at a time. Split this selection into smaller queues to keep recovery available.</p>{/if}
-      {:else}<p class="dim">{temporaryOnly ? 'Keep this window open; this temporary queue is not saved after closing.' : credential ? 'This browser cannot store upload recovery. Keep this window open.' : 'Sign in to save upload progress after closing this window. Your browser must allow local storage.'}</p>{/if}
-      <button type="button" disabled={!$review?.entries.length || $review?.entries.some(e=>e.errors.length)} onclick={start}>Upload</button>
+      {@const chosen = $review?.entries.length ?? 0}
+      <div
+        class="drop-zone"
+        class:over
+        class:compact={chosen > 0}
+        role="group"
+        aria-label="Choose what to upload"
+        ondragover={(event) => { event.preventDefault(); over = true; }}
+        ondragleave={() => (over = false)}
+        ondrop={dropped}
+      >
+        {#if !chosen}
+          <Icon name="upload" />
+          <p><strong>Drop games, saves or pictures here</strong></p>
+          <p class="dim">or choose them from this device</p>
+        {/if}
+        <div class="actions">
+          <button type="button" class:primary={!chosen} onclick={() => fileInput?.click()}>
+            {chosen ? 'Choose different files' : 'Choose files'}
+          </button>
+          <input bind:this={fileInput} class="visually-hidden" tabindex="-1" type="file" multiple aria-label="File" onchange={pick} />
+          {#if folderSupported}
+            <button type="button" onclick={() => folderInput?.click()}>
+              {chosen ? 'Choose a different folder' : 'Choose a folder'}
+            </button>
+            <input bind:this={folderInput} class="visually-hidden" tabindex="-1" type="file" multiple aria-label="Folder" {...{webkitdirectory:true}} onchange={pick} />
+          {/if}
+        </div>
+        {#if !folderSupported}<p class="dim">Folder selection is unavailable in this browser. Choose several files instead.</p>
+        {:else if mode==='folder' && !chosen}<p class="dim">A folder keeps its layout, so disc sets stay together.</p>{/if}
+      </div>
+      {#if chosen}
+        <UploadReview controller={review} {systems} {client} {libraryId} onauthorization={rejectAuthorization} />
+        {#if journal && !temporaryOnly}
+          <div class="upload-save">
+            <label class="check"><input type="checkbox" bind:checked={saveProgress} disabled={!!savedFailure || chosen > MAX_SAVED_UPLOADS} /> Save upload progress on this device</label>
+            <p class="dim">If this window closes, choose the same files again to carry on where it stopped. Only names and progress are kept, not the files.</p>
+            {#if chosen > MAX_SAVED_UPLOADS}<p class="dim">Progress can be saved for up to {MAX_SAVED_UPLOADS} files at a time. Upload in smaller groups to keep it.</p>{/if}
+          </div>
+        {:else}<p class="dim">{temporaryOnly ? 'Keep this window open; this temporary queue is not saved after closing.' : credential ? 'This browser cannot store upload recovery. Keep this window open.' : 'Sign in to save upload progress after closing this window. Your browser must allow local storage.'}</p>{/if}
+        <div class="ui-actions">
+          <button type="button" class="primary" disabled={$review?.entries.some(e=>e.errors.length)} onclick={start}>Upload</button>
+        </div>
+      {/if}
     {:else if !failure}<p>Loading upload metadata…</p>{/if}
   {:else}<UploadQueue controller={queue} {client} {libraryId} onauthorization={rejectAuthorization} />{/if}
   {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
 </section>
+<style>
+  .upload { display: grid; gap: var(--space-4); }
+  .upload-for { margin: 0; }
+  .drop-zone {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-2);
+    padding: var(--space-8) var(--space-4);
+    border: var(--border-width) dashed var(--color-border-strong);
+    border-radius: var(--radius-panel);
+    text-align: center;
+    transition: background var(--motion-control) var(--ease-out);
+  }
+  .drop-zone p { margin: 0; }
+  .drop-zone.over { background: var(--color-hover); }
+  .drop-zone.compact { justify-items: start; padding: var(--space-3); text-align: left; }
+  .drop-zone .actions { justify-content: center; margin-top: var(--space-2); }
+  .drop-zone.compact .actions { margin-top: 0; }
+  .upload-save { display: grid; gap: var(--space-1); }
+  .upload-save p { margin: 0; font-size: var(--text-small); }
+</style>
