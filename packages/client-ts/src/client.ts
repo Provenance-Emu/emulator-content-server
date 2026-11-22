@@ -169,6 +169,7 @@ export class ContentError extends Error {
   constructor(
     readonly status: number,
     readonly problem: Problem | null,
+    readonly retryAfterMs?: number,
   ) {
     super(problem?.title ?? `Content request failed with HTTP ${status}`);
     this.name = 'ContentError';
@@ -2149,7 +2150,16 @@ async function failure(response: Response): Promise<ContentError> {
     .json()
     .then((value) => value as Problem)
     .catch(() => null);
-  return new ContentError(response.status, problem);
+  const retryAfter = response.headers.get('retry-after');
+  const delay =
+    retryAfter && /^\d+$/.test(retryAfter)
+      ? Number(retryAfter) * 1000
+      : Date.parse(retryAfter ?? '') - Date.now();
+  return new ContentError(
+    response.status,
+    problem,
+    Number.isFinite(delay) ? Math.max(0, delay) : undefined,
+  );
 }
 
 function totalBytes(response: Response): number | null {

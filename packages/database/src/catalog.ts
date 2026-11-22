@@ -2842,6 +2842,11 @@ export class CatalogDatabase {
     return { revision: item.revision, files: rows.map(mapAsset) };
   }
 
+  currentChangeCursor(): number {
+    const row = this.db.prepare('SELECT MAX(cursor) AS cursor FROM change_log').get();
+    return Number(row?.cursor ?? 0);
+  }
+
   changes(input: {
     after: number;
     limit: number;

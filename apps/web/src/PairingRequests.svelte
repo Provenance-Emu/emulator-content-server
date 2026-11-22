@@ -17,9 +17,12 @@
   let failure = $state<string | null>(null);
   let unavailable = $state(false);
   let disposed = false;
+  let retryAt = 0;
 
   function showError(error: unknown) {
     if (disposed) return;
+    if (error instanceof ContentError && error.status === 429)
+      retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
     failure = explain(error);
     if (error instanceof ContentError && (error.status === 401 || error.status === 403)) {
       codes = {};
@@ -28,7 +31,7 @@
   }
 
   async function refresh() {
-    if (disposed || busy || unavailable) return;
+    if (disposed || busy || unavailable || Date.now() < retryAt) return;
     busy = true;
     try {
       const reply = await client.devicePairingRequests();
@@ -73,7 +76,7 @@
 
   onMount(() => {
     void refresh();
-    const timer = setInterval(() => void refresh(), 3000);
+    const timer = setInterval(() => { if (!document.hidden) void refresh(); }, 3000);
     return () => { disposed = true; clearInterval(timer); };
   });
 </script>

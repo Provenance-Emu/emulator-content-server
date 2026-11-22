@@ -257,7 +257,7 @@ export async function buildApp(
     if (trayOrigin(typeof origin === 'string' ? origin : undefined)) {
       reply.header('access-control-allow-origin', origin);
       reply.header('vary', 'origin');
-      reply.header('access-control-expose-headers', 'etag, content-range');
+      reply.header('access-control-expose-headers', 'etag, content-range, retry-after');
       reply.header(
         'access-control-allow-headers',
         'authorization, content-type, accept, idempotency-key, if-none-match, if-match, if-range, range, content-range',

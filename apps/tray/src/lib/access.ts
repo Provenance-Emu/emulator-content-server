@@ -1,6 +1,8 @@
 import {
   type AccessPolicy,
+  type Capabilities,
   ContentClient,
+  ContentError,
   type GuestGrant,
   type Library,
   type User,
@@ -94,14 +96,16 @@ export class AccessDesk {
   hideGrant() {
     this.patch({ issuedGrant: null });
   }
-  async refresh(): Promise<void> {
+  private retryAt = 0;
+  async refresh(status?: Capabilities, includeManaged = true): Promise<void> {
+    if (Date.now() < this.retryAt) return;
     const run = this.epoch;
     if (!this.live(run)) return;
     const client = this.context.client;
     try {
       const policy = await client.access();
       if (!this.live(run)) return;
-      const capabilities = await client.capabilities();
+      const capabilities = status ?? (await client.capabilities());
       if (!this.live(run)) return;
       this.patch({ policy, bootstrapped: capabilities.bootstrapped ?? null, failure: null });
       if (
@@ -114,7 +118,11 @@ export class AccessDesk {
         else await this.signInLocally(run);
         if (!this.live(run)) return;
       }
-      if (capabilities.bootstrapped !== true || (!policy.manages && !get(this.state).session))
+      if (
+        !includeManaged ||
+        capabilities.bootstrapped !== true ||
+        (!policy.manages && !get(this.state).session)
+      )
         return;
       try {
         await this.loadManaged(client, run);
@@ -125,7 +133,11 @@ export class AccessDesk {
         if (policy.manages) await this.refresh();
       }
     } catch (error) {
-      if (this.live(run)) this.patch({ failure: explain(error) });
+      if (this.live(run)) {
+        if (error instanceof ContentError && error.status === 429)
+          this.retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
+        this.patch({ failure: explain(error) });
+      }
     }
   }
   /** The person at the server's own computer is its owner; they are not asked to prove it again. */

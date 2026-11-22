@@ -45,12 +45,16 @@
         : null,
   );
   let live = false;
+  let loading = false;
+  let retryAt = 0;
   const totals = $derived(overviewTotals(overview?.folders ?? []));
   const count = (value: number) => value.toLocaleString();
   const libraryName = (id: string | null) =>
     id ? (libraries.find((library) => library.id === id)?.name ?? 'Library') : 'Unassigned';
 
   async function load() {
+    if (!live || loading || Date.now() < retryAt) return;
+    loading = true;
     try {
       const [next, roots] = await Promise.all([
         context.client.libraryOverview(),
@@ -62,17 +66,21 @@
       failure = null;
     } catch (error) {
       if (!live) return;
+      if (error instanceof ContentError && error.status === 429)
+        retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
       failure = explain(error);
       if (error instanceof ContentError && (error.status === 401 || error.status === 403)) {
         live = false;
         onrejected(error.status);
       }
+    } finally {
+      loading = false;
     }
   }
   onMount(() => {
     live = true;
     void load();
-    const timer = setInterval(() => void load(), 5000);
+    const timer = setInterval(() => { if (!document.hidden) void load(); }, 15_000);
     return () => {
       live = false;
       clearInterval(timer);

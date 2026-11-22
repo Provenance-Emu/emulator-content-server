@@ -1,5 +1,5 @@
 import type { AccessPolicy } from '@ecs/client';
-import { type Capabilities, ContentClient } from '@ecs/client';
+import { type Capabilities, ContentClient, ContentError } from '@ecs/client';
 import type { ServerContext } from '../../../web/src/lib/application';
 import { AccessDesk } from './access.svelte';
 import type { DesktopSelection } from './application';
@@ -17,9 +17,14 @@ export class ServerWatch {
   private unsubscribe: () => void;
   private unsubscribeDesk?: () => void;
   private generation = 0;
+  private checking: number | null = null;
+  private managedAt = 0;
+  private retryAt = 0;
   constructor(private readonly selection: DesktopSelection) {
     this.unsubscribe = selection.subscribe((context) => {
       this.generation++;
+      this.managedAt = 0;
+      this.retryAt = 0;
       this.unsubscribeDesk?.();
       this.desk?.dispose();
       this.context = context;
@@ -41,19 +46,26 @@ export class ServerWatch {
     const origin = this.origin;
     if (!origin) return;
     const run = this.generation;
-    const client = new ContentClient(origin);
+    if (this.checking === run || Date.now() < this.retryAt) return;
+    this.checking = run;
+    const client = new ContentClient(origin, undefined, { timeoutMs: 8000 });
     try {
-      await client.health();
-      if (run !== this.generation) return;
       const capabilities = await client.capabilities();
       if (run !== this.generation) return;
       this.capabilities = capabilities;
       this.reachable = true;
-      await this.desk?.refresh();
-    } catch {
+      const visible = typeof document === 'undefined' || !document.hidden;
+      const includeManaged = visible && Date.now() - this.managedAt >= 60_000;
+      await this.desk?.refresh(capabilities, includeManaged);
+      if (run === this.generation && includeManaged) this.managedAt = Date.now();
+    } catch (error) {
       if (run !== this.generation) return;
+      if (error instanceof ContentError && error.status === 429)
+        this.retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
       this.reachable = false;
       this.capabilities = null;
+    } finally {
+      if (this.checking === run) this.checking = null;
     }
     if (run === this.generation) this.checkedAt = new Date().toLocaleTimeString();
   }

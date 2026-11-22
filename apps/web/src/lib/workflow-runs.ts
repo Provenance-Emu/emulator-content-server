@@ -111,6 +111,8 @@ export function createWorkflowRuns(
       hooks.rejected?.(error.status as 401 | 403);
       return;
     }
+    if (error instanceof ContentError && error.status === 429)
+      retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
     emit({ failure: explain(error) });
   }
   async function action(work: (e: number) => Promise<void>) {
@@ -130,11 +132,12 @@ export function createWorkflowRuns(
     applicationId = undefined;
     emit({ approval: null });
   }
-  async function load(e: number, id: string) {
+  let detailsReadAt = 0;
+  async function load(e: number, id: string, summary?: WorkflowRun) {
     // Each batch of fixes carries the findings its fixes answer.
     const proposalFindings: WorkflowFinding[] = [];
     const [r, p, f, a, results] = await Promise.all([
-      client.workflowRun(id),
+      summary ? { run: summary } : client.workflowRun(id),
       readBatches(depth.proposals, async (cursor) => {
         const batch = await client.workflowProposals(id, cursor);
         proposalFindings.push(...(batch.findings ?? []));
@@ -168,6 +171,7 @@ export function createWorkflowRuns(
       invalidateApproval();
       emit({ notice: 'A selected fix changed or was reviewed. Review it again before approval.' });
     }
+    detailsReadAt = Date.now();
     emit({
       run: r.run,
       proposals: distinct(p.items, (row) => `${row.id}:${row.version}`),
@@ -193,12 +197,23 @@ export function createWorkflowRuns(
         nextRunsCursor: r.nextCursor,
       });
   }
-  async function refresh() {
+  let retryAt = 0;
+  async function refresh(polling = false) {
+    if (polling && Date.now() < retryAt) return;
     await action(async (e) => {
       await history(e);
       if (!valid(e)) return;
       const id = current.run?.id ?? current.runs[0]?.id;
-      if (id) await load(e, id);
+      if (!id) return;
+      const { run } = await client.workflowRun(id);
+      if (
+        valid(e) &&
+        (!polling ||
+          current.run?.revision !== run.revision ||
+          current.run.id !== id ||
+          Date.now() - detailsReadAt >= 60_000)
+      )
+        await load(e, id, run);
     });
   }
   async function choose(id: string) {
@@ -375,11 +390,14 @@ export function createWorkflowRuns(
     if (timer || disposed) return;
     void refresh();
     const tick = () => {
-      timer = setTimeout(() => {
-        void refresh().finally(() => {
+      const active = current.runs.some(({ state }) => state === 'queued' || state === 'running');
+      timer = setTimeout(
+        async () => {
+          if (typeof document === 'undefined' || !document.hidden) await refresh(true);
           if (!disposed && !denied) tick();
-        });
-      }, 2500);
+        },
+        Math.max(active ? 2500 : 15_000, retryAt - Date.now()),
+      );
     };
     tick();
   }

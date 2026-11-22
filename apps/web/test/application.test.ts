@@ -130,7 +130,7 @@ test('disposal invalidates an outstanding restore and prevents later subscriber 
   }
 });
 
-test('authenticated cadence removes revoked scopes and refreshes unchanged scopes without changefeed events', async () => {
+test('authenticated cadence removes revoked scopes without refreshing unchanged scopes on every tick', async () => {
   const f = serverFixture();
   f.libraries = [library('kept'), library('revoked')];
   const app = createApplication(f.context, f.scheduler);
@@ -148,10 +148,9 @@ test('authenticated cadence removes revoked scopes and refreshes unchanged scope
     assert.ok(get(app).invalidation > first);
     const second = get(app).invalidation;
     await f.scheduler.tick();
-    assert.ok(
-      get(app).invalidation > second,
-      'item-only ACL changes still refresh the visible page',
-    );
+    assert.equal(get(app).invalidation, second);
+    for (let i = 0; i < 3; i++) await f.scheduler.tick();
+    assert.ok(get(app).invalidation > second, 'reconcile changes the feed cannot report');
     assert.equal(f.scheduler.pending, 1);
   } finally {
     app.dispose();
@@ -756,6 +755,27 @@ test('manual reconnect retries a failed startup once and never restores private 
       privateReads,
     );
     assert.equal(f.scheduler.pending, 1);
+  } finally {
+    app.dispose();
+    f.restore();
+  }
+});
+
+test('startup skips feed history and polls from the snapshot cursor', async () => {
+  const f = serverFixture();
+  const cursors: string[] = [];
+  f.changes = async (cursor) => {
+    cursors.push(cursor);
+    return Response.json({ changes: [], nextCursor: '1614829' });
+  };
+  const app = createApplication(f.context, f.scheduler);
+  try {
+    await app.start();
+    const initial = get(app).invalidation;
+    assert.deepEqual(cursors, ['now']);
+    await f.scheduler.tick();
+    assert.deepEqual(cursors, ['now', '1614829']);
+    assert.equal(get(app).invalidation, initial);
   } finally {
     app.dispose();
     f.restore();

@@ -287,6 +287,20 @@ test('content API streams ranges, enforces grants, and feeds changes', async () 
     assert.equal(changes.statusCode, 200);
     assert.ok((changes.json() as { changes: unknown[] }).changes.length > 0);
 
+    const snapshot = await server.app.inject({
+      url: '/api/v1/changes?cursor=now',
+      headers: auth,
+    });
+    assert.equal(snapshot.statusCode, 200);
+    const { changes: history, nextCursor } = snapshot.json();
+    assert.deepEqual(history, []);
+    assert.ok(Number(nextCursor) > 0);
+    const afterSnapshot = await server.app.inject({
+      url: `/api/v1/changes?cursor=${nextCursor}`,
+      headers: auth,
+    });
+    assert.deepEqual(afterSnapshot.json(), { changes: [], nextCursor });
+
     const device = await server.app.inject({
       method: 'POST',
       url: '/api/v1/device-tokens',

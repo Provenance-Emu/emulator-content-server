@@ -53,7 +53,7 @@ A game grid needs one request per page and no ROM downloads. Each `source` row i
 - `artworkPath`: present when a front cover is saved (`artworkAvailable` is also `true`). It is a server-relative path; `GET` it with the same Authorization header. The response has an `ETag` and `Cache-Control: private, no-cache`, so keep the image on disk and send `If-None-Match` next time; an unchanged cover answers `304` with no body.
 - `details`: optional `publisher`, `developer`, `year`, `genre`, `region`, `language`, `description`. Fields are absent until a match is saved, so lay the card out without them.
 
-`systemCounts` on the page gives the per-system totals for a sidebar. Poll `GET /api/v1/changes` to learn that the library changed instead of re-reading every page.
+`systemCounts` on the page gives the per-system totals for a sidebar. Poll `GET /api/v1/changes` to learn that the library changed instead of re-reading every page. For a fresh library view, call `GET /api/v1/changes?cursor=now` before loading the data, then poll from the returned `nextCursor`. Use a saved cursor when resuming a sync that needs historical changes.
 
 Covers are returned at their stored size (up to 8 MB, usually far smaller). Downscale on the device and cache the result. The Authorization header is required, so configure the image loader with a request modifier; a bare URL loader such as `AsyncImage` cannot fetch a cover.
 

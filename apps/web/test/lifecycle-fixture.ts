@@ -105,7 +105,13 @@ export function serverFixture() {
       case '/api/v1/changes':
         return changes
           ? changes(url.searchParams.get('cursor') ?? '0')
-          : Response.json({ changes: [], nextCursor: url.searchParams.get('cursor') ?? '0' });
+          : Response.json({
+              changes: [],
+              nextCursor:
+                url.searchParams.get('cursor') === 'now'
+                  ? '0'
+                  : (url.searchParams.get('cursor') ?? '0'),
+            });
       case '/api/v1/auth/logout':
         return logout ? logout() : Response.json({}, { status: logoutStatus });
       default:

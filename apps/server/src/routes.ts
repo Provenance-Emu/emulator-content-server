@@ -887,7 +887,11 @@ export function registerRoutes(
     if (actor.kind === 'user' && !actor.scopes.includes('read')) {
       throw new DomainError('forbidden', 403, 'This token cannot read');
     }
-    const after = parseChangeCursor(queryString(request, 'cursor'));
+    const cursor = queryString(request, 'cursor');
+    if (cursor === 'now') {
+      return { changes: [], nextCursor: String(catalog.currentChangeCursor()) };
+    }
+    const after = parseChangeCursor(cursor);
     if (Number.isNaN(after)) throw new DomainError('invalid-body', 400, 'cursor is invalid');
     const includeSensitive =
       actor.kind === 'user' || actor.capabilities.includes('share_restricted');

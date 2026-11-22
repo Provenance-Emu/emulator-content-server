@@ -152,7 +152,7 @@ export async function startWorkflowHost(
         continue;
       }
       try {
-        const claim = await client.claimWorkflowRun(1000);
+        const claim = await client.claimWorkflowRun(10_000);
         failures = 0;
         if (!claim.lease || !claim.run) {
           await pause(250, signal);

@@ -1,4 +1,4 @@
-import type { Capabilities, ContentClient, Library } from '@ecs/client';
+import { type Capabilities, type ContentClient, ContentError, type Library } from '@ecs/client';
 import { type Readable, writable } from 'svelte/store';
 import {
   type ChangeWatch,
@@ -77,6 +77,9 @@ export function createApplication(
   let acceptedToken: string | undefined;
   let unsubscribeSession: (() => void) | undefined;
   let feedChanged = false;
+  let rootsSignature = '';
+  let idleCycles = 0;
+  let retryAt = 0;
   let needsAuthentication = true;
   let activeCycle: { run: number; promise: Promise<void> } | null = null;
   let revalidation: { run: number; promise: Promise<void> } | null = null;
@@ -94,6 +97,8 @@ export function createApplication(
     watcher?.dispose();
     watcher = null;
     feedChanged = false;
+    rootsSignature = '';
+    idleCycles = 0;
   }
   function forget() {
     void clearCredentialUploads(context.origin, acceptedToken).catch(() => {
@@ -124,10 +129,14 @@ export function createApplication(
     // Queued/manual revalidation owns the next cycle, including its final timeout.
     if (!live(run) || timer || revalidation?.run === run) return;
     timer = {
-      handle: scheduler.setTimeout(async () => {
-        timer = null;
-        await cycle(run);
-      }, 15_000),
+      handle: scheduler.setTimeout(
+        async () => {
+          timer = null;
+          if (typeof document !== 'undefined' && document.hidden) schedule(run);
+          else await cycle(run);
+        },
+        Math.max(15_000, retryAt - Date.now()),
+      ),
     };
   }
   async function publicStatus(run: number) {
@@ -135,7 +144,11 @@ export function createApplication(
       const capabilities = await context.client.capabilities();
       if (live(run)) update({ capabilities, reachable: true, failure: null });
     } catch (error) {
-      if (live(run)) update({ reachable: false, failure: explain(error) });
+      if (live(run)) {
+        if (error instanceof ContentError && error.status === 429)
+          retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
+        update({ reachable: false, failure: explain(error) });
+      }
     }
   }
   async function discover(run: number): Promise<'ok' | 'error' | 'unauthorized' | 'stale'> {
@@ -143,18 +156,31 @@ export function createApplication(
     let owner = current.owner;
     let failure: string | null = null;
     try {
-      await context.client.roots();
+      const roots = await context.client.roots();
       if (!live(run)) return 'stale';
+      const signature = JSON.stringify(roots.items);
+      if (signature !== rootsSignature) feedChanged = true;
+      rootsSignature = signature;
       owner = true;
     } catch (error) {
       if (!live(run)) return 'stale';
       if (isUnauthorized(error)) return 'unauthorized';
       if (isForbidden(error)) owner = false;
-      else failure = explain(error);
+      else if (error instanceof ContentError && error.status === 429) {
+        retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
+        update({ failure: explain(error) });
+        return 'error';
+      } else failure = explain(error);
     }
     try {
       const listing = await context.client.browseLibraries();
       if (!live(run)) return 'stale';
+      if (
+        !current.signedIn ||
+        owner !== current.owner ||
+        JSON.stringify(listing.items) !== JSON.stringify(current.libraries)
+      )
+        feedChanged = true;
       update({ signedIn: true, owner, libraries: listing.items, failure });
       return 'ok';
     } catch (error) {
@@ -164,6 +190,8 @@ export function createApplication(
         update({ signedIn: true, owner, libraries: [], failure: null });
         return 'ok';
       }
+      if (error instanceof ContentError && error.status === 429)
+        retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
       update({ owner, failure: explain(error) });
       return 'error';
     }
@@ -175,6 +203,7 @@ export function createApplication(
     } else {
       watcher = createChangeWatch(context.client, {
         scheduler: null,
+        snapshot: true,
         invalidate() {
           if (live(run)) feedChanged = true;
         },
@@ -191,8 +220,9 @@ export function createApplication(
   async function performCycle(task: { run: number; promise: Promise<void> }) {
     let run = task.run;
     try {
+      if (Date.now() < retryAt) return;
       await publicStatus(run);
-      if (!live(run)) return;
+      if (!live(run) || Date.now() < retryAt) return;
       if (needsAuthentication || current.signedIn) {
         let result = await discover(run);
         if (!live(run)) return;
@@ -211,9 +241,12 @@ export function createApplication(
         if (result === 'ok') needsAuthentication = false;
         // Sign-in can render once discovery finishes, while the change feed catches up.
         if (!current.settled) update({ settled: true });
-        await watch(run);
+        if (Date.now() >= retryAt) await watch(run);
         if (!live(run)) return;
-        if (result === 'ok' || feedChanged) {
+        // Reconcile item-level access and unassigned inventory that have no feed events.
+        if (result === 'ok') idleCycles++;
+        if (feedChanged || (result === 'ok' && (idleCycles >= 4 || revalidation?.run === run))) {
+          idleCycles = 0;
           feedChanged = false;
           update({ invalidation: current.invalidation + 1 });
         }

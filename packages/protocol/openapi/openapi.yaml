@@ -1821,7 +1821,7 @@ paths:
       tags: [Libraries and items]
       security: [{ bearerAuth: [] }, {}]
       parameters:
-        - { name: cursor, in: query, schema: { type: string }, description: Exclusive decimal cursor. Start at 0 and use nextCursor verbatim. }
+        - { name: cursor, in: query, schema: { type: string }, description: "Exclusive decimal cursor. Use 0 to replay history or now to get an empty page at the current cursor before loading a fresh snapshot." }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
         - { name: excludeOwnDevice, in: query, schema: { type: string, enum: ['1'] }, description: Omit changes from the authenticated device. }
       responses:

@@ -1,4 +1,4 @@
-import type { ContentClient } from '@ecs/client';
+import { type ContentClient, ContentError } from '@ecs/client';
 import { isUnauthorized } from './problems.js';
 
 export interface PollScheduler {
@@ -16,6 +16,7 @@ export const defaultPollScheduler: PollScheduler = {
 
 export interface ChangeWatchOptions {
   invalidate(): void;
+  snapshot?: boolean;
   unauthorized(): void;
   /** null means the application drives poll() on its single shared cadence. */
   scheduler?: PollScheduler | null;
@@ -30,7 +31,9 @@ export interface ChangeWatch {
 /** One cursor per authentication lifetime. No discovery, scans, or content reads. */
 export function createChangeWatch(client: ContentClient, options: ChangeWatchOptions): ChangeWatch {
   const scheduler = options.scheduler === undefined ? defaultPollScheduler : options.scheduler;
-  let cursor = '0';
+  let cursor = options.snapshot ? 'now' : '0';
+  let legacy = false;
+  let retryAt = 0;
   let started = false;
   let disposed = false;
   let pending: Promise<void> | null = null;
@@ -47,12 +50,15 @@ export function createChangeWatch(client: ContentClient, options: ChangeWatchOpt
   async function catchUp() {
     let changed = false;
     try {
-      for (;;) {
+      if (legacy || Date.now() < retryAt) return;
+      for (let batch = 0; batch < 4; batch++) {
         const page = await client.changes({ cursor, limit: 100 });
         if (disposed) return;
-        changed ||= page.changes.length > 0;
+        const initializing = cursor === 'now';
+        changed ||= initializing || page.changes.length > 0;
         if (page.nextCursor === cursor) break;
         cursor = page.nextCursor;
+        if (initializing || page.changes.length === 0) break;
       }
     } catch (error) {
       if (disposed) return;
@@ -60,6 +66,10 @@ export function createChangeWatch(client: ContentClient, options: ChangeWatchOpt
         dispose();
         options.unauthorized();
         return;
+      }
+      if (error instanceof ContentError) {
+        if (cursor === 'now' && error.status === 400) legacy = true;
+        if (error.status === 429) retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
       }
       // Keep the last applied cursor. The next cadence retries transient errors.
     } finally {

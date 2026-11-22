@@ -101,10 +101,15 @@ function check() {
 }
 check();
 const timer = setInterval(check, 10_000);
+function checkWhenVisible() {
+  if (!document.hidden) check();
+}
+document.addEventListener('visibilitychange', checkWhenVisible);
 window.addEventListener(
   'pagehide',
   () => {
     clearInterval(timer);
+    document.removeEventListener('visibilitychange', checkWhenVisible);
     unsubscribeService();
     watch.dispose();
     selection.dispose();

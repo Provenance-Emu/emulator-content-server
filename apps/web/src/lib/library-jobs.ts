@@ -74,6 +74,8 @@ export function createLibraryJobs(
   };
   function fail(error: unknown) {
     if (disposed || denied) return;
+    if (error instanceof ContentError && error.status === 429)
+      retryAt = Date.now() + (error.retryAfterMs ?? 60_000);
     update({ failure: explain(error) });
     if (error instanceof ContentError && (error.status === 401 || error.status === 403)) {
       denied = true;
@@ -89,10 +91,15 @@ export function createLibraryJobs(
     if (!current.selectedId || disposed || denied) return;
     const epoch = ++itemEpoch,
       id = current.selectedId;
+    const updatedAt = current.jobs.find((job) => job.id === id)?.updatedAt;
     try {
       const page = await readBatches(depth, (cursor) => batch(id, cursor));
-      if (epoch === itemEpoch && id === current.selectedId)
+      if (epoch === itemEpoch && id === current.selectedId) {
+        loadedResults = true;
+        resultsUpdatedAt = updatedAt;
+        resultsReadAt = Date.now();
         update({ items: distinct(page.items), nextCursor: page.nextCursor });
+      }
     } catch (error) {
       if (epoch === itemEpoch) fail(error);
     }
@@ -116,8 +123,12 @@ export function createLibraryJobs(
       update({ loadingMore: false });
     }
   }
-  async function refresh() {
-    if (disposed || denied || refreshing) return;
+  let loadedResults = false;
+  let resultsUpdatedAt: string | undefined;
+  let resultsReadAt = 0;
+  let retryAt = 0;
+  async function refresh(polling = false) {
+    if (disposed || denied || refreshing || Date.now() < retryAt) return;
     refreshing = true;
     try {
       const result = await client.libraryJobs({ limit: 20 });
@@ -152,8 +163,14 @@ export function createLibraryJobs(
           (next?.kind === 'scan' && next.state === 'completed' && previous?.state !== 'completed')
         )
           hooks.changed?.();
+      }
+      const active = next?.state === 'queued' || next?.state === 'running';
+      const canReadResults = !active || depth === 1 || Date.now() - resultsReadAt >= 10_000;
+      if (
+        selectedId &&
+        (!polling || !loadedResults || (canReadResults && resultsUpdatedAt !== next?.updatedAt))
+      )
         await items();
-      } else if (!current.items.length && selectedId) await items();
     } catch (error) {
       fail(error);
     } finally {
@@ -182,8 +199,10 @@ export function createLibraryJobs(
     }
   }
   async function poll() {
-    await refresh();
-    if (!disposed && !denied) timer = setTimeout(() => void poll(), 2000);
+    if (typeof document === 'undefined' || !document.hidden) await refresh(true);
+    const active = current.jobs.some(({ state }) => state === 'queued' || state === 'running');
+    if (!disposed && !denied)
+      timer = setTimeout(() => void poll(), Math.max(active ? 2000 : 15_000, retryAt - Date.now()));
   }
   return {
     subscribe: store.subscribe,
@@ -211,11 +230,13 @@ export function createLibraryJobs(
     },
     async choose(id: string) {
       itemEpoch++;
+      loadedResults = false;
       depth = 1;
       update({ selectedId: id, items: [], nextCursor: null });
       await items();
     },
     async filter(value: string) {
+      loadedResults = false;
       status = value || undefined;
       depth = 1;
       await items();
