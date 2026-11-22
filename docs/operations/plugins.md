@@ -2,8 +2,8 @@
 
 Open **Settings → Plugins** in the desktop app or web interface and sign in as
 the server owner. Choose **Install bundled plugins** to install Library cleanup
-and connect its host automatically. The page lists installed workflows, enabled
-versions, metadata integrations and enrolled hosts. **Check and repair connection**
+and connect its host automatically. The page lists the included and installed plugins, where game
+details come from, and plugin services on other computers. **Check and repair connection**
 validates packages and reconnects the local host. Browser cores are managed under
 **Settings → Emulators**.
 

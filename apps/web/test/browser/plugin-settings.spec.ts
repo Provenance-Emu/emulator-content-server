@@ -56,7 +56,7 @@ for (const viewport of [
     await signIn(page, fixture);
     await page.goto(`${fixture.origin}/ui/?settings=plugins`);
     await expect(page.getByRole('heading', { name: 'Plugins', exact: true })).toBeVisible();
-    await expect(page.getByText('No workflow plugins installed yet.')).toBeVisible();
+    await expect(page.getByText('No plugins installed yet.')).toBeVisible();
     expect(writes).toEqual([]);
     await page.getByRole('button', { name: 'Install bundled plugins', exact: true }).click();
     const installed = page.getByRole('article', { name: 'Library cleanup', exact: true }).last();

@@ -107,6 +107,10 @@
   });
   onMount(() => { void emulators.load(); });
   onDestroy(() => { disposed = true; packageFile = null; emulators.dispose(); });
+  /** A build named only by a commit says nothing to the owner; a real version number does. */
+  function versionLabel(version: string) {
+    return /^(nightly-)?[0-9a-f]{7,64}$/i.test(version) ? '' : ` · Version ${version}`;
+  }
 </script>
 
 <header class="page-heading emulator-heading">
@@ -126,7 +130,7 @@
 {#if $emulators.batch && !$emulators.denied}
   <section class="emulator-batch" aria-labelledby="emulator-batch-heading">
     <h2 id="emulator-batch-heading">{$emulators.batch.operation === 'install' ? 'Installation' : 'Removal'} progress</h2>
-    {#if $emulators.busy}<p class="dim">Up to three requests run at a time. Stopping lets active requests finish.</p>
+    {#if $emulators.busy}<p class="dim">Three are handled at a time. Stopping lets the ones in progress finish.</p>
       <button type="button" disabled={$emulators.batch.stopped} onclick={() => emulators.stopBatch()}>{$emulators.batch.stopped ? 'Stopping queued work…' : 'Stop queued work'}</button>{/if}
     <ul class="emulator-results">
       {#each $emulators.batch.items as item (item.id)}
@@ -175,7 +179,7 @@
               {/if}
               <span class="emulator-state">{item.enabled ? 'Enabled' : 'Disabled'}{$emulators.listing.defaultProfileId === item.profile.id ? ' · Default' : ''}</span>
             </div>
-            <p class="dim">{systemNames(item.profile.systems)} · Version {item.profile.buildVersion}</p>
+            <p class="dim">{systemNames(item.profile.systems)}{versionLabel(item.profile.buildVersion)}</p>
             <p class="dim">Formats {item.profile.contentExtensions.map(extension => `.${extension}`).join(', ')} · Up to {bytes(item.profile.maxContentBytes)} per game</p>
             {#if item.source === 'operator'}
               <p class="dim">Installed by the server administrator. Manage this emulator on the server.</p>
@@ -207,12 +211,12 @@
       </div>
     {:else}
       <h2>Available emulators</h2>
-      <p class="dim">Install a supported emulator from the server’s trusted catalog.</p>
+      <p class="dim">Install an emulator from the list this server trusts.</p>
       <section class="emulator-recommendations" aria-labelledby="emulator-recommendations-heading">
         <h3 id="emulator-recommendations-heading">Recommended set</h3>
-        <p class="dim">Fill missing system coverage with a curated set of browser emulators.</p>
-        <p class="dim">The first fallback may download up to 1.6 GB of reviewed archives to prepare the local cache. Later installs reuse cached files.</p>
-        <p class="dim">{recommended.length} additional emulator{recommended.length === 1 ? '' : 's'} recommended across the server catalog · Download {bytes(recommendedBytes)}{unknownRecommendedDownloads > 0 ? ` plus ${unknownRecommendedDownloads} with unknown size` : ''}.</p>
+        <p class="dim">Adds an emulator for each system that does not have one yet.</p>
+        <p class="dim">The first install may download up to 1.6 GB. Later installs reuse what was downloaded.</p>
+        <p class="dim">{recommended.length} additional emulator{recommended.length === 1 ? '' : 's'} recommended · Download {bytes(recommendedBytes)}{unknownRecommendedDownloads > 0 ? ` plus ${unknownRecommendedDownloads} with unknown size` : ''}.</p>
         <div class="actions">
           <button type="button" disabled={locked || recommended.length === 0} onclick={event => void action(event, () => emulators.installMany(recommended.map(entry => entry.id)))}>Install recommended ({recommended.length})</button>
           <button type="button" disabled={locked || recommended.length === 0} onclick={() => void reviewRecommended()}>Review recommended set</button>

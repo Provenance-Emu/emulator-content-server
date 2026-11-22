@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ServerUpdatesView } from './lib/server-updates';
+  import { buildName, type ServerUpdatesView } from './lib/server-updates';
 
   let { updates }: { updates: ServerUpdatesView } = $props();
   const status = $derived($updates.status);
@@ -8,7 +8,7 @@
 {#if status?.prompt && status.available}
   {@const id = status.available.id}
   <section aria-label="Server update available" class="update-prompt">
-    <p>A server update is available. <strong>{status.available.version}</strong></p>
+    <p>A server update is available. <strong title={status.available.version}>{buildName(status.available)}</strong></p>
     <div>
       <button class="primary" type="button" disabled={$updates.working} onclick={() => void updates.decide('install', id)}>Update now</button>
       <button type="button" disabled={$updates.working} onclick={() => void updates.decide('later', id)}>Later</button>

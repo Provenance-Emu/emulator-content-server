@@ -91,3 +91,16 @@ export function createServerUpdates(client: ContentClient) {
 }
 
 export type ServerUpdatesView = ReturnType<typeof createServerUpdates>;
+
+/**
+ * A build's name for the owner. A nightly is identified by a commit, which says nothing to
+ * them, so it is named by the day it was built instead.
+ */
+export function buildName(build: { version: string; builtAt?: string | null }): string {
+  if (!/^nightly-[0-9a-f]{7,64}$/i.test(build.version)) return build.version;
+  if (!build.builtAt) return 'Nightly build';
+  const day = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+    new Date(build.builtAt),
+  );
+  return `Nightly build from ${day}`;
+}

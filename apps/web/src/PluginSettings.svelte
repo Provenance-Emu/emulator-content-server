@@ -13,11 +13,23 @@
   const otherHosts = $derived($plugins.hosts.filter(host => host.id !== $plugins.listing?.hostId));
   onMount(() => { void plugins.load(); });
   onDestroy(() => plugins.dispose());
+  const PROVIDES: Record<string, string> = {
+    rom: 'system',
+    metadata: 'game details',
+    artwork: 'artwork',
+    patch: 'patches',
+    cheats: 'cheats',
+  };
+  /** Says what a source supplies, in the page's own words. */
+  function provides(capabilities: string[]) {
+    const named = capabilities.map((capability) => PROVIDES[capability] ?? capability).join(', ');
+    return named ? `Provides ${named}` : 'Nothing to offer yet';
+  }
 </script>
 
 <header class="page-heading">
   <div><p class="eyebrow">Settings</p><h1>Plugins</h1>
-    <p class="dim">Install library workflows and see the integrations available on this server.</p>
+    <p class="dim">Plugins add tools to your library, such as cleanup. This page shows what is installed and where game details can come from.</p>
   </div>
   <button type="button" disabled={$plugins.busy} onclick={() => void plugins.load()}>Refresh plugins</button>
 </header>
@@ -27,17 +39,17 @@
 {#if $plugins.message}<InlineNotice kind="status">{$plugins.message}</InlineNotice>{/if}
 {#if $plugins.listing}
   {#if !$plugins.listing.available}
-    <InlineNotice>Update this server to a distribution that includes the plugin host, then refresh this page.</InlineNotice>
+    <InlineNotice>This server was installed without plugins. Update Emulation Server, then refresh this page.</InlineNotice>
   {:else}
     <section aria-labelledby="plugin-host-heading">
-      <h2 id="plugin-host-heading">Plugin host</h2>
-      <p>{$plugins.listing.running ? 'Running on this server' : $plugins.listing.hostId ? 'Stopped' : 'Ready for setup'}</p>
+      <h2 id="plugin-host-heading">Plugin service</h2>
+      <p>{$plugins.listing.running ? 'Running on this server' : $plugins.listing.hostId ? 'Stopped' : 'Not set up yet'}</p>
       {#if $plugins.listing.error}<InlineNotice kind="error">{$plugins.listing.error}</InlineNotice>{/if}
       <button type="button" disabled={locked} onclick={() => void plugins.doctor()}>Check and repair connection</button>
-      <p class="dim">Checks installed packages and reconnects the local host. Enabled plugins resume automatically when the server restarts.</p>
+      <p class="dim">Checks what is installed and reconnects the plugin service. Plugins that are on start again when the server restarts.</p>
     </section>
     <section aria-labelledby="plugin-defaults-heading">
-      <h2 id="plugin-defaults-heading">Bundled plugins</h2>
+      <h2 id="plugin-defaults-heading">Included plugins</h2>
       <div class="plugin-list">
         {#each $plugins.listing.defaults as plugin (plugin.id)}
           <article aria-labelledby={`available-${plugin.id}`}>
@@ -50,17 +62,17 @@
       <button class="primary" type="button" disabled={locked} onclick={() => void plugins.installDefaults()}>
         {$plugins.listing.items.some(item => $plugins.listing?.defaults.some(plugin => plugin.id === item.id)) ? 'Update bundled plugins' : 'Install bundled plugins'}
       </button>
-      <p class="dim">Installs and enables the bundled workflows and connects them to this server.</p>
+      <p class="dim">Installs the included plugins and turns them on.</p>
     </section>
     <section aria-labelledby="installed-plugins-heading">
       <h2 id="installed-plugins-heading">Installed plugins</h2>
-      {#if !$plugins.listing.items.length}<p>No workflow plugins installed yet.</p>{/if}
+      {#if !$plugins.listing.items.length}<p>No plugins installed yet.</p>{/if}
       <div class="plugin-list">
         {#each $plugins.listing.items as plugin (plugin.id + plugin.digest)}
           <article aria-labelledby={`installed-${plugin.id}-${plugin.digest}`}>
             <h3 id={`installed-${plugin.id}-${plugin.digest}`}>{plugin.name}</h3>
-            <p>{plugin.enabled ? 'Enabled' : 'Disabled'} · {plugin.kind} · Version {plugin.version}</p>
-            <p class="dim plugin-id">{plugin.id} · {plugin.digest.slice(0, 12)}</p>
+            <p>{plugin.enabled ? 'Enabled' : 'Disabled'} · Version {plugin.version}</p>
+            <details><summary>Details</summary><p class="dim plugin-id">{plugin.id} · {plugin.digest.slice(0, 12)}</p></details>
             <button type="button" disabled={locked} aria-label={`${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name} ${plugin.version}`}
               onclick={() => void plugins.configure(plugin)}>{plugin.enabled ? 'Disable' : 'Enable'}</button>
           </article>
@@ -69,26 +81,26 @@
     </section>
   {/if}
   <section aria-labelledby="metadata-plugins-heading">
-    <h2 id="metadata-plugins-heading">Metadata integrations</h2>
+    <h2 id="metadata-plugins-heading">Where game details come from</h2>
     {#if $plugins.integrationsFailure}<InlineNotice kind="error">{$plugins.integrationsFailure}</InlineNotice>{/if}
     <div class="plugin-list">
       {#each $plugins.providers as plugin (plugin.id)}
         <article aria-labelledby={`metadata-${plugin.id}`}>
           <h3 id={`metadata-${plugin.id}`}>{plugin.name}</h3>
-          <p>{plugin.kind} · {plugin.network ? 'Online' : 'Local'} · {plugin.capabilities.join(', ')}</p>
-          <p class="dim plugin-id">{plugin.id}</p>
+          <p>{plugin.network ? 'Online' : 'On this server'} · {provides(plugin.capabilities)}</p>
+          <details><summary>Details</summary><p class="dim plugin-id">{plugin.id}</p></details>
         </article>
       {/each}
     </div>
-    <p class="dim">Choose providers when matching a game or reviewing library cleanup.</p>
+    <p class="dim">You choose which of these to use when you look up a game or review a cleanup.</p>
   </section>
   {#if otherHosts.length}
     <section aria-labelledby="other-plugin-hosts-heading">
-      <h2 id="other-plugin-hosts-heading">Other plugin hosts</h2>
+      <h2 id="other-plugin-hosts-heading">Plugin services on other computers</h2>
       <div class="plugin-list">
         {#each otherHosts as host (host.id)}
           <article><h3>{host.name}</h3>
-            <p>{host.enrolled ? 'Enrolled' : 'Waiting for enrollment'}{host.lastSeenAt ? ` · Last connected ${new Date(host.lastSeenAt).toLocaleString()}` : ''}</p>
+            <p>{host.enrolled ? 'Connected' : 'Waiting to connect'}{host.lastSeenAt ? ` · Last connected ${new Date(host.lastSeenAt).toLocaleString()}` : ''}</p>
             <ul>{#each host.packages ?? [] as plugin (plugin.id)}<li>{plugin.name} · {plugin.version}</li>{/each}</ul>
           </article>
         {/each}
@@ -98,7 +110,7 @@
 {/if}
 <section aria-labelledby="plugin-emulators-heading">
   <h2 id="plugin-emulators-heading">Browser emulators</h2>
-  <p>Install and manage browser-play cores in Emulators.</p>
+  <p>Emulators for playing in the browser are managed in Emulators.</p>
   <button type="button" onclick={onemulators}>Manage emulators</button>
 </section>
 

@@ -87,6 +87,8 @@ Core options are all listed at once with a search box; there is no paging. Each 
 - **Activity** (`Audit.svelte`) is a list of sentences (`lib/audit-labels.ts`), who did it and when; the recorded code and identifiers are under **Details**. A refused sign-in is marked.
 - **Libraries** never folds away a folder that belongs to no library.
 
+Plugins, Emulators and Updates name things the way the owner would. A plugin's or a source's identifier sits under Details. A build that is named only by a commit is shown as "Nightly build from <date>" (`buildName` in `lib/server-updates.ts`), and an emulator's version is left out when it is only a commit. Update choices are sentences ("Ask me first", "Install automatically"), not modes. Settings has Sign out under Setup guide whenever someone is signed in. On Libraries the tick list of unassigned folders shows names only, because the table under it carries the paths.
+
 ### Game page
 
 Opening a game in a server folder shows `GameSource.svelte`: the front cover, the title, one line of facts (system, year, publisher, genre), then **Play**, **Download**, **Edit details**, and an icon-only refresh. The description sits under the actions and folds after four lines. Panels follow in a fixed order: **Artwork**, **Details**, **Files**, saved patches, **Manage**.

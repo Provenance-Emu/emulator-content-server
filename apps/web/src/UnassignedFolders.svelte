@@ -5,9 +5,11 @@
   import type { FolderContext } from './lib/folder-selection';
   import { createLibraryFolders } from './lib/library-folders';
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
-  let { client, context, libraries, invalidation = 0, cached, preferredLibraryId = '', onview }: {
+  let { client, context, libraries, invalidation = 0, cached, preferredLibraryId = '', paths = true, onview }: {
     client: ContentClient; context: FolderContext; libraries: Library[]; invalidation?: number;
     cached?: ContentRootSummary[]; preferredLibraryId?: string;
+    /** Off where the same folders are listed with their paths right below. */
+    paths?: boolean;
     onview: (rootId: string, libraryId: string | null) => void;
   } = $props();
   const folders = untrack(() => createLibraryFolders(client, context, { unassigned: true }));
@@ -81,7 +83,7 @@
     <div class="existing-folder-list">
       {#each roots as summary (summary.root.id)}<label class="existing-folder-choice">
         <input type="checkbox" checked={selected.includes(summary.root.id)} disabled={busy} onchange={event=>selected=event.currentTarget.checked ? [...selected,summary.root.id] : selected.filter(id=>id!==summary.root.id)} />
-        <span><strong>{summary.root.label}</strong><small class="path dim">{summary.root.path}</small></span>
+        <span><strong>{summary.root.label}</strong>{#if paths}<small class="path dim">{summary.root.path}</small>{/if}</span>
       </label>{/each}
     </div>
     <div class="actions"><label>Add folders to<select bind:value={selectedLibrary} disabled={busy}>{#each libraries as library (library.id)}<option value={library.id}>{library.name}</option>{/each}</select></label>

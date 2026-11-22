@@ -220,7 +220,10 @@ test('approved tray origins expose resume validators and allow chunk/revision he
         headers: { origin },
       });
       assert.equal(response.headers['access-control-allow-origin'], origin);
-      assert.equal(response.headers['access-control-expose-headers'], 'etag, content-range');
+      assert.equal(
+        response.headers['access-control-expose-headers'],
+        'etag, content-range, retry-after',
+      );
       const preflight = await server.app.inject({
         method: 'OPTIONS',
         url: '/api/v1/uploads/test',

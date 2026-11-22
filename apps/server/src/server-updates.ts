@@ -28,7 +28,8 @@ export function registerServerUpdates(app: FastifyInstance, updates?: ServerUpda
         settings: { channel: 'release', mode: 'off' },
         phase: 'idle',
         prompt: false,
-        message: 'Self-updates are available in supervised portable server packages.',
+        message:
+          'This server does not update itself. Install a newer version the same way this one was installed.',
       },
   );
   app.put<{ Body: ServerUpdateSettings }>(

@@ -111,7 +111,7 @@
 <!-- A folder that belongs to no library is waiting for a decision, so it is never folded away. -->
 <details class="settings-unassigned" open={!libraries.length || summaries.some((summary) => summary.root.libraryId === null)} hidden={!!libraryId}>
   <summary>Unassigned folders</summary>
-  <UnassignedFolders {client} {context} {libraries} cached={summaries.filter(row=>row.root.libraryId===null)} {onview} />
+  <UnassignedFolders {client} {context} {libraries} cached={summaries.filter(row=>row.root.libraryId===null)} paths={false} {onview} />
   <p class="dim">These folders are not linked to a library yet. Choose a library above to scan and display their games.</p>
   <LibraryFolders {client} {context} {libraries}
     summaries={summaries.filter((summary) => summary.root.libraryId === null)}

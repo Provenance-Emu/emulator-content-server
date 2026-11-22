@@ -152,8 +152,11 @@ test('logout stays immediate and reports a failed local recovery-data cleanup', 
   );
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
-  await expect(page.getByRole('status')).toContainText(
-    'Saved upload progress could not be checked or cleared',
-  );
+  // The undo region is a status too; this is the one that carries the notice.
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Saved upload progress could not be checked or cleared' }),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toHaveCount(0);
 });

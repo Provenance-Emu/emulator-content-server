@@ -43,14 +43,16 @@ test('owner selects a channel and decides what to do with each offered build', a
   await page.getByRole('button', { name: 'Updates', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Update history' })).toBeVisible();
   await expect(page.locator(`time[datetime="${checkedAt}"]`)).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: installed.version })).toContainText(
-    'Installed',
+  await expect(page.locator(`li[data-version="${installed.version}"]`)).toContainText('Installed');
+  await page.getByRole('combobox', { name: 'Which versions', exact: true }).selectOption('nightly');
+  await expect(page.getByRole('combobox', { name: 'Which versions', exact: true })).toHaveValue(
+    'nightly',
   );
-  await page.getByRole('combobox', { name: 'Channel', exact: true }).selectOption('nightly');
-  await expect(page.getByRole('combobox', { name: 'Channel', exact: true })).toHaveValue('nightly');
-  await page.getByRole('combobox', { name: 'Updates', exact: true }).selectOption('manual');
+  await page
+    .getByRole('combobox', { name: 'Installing updates', exact: true })
+    .selectOption('manual');
   const prompt = page.getByRole('region', { name: 'Server update available' });
-  await expect(prompt).toContainText(build.version);
+  await expect(prompt).toContainText('Nightly build from');
   await expect(page.getByText('Update available', { exact: true }).last()).toBeVisible();
   await prompt.getByRole('button', { name: 'Later', exact: true }).click();
   await expect(prompt).toHaveCount(0);
