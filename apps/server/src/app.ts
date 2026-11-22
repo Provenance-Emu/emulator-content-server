@@ -221,12 +221,21 @@ export async function buildApp(
     });
   }
   // A generous socket ceiling also bounds invalid bearer attempts before authentication.
+  // Keep scanning traffic from consuming the web interface's request budget.
   // DAV's much smaller failed-login budget remains independent of successful reads.
   await app.register(rateLimit, {
     global: false,
     max: 6000,
     timeWindow: 60_000,
-    keyGenerator: peerAddress,
+    keyGenerator(request) {
+      const path = (request.raw.url ?? request.url).split('?', 1)[0] ?? '';
+      const traffic = isDavRequest(path)
+        ? 'dav'
+        : path === '/ui' || path.startsWith('/ui/')
+          ? 'ui'
+          : 'api';
+      return `${traffic}:${peerAddress(request)}`;
+    },
     errorResponseBuilder: () => new DomainError('rate-limited', 429, 'Too many requests'),
   });
   app.addHook('onRequest', app.rateLimit());

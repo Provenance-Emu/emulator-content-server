@@ -20,6 +20,17 @@ test('a socket request ceiling limits invalid bearer attempts before authenticat
     });
     assert.equal(blocked.statusCode, 429);
     assert.ok(blocked.headers['retry-after']);
+    const ui = await f.server.app.inject({
+      url: '/ui/?settings=devices',
+      remoteAddress: '192.0.2.1',
+    });
+    // The fixture has no bundled UI, but the request must reach its route.
+    assert.notEqual(ui.statusCode, 429);
+    const dav = await f.server.app.inject({
+      url: '/dav/',
+      remoteAddress: '192.0.2.1',
+    });
+    assert.equal(dav.statusCode, 401);
     assert.equal(
       (
         await f.server.app.inject({
@@ -29,6 +40,44 @@ test('a socket request ceiling limits invalid bearer attempts before authenticat
         })
       ).statusCode,
       200,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+test('WebDAV traffic cannot exhaust API or web interface request budgets', async () => {
+  const f = await davFixture();
+  try {
+    for (let i = 0; i < 6000; i++) {
+      const response = await f.server.app.inject({
+        url: '/dav/',
+        remoteAddress: '192.0.2.1',
+      });
+      assert.equal(response.statusCode, 401);
+    }
+    assert.equal(
+      (await f.server.app.inject({ url: '/dav/', remoteAddress: '192.0.2.1' })).statusCode,
+      429,
+    );
+    assert.equal(
+      (
+        await f.server.app.inject({
+          url: '/api/v1/libraries',
+          headers: f.headers,
+          remoteAddress: '192.0.2.1',
+        })
+      ).statusCode,
+      200,
+    );
+    assert.notEqual(
+      (
+        await f.server.app.inject({
+          url: '/ui/?settings=devices',
+          remoteAddress: '192.0.2.1',
+        })
+      ).statusCode,
+      429,
     );
   } finally {
     await f.close();
