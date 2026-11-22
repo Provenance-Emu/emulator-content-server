@@ -828,12 +828,13 @@ mod tests {
     fn repair_keeps_the_data_folder_and_listen_options_of_the_registration() {
         let arguments =
             |list: &[&str]| list.iter().map(|text| text.to_string()).collect::<Vec<_>>();
+        let data_dir = std::env::temp_dir().join("Emulation Server").join("data");
         let registered = arguments(&[
             "/gone/runtime/node",
             "/gone/server/dist/src/supervise.js",
             "serve",
             "--data",
-            "/Users/operator/Library/Application Support/Emulation Server/data",
+            data_dir.to_str().unwrap(),
             "--host",
             "127.0.0.1",
             "--port",
