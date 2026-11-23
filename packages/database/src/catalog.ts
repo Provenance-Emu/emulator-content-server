@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import type { SourceArtworkRole, SourceMatchRecord, SourceMatchState } from '@ecs/domain';
 import {
@@ -42,6 +42,7 @@ import {
   saveMatchingIdentification,
   sourceMatchColumns,
   sourceMatchContent,
+  sourceMatchContentDigest,
   sourceMatches,
   writeSourceMatch,
 } from './source-matches.js';
@@ -203,6 +204,9 @@ export class CatalogDatabase {
       );
       this.db.function('ecs_companion_parent', { deterministic: true }, (value) =>
         companionDirectory(String(value ?? '')),
+      );
+      this.db.function('ecs_sha256', { deterministic: true }, (value) =>
+        value instanceof Uint8Array ? createHash('sha256').update(value).digest('hex') : null,
       );
       this.db.function('ecs_companion_stem', { deterministic: true }, (value) =>
         companionStem(String(value ?? '')),
@@ -1562,8 +1566,8 @@ export class CatalogDatabase {
         SELECT ?,revision FROM source_match_state WHERE source_id=?`)
         .run(id, source.id);
       this.db
-        .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
-        SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
+        .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content,content_sha256)
+        SELECT ?,kind,artwork_role,selection_json,content,content_sha256 FROM source_match_selections WHERE source_id=?`)
         .run(id, source.id);
       if (input.organizationCopy)
         this.setSourceOrganizationCopy(input.organizationCopy.sourceRootId, source.id, {
@@ -1785,8 +1789,8 @@ export class CatalogDatabase {
     if (!differs) return current;
     this.db.prepare('DELETE FROM source_match_selections WHERE source_id=?').run(copyId);
     this.db
-      .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
-      SELECT ?,kind,artwork_role,selection_json,content FROM source_match_selections WHERE source_id=?`)
+      .prepare(`INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content,content_sha256)
+      SELECT ?,kind,artwork_role,selection_json,content,content_sha256 FROM source_match_selections WHERE source_id=?`)
       .run(copyId, originalId);
     this.db
       .prepare(`INSERT INTO source_match_state(source_id,revision) VALUES(?,?)
@@ -1986,6 +1990,14 @@ export class CatalogDatabase {
     artworkRole: SourceArtworkRole = 'front',
   ): Uint8Array | null {
     return sourceMatchContent(this.db, sourceId, kind, artworkRole);
+  }
+
+  sourceMatchContentDigest(
+    sourceId: string,
+    kind: string,
+    artworkRole: SourceArtworkRole = 'front',
+  ): string | null {
+    return sourceMatchContentDigest(this.db, sourceId, kind, artworkRole);
   }
 
   matchingIdentification(sourceId: string, stamp: string): unknown | null {
@@ -3407,7 +3419,8 @@ type SourceRow = {
   original_relative_path: string | null;
   matched_title?: string | null;
   matched_system_id?: string | null;
-  saved_artwork?: number;
+  /** The saved front cover's digest; an empty string for one saved before digests were kept. */
+  saved_artwork?: string | null;
   matched_metadata?: string | null;
   id: string;
   root_id: string;
@@ -3458,7 +3471,12 @@ function mapSource(row: SourceRow): SourceFileRecord {
     kind: row.kind as SourceFileRecord['kind'],
     systemId: row.matched_system_id === undefined ? row.system_id : row.matched_system_id,
     ...(row.matched_title ? { title: row.matched_title } : {}),
-    ...(row.saved_artwork ? { artworkAvailable: true } : {}),
+    ...(row.saved_artwork != null
+      ? {
+          artworkAvailable: true,
+          ...(row.saved_artwork ? { artworkVersion: row.saved_artwork } : {}),
+        }
+      : {}),
     ...sourceDetails(row.matched_metadata),
     availability: row.availability as SourceAvailability,
     groupAnchor: row.group_anchor,

@@ -33,7 +33,9 @@ Unused platform submodules remain unmaterialized; all gitlinks are listed in
 the receipt. The staging path is retained in the receipt for inspection.
 
 The browser player accepts Dreamcast CHD, CDI and ELF files, plus scanned
-GDI or CUE/BIN track groups within the 512 MiB content limit. A ZIP or 7z
+GDI or CUE/BIN track groups within the 512 MiB content limit. A CHD or CDI
+larger than 64 MiB is attached in pieces and may be up to 2 GiB
+(`docs/operations/browser-playback.md`). A ZIP or 7z
 can contain one CHD, CDI or ELF. Extract multi-track archives and rescan
 the folder so the scanner can resolve the descriptor's tracks. The player
 looks for an accessible `dc_boot.bin` in the game's library and otherwise

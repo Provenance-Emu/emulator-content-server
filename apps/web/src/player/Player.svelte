@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browserFeatures, runtimeNeeds } from '../lib/browser-features';
   import { ContentClient, type Item, type ManifestFile, type SourceFile } from '@ecs/client';
   import { onMount, tick } from 'svelte';
   import { ContentError } from '@ecs/client';
@@ -39,21 +40,29 @@
   let targetId = $state(query.get('item') ?? '');
   let gameName = $state('Browser player');
   let systemName = $state('');
-  type PlayerTool = 'saves' | 'controls' | 'video' | 'options';
+  type PlayerTool = 'saves' | 'controls' | 'video' | 'options' | 'details';
   const toolTabs = [
     { id: 'saves', label: 'Saves' },
     { id: 'controls', label: 'Controls' },
     { id: 'video', label: 'Video' },
     { id: 'options', label: 'Core options' },
+    { id: 'details', label: 'Details' },
   ] as const;
   let selectedTool = $state<PlayerTool>('saves');
   // The game has the window to itself; a tool is opened when it is wanted and put away after.
   let toolsOpen = $state(false);
-  async function toggleTool(tool: PlayerTool) {
+  // Set the moment a tool is asked for, before it has opened, so a game that has just started
+  // does not take the keyboard and pointer back from the person reaching for the tool.
+  let toolsWanted = false;
+  async function toggleTool(tool: PlayerTool, keyboard = false) {
     if (toolsOpen && selectedTool === tool) return closeTools();
+    toolsWanted = true;
     await chooseTool(tool);
     if (selectedTool !== tool) return;
     toolsOpen = true;
+    // Someone using the keyboard is taken into the tool. Someone using a pointer is already on
+    // their way to it, and moving focus under them can swallow the click they are making.
+    if (!keyboard) return;
     await tick();
     document.getElementById('player-tools-panel')?.focus({ preventScroll: true });
   }
@@ -63,6 +72,7 @@
       return;
     }
     toolsOpen = false;
+    toolsWanted = false;
     toolNotice = '';
     session?.runtime.focus?.();
   }
@@ -94,6 +104,42 @@
   let working = $state(false);
   let attempted = $state(false);
   let failure = $state<string | null>(null);
+  /** What the start-up is doing right now, in the person's words. */
+  let loadingStep = $state('Getting the game…');
+  // Kept here so the lists stay open when the page redraws them as the game starts.
+  let sessionDetailsOpen = $state(false), browserDetailsOpen = $state(false);
+  const features = browserFeatures();
+  /** What the chosen emulator cannot run without and this browser lacks. */
+  const lacking = $derived(features.missing(runtimeNeeds(core?.runtime)));
+  // The screen stays on while a game runs, where the browser can promise that.
+  let wakeLock: { release(): Promise<void> } | null = null;
+  async function keepAwake() {
+    if (!session || document.hidden || !features.has('screen.wakeLock')) return;
+    try {
+      wakeLock = await (navigator as unknown as { wakeLock: { request(kind: 'screen'): Promise<{ release(): Promise<void> }> } }).wakeLock.request('screen');
+    } catch { /* Refused on low battery or by the system; the game is unaffected. */ }
+  }
+  // A game is watched on a dark surround whatever the library's theme is.
+  $effect(() => {
+    if (!session) return;
+    const root = document.documentElement;
+    const before = root.dataset.theme;
+    root.dataset.theme = 'dark';
+    return () => {
+      if (before === undefined) delete root.dataset.theme;
+      else root.dataset.theme = before;
+    };
+  });
+  $effect(() => {
+    if (!session) return;
+    void keepAwake();
+    document.addEventListener('visibilitychange', keepAwake);
+    return () => {
+      document.removeEventListener('visibilitychange', keepAwake);
+      void wakeLock?.release().catch(() => undefined);
+      wakeLock = null;
+    };
+  });
   let session = $state.raw<Awaited<ReturnType<typeof startPlayer>> | null>(null);
   let preferenceStore=$state.raw<PreferenceStore|null>(null);
   let preferences=$state.raw<PlayerPreferences>({options:{},shader:'off'});
@@ -265,7 +311,7 @@
   }
   async function start(): Promise<void> {
     if (attempted || working || launched || !ready) return;
-    attempted = true; working = true; failure = null;
+    attempted = true; working = true; failure = null; loadingStep = 'Getting the game…';
     const selection: PlayerSelection = sourceId ? { kind: 'source', sourceId, ...(targetId ? { itemId: targetId } : {}) } : { kind: 'asset', itemId: targetId, assetId: assetId! };
     try {
       if(core){preferenceStore=createPreferenceStore(window.location.origin,core,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined);preferences=preferenceStore.load().preferences;}
@@ -273,13 +319,14 @@
         preferences,
         canvas, importer: importBrowserRuntime, ...('profileVersion' in (core??{}) ? {profileId}:{}), expectedProfile:core??undefined, signal:lifetime.signal, batteryAssetId: batteryId || undefined, stateAssetId: stateId || undefined, compatibleSaves: compatible,
         log(text) { logs = [...logs.slice(-7), text.slice(0, 300)]; },
+        progress(step) { loadingStep = step; },
       });
       if(disposed){session?.releaseLoader();return;}
       inputSession=new InputSession(session.runtime,createInputPreferences(window.location.origin,session.prepared.core,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined));
       unsubscribeInput=inputSession.subscribe(()=>inputRevision++);
       const input=inputSession;const prepared=session.prepared;
       void input.initialize().then(async()=>{if(disposed)return;skinSession=new SkinSession(input,new SkinLibrary(),`ecs.skins.v1:${encodeURIComponent(window.location.origin)}:${prepared.core.id}:${prepared.core.loader.sha256}:${prepared.core.wasm.sha256}`,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined,prepared.item?.systemIdentifier??prepared.core.systems[0]??'');unsubscribeSkins=skinSession.subscribe(()=>skinRevision++);await skinSession.initialize();});
-      if(session.runtime.focus)await session.runtime.focus();else canvas.focus();
+      if(!toolsWanted&&!toolsOpen){if(session.runtime.focus)await session.runtime.focus();else canvas.focus();}
     } catch (error) { if(!disposed)failure = `${explain(error)} Reload this page before starting again.`; }
     finally { working = false; }
     if(session&&query.get('gameWindow')==='1')autoGameView=true;
@@ -292,9 +339,25 @@
     return () => {window.removeEventListener('pagehide',release);release();};
   });
 </script>
+{#snippet sessionDetails()}
+    {#if core}<details class="player-technical-details" bind:open={sessionDetailsOpen}><summary>{logs.length ? 'Session details and runtime messages' : 'Session details'}</summary>
+      <p class="dim">{core.name} · {'profileVersion' in core ? core.buildVersion : `frontend ${core.frontendCommit.slice(0, 8)} · core ${core.coreCommit.slice(0, 8)}`}</p>
+      <p class="dim">Save progress before leaving. Pending uploads can be retried or exported while this page is open. Failed startup or a command timeout requires a reload.</p>
+      {#if logs.length}<pre class="player-log">{logs.join('\n')}</pre>{/if}
+    </details>{/if}
+    <details class="player-technical-details player-browser-features" bind:open={browserDetailsOpen}><summary>This browser</summary>
+      <p class="dim">What this browser offers. The player uses what is there and says so when an emulator needs something that is missing.</p>
+      {#each ['Emulation', 'Graphics', 'Storage', 'Controllers', 'Sound', 'Screen', 'Layout'] as group (group)}
+        <h3>{group}</h3>
+        <ul>{#each features.list().filter(feature => feature.group === group) as feature (feature.id)}
+          <li class:missing={!feature.available}><Icon name={feature.available ? 'check' : 'close'} /><span>{feature.label}{#if feature.use}<small class="dim"> · {feature.use}</small>{/if}</span><span class="visually-hidden">{feature.available ? 'available' : 'not available'}</span></li>
+        {/each}</ul>
+      {/each}
+    </details>
+{/snippet}
 <svelte:head><title>{gameName} · Emulation Server</title></svelte:head>
 <a class="player-skip-link" href={gameView ? '#game-view-controls' : session ? '#player-toolbar' : '#player-content'}>Skip to player controls</a>
-<main id="player-content" tabindex="-1" class="browser-player" class:game-view={gameView}>
+<main id="player-content" tabindex="-1" class="browser-player" class:game-view={gameView} class:playing={!!session}>
   <div class="player-chrome" hidden={gameView}>
     <header class="player-session-header">
       <div class="player-session-identity">
@@ -309,6 +372,12 @@
           <button type="button" data-game-view disabled={!!gameViewBlocked} aria-describedby={gameViewBlocked ? 'game-view-reason' : undefined} onclick={() => setGameView(true, true)}>Game view</button>
           {#if stage?.requestFullscreen}<button type="button" onclick={fullscreen}>Fullscreen</button>{/if}
         </div>
+      <div class="player-toolbar" id="player-toolbar" role="toolbar" aria-label="Player tools" tabindex="-1">
+        {#each toolTabs as tool (tool.id)}
+          <button type="button" id={`player-tool-${tool.id}`} aria-controls="player-tools-panel"
+            aria-expanded={toolsOpen && selectedTool === tool.id} disabled={working} onclick={(event) => void toggleTool(tool.id, event.detail === 0)}>{tool.label}</button>
+        {/each}
+      </div>
       {/if}
     </header>
     {#if needsSignIn}<Login {client} origin={window.location.origin} onsignin={(signedIn) => {
@@ -349,11 +418,11 @@
           <button class="primary" type="button" onclick={start} disabled={working || launched || (!!(batteryId || stateId) && !compatible)}>Start</button>
           <button type="button" disabled={working || launched || !!((batteryId || stateId) && !compatible)} onclick={openGameWindow}>Open game window</button>
         </div>
+        {#if lacking.length}<p class="problem" role="alert">This browser cannot run {core?.name ?? 'this emulator'}: it is missing {lacking.map(feature => feature.label.toLowerCase()).join(', ')}. {lacking[0]?.use}</p>{/if}
         {#if launched}<p role="status">Game setup opened in another window or tab. Close it to use this setup again, or <a href={returnHref}>return to library</a>.</p>{/if}
         {#if launchError}<p class="problem" role="alert">{launchError}</p>{/if}
       </section>
     {/if}
-    {#if working}<p class="player-preparing" role="status">Preparing game content and emulator…</p>{/if}
     {#if failure}<p class="problem" role="alert">{failure}</p>{/if}
     {#if attempted && !session && !working}<p><a href={window.location.href}>Reload player</a></p>{/if}
   </div>
@@ -362,6 +431,11 @@
     <div class="player-stage-column">
       <div class="player-stage" bind:this={stage}>
         <div class="player-game" bind:this={gameMount}><canvas class="player-canvas" bind:this={canvas} tabindex="0" aria-label="Game display; focus for keyboard input"></canvas></div>
+        {#if working}<div class="player-loading" role="status">
+          <span class="player-loading-mark" aria-hidden="true"></span>
+          <strong>{loadingStep}</strong>
+          <span class="dim">{gameName}</span>
+        </div>{/if}
         {#if inputSession && stage && gameMount}<TouchSurface session={inputSession} {stage} {gameMount} assets={skinAssets} />{/if}
         {#if session}<div class="game-view-toolbar player-controls" id="game-view-controls" tabindex="-1" hidden={!gameView} aria-label="Game view controls">
           <button type="button" onclick={() => setGameView(false, true)}>Show controls</button>
@@ -376,12 +450,6 @@
       </div>{/if}
       {#if session && gameViewBlocked}<p class="player-game-view-reason dim" id="game-view-reason" hidden={gameView}>{gameViewBlocked}</p>{/if}
       {#if session && stage}
-        <div class="player-toolbar" id="player-toolbar" role="toolbar" aria-label="Player tools" tabindex="-1" hidden={gameView}>
-          {#each toolTabs as tool (tool.id)}
-            <button type="button" id={`player-tool-${tool.id}`} aria-controls="player-tools-panel"
-              aria-expanded={toolsOpen && selectedTool === tool.id} onclick={() => void toggleTool(tool.id)}>{tool.label}</button>
-          {/each}
-        </div>
         <!-- Unsaved progress is never tucked away with the tools. -->
         <div hidden={gameView}>
           {#if session.saves}<SaveRecovery saves={session.saves} {refresh} disabled={playerBusy} onbusy={operationBusy} onchange={refreshSaves} />{/if}
@@ -400,6 +468,7 @@
           <button type="button" class="icon-only" aria-label="Hide tools" title="Hide" onclick={closeTools}><Icon name="close" /></button>
         </div>
         <div class="player-tool-panel" id="player-tools-panel" role="group" tabindex="-1" aria-labelledby="player-tools-title">
+          <div hidden={selectedTool !== 'details'}>{@render sessionDetails()}</div>
           <div hidden={selectedTool !== 'saves'}>
             <SaveControls bind:this={saveControls} saves={session.saves} runtime={session.runtime} hasState={!!session.prepared.state} coreName={session.prepared.core.name}
               supportsSaves={session.prepared.core.saveCompletion !== 'none'} dreamcastVmu={usesDreamcastVmu(session.prepared.core)} {captureReady} {refresh} showQuickActions={false} disabled={playerBusy} onchange={refreshSaves} onbusy={operationBusy} />
@@ -425,11 +494,7 @@
     {#if ready && !session && targetId && core && core.saveCompletion !== 'none'}
       <StateBrowser {client} itemId={targetId} {core} {refresh} disabled={working || playerBusy || pendingSave} onbusy={operationBusy} onselect={(id, known) => { stateId = id; if (known && !batteryId) compatible = true; }} />
     {/if}
-    {#if core}<details class="player-technical-details"><summary>{logs.length ? 'Session details and runtime messages' : 'Session details'}</summary>
-      <p class="dim">{core.name} · {'profileVersion' in core ? core.buildVersion : `frontend ${core.frontendCommit.slice(0, 8)} · core ${core.coreCommit.slice(0, 8)}`}</p>
-      <p class="dim">Save progress before leaving. Pending uploads can be retried or exported while this page is open. Failed startup or a command timeout requires a reload.</p>
-      {#if logs.length}<pre class="player-log">{logs.join('\n')}</pre>{/if}
-    </details>{/if}
+    {#if !session}{@render sessionDetails()}{/if}
   </div>
   <AirPlayHelp open={airplayOpen} canUseGameView={!!session && !working && !playerBusy && !pendingSave && !inputSession?.draft && !skinSession?.presentationOpen} onclose={closeAirPlay} />
   <dialog bind:this={leaveDialog} class="player-guidance" aria-label="Leave this game?" oncancel={event => { event.preventDefault(); keepPlaying(); }}>

@@ -28,6 +28,8 @@
     refreshing = false,
     onrefresh,
     onback,
+    previous = null,
+    next = null,
     onchanged,
     onauthorization = () => {},
     onemulators,
@@ -44,6 +46,9 @@
     refreshing?: boolean;
     onrefresh: () => void;
     onback: () => void;
+    /** The games either side of this one in the list it was opened from. */
+    previous?: { name: string; go: () => void } | null;
+    next?: { name: string; go: () => void } | null;
     onchanged: () => void;
     onauthorization?: (status:401|403) => void;
     onemulators?: () => void;
@@ -131,7 +136,13 @@
   }
 </script>
 
-<button type="button" class="back-button" onclick={onback}>Back to collection</button>
+<nav class="detail-navigation" aria-label="Games in this list">
+  <button type="button" class="back-button" onclick={onback}>Back to collection</button>
+  {#if previous || next}<span class="detail-steps">
+    <button type="button" class="icon-only" disabled={!previous} aria-label={previous ? `Previous game: ${previous.name}` : 'No previous game'} title={previous ? `${previous.name} (Left arrow)` : undefined} onclick={() => previous?.go()}><Icon name="back" /></button>
+    <button type="button" class="icon-only" disabled={!next} aria-label={next ? `Next game: ${next.name}` : 'No next game'} title={next ? `${next.name} (Right arrow)` : undefined} onclick={() => next?.go()}><Icon name="forward" /></button>
+  </span>{/if}
+</nav>
 {#if saveFailure}<p class="problem" role="alert">{saveFailure}</p>{/if}
 {#if saving && !$controller.reading}<p role="status">Choose where to save the file…</p>{/if}
 {#if $controller.failure}<p class="problem" role="alert">

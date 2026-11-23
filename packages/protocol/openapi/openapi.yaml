@@ -395,6 +395,7 @@ paths:
       description: Authenticated immutable startup snapshot; requires read permission.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/ContentVersion' }
       responses:
         '200':
           description: Hash-verified declared profile resource.
@@ -412,6 +413,7 @@ paths:
       description: Authenticated immutable startup snapshot; requires read permission.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/ContentVersion' }
       responses:
         '200':
           description: Hash-verified declared profile resource.
@@ -430,6 +432,7 @@ paths:
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: name, in: path, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/ContentVersion' }
       responses:
         '200':
           description: Hash-verified declared profile resource.
@@ -1090,6 +1093,7 @@ paths:
   /api/v1/files/{assetId}/content:
     parameters:
       - { name: assetId, in: path, required: true, schema: { type: string } }
+      - { $ref: '#/components/parameters/ContentVersion' }
       - { $ref: '#/components/parameters/Range' }
       - { $ref: '#/components/parameters/IfRange' }
       - { $ref: '#/components/parameters/IfNoneMatch' }
@@ -1681,6 +1685,7 @@ paths:
       tags: [Matching and jobs]
       parameters:
         - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, banner, other] }, description: Artwork role content to retrieve; defaults to front. }
+        - { $ref: '#/components/parameters/ContentVersion' }
       responses:
         '200':
           description: Authorized immutable artwork, patch, or disabled RetroArch cheat file snapshot.
@@ -2642,6 +2647,11 @@ components:
       scheme: bearer
       description: Session, device or guest token. Some reads also allow tokenless access under the server's network policy.
   parameters:
+    ContentVersion:
+      name: v
+      in: query
+      description: "SHA-256 of the bytes the client expects, as given beside the path in a listing. When it equals the current bytes of a picture (an artwork asset or saved artwork) or of an installed emulator file a 200, 206 or 304 answer carries `Cache-Control: private, max-age=31536000, immutable` and `Vary: Authorization`. Every other answer, including games, saves, system files, patches and any refusal, is unchanged and carries `private, no-cache`. It is not a credential and never widens access."
+      schema: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
     RevisionMatch:
       name: If-Match
       in: header
@@ -3153,6 +3163,10 @@ components:
         artworkPath:
           type: string
           description: Present with artworkAvailable. Authenticated GET for the saved front cover; send If-None-Match with the returned ETag to revalidate.
+        artworkVersion:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: "SHA-256 of the saved front cover. Send it as the `v` query parameter of artworkPath to receive an answer that may be kept without revalidation."
         details: { $ref: '#/components/schemas/SourceDetails' }
         groupFileCount: { type: integer, minimum: 0, maximum: 512 }
         groupError: { type: [string, 'null'] }

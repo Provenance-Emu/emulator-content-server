@@ -119,6 +119,9 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
       AND i.library_id = c.library_id AND l.deleted_at IS NULL AND i.deleted_at IS NULL
       AND c.root_id IS NULL AND ${itemAccess} AND ${system('i.system_identifier')}
       AND (ecs_browse_fold(i.title) LIKE c.search ESCAPE '\\'
+        OR EXISTS (SELECT 1 FROM assets n WHERE n.item_id = i.id AND n.deleted_at IS NULL
+          AND n.kind = 'rom' AND ${assetAccess('n')}
+          AND ecs_browse_fold(n.display_name) LIKE c.search ESCAPE '\\')
         OR (${rootAccess} AND EXISTS (${linkedSources}
           AND ecs_browse_fold(f.display_name) LIKE c.search ESCAPE '\\')))
       AND (EXISTS (SELECT 1 FROM assets r WHERE r.item_id = i.id AND r.deleted_at IS NULL
@@ -150,7 +153,10 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
           : '1'
       }
       AND s.kind IN (${kinds}) AND ${system(sourceSystemSql)}
-      AND ecs_browse_fold(${sourceTitleSql}) LIKE c.search ESCAPE '\\'
+      -- A matched game is listed under its title, so its file name is searched as well:
+      -- that is how someone finds every .chd, or a game by the name it has on disk.
+      AND (ecs_browse_fold(${sourceTitleSql}) LIKE c.search ESCAPE '\\'
+        OR ecs_browse_fold(s.display_name) LIKE c.search ESCAPE '\\')
   )`;
   return { projection, params };
 }

@@ -106,6 +106,8 @@ test('installed plugin is selected for its system and executes declared WASM/dat
   );
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
+  // While a game runs, its details are one of the player's tools.
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await page.getByText('Session details and runtime messages', { exact: true }).click();
   await expect(page.getByText('WASM tick: 8', { exact: true })).toBeVisible();
   await expect(page.locator('iframe')).toHaveAttribute('sandbox', 'allow-scripts');

@@ -88,6 +88,22 @@ test('multiple player profiles serve only snapshotted declared resources with re
     '/play/plugins/org.example.player/core.wasm',
     '/play/plugins/org.example.player/assets/support.data',
   ];
+  // An emulator file that is asked for by its digest may be kept between launches.
+  const described = (await server.app.inject({ url: paths[1] as string })).json() as {
+    wasm: { sha256: string };
+  };
+  const wasmUrl = '/play/plugins/org.example.player/core.wasm';
+  const kept = await server.app.inject({ url: `${wasmUrl}?v=${described.wasm.sha256}` });
+  assert.equal(kept.statusCode, 200);
+  assert.equal(kept.headers['cache-control'], 'private, max-age=31536000, immutable');
+  assert.match(String(kept.headers.vary), /\bauthorization\b/);
+  const other = await server.app.inject({ url: `${wasmUrl}?v=${'0'.repeat(64)}` });
+  assert.equal(other.headers['cache-control'], 'private, no-store');
+  const outsider = await server.app.inject({
+    url: `${wasmUrl}?v=${described.wasm.sha256}`,
+    remoteAddress: '203.0.113.5',
+  });
+  assert.equal(outsider.statusCode, 401);
   for (const url of paths) {
     const allowed = await server.app.inject({ url });
     assert.equal(allowed.statusCode, 200);

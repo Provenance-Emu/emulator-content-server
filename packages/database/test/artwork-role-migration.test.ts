@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -97,6 +98,13 @@ test('a catalog without the banner kind keeps every saved selection and its byte
       assert.deepEqual(db.sourceMatchContent('game', 'artwork', 'manual'), manual);
       assert.deepEqual(db.sourceMatchContent('game', 'patch'), patch);
       assert.deepEqual(db.sourceMatchContent('other-game', 'artwork', 'screenshot'), front);
+      // Bytes saved before digests were kept are given one, so a listing can name them.
+      const digest = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+      assert.equal(db.sourceMatchContentDigest('game', 'artwork', 'front'), digest(front));
+      assert.equal(db.sourceMatchContentDigest('game', 'artwork', 'manual'), digest(manual));
+      assert.equal(db.sourceMatchContentDigest('game', 'metadata'), null);
+      assert.equal(db.getSource('game')?.artworkVersion, digest(front));
+      assert.equal(db.getSource('other-game')?.artworkVersion, undefined);
       assert.equal(db.sourceMatches('other-game').matches.length, 1);
       if (pass === 0) {
         const banner = new Uint8Array([137, 80, 78, 71, 2]);
@@ -114,6 +122,7 @@ test('a catalog without the banner kind keeps every saved selection and its byte
         );
         assert.equal(after.revision, 8);
         assert.deepEqual(db.sourceMatchContent('game', 'artwork', 'banner'), banner);
+        assert.equal(db.sourceMatchContentDigest('game', 'artwork', 'banner'), digest(banner));
       } else {
         // The banner saved on the first open is still there on the second.
         assert.equal(db.sourceMatchContent('game', 'artwork', 'banner')?.byteLength, 5);

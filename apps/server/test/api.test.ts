@@ -105,6 +105,78 @@ test('content API streams ranges, enforces grants, and feeds changes', async () 
     assert.equal(ranged.headers.etag, `"${asset.sha256}"`);
     assert.equal(ranged.headers['content-range'], `bytes 2-5/${bytes.length}`);
     assert.equal(ranged.body, 'cdef');
+    assert.equal(ranged.headers['cache-control'], 'private, no-cache');
+
+    // A game is fetched on purpose and always checked, even when the request names its bytes.
+    const game = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/files/${asset.id}/content?v=${asset.sha256}`,
+      headers: auth,
+    });
+    assert.equal(game.statusCode, 200);
+    assert.equal(game.headers['cache-control'], 'private, no-cache');
+
+    // A picture that names its bytes may be kept, whole or as a range of them.
+    const coverUpload = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/uploads',
+      headers: auth,
+      payload: { libraryId },
+    });
+    const coverUploadId = (coverUpload.json() as { id: string }).id;
+    const coverPut = await server.app.inject({
+      method: 'PUT',
+      url: `/api/v1/uploads/${coverUploadId}/content`,
+      headers: { ...auth, 'content-type': 'application/octet-stream' },
+      payload: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]),
+    });
+    assert.equal(coverPut.statusCode, 204);
+    const coverItem = await server.app.inject({ url: `/api/v1/items/${item.id}`, headers: auth });
+    const coverResponse = await server.app.inject({
+      method: 'POST',
+      url: `/api/v1/uploads/${coverUploadId}/complete`,
+      headers: auth,
+      payload: {
+        itemId: item.id,
+        kind: 'artwork',
+        displayName: 'cover.png',
+        relativePath: 'cover.png',
+        baseRevision: (coverItem.json() as { revision: number }).revision,
+      },
+    });
+    assert.equal(coverResponse.statusCode, 201, coverResponse.body);
+    const cover = coverResponse.json() as { id: string; sha256: string };
+    const coverUrl = `/api/v1/files/${cover.id}/content`;
+    for (const range of [undefined, 'bytes=2-5']) {
+      const kept = await server.app.inject({
+        url: `${coverUrl}?v=${cover.sha256}`,
+        headers: { ...auth, ...(range ? { range } : {}) },
+      });
+      assert.equal(kept.statusCode, range ? 206 : 200);
+      assert.equal(kept.headers['cache-control'], 'private, max-age=31536000, immutable');
+      assert.match(String(kept.headers.vary), /\bauthorization\b/);
+    }
+    // A picture replaced since the listing still arrives, and is checked every time.
+    const wrong = await server.app.inject({
+      url: `${coverUrl}?v=${'0'.repeat(64)}`,
+      headers: auth,
+    });
+    assert.equal(wrong.statusCode, 200);
+    assert.equal(wrong.headers['cache-control'], 'private, no-cache');
+    // Only the bytes themselves are kept, never a refusal of a range.
+    const beyond = await server.app.inject({
+      url: `${coverUrl}?v=${cover.sha256}`,
+      headers: { ...auth, range: 'bytes=999-' },
+    });
+    assert.equal(beyond.statusCode, 416);
+    assert.equal(beyond.headers['cache-control'], 'private, no-cache');
+    // The digest is not a credential: without access there is nothing to keep.
+    const refused = await server.app.inject({
+      url: `${coverUrl}?v=${cover.sha256}`,
+      remoteAddress: '203.0.113.9',
+    });
+    assert.equal(refused.statusCode, 401);
+    assert.doesNotMatch(String(refused.headers['cache-control'] ?? ''), /immutable/);
 
     const unsatisfiable = await server.app.inject({
       method: 'GET',

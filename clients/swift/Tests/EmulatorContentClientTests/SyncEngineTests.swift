@@ -67,6 +67,21 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "If-Range"), "\"digest\"")
     }
 
+    func testACoverNamesTheBytesItExpectsSoTheAnswerCanBeKept() {
+        let base = URL(string: "http://127.0.0.1:8473")!
+        let digest = String(repeating: "ab", count: 32)
+        let uploaded = SyncRequests.content(
+            baseURL: base, token: "t", assetId: "asset-1", localBytes: 0, etag: nil, version: digest)
+        XCTAssertEqual(uploaded.url?.absoluteString, "http://127.0.0.1:8473/api/v1/files/asset-1/content?v=\(digest)")
+        let folder = SyncRequests.artwork(baseURL: base, token: "t", sourceId: "source-1", version: digest)
+        XCTAssertEqual(
+            folder.url?.absoluteString,
+            "http://127.0.0.1:8473/api/v1/sources/source-1/matches/selections/artwork/content?v=\(digest)")
+        // Anything that is not a digest never reaches the query string.
+        let plain = SyncRequests.artwork(baseURL: base, token: "t", sourceId: "source-1", version: "not-a-digest&x=1")
+        XCTAssertNil(plain.url?.query)
+    }
+
     func testAnInterruptedUploadContinuesFromTheOffsetTheServerHolds() async throws {
         let transport = ScriptedTransport([
             (200, #"{"id":"up","received":400,"state":"open"}"#),

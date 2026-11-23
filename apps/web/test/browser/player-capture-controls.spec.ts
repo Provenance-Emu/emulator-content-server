@@ -44,7 +44,7 @@ async function captureFixture(
         : profile,
     }),
   );
-  await page.route('**/play/plugins/org.example.generated-gba/loader.js', (route) =>
+  await page.route('**/play/plugins/org.example.generated-gba/loader.js*', (route) =>
     route.fulfill({ contentType: 'text/javascript', body: loader }),
   );
   const item = await fixture.client.createItem({

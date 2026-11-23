@@ -1,6 +1,6 @@
 # Faster transfers and loads
 
-Status: proposed. Date: 2026-11-21. Stage A is the only part safe to build without a contract or storage change.
+Status: stages A and B built (2026-11-22); stage C proposed. Date: 2026-11-21.
 
 ## What is slow, and for whom
 
@@ -46,8 +46,8 @@ Four things carry almost all of the waiting in a household library:
 
 ### Stage B: additive contract
 
-6. **Immutable content URLs.** Bytes are addressed by SHA-256, but the content URL is keyed by asset id, whose bytes can be replaced, so it cannot be cached forever. Add an optional `v=<sha256>` to the content routes: when it equals the current hash the answer is `cache-control: private, max-age=31536000, immutable`; otherwise today's behaviour plus an explicit `private, no-cache`. Clients already hold the hash (manifest files, preview assets). A hash is not a credential. Result: a cover is read once per device, and a return visit to a library reads none.
-7. **Swift client transport.** One configured `URLSession` in place of `.shared`: `waitsForConnectivity`, six connections per host, a `URLCache` sized for covers so item 6 applies there too, and `assumesHTTP3Capable` for HTTPS origins.
+6. **Immutable content URLs.** Bytes are addressed by SHA-256, but the content URL is keyed by asset id, whose bytes can be replaced, so it cannot be cached forever. Add an optional `v=<sha256>` to the content routes: when it equals the current hash the answer is `cache-control: private, max-age=31536000, immutable`; otherwise today's behaviour plus an explicit `private, no-cache`. Clients already hold the hash (manifest files, preview assets). A hash is not a credential. As built: `v` is accepted on `/api/v1/files/{assetId}/content` and on the saved-selection content route; a game kept in a server folder gets its cover's hash as `artworkVersion` beside `artworkPath` (migration 26 stores it); the kept answer also carries `Vary: Authorization` so one browser never serves an account bytes it was not sent itself. Only pictures are kept, and only on a 200, 206 or 304; a device that keeps its token can still show a cover it already holds after access to that game is withdrawn, which is the accepted cost. Result: a cover is read once per device, and a return visit to a library reads none.
+7. **Swift client transport.** One configured `URLSession` in place of `.shared`: `waitsForConnectivity`, six connections per host, a `URLCache` sized for covers so item 6 applies there too, and `assumesHTTP3Capable` for HTTPS origins. As built: `URLSessionTransport.session` (connectivity wait, six connections, a 256 MB `URLCache`) and `version` on the content and artwork requests. `assumesHTTP3Capable` is per request and was left out.
 
 ### Stage C: storage, needs a review
 

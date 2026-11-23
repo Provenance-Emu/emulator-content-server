@@ -811,6 +811,7 @@
       "properties": [
         "artworkAvailable",
         "artworkPath",
+        "artworkVersion",
         "availability",
         "contentPath",
         "details",

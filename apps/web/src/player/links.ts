@@ -1,5 +1,6 @@
 import type { Item, ManifestFile, SourceFile } from '@ecs/client';
 import { supportsContentName } from './archive.js';
+import { contentLimit } from './content-chunks.js';
 import { type BrowserCore, validateProfile } from './runtime.js';
 export type PlayableCores = BrowserCore | readonly BrowserCore[] | null;
 function supported(
@@ -20,7 +21,7 @@ function supported(
     if (
       core.systems.includes(system) &&
       supportsContentName(core, name) &&
-      size <= core.maxContentBytes
+      size <= contentLimit(core, name)
     )
       return core;
   }
@@ -83,7 +84,7 @@ export function playUnavailableReason(
     return 'Extract this archive and rescan the library folder. Browser play supports a single game in a ZIP or 7z, or an uncompressed game file.';
   if (size <= 0)
     return 'This game file is empty. Rescan its library folder after restoring the file.';
-  if (installed.every((core) => size > core.maxContentBytes))
+  if (installed.every((core) => size > contentLimit(core, name)))
     return 'This game exceeds the installed emulators’ supported file size.';
   return 'This file format is unsupported by the enabled emulators for this console. Check the supported formats in Settings → Emulators.';
 }

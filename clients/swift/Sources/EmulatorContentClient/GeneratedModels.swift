@@ -663,12 +663,13 @@ public struct SourceFile: Codable, Equatable, Sendable {
     public var title: String?
     public var artworkAvailable: Bool?
     public var artworkPath: String?
+    public var artworkVersion: String?
     public var details: SourceDetails?
     public var groupFileCount: Int?
     public var groupError: String?
     public var contentPath: String
 
-    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, title: String? = nil, artworkAvailable: Bool? = nil, artworkPath: String? = nil, details: SourceDetails? = nil, groupFileCount: Int? = nil, groupError: String? = nil, contentPath: String) {
+    public init(id: String, rootId: String, libraryId: String? = nil, name: String, kind: String, size: Int64, systemId: String? = nil, availability: String, medium: String, title: String? = nil, artworkAvailable: Bool? = nil, artworkPath: String? = nil, artworkVersion: String? = nil, details: SourceDetails? = nil, groupFileCount: Int? = nil, groupError: String? = nil, contentPath: String) {
         self.id = id
         self.rootId = rootId
         self.libraryId = libraryId
@@ -681,6 +682,7 @@ public struct SourceFile: Codable, Equatable, Sendable {
         self.title = title
         self.artworkAvailable = artworkAvailable
         self.artworkPath = artworkPath
+        self.artworkVersion = artworkVersion
         self.details = details
         self.groupFileCount = groupFileCount
         self.groupError = groupError

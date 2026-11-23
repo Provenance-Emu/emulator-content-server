@@ -78,9 +78,15 @@ Both screens look again two seconds after work starts and every two seconds whil
 
 ### Player window
 
-The game has the window. `Player.svelte` keeps the tools (**Saves**, **Controls**, **Video**, **Core options**) closed, behind a toolbar under the game; pressing one opens it beside the game on a wide window and below it on a narrow one, and pressing it again, the close button, or Escape puts it away and returns focus to the game. The tools stay mounted while closed, because saves in flight and option choices live in them. **Save state** and **Capture screenshot** open Saves so the result is in view. Unsaved-progress notices sit under the game, never inside a closed tool.
+While a game runs it owns the window (`.browser-player.playing`): the page is dark whatever the library's theme, and the game fills everything under one bar.
 
-Core options are all listed at once with a search box; there is no paging. Each option's choices are read in the background, one after another, matching rows first, without putting the game into a busy state.
+- **One bar.** Leaving, the game's name, the quick actions (Save state, Capture screenshot, Game view, Fullscreen) and the tools (Saves, Controls, Video, Core options, Details). Nothing else sits above or beside the game.
+- **Tools open over the game's edge.** A tool is a drawer on the right that covers part of the picture; it never resizes the game. Pressing its button again, the close button or Escape puts it away. Tools stay mounted while closed, because saves in flight and option choices live in them.
+- **Details is a tool.** Session details, runtime messages and "This browser" are in the Details tool while a game runs, and on the page before it starts. Nothing a person needs is below the game, because the game is as tall as the window.
+- **Waiting says what it is waiting for.** The start-up covers the game area with one line that changes: "Getting the game… 43%", "Getting the emulator…", "Starting…" (`progress` in `player/controller.ts`).
+- **Core options are listed at once**, with search. Choices fill in from a background read that never pauses the game.
+- **Unsaved progress is never tucked away.** Its notice sits under the game, not inside a tool.
+- **What the browser can do is asked in one place.** `lib/browser-features.ts` lists every optional ability (WebAssembly features, WebGPU, private file storage, WebHID, Web Serial, MIDI, wake lock, newer CSS) with the question that detects it. Components ask `browserFeatures().has(id)`; they never read the browser's name or probe `navigator` themselves. An emulator's needs are declared in `runtimeNeeds`, and the setup screen says which one is missing before Start. Add an ability there first, then use it.
 
 ### Settings
 
@@ -90,6 +96,8 @@ Core options are all listed at once with a search box; there is no paging. Each 
 Plugins, Emulators and Updates name things the way the owner would. A plugin's or a source's identifier sits under Details. A build that is named only by a commit is shown as "Nightly build from <date>" (`buildName` in `lib/server-updates.ts`), and an emulator's version is left out when it is only a commit. Update choices are sentences ("Ask me first", "Install automatically"), not modes. Settings has Sign out under Setup guide whenever someone is signed in. On Libraries the tick list of unassigned folders shows names only, because the table under it carries the paths.
 
 ### Game page
+
+Opening a game is a step in the browser's history: Back returns to the list where it was, Forward reopens the game, and "Back to collection" goes the same way. Previous and Next (and the Left and Right arrow keys, when nothing is being typed in) move through the list the game was opened from; stepping replaces the history step, so one Back still returns to the list. Search matches a game's file name as well as its title, so typing a file type such as `chd` lists those files; each row shows its type beside the system.
 
 Opening a game in a server folder shows `GameSource.svelte`: the front cover, the title, one line of facts (system, year, publisher, genre), then **Play**, **Download**, **Edit details**, and an icon-only refresh. The description sits under the actions and folds after four lines. Panels follow in a fixed order: **Artwork**, **Details**, **Files**, saved patches, **Manage**.
 

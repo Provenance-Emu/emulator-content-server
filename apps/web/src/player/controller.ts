@@ -56,6 +56,8 @@ export interface StartOptions {
   stateAssetId?: string;
   compatibleSaves?: boolean;
   log?: (text: string) => void;
+  /** Told what the start-up is doing, in words a person reads while waiting. */
+  progress?: (step: string) => void;
   preferences?: PlayerPreferences;
 }
 const config = [
@@ -84,7 +86,9 @@ export async function startPlayer(
   selection: PlayerSelection,
   options: StartOptions,
 ) {
+  options.progress?.('Getting the game…');
   const prepared = await preparePlayer(client, selection, options);
+  options.progress?.('Getting the emulator…');
   let loaded: Awaited<ReturnType<RuntimeImporter>> | undefined;
   try {
     const assets:
@@ -118,6 +122,7 @@ export async function startPlayer(
       }
     }
     validateCoreBytes(prepared.core, assets);
+    options.progress?.('Starting…');
     const createIsolation = client.createPlayerIsolation?.bind(client);
     const closeIsolation = client.closePlayerIsolation?.bind(client);
     loaded = await options.importer(assets.loader.bytes, {
@@ -219,6 +224,13 @@ export async function startPlayer(
       await runtime.mountContentFile(
         contentPath(prepared.core, prepared.contentExtension),
         prepared.disk.file,
+      );
+    } else if (prepared.chunks) {
+      if (!runtime.mountContentChunks)
+        throw new Error('This emulator cannot load a disc this large yet');
+      await runtime.mountContentChunks(
+        contentPath(prepared.core, prepared.contentExtension),
+        prepared.chunks,
       );
     } else
       await runtime.FS.writeFile(

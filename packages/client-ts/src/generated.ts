@@ -337,6 +337,7 @@ export interface SourceFile {
   title?: string;
   artworkAvailable?: boolean;
   artworkPath?: string;
+  artworkVersion?: string;
   details?: SourceDetails;
   groupFileCount?: number;
   groupError?: string | null;

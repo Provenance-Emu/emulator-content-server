@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
   DomainError,
@@ -25,7 +26,7 @@ export const sourceMatchColumns = `
   (SELECT json_extract(sm.selection_json,'$.title') FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind='metadata') AS matched_title,
   (SELECT json_extract(sm.selection_json,'$.metadata') FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind='metadata') AS matched_metadata,
   ${sourceSystemSql} AS matched_system_id,
-  EXISTS(SELECT 1 FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind='artwork' AND sm.artwork_role='front' AND sm.content IS NOT NULL) AS saved_artwork`;
+  (SELECT COALESCE(sm.content_sha256,'') FROM source_match_selections sm WHERE sm.source_id=s.id AND sm.kind='artwork' AND sm.artwork_role='front' AND sm.content IS NOT NULL) AS saved_artwork`;
 
 export function sourceMatches(db: DatabaseSync, sourceId: string): SourceMatchState {
   const row = db
@@ -97,10 +98,18 @@ export function writeSourceMatch(
     const selection =
       kind === 'artwork' ? { ...match, artworkRole: role as SourceArtworkRole } : match;
     db.prepare(
-      `INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content)
-       VALUES(?,?,?,?,?) ON CONFLICT(source_id,kind,artwork_role) DO UPDATE SET
-       selection_json=excluded.selection_json,content=excluded.content`,
-    ).run(sourceId, kind, role, JSON.stringify(selection), content);
+      `INSERT INTO source_match_selections(source_id,kind,artwork_role,selection_json,content,content_sha256)
+       VALUES(?,?,?,?,?,?) ON CONFLICT(source_id,kind,artwork_role) DO UPDATE SET
+       selection_json=excluded.selection_json,content=excluded.content,
+       content_sha256=excluded.content_sha256`,
+    ).run(
+      sourceId,
+      kind,
+      role,
+      JSON.stringify(selection),
+      content,
+      content ? createHash('sha256').update(content).digest('hex') : null,
+    );
   } else {
     db.prepare(
       'DELETE FROM source_match_selections WHERE source_id=? AND kind=? AND artwork_role=?',
@@ -124,6 +133,22 @@ export function sourceMatchContent(
     )
     .get(sourceId, kind, role) as { content: Uint8Array | null } | undefined;
   return row?.content ?? null;
+}
+
+/** The digest of a saved file, without reading the file. Null when nothing is saved. */
+export function sourceMatchContentDigest(
+  db: DatabaseSync,
+  sourceId: string,
+  kind: string,
+  artworkRole: SourceArtworkRole = 'front',
+): string | null {
+  const role = kind === 'artwork' ? artworkRole : '';
+  const row = db
+    .prepare(
+      'SELECT content_sha256 FROM source_match_selections WHERE source_id=? AND kind=? AND artwork_role=? AND content IS NOT NULL',
+    )
+    .get(sourceId, kind, role) as { content_sha256: string | null } | undefined;
+  return row?.content_sha256 ?? null;
 }
 
 export function matchingIdentification(

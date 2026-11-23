@@ -259,7 +259,7 @@ for (const status of [401, 403] as const)
     await signIn(page, fixture);
     await page.getByRole('button', { name: 'Arcade', exact: true }).click();
     await expect(page.locator('img[src^="blob:"]')).toHaveCount(1);
-    await page.route(`**/api/v1/files/${artwork.id}/content`, (route) =>
+    await page.route(`**/api/v1/files/${artwork.id}/content*`, (route) =>
       route.fulfill({
         status,
         contentType: 'application/problem+json',

@@ -1,3 +1,4 @@
+import { CHUNK_BYTES, CHUNKED_CONTENT_LIMIT, type PlayerContentChunks } from './content-chunks.js';
 import { type IsolationSession, isolatedPlayerUrl } from './dolphin.js';
 import { dolphinWorkerSource } from './dolphin-worker.js';
 import { PREVIEW_LIMIT, pngInfo, SCREENSHOT_LIMIT } from './images.js';
@@ -248,7 +249,33 @@ export const importIsolatedRuntime: RuntimeImporter = async (
                   await rpc('mount', { path, file });
                 },
               }
-            : {}),
+            : {
+                async mountContentChunks(path: string, chunks: PlayerContentChunks) {
+                  const { size, parts } = chunks;
+                  if (
+                    !/^\/ecs\/content\/game\.[a-z0-9]{1,16}$/.test(path) ||
+                    !Number.isSafeInteger(size) ||
+                    size < 1 ||
+                    size > CHUNKED_CONTENT_LIMIT ||
+                    contentSizes.size >= 128 ||
+                    parts.reduce((total, part) => total + part.byteLength, 0) !== size ||
+                    parts.some(
+                      (part, index) =>
+                        part.byteLength < 1 ||
+                        part.byteLength > CHUNK_BYTES ||
+                        (index < parts.length - 1 && part.byteLength !== CHUNK_BYTES) ||
+                        part.byteOffset !== 0 ||
+                        part.byteLength !== part.buffer.byteLength,
+                    )
+                  )
+                    throw new Error('Invalid disc pieces');
+                  // The pieces are moved to the emulator, not copied: the page keeps none.
+                  const buffers = parts.map((part) => part.buffer);
+                  await rpc('mount-chunks', { path, size, parts: buffers }, buffers);
+                  chunks.parts = [];
+                  contentSizes.set(path, size);
+                },
+              }),
           FS: {
             mkdirTree: async (path) => {
               await rpc('mkdir', path);

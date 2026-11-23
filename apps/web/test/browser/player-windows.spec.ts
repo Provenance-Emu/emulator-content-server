@@ -61,9 +61,9 @@ async function setup(page: Page, context: BrowserContext, fixture: Parameters<ty
   );
   let starts = 0;
   context.on('request', (r) => {
-    if (r.url().endsWith('/loader.js')) starts++;
+    if (new URL(r.url()).pathname.endsWith('/loader.js')) starts++;
   });
-  await context.route('**/play/plugins/org.example.generated-gba/loader.js', (route) =>
+  await context.route('**/play/plugins/org.example.generated-gba/loader.js*', (route) =>
     route.fulfill({ contentType: 'text/javascript', body: loader }),
   );
   const item = await fixture.client.createItem({

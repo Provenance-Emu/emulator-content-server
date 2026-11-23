@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -167,10 +168,39 @@ test('selected matches persist, revise safely, and retain original source files'
       headers: f.auth,
     });
     assert.equal(browse.json().items[0]?.name, 'Selected title');
+    // A matched game is listed under its title and is still found by its file name or type.
+    const byFile = await f.app.inject({
+      url: `/api/v1/browse?libraryId=${f.library.id}&category=games&search=.j64`,
+      headers: f.auth,
+    });
+    assert.equal(byFile.json().items[0]?.name, 'Selected title');
     assert.equal(browse.json().items[0]?.source.name, 'Game.j64');
     assert.equal(browse.json().items[0]?.source.artworkAvailable, true);
     // A client draws the card from the list row alone: cover address and readable details.
     assert.equal(browse.json().items[0]?.source.artworkPath, `${url}/selections/artwork/content`);
+    // The row names the cover's bytes, and a request that names them back may keep the answer.
+    const version = browse.json().items[0]?.source.artworkVersion;
+    assert.equal(version, createHash('sha256').update(artBytes).digest('hex'));
+    const kept = await f.app.inject({
+      url: `${url}/selections/artwork/content?v=${version}`,
+      headers: f.auth,
+    });
+    assert.equal(kept.statusCode, 200);
+    assert.deepEqual(kept.rawPayload, artBytes);
+    assert.equal(kept.headers['cache-control'], 'private, max-age=31536000, immutable');
+    assert.match(String(kept.headers.vary), /\bauthorization\b/);
+    // A cover that was replaced since the listing still arrives, and is checked every time.
+    const replaced = await f.app.inject({
+      url: `${url}/selections/artwork/content?v=${'0'.repeat(64)}`,
+      headers: f.auth,
+    });
+    assert.deepEqual(replaced.rawPayload, artBytes);
+    assert.equal(replaced.headers['cache-control'], 'private, no-cache');
+    const unversioned = await f.app.inject({
+      url: `${url}/selections/artwork/content`,
+      headers: f.auth,
+    });
+    assert.equal(unversioned.headers['cache-control'], 'private, no-cache');
     assert.deepEqual(browse.json().items[0]?.source.details, { publisher: 'Homebrew' });
     const { openServer } = await import('../src/index.js');
     await f.close();

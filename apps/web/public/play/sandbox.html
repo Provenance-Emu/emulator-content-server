@@ -4,6 +4,8 @@
   const nonce = location.hash.slice(1);
   if (!/^[a-f0-9]{32}$/.test(nonce) || parent === window) return;
   const LIMIT = 64 * 1024 * 1024;
+  // Kept in step with player/content-chunks.ts.
+  const CHUNK = 4 * 1024 * 1024, CHUNKED_LIMIT = 2 * 1024 * 1024 * 1024;
   let contentLimit = LIMIT;
   const contentSizes = new Map();
   let contentBytes = 0;
@@ -145,6 +147,39 @@
         if(content && (total>contentLimit || (!contentSizes.has(target)&&contentSizes.size>=128)))throw Error('Complete disc exceeds runtime content limit');
         await runtime.FS.writeFile(target,bytes);
         if(content){contentBytes=total;contentSizes.set(target,bytes.byteLength);}return null;
+      }
+      case 'mount-chunks': {
+        // A large disc arrives as separate pieces and stays that way. The file the emulator
+        // opens copies out of whichever pieces a read touches; nothing is joined into one buffer
+        // and nothing is copied into the emulator's own memory until it is read.
+        const target=path(value.path), size=value.size, parts=value.parts;
+        if(!/^\/ecs\/content\/game\.[a-z0-9]{1,16}$/.test(target)||contentSizes.size>=128||!Number.isSafeInteger(size)||size<1||size>CHUNKED_LIMIT||!Array.isArray(parts)||parts.length<1||parts.length>Math.ceil(CHUNKED_LIMIT/CHUNK))throw Error('Invalid disc pieces');
+        let total=0;const chunks=[];
+        for(let index=0;index<parts.length;index++){
+          const part=parts[index];
+          if(!(part instanceof ArrayBuffer)||part.byteLength<1||part.byteLength>CHUNK||(index<parts.length-1&&part.byteLength!==CHUNK))throw Error('Invalid disc pieces');
+          chunks.push(new Uint8Array(part));total+=part.byteLength;
+        }
+        if(total!==size)throw Error('Invalid disc pieces');
+        const FS=runtime.FS;
+        if(typeof FS.lookupPath!=='function')throw Error('This emulator cannot load a disc this large');
+        await FS.writeFile(target,new Uint8Array(0));
+        const node=FS.lookupPath(target).node;
+        if(!node||!node.stream_ops)throw Error('This emulator cannot load a disc this large');
+        const refuse=code=>()=>{throw FS.ErrnoError?new FS.ErrnoError(code):Error('Read-only disc');};
+        Object.defineProperty(node,'usedBytes',{configurable:true,get:()=>size});
+        node.stream_ops={...node.stream_ops,
+          read(stream,buffer,offset,length,position){
+            if(position>=size)return 0;
+            const count=Math.min(length,size-position);let done=0;
+            while(done<count){
+              const at=position+done,piece=chunks[Math.floor(at/CHUNK)],from=at%CHUNK,take=Math.min(count-done,piece.byteLength-from);
+              buffer.set(piece.subarray(from,from+take),offset+done);done+=take;
+            }
+            return count;
+          },
+          write:refuse(30),mmap:refuse(19),allocate:refuse(30)};
+        contentSizes.set(target,size);return null;
       }
       case 'read': {
         const bytes = await runtime.FS.readFile(path(value));

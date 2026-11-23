@@ -336,12 +336,70 @@
   );
   const filtered = $derived(!!($browser.filters.search || $browser.filters.systemId || $browser.filters.systemIds.length || $browser.filters.rootId));
   const canAdd = $derived(!!(canCreate || (owner && scope && 'libraryId' in scope)));
-  function open(entry: LibraryBrowseEntry) {
-    browser.open(entry, {
-      scrollTop: window.scrollY,
-      focusKey: entryKey(entry),
-    });
+  /** Marks the browser-history entry that stands for an open game. */
+  const GAME_STATE = 'ecsGame';
+  const gameInHistory = (): string | null =>
+    (window.history.state as Record<string, unknown> | null)?.[GAME_STATE]?.toString() ?? null;
+  /** Where the list was when the first game was opened, kept while stepping between games. */
+  let listScroll = 0;
+  /**
+   * Opens a game. Coming from the list it becomes a step in the browser's history, so Back
+   * returns to the list. Stepping to a neighbour replaces that step, so Back still does.
+   */
+  function open(entry: LibraryBrowseEntry, record: 'push' | 'replace' | 'none' = 'push') {
+    if (record === 'push') listScroll = window.scrollY;
+    browser.open(entry, { scrollTop: listScroll, focusKey: entryKey(entry) });
+    const state = { ...(window.history.state as object | null), [GAME_STATE]: entryKey(entry) };
+    if (record === 'push') window.history.pushState(state, '');
+    else if (record === 'replace') window.history.replaceState(state, '');
     void tick().then(() => region?.querySelector<HTMLElement>('[data-detail-heading]')?.focus());
+  }
+  /** The games before and after the open one, in the list it was opened from. */
+  const neighbours = $derived.by(() => {
+    const active = $browser.active;
+    if (!active) return { previous: null, next: null };
+    const games = $browser.items;
+    const at = games.findIndex((entry) => entryKey(entry) === entryKey(active));
+    return {
+      previous: at > 0 ? (games[at - 1] ?? null) : null,
+      next: at >= 0 ? (games[at + 1] ?? null) : null,
+    };
+  });
+  function step(entry: LibraryBrowseEntry | null) {
+    if (entry) open(entry, gameInHistory() ? 'replace' : 'push');
+  }
+  /** Leaving through the page's own button goes the same way the browser's Back does. */
+  function leave() {
+    if (gameInHistory()) window.history.back();
+    else void back();
+  }
+  function moved() {
+    if (disposed) return;
+    const key = gameInHistory();
+    const active = get(browser).active;
+    if (!key) {
+      if (active) void back();
+      return;
+    }
+    if (active && entryKey(active) === key) return;
+    // Forward to a game: reopen it when it is still in the list, without a new history step.
+    const entry = get(browser).items.find((candidate) => entryKey(candidate) === key);
+    if (entry) open(entry, 'none');
+    else if (active) void back();
+  }
+  function arrows(event: KeyboardEvent) {
+    if (!get(browser).active || event.defaultPrevented) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    const target = event.target as HTMLElement | null;
+    // Arrow keys belong to whatever is being typed in, chosen from, or shown in a dialog.
+    if (target?.closest('input, textarea, select, [contenteditable], [role="slider"], dialog, [role="dialog"], [role="radiogroup"], [role="tablist"], [role="menu"]'))
+      return;
+    if (document.querySelector('dialog[open]')) return;
+    const entry = event.key === 'ArrowLeft' ? neighbours.previous : neighbours.next;
+    if (!entry) return;
+    event.preventDefault();
+    step(entry);
   }
   async function back() {
     const saved = browser.back();
@@ -353,6 +411,14 @@
     button?.focus({ preventScroll: true });
     window.scrollTo(0, saved?.scrollTop ?? 0);
   }
+  onMount(() => {
+    window.addEventListener('popstate', moved);
+    window.addEventListener('keydown', arrows);
+    return () => {
+      window.removeEventListener('popstate', moved);
+      window.removeEventListener('keydown', arrows);
+    };
+  });
   onMount(() => {
     void context.client
       .systems()
@@ -406,7 +472,9 @@
       {systems}
       refreshing={$browser.loading}
       onrefresh={() => void refreshDetails()}
-      onback={() => void back()}
+      onback={leave}
+      previous={neighbours.previous ? { name: neighbours.previous.name, go: () => step(neighbours.previous) } : null}
+      next={neighbours.next ? { name: neighbours.next.name, go: () => step(neighbours.next) } : null}
       onchanged={() => {
         void browser.refresh();
       }}

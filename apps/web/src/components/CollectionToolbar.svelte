@@ -91,7 +91,7 @@
   >
     <label class="search-field">
       <span class="visually-hidden">Search collection</span>
-      <input type="search" bind:value={search} oninput={typed} placeholder="Find a game by name" />
+      <input type="search" bind:value={search} oninput={typed} placeholder="Name or file type, like chd" />
     </label>
   </form>
   <div class="collection-view-options">

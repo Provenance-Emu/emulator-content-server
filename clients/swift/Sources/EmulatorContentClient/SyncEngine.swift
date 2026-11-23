@@ -5,12 +5,32 @@ public protocol ContentTransport: Sendable {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }
 
-/// `URLSession.shared`, which is available on iOS and tvOS.
+/// One `URLSession` for the library, available on iOS and tvOS.
+///
+/// It waits for the network instead of failing at once, opens up to six connections to the
+/// server, and keeps answers the server marks as unchanging (covers requested with their
+/// `version`) on disk, so a cover is read once per device.
 public struct URLSessionTransport: ContentTransport {
+    /// Shared so every engine uses the same connections and the same cache.
+    public static let session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.waitsForConnectivity = true
+        configuration.httpMaximumConnectionsPerHost = 6
+        configuration.urlCache = URLCache(
+            memoryCapacity: 16 * 1024 * 1024, diskCapacity: 256 * 1024 * 1024)
+        return URLSession(configuration: configuration)
+    }()
+
+    /// Drops every kept answer. Call it when the person signs out or the app switches to
+    /// another account, so nothing read under one account is shown under another.
+    public static func forgetKeptAnswers() {
+        session.configuration.urlCache?.removeAllCachedResponses()
+    }
+
     public init() {}
 
     public func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await Self.session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw SyncFailure(status: 0, message: "The server did not answer over HTTP")
         }
@@ -134,14 +154,26 @@ public struct ContentSync: Sendable {
     }
 
     /// The request for an asset from `localBytes` onward. The caller reads the body.
-    public func contentRequest(assetId: String, localBytes: Int64, etag: String?) -> URLRequest {
+    ///
+    /// Pass the asset's SHA-256 as `version` for bytes worth keeping, such as a cover: the
+    /// server then marks the answer as unchanging and the session's cache holds it.
+    public func contentRequest(
+        assetId: String, localBytes: Int64, etag: String?, version: String? = nil
+    ) -> URLRequest {
         SyncRequests.content(
             baseURL: baseURL,
             token: token,
             assetId: assetId,
             localBytes: localBytes,
-            etag: etag
+            etag: etag,
+            version: version
         )
+    }
+
+    /// The request for the saved front cover of a game kept in a server folder. `version` is
+    /// the `artworkVersion` from the listing that named the cover.
+    public func artworkRequest(sourceId: String, version: String? = nil) -> URLRequest {
+        SyncRequests.artwork(baseURL: baseURL, token: token, sourceId: sourceId, version: version)
     }
 
     private func send<T: Decodable>(_ request: URLRequest) async throws -> T {
@@ -184,8 +216,13 @@ public enum SyncRequests {
         authorized(baseURL: baseURL, token: token, path: "/api/v1/uploads/\(uploadId)")
     }
 
-    public static func content(baseURL: URL, token: String, assetId: String, localBytes: Int64, etag: String?) -> URLRequest {
-        var request = authorized(baseURL: baseURL, token: token, path: "/api/v1/files/\(assetId)/content")
+    public static func content(
+        baseURL: URL, token: String, assetId: String, localBytes: Int64, etag: String?,
+        version: String? = nil
+    ) -> URLRequest {
+        var request = authorized(
+            baseURL: baseURL, token: token,
+            path: "/api/v1/files/\(assetId)/content\(versionQuery(version))")
         let plan = ResumePlan.plan(localBytes: localBytes, totalBytes: nil)
         if let range = plan.range {
             request.setValue(range, forHTTPHeaderField: "Range")
@@ -194,6 +231,18 @@ public enum SyncRequests {
             }
         }
         return request
+    }
+
+    public static func artwork(baseURL: URL, token: String, sourceId: String, version: String? = nil) -> URLRequest {
+        authorized(
+            baseURL: baseURL, token: token,
+            path: "/api/v1/sources/\(sourceId)/matches/selections/artwork/content\(versionQuery(version))")
+    }
+
+    /// The query that names the bytes expected. Anything that is not a SHA-256 is left out.
+    private static func versionQuery(_ version: String?) -> String {
+        guard let version, version.count == 64, version.allSatisfy(\.isHexDigit) else { return "" }
+        return "?v=\(version.lowercased())"
     }
 
     fileprivate static func jsonUpload<Body: Encodable>(

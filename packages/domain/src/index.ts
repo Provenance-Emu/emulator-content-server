@@ -80,6 +80,8 @@ export interface SourceFileRecord {
   availability: SourceAvailability;
   title?: string;
   artworkAvailable?: boolean;
+  /** SHA-256 of the saved front cover, when one is saved. */
+  artworkVersion?: string;
   details?: SourceDetails;
   groupAnchor?: string | null;
   groupMembers?: string[];

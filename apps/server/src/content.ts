@@ -143,6 +143,33 @@ export async function sendSourceContent(
   return sendRange(request, reply, { path: full, offset: 0, size, etag });
 }
 
+/**
+ * Decides whether a client may keep these bytes. A request that names the digest it expects
+ * (`v`) and is right is asking for bytes that can never change. Call this only after access is
+ * decided. It marks the answer as checked every time; `keepForever` lifts that once the answer
+ * is known to be the bytes themselves, so a refusal or an unusable range is never kept.
+ */
+export function wantsKeptContent(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  sha256: string,
+): boolean {
+  reply.header('cache-control', 'private, no-cache');
+  const asked = (request.query as Record<string, unknown> | undefined)?.v;
+  return typeof asked === 'string' && asked.toLowerCase() === sha256.toLowerCase();
+}
+
+/**
+ * Lets the client keep the answer for a year. It varies by `Authorization`: another account on
+ * the same browser never receives bytes from the cache that it was not served itself.
+ */
+export function keepForever(reply: FastifyReply): void {
+  reply.header('cache-control', 'private, max-age=31536000, immutable');
+  const vary = String(reply.getHeader('vary') ?? '');
+  if (!/\bauthorization\b/i.test(vary))
+    reply.header('vary', vary ? `${vary}, authorization` : 'authorization');
+}
+
 export async function sendContent(
   context: ServerContext,
   request: FastifyRequest,
@@ -158,7 +185,11 @@ export async function sendContent(
   const etag = strongEtag(asset.sha256);
   reply.header('accept-ranges', 'bytes');
   reply.header('etag', etag);
+  // Pictures are what a library reads again on every visit. Games, saves and system files are
+  // fetched on purpose and always checked with the server.
+  const keep = wantsKeptContent(request, reply, asset.sha256) && asset.kind === 'artwork';
   if (etagMatches(headerString(request, 'if-none-match'), etag)) {
+    if (keep) keepForever(reply);
     return reply.status(304).send();
   }
   return sendRange(request, reply, {
@@ -166,13 +197,14 @@ export async function sendContent(
     offset: 0,
     size: stored.size,
     etag,
+    keep,
   });
 }
 
 export async function sendRange(
   request: FastifyRequest,
   reply: FastifyReply,
-  source: { path: string; offset: number; size: number; etag: string },
+  source: { path: string; offset: number; size: number; etag: string; keep?: boolean },
 ): Promise<FastifyReply> {
   const { size } = source;
   const rangeHeader = headerString(request, 'range');
@@ -192,6 +224,7 @@ export async function sendRange(
     end = parsed.end;
     reply.header('content-range', `bytes ${start}-${end}/${size}`);
   }
+  if (source.keep) keepForever(reply);
   const length = size === 0 ? 0 : end - start + 1;
   reply.header('content-type', 'application/octet-stream');
   reply.header('content-length', String(length));

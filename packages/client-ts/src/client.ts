@@ -210,6 +210,11 @@ export interface CollectOptions {
   maxBytes?: number;
   /** Called as bytes arrive, with the whole size when the server states one. */
   onProgress?: (received: number, total: number | null) => void;
+  /**
+   * SHA-256 of the bytes expected, from the listing that named them. The server then lets the
+   * platform keep the answer, so the same picture is not read again on the next visit.
+   */
+  version?: string;
 }
 
 /** A caller-owned destination. Failed transfers abort instead of committing partial bytes. */
@@ -868,22 +873,29 @@ export class ContentClient {
   }> {
     const p = await this.playerProfile(id);
     const base = `/play/plugins/${id}`;
+    // Naming the digest lets the browser keep an emulator between launches. The bytes are
+    // checked against it below whether they came from the server or from the browser's cache.
     const read = async (resource: PlayerCoreResource, path: string) => {
-      const asset = await this.collectPath(path, { maxBytes: resource.sizeBytes, attempts: 1 });
+      const asset = await this.collectPath(`${path}${versionQuery(resource.sha256)}`, {
+        maxBytes: resource.sizeBytes,
+        attempts: 1,
+      });
       const sha256 = await sha256Bytes(asset.bytes);
       if (asset.bytes.byteLength !== resource.sizeBytes || sha256 !== resource.sha256)
         throw new Error('Player resource size or SHA-256 mismatch');
       return asset;
     };
-    const loader = await read(p.loader, `${base}/loader.js`);
-    const wasm = await read(p.wasm, `${base}/core.wasm`);
-    const assets = [];
-    for (const spec of p.assets)
-      assets.push({
-        name: spec.name,
-        bytes: (await read(spec, `${base}/assets/${spec.name}`)).bytes,
-      });
-    return { loader, wasm, assets };
+    // Read together: the wait is the largest file, not the sum of them.
+    const [loader, wasm, ...extra] = await Promise.all([
+      read(p.loader, `${base}/loader.js`),
+      read(p.wasm, `${base}/core.wasm`),
+      ...p.assets.map((spec) => read(spec, `${base}/assets/${spec.name}`)),
+    ]);
+    const assets = p.assets.map((spec, index) => ({
+      name: spec.name,
+      bytes: (extra[index] as CollectedAsset).bytes,
+    }));
+    return { loader: loader as CollectedAsset, wasm: wasm as CollectedAsset, assets };
   }
 
   /** Reads only a typed source endpoint, with the same resume guarantees as assets. */
@@ -1317,11 +1329,14 @@ export class ContentClient {
     kind: string,
     signal?: AbortSignal,
     artworkRole?: string,
+    /** SHA-256 of the saved file (`artworkVersion` in a listing), so the answer can be kept. */
+    version?: string,
   ): Promise<Blob> {
     const url = this.url(
       `/api/v1/sources/${encodeURIComponent(id)}/matches/selections/${encodeURIComponent(kind)}/content`,
     );
     if (artworkRole !== undefined) url.searchParams.set('artworkRole', artworkRole);
+    if (version !== undefined && SHA256.test(version)) url.searchParams.set('v', version);
     const response = await fetch(url, { headers: this.headers(), signal });
     if (!response.ok) throw await failure(response);
     const reader = response.body?.getReader();
@@ -1739,7 +1754,10 @@ export class ContentClient {
    * filesystem should use `downloadTo` to write with backpressure instead.
    */
   collect(assetId: string, options: CollectOptions = {}): Promise<CollectedAsset> {
-    return this.collectPath(`/api/v1/files/${encodeURIComponent(assetId)}/content`, options);
+    return this.collectPath(
+      `/api/v1/files/${encodeURIComponent(assetId)}/content${versionQuery(options.version)}`,
+      options,
+    );
   }
 
   /** Stream an asset to a destination without collecting its body in memory. */
@@ -2517,4 +2535,11 @@ function validatePlayerProfile(p: WebPlayerDescriptor, id: string): void {
     total += a.sizeBytes;
   }
   if (total > 33554432) throw new Error('Player assets exceed total byte limit');
+}
+
+const SHA256 = /^[a-f0-9]{64}$/i;
+
+/** The query that names the bytes expected. Anything that is not a digest is left out. */
+function versionQuery(version: string | undefined): string {
+  return version !== undefined && SHA256.test(version) ? `?v=${version}` : '';
 }

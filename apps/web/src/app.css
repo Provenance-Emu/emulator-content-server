@@ -959,6 +959,16 @@ small {
 .settings-content section:first-child {
   margin-top: 0;
 }
+.detail-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.detail-steps {
+  display: inline-flex;
+  gap: var(--space-1);
+}
 .back-button {
   margin-bottom: 1.5rem;
   margin-left: calc(-1 * var(--control-padding-inline));

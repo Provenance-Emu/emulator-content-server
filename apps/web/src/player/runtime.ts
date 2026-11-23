@@ -3,6 +3,7 @@ import {
   type PlayerCoreDescriptor,
   type WebPlayerDescriptor,
 } from '@ecs/client';
+import type { PlayerContentChunks } from './content-chunks.js';
 import { approvedDolphinBuild, type IsolationBroker } from './dolphin.js';
 export type BrowserCore = PlayerCoreDescriptor | WebPlayerDescriptor;
 export interface RuntimeContext {
@@ -24,6 +25,8 @@ export interface PlayerRuntime extends CommandRuntime {
     readFile(path: string): Uint8Array | Promise<Uint8Array>;
   };
   mountContentFile?(path: string, file: File): Promise<void>;
+  /** Attaches a disc held in pieces as one read-only file. The pieces are given away. */
+  mountContentChunks?(path: string, chunks: PlayerContentChunks): Promise<void>;
   callMain(args: string[]): void | Promise<void>;
   focus?(): void | Promise<void>;
   captureScreenshot?(): Promise<Uint8Array<ArrayBuffer>>;

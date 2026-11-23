@@ -501,6 +501,14 @@ export const MIGRATIONS: readonly Migration[] = [
     DROP TABLE source_match_selections_v24;
   `,
   },
+  {
+    // A saved file's digest lets a listing name the exact bytes, so a client can keep them.
+    version: 26,
+    sql: `
+    ALTER TABLE source_match_selections ADD COLUMN content_sha256 TEXT;
+    UPDATE source_match_selections SET content_sha256=ecs_sha256(content) WHERE content IS NOT NULL;
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

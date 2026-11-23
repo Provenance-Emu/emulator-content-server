@@ -5,6 +5,7 @@ import { DomainError } from '@ecs/domain';
 import { parseManifest } from '@ecs/plugins';
 import type { PlayerCoreResource, WebPlayerDescriptor } from '@ecs/protocol';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { keepForever } from './content.js';
 import type { ServerContext } from './context.js';
 import { requireActor } from './http.js';
 import { type PlayerAssets, readRegular } from './player-assets.js';
@@ -171,18 +172,25 @@ export function registerPlayerProfiles(app: FastifyInstance, context: ServerCont
     return profile(request.params.id).descriptor;
   });
   const send = (
+    request: FastifyRequest,
     reply: import('fastify').FastifyReply,
     bytes: Buffer,
     resource: PlayerCoreResource,
     mime: string,
-  ) =>
-    reply
+  ) => {
+    reply.header('cache-control', 'private, no-store');
+    // An emulator is tens of megabytes and the same on every launch. A request that names the
+    // digest it expects may keep it; the player checks the digest again before running it.
+    const asked = (request.query as Record<string, unknown> | undefined)?.v;
+    if (typeof asked === 'string' && asked.toLowerCase() === resource.sha256.toLowerCase())
+      keepForever(reply);
+    return reply
       .type(mime)
-      .header('cache-control', 'private, no-store')
       .header('x-content-type-options', 'nosniff')
       .header('cross-origin-resource-policy', 'same-origin')
       .header('etag', `"${resource.sha256}"`)
       .send(bytes);
+  };
   for (const [file, key, mime] of [
     ['loader.js', 'loader', 'text/javascript'],
     ['core.wasm', 'wasm', 'application/wasm'],
@@ -190,7 +198,7 @@ export function registerPlayerProfiles(app: FastifyInstance, context: ServerCont
     app.get<{ Params: { id: string } }>(`/play/plugins/:id/${file}`, async (request, reply) => {
       requireRead(request);
       const p = profile(request.params.id);
-      return send(reply, p[key], p.descriptor[key], mime);
+      return send(request, reply, p[key], p.descriptor[key], mime);
     });
   }
   app.get<{ Params: { id: string; name: string } }>(
@@ -202,7 +210,7 @@ export function registerPlayerProfiles(app: FastifyInstance, context: ServerCont
       const resource = p.descriptor.assets.find((a) => a.name === request.params.name);
       if (!bytes || !resource)
         throw new DomainError('not-found', 404, 'Browser player asset is not available');
-      return send(reply, bytes, resource, 'application/octet-stream');
+      return send(request, reply, bytes, resource, 'application/octet-stream');
     },
   );
 }

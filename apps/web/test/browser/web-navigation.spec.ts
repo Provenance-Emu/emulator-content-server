@@ -64,3 +64,39 @@ test('changing the settings library updates the destination before a reload', as
     fixture.library.id,
   );
 });
+
+test('a game is a step in browser history, and arrows move between games in the list', async ({
+  page,
+  fixture,
+}) => {
+  for (const title of ['Alpha quest', 'Beta quest'])
+    await fixture.client.createItem({
+      libraryId: fixture.library.id,
+      title,
+      systemIdentifier: 'com.provenance.gba',
+      md5: null,
+      crc: null,
+    });
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Alpha quest', exact: true }).click();
+  const heading = page.locator('[data-detail-heading]');
+  await expect(heading).toContainText('Alpha quest');
+  await expect(page.getByRole('button', { name: 'No previous game' })).toBeDisabled();
+  // The next game in the list, by keyboard and then back by button.
+  await page.keyboard.press('ArrowRight');
+  await expect(heading).toContainText('Beta quest');
+  await page.getByRole('button', { name: 'Previous game: Alpha quest' }).click();
+  await expect(heading).toContainText('Alpha quest');
+  // However many games were stepped through, one Back returns to the list.
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Open Beta quest', exact: true })).toBeVisible();
+  await expect(heading).toHaveCount(0);
+  await page.goForward();
+  await expect(heading).toContainText('Alpha quest');
+  // The page's own button goes the same way as Back.
+  await page.getByRole('button', { name: 'Back to collection', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Alpha quest', exact: true })).toBeVisible();
+  await page.goForward();
+  await expect(heading).toContainText('Alpha quest');
+});

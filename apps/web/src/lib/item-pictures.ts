@@ -67,7 +67,10 @@ export function createItemPictures(
       active++;
       void (async () => {
         try {
-          const result = await client.collect(file.id, { maxBytes: MAX_BYTES });
+          const result = await client.collect(file.id, {
+            maxBytes: MAX_BYTES,
+            version: file.sha256,
+          });
           if (disposed || run !== epoch || wanted.get(file.id)?.sha256 !== file.sha256) return;
           const type = imageType(result.bytes);
           settle(

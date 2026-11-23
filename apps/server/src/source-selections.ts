@@ -10,7 +10,7 @@ import {
 import { type MatchCandidate, patchFingerprint } from '@ecs/plugins/matching';
 import { etagMatches, strongEtag, validateSystemIdentifier } from '@ecs/protocol';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { canSeeSource } from './content.js';
+import { canSeeSource, keepForever, wantsKeptContent } from './content.js';
 import type { ServerContext } from './context.js';
 import {
   jsonObject,
@@ -480,7 +480,8 @@ function sendSnapshot(
 ) {
   // Authorization precedes validator evaluation.
   const etag = strongEtag(digest);
-  reply.header('cache-control', 'private, no-cache');
+  // `inline` marks a picture. Patches and cheats are always checked with the server.
+  if (wantsKeptContent(request, reply, digest) && inline) keepForever(reply);
   reply.header('etag', etag);
   const conditional = request.headers['if-none-match'];
   if (etagMatches(typeof conditional === 'string' ? conditional : undefined, etag))

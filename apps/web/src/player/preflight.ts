@@ -5,6 +5,14 @@ import {
   extractPlayerZip,
   supportsContentName,
 } from './archive.js';
+import {
+  CHUNKED_CONTENT_LIMIT,
+  CHUNKED_FROM_BYTES,
+  chunkSink,
+  contentLimit,
+  type PlayerContentChunks,
+  readsInPieces,
+} from './content-chunks.js';
 import type { PlayerClient, PlayerSelection, StartOptions } from './controller.js';
 import { MAX_CUE_BYTES } from './cue.js';
 import { prepareCueMedia } from './cue-media.js';
@@ -47,9 +55,29 @@ export async function allItems(client: Pick<PlayerClient, 'libraries' | 'items'>
   return items;
 }
 
+/** Reports how much of the game has arrived, at most a few times a second. */
+function downloadProgress(options: StartOptions, size: number) {
+  let last = 0;
+  return (received: number, total: number | null) => {
+    const whole = total ?? size;
+    if (!whole || (Date.now() - last < 250 && received < whole)) return;
+    last = Date.now();
+    options.progress?.(`Getting the game… ${Math.min(100, Math.floor((received / whole) * 100))}%`);
+  };
+}
+
+const megabytes = (bytes: number) =>
+  bytes >= 1024 ** 3
+    ? `${(bytes / 1024 ** 3).toFixed(1)} GB`
+    : `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`;
+
+/** Says why a file cannot be loaded, with both sizes, before any of it is downloaded. */
 function bounded(size: number, limit: number): void {
-  if (!Number.isSafeInteger(size) || size <= 0 || size > limit)
-    throw new Error('Content/save is empty or exceeds the supported size limit');
+  if (!Number.isSafeInteger(size) || size <= 0) throw new Error('This file is empty.');
+  if (size > limit)
+    throw new Error(
+      `This file is ${megabytes(size)}. This emulator can load up to ${megabytes(limit)} in the browser, so it cannot be played here yet.`,
+    );
 }
 function selectedSave(
   manifest: Manifest | null,
@@ -73,6 +101,8 @@ export interface PreparedPlayer {
   revision: number | null;
   content: Uint8Array<ArrayBuffer>;
   disk?: PlayerDiskFile;
+  /** A large disc held in pieces; `content` is empty when this is set. */
+  chunks?: PlayerContentChunks;
   contentFiles?: { path: string; bytes: Uint8Array<ArrayBuffer> }[];
   firmware?: Awaited<ReturnType<typeof collectFirmware>>;
   battery?: { file: ManifestFile; bytes: Uint8Array<ArrayBuffer> };
@@ -113,6 +143,27 @@ export async function preparePlayer(
   }
   let content = new Uint8Array() as Uint8Array<ArrayBuffer>;
   let disk: PlayerDiskFile | undefined;
+  let chunks: PlayerContentChunks | undefined;
+  /**
+   * Flycast reads a CHD or CDI by seeking in it, so a large one is held in pieces instead of
+   * one buffer. Archives and track groups keep the ordinary path and its limit.
+   */
+  const inPieces = (extension: string, size: number) =>
+    readsInPieces(core.id, `game.${extension}`) &&
+    size > Math.min(CHUNKED_FROM_BYTES, core.maxContentBytes);
+  const collectPieces = async (kind: 'asset' | 'source', id: string, size: number) => {
+    const download =
+      kind === 'asset' ? client.downloadTo?.bind(client) : client.downloadSourceTo?.bind(client);
+    if (!download) throw new Error('This client cannot download a large disc in pieces');
+    bounded(size, CHUNKED_CONTENT_LIMIT);
+    const pieces = chunkSink(size);
+    await download(id, pieces.sink, {
+      maxBytes: CHUNKED_CONTENT_LIMIT,
+      signal: options.signal,
+      onProgress: downloadProgress(options, size),
+    });
+    return pieces.result();
+  };
   const stageDisk = options.stageDisk ?? cachePlayerDisk;
   const stage = async (kind: 'asset' | 'source', id: string, size: number) => {
     const download =
@@ -130,6 +181,9 @@ export async function preparePlayer(
               lastProgress = Date.now();
               options.log?.(
                 `Preparing disc: ${Math.floor(received / 1024 ** 2)} / ${Math.ceil(size / 1024 ** 2)} MiB`,
+              );
+              options.progress?.(
+                `Getting the game… ${Math.min(100, Math.floor((received / size) * 100))}%`,
               );
             }
           },
@@ -153,7 +207,7 @@ export async function preparePlayer(
         file.size,
         ['cue', 'gdi'].includes(contentExtension)
           ? Math.min(MAX_CUE_BYTES, core.maxContentBytes)
-          : core.maxContentBytes,
+          : contentLimit(core, file.relativePath),
       );
       if (['cue', 'gdi'].includes(contentExtension)) {
         const media = await prepareCueMedia(
@@ -182,10 +236,18 @@ export async function preparePlayer(
         file.size > 32 * 1024 ** 2
       )
         disk = await stage('asset', file.id, file.size);
-      else
+      else if (inPieces(contentExtension, file.size))
+        chunks = await collectPieces('asset', file.id, file.size);
+      else {
+        bounded(file.size, core.maxContentBytes);
         content = (
-          await client.collect(file.id, { maxBytes: core.maxContentBytes, signal: options.signal })
+          await client.collect(file.id, {
+            maxBytes: core.maxContentBytes,
+            signal: options.signal,
+            onProgress: downloadProgress(options, file.size),
+          })
         ).bytes;
+      }
     } else {
       sources = (await client.sources()).items;
       const source = sources.find((entry) => entry.id === selection.sourceId);
@@ -215,7 +277,7 @@ export async function preparePlayer(
         source.size,
         ['cue', 'gdi'].includes(contentExtension)
           ? Math.min(MAX_CUE_BYTES, core.maxContentBytes)
-          : core.maxContentBytes,
+          : contentLimit(core, source.name),
       );
       if (['cue', 'gdi'].includes(contentExtension)) {
         const media = await prepareCueMedia(
@@ -232,13 +294,18 @@ export async function preparePlayer(
         source.size > 32 * 1024 ** 2
       )
         disk = await stage('source', source.id, source.size);
-      else
+      else if (inPieces(contentExtension, source.size))
+        chunks = await collectPieces('source', source.id, source.size);
+      else {
+        bounded(source.size, core.maxContentBytes);
         content = (
           await client.collectSource(source.id, {
             maxBytes: core.maxContentBytes,
             signal: options.signal,
+            onProgress: downloadProgress(options, source.size),
           })
         ).bytes;
+      }
     }
     const system = item?.systemIdentifier ?? selectedSource?.systemId ?? null;
     const dreamcast = system === 'com.provenance.dreamcast' && isDreamcastCore(core);
@@ -259,7 +326,8 @@ export async function preparePlayer(
       content = extracted.bytes;
       contentExtension = extracted.extension;
     }
-    bounded(disk?.file.size ?? content.byteLength, core.maxContentBytes);
+    if (chunks) bounded(chunks.size, CHUNKED_CONTENT_LIMIT);
+    else bounded(disk?.file.size ?? content.byteLength, core.maxContentBytes);
     if (
       core.id === 'org.libretro.prboom' &&
       ![0x49, 0x57, 0x41, 0x44].every((byte, index) => content[index] === byte)
@@ -301,6 +369,7 @@ export async function preparePlayer(
       revision: manifest?.revision ?? null,
       content,
       ...(disk ? { disk } : {}),
+      ...(chunks ? { chunks } : {}),
       ...(contentFiles ? { contentFiles } : {}),
       firmware: await collectFirmware(
         client,

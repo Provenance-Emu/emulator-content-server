@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { LibraryBrowseEntry, SystemSummary } from '@ecs/client';
   import { onDestroy } from 'svelte';
-  import { availabilityLabel, entryKey, kindLabel, systemLabel } from '../lib/content-format';
+  import { availabilityLabel, entryKey, fileTypeLabel, kindLabel, systemLabel } from '../lib/content-format';
   import { bytes } from '../lib/format';
   let {
     items,
@@ -92,7 +92,7 @@
           </span>
           <strong>{entry.name}</strong>
           {#if entry.parentItem}<span class="game-parent dim">{entry.parentItem.title}</span>{/if}
-          <span class="dim">{systemLabel(entry.systemId, systems)}</span>
+          <span class="dim">{systemLabel(entry.systemId, systems)}{#if fileTypeLabel(entry)} · {fileTypeLabel(entry)}{/if}</span>
           {#if entry.source}<span class="availability">
               {availabilityLabel(entry.source.availability)}{#if (entry.source.groupFileCount ?? 0) > 1} · {entry.source.groupFileCount} files{/if}
             </span>{/if}
@@ -125,7 +125,7 @@
               {#if entry.parentItem}<small class="dim">{entry.parentItem.title}</small>{/if}
             </td>
             <td>{systemLabel(entry.systemId, systems)}</td>
-            <td>{kindLabel(entry.asset?.kind ?? entry.source?.kind ?? 'rom')}</td>
+            <td>{kindLabel(entry.asset?.kind ?? entry.source?.kind ?? 'rom')}{#if fileTypeLabel(entry)} · {fileTypeLabel(entry)}{/if}</td>
             <td>
               {#if entry.source}{bytes(entry.source.size)} · {availabilityLabel(
                   entry.source.availability,

@@ -268,6 +268,7 @@ export function registerLibraryBrowse(
           ? {
               artworkAvailable: true,
               artworkPath: `/api/v1/sources/${source.id}/matches/selections/artwork/content`,
+              ...(source.artworkVersion ? { artworkVersion: source.artworkVersion } : {}),
             }
           : {}),
         ...(source.details ? { details: source.details } : {}),

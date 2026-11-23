@@ -68,3 +68,16 @@ export function saveGroups(files: ManifestFile[]): SaveGroup[] {
   }
   return [...groups.values()];
 }
+
+/**
+ * The file's type as its owner knows it ("CHD", "CDI"), from the name it has on disk. Empty for
+ * an uploaded game, whose files are listed on its own page.
+ */
+export function fileTypeLabel(entry: {
+  source?: { name: string } | null;
+  asset?: { displayName: string } | null;
+}): string {
+  const name = entry.source?.name ?? entry.asset?.displayName ?? '';
+  const extension = /\.([a-z0-9]{1,8})$/i.exec(name)?.[1];
+  return extension ? extension.toUpperCase() : '';
+}

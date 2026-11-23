@@ -110,12 +110,21 @@ export function createPreviews(
               ? {
                   bytes: new Uint8Array(
                     await (
-                      await client.selectedMatchContent(work.entry.id, 'artwork')
+                      await client.selectedMatchContent(
+                        work.entry.id,
+                        'artwork',
+                        undefined,
+                        undefined,
+                        work.entry.source.artworkVersion,
+                      )
                     ).arrayBuffer(),
                   ),
                 }
               : id
-                ? await client.collect(id, { maxBytes: MAX_BYTES })
+                ? await client.collect(id, {
+                    maxBytes: MAX_BYTES,
+                    version: work.entry.previewAsset?.sha256,
+                  })
                 : null;
           if (disposed || work.run !== epoch) return;
           const key = entryKey(work.entry);
