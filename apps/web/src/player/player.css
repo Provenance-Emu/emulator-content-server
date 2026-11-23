@@ -946,24 +946,27 @@
   min-height: var(--player-bar);
   margin: 0;
   padding: var(--space-1) var(--space-3);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 .playing .player-session-identity {
   display: flex;
-  flex: 1 1 auto;
-  align-items: baseline;
-  gap: var(--space-3);
-  min-width: 14rem;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
   overflow: hidden;
 }
 .playing .player-library-link {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height);
   margin: 0;
+  text-decoration: none;
 }
 .playing .player-session-identity h1 {
   flex: 0 1 auto;
-  min-width: 5rem;
+  min-width: 0;
   overflow: hidden;
   margin: 0;
   font-size: var(--text-body);
@@ -1082,5 +1085,45 @@
 @media (max-width: 48rem) {
   .playing .player-session-identity p {
     display: none;
+  }
+}
+
+/* The bar never scrolls sideways. Names give way first, then the tools take a row of their own. */
+@media (max-width: 1200px) {
+  .playing .player-session-identity p {
+    display: none;
+  }
+}
+@media (max-width: 1000px) {
+  .playing .player-library-word {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .browser-player.playing:not(.game-view) {
+    --player-bar: 6.25rem;
+  }
+  .playing .player-session-header {
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
+  }
+  .playing .player-session-actions {
+    width: auto;
+  }
+  .playing .player-session-actions button {
+    flex: none;
+  }
+  .playing .player-toolbar {
+    display: flex;
+    flex: 1 1 100%;
+    gap: var(--space-1);
+    padding-left: 0;
+    border-left: 0;
+  }
+  .playing .player-toolbar button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: var(--space-1);
+    font-size: var(--text-small);
   }
 }

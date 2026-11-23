@@ -46,7 +46,7 @@
     { id: 'saves', label: 'Saves' },
     { id: 'controls', label: 'Controls' },
     { id: 'video', label: 'Video' },
-    { id: 'options', label: 'Core options' },
+    { id: 'options', label: 'Core options', short: 'Options' },
     { id: 'details', label: 'Details' },
   ] as const;
   let selectedTool = $state<PlayerTool>('saves');
@@ -368,21 +368,21 @@
   <div class="player-chrome" hidden={gameView}>
     <header class="player-session-header">
       <div class="player-session-identity">
-        <a class="player-library-link" href={returnHref} onclick={stop}>{session ? 'Stop and return to library' : 'Back to library'}</a>
+        <a class="player-library-link" href={returnHref} onclick={stop} aria-label={session ? 'Stop and return to library' : undefined} title={session ? 'Stop and return to library' : undefined}>{#if session}<Icon name="back" /><span class="player-library-word">Library</span>{:else}Back to library{/if}</a>
         <h1>{gameName}</h1>
         {#if core}<p class="dim">{systemName} · {core.name}</p>{/if}
       </div>
       {#if session}
         <div class="player-session-actions" role="group" aria-label="Session controls">
           {#if session.saves}<button class="primary" type="button" disabled={!!gameViewBlocked} onclick={quickSave}>Save state</button>{/if}
-          <button type="button" disabled={!!gameViewBlocked || !captureReady} onclick={quickCapture}>Capture screenshot</button>
-          <button type="button" data-game-view disabled={!!gameViewBlocked} aria-describedby={gameViewBlocked ? 'game-view-reason' : undefined} onclick={() => setGameView(true, true)}>Game view</button>
-          {#if stage?.requestFullscreen}<button type="button" onclick={fullscreen}>Fullscreen</button>{/if}
+          <button type="button" class="icon-only" aria-label="Capture screenshot" title="Capture screenshot" disabled={!!gameViewBlocked || !captureReady} onclick={quickCapture}><Icon name="camera" /></button>
+          <button type="button" class="icon-only" aria-label="Game view" title="Game view: hide everything but the game" data-game-view disabled={!!gameViewBlocked} aria-describedby={gameViewBlocked ? 'game-view-reason' : undefined} onclick={() => setGameView(true, true)}><Icon name="display" /></button>
+          {#if stage?.requestFullscreen}<button type="button" class="icon-only" aria-label="Fullscreen" title="Fullscreen" onclick={fullscreen}><Icon name="fullscreen" /></button>{/if}
         </div>
       <div class="player-toolbar" id="player-toolbar" role="toolbar" aria-label="Player tools" tabindex="-1">
         {#each toolTabs as tool (tool.id)}
           <button type="button" id={`player-tool-${tool.id}`} aria-controls="player-tools-panel"
-            aria-expanded={toolsOpen && selectedTool === tool.id} disabled={working} onclick={(event) => void toggleTool(tool.id, event.detail === 0)}>{tool.label}</button>
+            aria-expanded={toolsOpen && selectedTool === tool.id} disabled={working} aria-label={tool.label} onclick={(event) => void toggleTool(tool.id, event.detail === 0)}>{'short' in tool ? tool.short : tool.label}</button>
         {/each}
       </div>
       {/if}

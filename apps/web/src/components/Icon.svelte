@@ -24,6 +24,10 @@
     trash: 'M5 7h14M10 7V4.5h4V7M7 7l.8 12a1 1 0 0 0 1 1h6.4a1 1 0 0 0 1-1L17 7M10 11v5M14 11v5',
     forward: 'M9.5 6l6 6-6 6',
     refresh: 'M19 12a7 7 0 1 1-2.05-4.95M19 4.5v4h-4',
+    camera:
+      'M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zM12 16.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+    display: 'M4 5.5h16v10.5H4zM9 20h6M12 16v4',
+    fullscreen: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
   } as const;
   export type IconName = keyof typeof paths;
 </script>
