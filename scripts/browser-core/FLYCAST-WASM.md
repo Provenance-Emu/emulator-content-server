@@ -42,6 +42,11 @@ looks for an accessible `dc_boot.bin` in the game's library and otherwise
 uses HLE BIOS. Rescan an existing folder to classify newly recognized
 firmware filenames.
 
+The recompiler has no SH4 address translation, which Windows CE discs
+(Sega Rally 2, Bust-A-Move 4 and others) switch on. The ECS patch reads the
+disc's boot record and runs those discs on Flycast's interpreter instead. It is
+much slower; whether a given game reaches full speed is not established.
+
 The manifest exposes Dreamcast only. Naomi, Naomi2, and Atomiswave still need
 managed firmware staging and separate original-program boot acceptance.
 

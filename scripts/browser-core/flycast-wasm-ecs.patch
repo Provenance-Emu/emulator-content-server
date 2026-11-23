@@ -203,3 +203,21 @@
  	/* AudioWorklet sink — RetroArch's OpenAL driver (blocking writes,
  	 * buffer-source seam scheduling) is bypassed entirely. If the worklet
  	 * cannot initialize (old Safari, odd embeds) fall back to the legacy
+--- a/core/emulator.cpp
++++ b/core/emulator.cpp
+@@ -867,6 +867,15 @@
+ 		config::WidescreenGameHacks.override(false);
+ 		config::DynarecEnabled.override(true);
+ 	}
++#ifdef __EMSCRIPTEN__
++	// ECS: the WASM recompiler has no address translation, which Windows CE needs. The
++	// interpreter has it, so a Windows CE disc runs there: slower, but it runs.
++	if (settings.platform.isConsole() && ip_meta.isWindowsCE())
++	{
++		config::DynarecEnabled.override(false);
++		NOTICE_LOG(BOOT, "Windows CE disc: using the SH4 interpreter");
++	}
++#endif
+ }
+ 
+ void Emulator::step()

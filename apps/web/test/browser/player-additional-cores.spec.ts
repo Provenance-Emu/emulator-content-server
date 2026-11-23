@@ -342,6 +342,10 @@ for (const entry of cases) {
       );
       await page.getByRole('button', { name: 'Start', exact: true }).focus();
       await page.keyboard.press('Enter');
+      // While a game runs, saving is one of the player's tools.
+      const saves = page.getByRole('button', { name: 'Saves', exact: true });
+      await expect(saves).toBeVisible({ timeout: 45_000 });
+      await saves.click();
       await expect(
         page.getByText('This emulator profile does not provide save synchronization.', {
           exact: true,

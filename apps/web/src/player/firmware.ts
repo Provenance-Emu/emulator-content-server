@@ -126,13 +126,22 @@ export async function collectFirmware(
   for (const path of paths) {
     signal?.throwIfAborted();
     const name = path.split('/').at(-1)?.toLowerCase();
-    const attached = target.files.filter(
-      (file) =>
-        isFirmware(file.kind) && file.relativePath.split('/').at(-1)?.toLowerCase() === name,
+    const fixedSize = name === 'dc_boot.bin' ? 2 * 1024 ** 2 : undefined;
+    // An owner often has the same system file in more than one folder. Any copy that fits will
+    // do, and the same one is taken every time so a session does not change between starts.
+    const pick = <T extends { size: number }>(copies: T[], order: (copy: T) => string) => {
+      const fitting = copies.filter((copy) => fixedSize === undefined || copy.size === fixedSize);
+      return (fitting.length ? fitting : copies).sort((a, b) =>
+        order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0,
+      )[0];
+    };
+    const asset = pick(
+      target.files.filter(
+        (file) =>
+          isFirmware(file.kind) && file.relativePath.split('/').at(-1)?.toLowerCase() === name,
+      ),
+      (file) => `${file.relativePath}\0${file.id}`,
     );
-    if (attached.length > 1)
-      throw new Error(`Multiple copies of ${name} are attached to the game.`);
-    const asset = attached[0];
     let source: SourceFile | undefined;
     if (!asset && (target.libraryId || target.source)) {
       sources ??= await librarySources(client, target.libraryId, signal);
@@ -146,10 +155,10 @@ export async function collectFirmware(
             : file.rootId === target.source?.rootId),
       );
       const sameRoot = candidates.filter((file) => file.rootId === target.source?.rootId);
-      const preferred = sameRoot.length ? sameRoot : candidates;
-      if (preferred.length > 1)
-        throw new Error(`Multiple copies of ${name} were found in the library.`);
-      source = preferred[0];
+      source = pick(
+        sameRoot.length ? sameRoot : candidates,
+        (file) => `${file.contentPath ?? ''}\0${file.id}`,
+      );
     }
     const file = asset ?? source;
     if (!file) {
@@ -157,7 +166,6 @@ export async function collectFirmware(
         throw new Error('Add prboom.wad to this game library and rescan the folder.');
       continue;
     }
-    const fixedSize = name === 'dc_boot.bin' ? 2 * 1024 ** 2 : undefined;
     if (
       !Number.isSafeInteger(file.size) ||
       file.size < 1 ||

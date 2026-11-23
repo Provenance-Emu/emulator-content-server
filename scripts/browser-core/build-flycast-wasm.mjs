@@ -201,7 +201,7 @@ const manifest = {
   id: 'org.flycast.wasm-jit',
   name: 'Flycast (experimental WASM JIT)',
   kind: 'player',
-  version: '1.0.0',
+  version: '1.1.0',
   engine: 'ecs.plugin/1',
   apps: ['org.provenance-emu.provenance'],
   player: {
@@ -251,7 +251,7 @@ const receipt = {
     '_fly_ram_ptr(), _fly_vram_ptr(), _fly_frame_count()',
   ],
   limits:
-    'Experimental JIT. No threads, bundled firmware/content, linked cabinets, WinCE/MMU acceptance, synchronized saves, or game compatibility claim.',
+    'Experimental JIT. Windows CE discs run on the SH4 interpreter. No threads, bundled firmware/content, linked cabinets, WinCE/MMU acceptance, synchronized saves, or game compatibility claim.',
   manifest,
 };
 writeFileSync(`${output}.build.json`, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
