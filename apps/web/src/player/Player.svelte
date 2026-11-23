@@ -31,6 +31,7 @@
   import { createPreferenceStore, type PreferenceStore, type PlayerPreferences } from './preferences.js';
   import { stateCompatibility } from './states.js';
   import { playerReturnHref } from './links.js';
+  import { addLine, emptyLog, logText } from './session-log.js';
 
   const client = new ContentClient(window.location.origin, loadSession()?.token);
   const query = new URLSearchParams(window.location.search);
@@ -143,7 +144,12 @@
   let session = $state.raw<Awaited<ReturnType<typeof startPlayer>> | null>(null);
   let preferenceStore=$state.raw<PreferenceStore|null>(null);
   let preferences=$state.raw<PlayerPreferences>({options:{},shader:'off'});
-  let logs = $state<string[]>([]);
+  let logs = $state(emptyLog());
+  let logCopied = $state(false);
+  const messages = $derived(logText(logs));
+  async function copyMessages() {
+    try { await navigator.clipboard.writeText(`${core?.name ?? ''}\n${messages}`); logCopied = true; } catch { logCopied = false; }
+  }
   const windowLaunch=new GameWindowLaunch();
   let launched=$state(false),launchError=$state<string|null>(null),gameView=$state(false),airplayOpen=$state(false),leaveOpen=$state(false);
   let leaveDialog=$state<HTMLDialogElement>();
@@ -318,7 +324,7 @@
       session = await startPlayer(client, selection, {
         preferences,
         canvas, importer: importBrowserRuntime, ...('profileVersion' in (core??{}) ? {profileId}:{}), expectedProfile:core??undefined, signal:lifetime.signal, batteryAssetId: batteryId || undefined, stateAssetId: stateId || undefined, compatibleSaves: compatible,
-        log(text) { logs = [...logs.slice(-7), text.slice(0, 300)]; },
+        log(text) { logs = addLine(logs, text); logCopied = false; },
         progress(step) { loadingStep = step; },
       });
       if(disposed){session?.releaseLoader();return;}
@@ -340,10 +346,11 @@
   });
 </script>
 {#snippet sessionDetails()}
-    {#if core}<details class="player-technical-details" bind:open={sessionDetailsOpen}><summary>{logs.length ? 'Session details and runtime messages' : 'Session details'}</summary>
+    {#if core}<details class="player-technical-details" bind:open={sessionDetailsOpen}><summary>{messages ? 'Session details and emulator messages' : 'Session details'}</summary>
       <p class="dim">{core.name} · {'profileVersion' in core ? core.buildVersion : `frontend ${core.frontendCommit.slice(0, 8)} · core ${core.coreCommit.slice(0, 8)}`}</p>
       <p class="dim">Save progress before leaving. Pending uploads can be retried or exported while this page is open. Failed startup or a command timeout requires a reload.</p>
-      {#if logs.length}<pre class="player-log">{logs.join('\n')}</pre>{/if}
+      {#if messages}<pre class="player-log">{messages}</pre>
+      <p><button type="button" onclick={() => void copyMessages()}>Copy messages</button> <span class="dim" role="status">{logCopied ? 'Copied.' : ''}</span></p>{/if}
     </details>{/if}
     <details class="player-technical-details player-browser-features" bind:open={browserDetailsOpen}><summary>This browser</summary>
       <p class="dim">What this browser offers. The player uses what is there and says so when an emulator needs something that is missing.</p>

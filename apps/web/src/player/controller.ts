@@ -79,6 +79,10 @@ const config = [
   'core_options_path = "/ecs/core-options.cfg"',
   'video_shader_enable = "false"',
   'suspend_screensaver_enable = "false"',
+  // Warnings and errors only, from the frontend and the core, so a game that stops says why.
+  'log_verbosity = "true"',
+  'frontend_log_level = "2"',
+  'libretro_log_level = "2"',
 ].join('\n');
 
 export async function startPlayer(

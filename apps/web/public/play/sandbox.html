@@ -72,13 +72,19 @@
     if (typeof value !== 'string' || value.length > 256 || !/^\/ecs(?:\/[A-Za-z0-9_.-]+)*$/.test(value) || value.split('/').some(part => part === '..' || part === '.')) throw Error('Invalid virtual path');
     return value;
   };
-  let logStart = Date.now(), logCount = 0;
+  let logStart = Date.now(), logCount = 0, problemCount = 0;
+  // Kept in step with PROBLEM_LINE in src/player/session-log.ts. A line that says why an emulator
+  // stopped is sent even when chatter has used up this second's allowance.
+  const problemLine = /error|exception|abort|fatal|fail|unreachable|out of memory|shut ?down|unsupported|unhandled|invalid|not found|cannot|could ?n.t/i;
   const log = (value) => {
     if(/shader|glsl/i.test(String(value))&&/error|fail/i.test(String(value)))shaderErrors++;
     if (closed || !port) return;
     if (Date.now() - logStart > 1000) { logStart = Date.now(); logCount = 0; }
-    if (++logCount <= 30) port.postMessage({type:'log',text:String(value).slice(0,500)});
+    if (++logCount <= 30 || (problemLine.test(String(value)) && ++problemCount <= 200)) port.postMessage({type:'log',text:String(value).slice(0,500)});
   };
+  // A trap inside the emulator's frame loop reaches neither print nor printErr.
+  addEventListener('error',event=>log('Emulator error: '+String(event?.error?.stack||event?.message||'unknown')));
+  addEventListener('unhandledrejection',event=>log('Emulator error: '+String(event?.reason?.stack||event?.reason||'unknown')));
   const blob = (bytes,type) => { const url = URL.createObjectURL(new Blob([bytes],{type})); urls.add(url); return url; };
   const shaderHooks=()=>['_cmd_set_shader','stringToNewUTF8','_free'].every(key=>typeof runtime[key]==='function');
   function nativeShader(id){const pointer=runtime.stringToNewUTF8(id==='off'?'':'/ecs/shaders/'+id+'.glslp');if(!pointer)throw Error('Shader allocation failed');try{return !!runtime._cmd_set_shader(pointer);}finally{runtime._free(pointer);}}
@@ -122,6 +128,8 @@
         },
         getPreloadedPackage(name) { const bytes=binaries.get(String(name).replace(/^\.\//,'')); if (!bytes) throw Error('Undeclared data package'); return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength); },
         print:log,printErr:log,
+        onAbort(reason){log('Emulator aborted: '+String(reason));},
+        onExit(code){log('Emulator exited with status '+String(code));},
       });
       if (!runtime?.FS || typeof runtime.FS.mkdirTree !== 'function' || typeof runtime.FS.writeFile !== 'function' || typeof runtime.FS.readFile !== 'function' || typeof runtime.callMain !== 'function') throw Error('Runtime needs MEMFS and callMain exports');
       if (spec.commands && (typeof runtime.EmscriptenSendCommand !== 'function' || typeof runtime.EmscriptenReceiveCommandReply !== 'function')) throw Error('Runtime needs command/reply save exports');

@@ -259,7 +259,7 @@
 .player-log {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  max-height: 9rem;
+  max-height: 16rem;
   overflow-y: auto;
   font-size: var(--text-small);
 }
