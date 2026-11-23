@@ -20,6 +20,7 @@
     "@ecs/webdav": "workspace:*",
     "@fastify/rate-limit": "10.3.0",
     "@fastify/static": "^10.1.6",
+    "@silvia-odwyer/photon-node": "0.3.4",
     "@zip.js/zip.js": "2.24.0",
     "fastify": "5.12.6",
     "swagger-ui-dist": "5.34.1"

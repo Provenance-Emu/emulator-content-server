@@ -23,6 +23,7 @@ import {
 import { imageType } from './matching-files.js';
 import { visibleSource } from './source-groups.js';
 import { runAutomaticOrganization } from './source-organization.js';
+import { createThumbnails, THUMBNAIL_WIDTHS, type ThumbnailWidth } from './thumbnails.js';
 
 type Candidate = MatchCandidate & { providerId: string };
 interface Dependencies {
@@ -51,6 +52,10 @@ export function registerSourceSelections(
   dependencies: Dependencies,
   onIdentityChanged?: (rootId: string, sourceId: string) => void,
 ): void {
+  const thumbnails = createThumbnails(context.dataDir);
+  app.addHook('onClose', async () => {
+    await thumbnails.close();
+  });
   function state(actor: Actor, sourceId: string, allArtwork = false) {
     const source = visibleSource(context, actor, sourceId);
     const saved = context.catalog.sourceMatches(sourceId);
@@ -455,6 +460,32 @@ export function registerSourceSelections(
     );
     if (!selected?.contentAvailable || !selected.contentType)
       throw new DomainError('not-found', 404, 'Selected content not found');
+    const picture = kind === 'artwork' && selected.contentType !== 'application/pdf';
+    const width = thumbnailWidth(request);
+    const digest = context.catalog.sourceMatchContentDigest(sourceId, kind, role);
+    // False when a smaller copy was asked for and could not be made this time. The saved file
+    // is sent instead, and must not be kept as the answer for that width.
+    let settled = true;
+    if (picture && width && digest) {
+      // Access was decided above; the smaller copy is of exactly the file this caller may read.
+      const small = await thumbnails.get(digest, width, () => {
+        const original = context.catalog.sourceMatchContent(sourceId, kind, role);
+        if (!original) throw new DomainError('not-found', 404, 'Selected content not found');
+        return original;
+      });
+      settled = small !== null;
+      if (small && small !== 'as-saved')
+        return sendSnapshot(
+          request,
+          reply,
+          small.bytes,
+          createHash('sha256').update(small.bytes).digest('hex'),
+          small.contentType,
+          selected.fileName ?? 'selected',
+          true,
+          digest,
+        );
+    }
     const bytes = context.catalog.sourceMatchContent(sourceId, kind, role);
     if (!bytes) throw new DomainError('not-found', 404, 'Selected content not found');
     return sendSnapshot(
@@ -464,7 +495,9 @@ export function registerSourceSelections(
       createHash('sha256').update(bytes).digest('hex'),
       selected.contentType,
       selected.fileName ?? 'selected',
-      kind === 'artwork' && selected.contentType !== 'application/pdf',
+      picture,
+      undefined,
+      settled,
     );
   });
 }
@@ -477,11 +510,15 @@ function sendSnapshot(
   contentType: string,
   fileName: string,
   inline = false,
+  /** The saved file these bytes were made from, when they are a smaller copy of it. */
+  version = digest,
+  /** False for an answer that may differ next time, whatever the caller expects. */
+  keep = true,
 ) {
   // Authorization precedes validator evaluation.
   const etag = strongEtag(digest);
   // `inline` marks a picture. Patches and cheats are always checked with the server.
-  if (wantsKeptContent(request, reply, digest) && inline) keepForever(reply);
+  if (wantsKeptContent(request, reply, version) && inline && keep) keepForever(reply);
   reply.header('etag', etag);
   const conditional = request.headers['if-none-match'];
   if (etagMatches(typeof conditional === 'string' ? conditional : undefined, etag))
@@ -494,6 +531,14 @@ function sendSnapshot(
   return reply.type(contentType).send(Buffer.from(bytes));
 }
 
+function thumbnailWidth(request: FastifyRequest): ThumbnailWidth | null {
+  const value = (request.query as Record<string, unknown>).width;
+  if (value === undefined) return null;
+  const width = typeof value === 'string' && /^[0-9]{1,4}$/.test(value) ? Number(value) : value;
+  if (!THUMBNAIL_WIDTHS.includes(width as ThumbnailWidth))
+    throw new DomainError('invalid-request', 400, 'Invalid picture width');
+  return width as ThumbnailWidth;
+}
 function includeArtworkRoles(request: FastifyRequest): boolean {
   const value = (request.query as Record<string, unknown>).includeArtworkRoles;
   if (value !== undefined && value !== 'true' && value !== 'false' && typeof value !== 'boolean')

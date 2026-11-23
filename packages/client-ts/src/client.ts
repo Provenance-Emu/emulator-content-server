@@ -1331,11 +1331,14 @@ export class ContentClient {
     artworkRole?: string,
     /** SHA-256 of the saved file (`artworkVersion` in a listing), so the answer can be kept. */
     version?: string,
+    /** For a picture: a smaller copy no wider than this, for a grid. Never enlarged. */
+    width?: 240 | 480 | 960,
   ): Promise<Blob> {
     const url = this.url(
       `/api/v1/sources/${encodeURIComponent(id)}/matches/selections/${encodeURIComponent(kind)}/content`,
     );
     if (artworkRole !== undefined) url.searchParams.set('artworkRole', artworkRole);
+    if (width !== undefined) url.searchParams.set('width', String(width));
     if (version !== undefined && SHA256.test(version)) url.searchParams.set('v', version);
     const response = await fetch(url, { headers: this.headers(), signal });
     if (!response.ok) throw await failure(response);

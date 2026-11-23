@@ -1685,12 +1685,17 @@ paths:
       tags: [Matching and jobs]
       parameters:
         - { name: artworkRole, in: query, schema: { type: string, enum: [front, back, disc, manual, title, screenshot, banner, other] }, description: Artwork role content to retrieve; defaults to front. }
+        - { name: width, in: query, schema: { type: integer, enum: [240, 480, 960] }, description: 'For a picture, a smaller copy no wider than this many pixels, for grids and lists. It is a JPEG, or a WebP when the picture has transparency, and is never enlarged: a picture already this narrow, or one the server cannot redraw, is returned as saved. Ignored for patches, cheats and PDF manuals. `v` is still the SHA-256 of the saved file.' }
         - { $ref: '#/components/parameters/ContentVersion' }
       responses:
         '200':
-          description: Authorized immutable artwork, patch, or disabled RetroArch cheat file snapshot.
+          description: Authorized immutable artwork, patch, or disabled RetroArch cheat file snapshot. With `width`, a smaller copy of a picture.
           content:
             application/octet-stream:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
               schema: { type: string, format: binary }
   /api/v1/sources/{sourceId}/matches/{requestId}/artwork/{candidateId}:
     parameters:

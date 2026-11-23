@@ -22,6 +22,8 @@ export interface PreviewOptions {
 const MAX_BYTES = 2 * 1024 * 1024;
 /** Covers kept for a scrolling collection. Each is up to MAX_BYTES of image held in memory. */
 const MAX_KEPT = 240;
+/** Twice the widest card, so a cover stays sharp on a dense screen. */
+const COVER_WIDTH = 480;
 /** Waiting cover reads. Older ones belong to cards that have scrolled away. */
 const MAX_WAITING = 120;
 
@@ -116,6 +118,7 @@ export function createPreviews(
                         undefined,
                         undefined,
                         work.entry.source.artworkVersion,
+                        COVER_WIDTH,
                       )
                     ).arrayBuffer(),
                   ),
