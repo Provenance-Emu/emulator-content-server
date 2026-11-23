@@ -58,7 +58,7 @@ export function canRepair(snapshot: ServiceSnapshot): boolean {
   return ready(snapshot) && !['absent', 'boot-running', 'boot-stopped'].includes(snapshot.state);
 }
 
-/** The service is installed for the whole computer; its controls ask for an administrator. */
+/** The service is installed for the whole computer; its owner controls it, anyone else needs an administrator. */
 export function isBootService(snapshot: ServiceSnapshot): boolean {
   return snapshot.state === 'boot-running' || snapshot.state === 'boot-stopped';
 }

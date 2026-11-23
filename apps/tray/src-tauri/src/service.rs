@@ -28,6 +28,9 @@ pub struct Service {
     boot_installed: bool,
     /// The login registration names a server build that is no longer on disk.
     program_missing: bool,
+    /// The boot job's launcher restarts and stops its server on a signal. An older launcher
+    /// would exit on one, taking the server down without a clean stop, so it is never sent one.
+    boot_signals: bool,
 }
 pub struct Reply {
     pub(crate) code: i32,
@@ -45,6 +48,9 @@ const UNREADABLE_ERROR: &str =
     "The login registration could not be read. Remove it with ecs service uninstall, then set up the server again.";
 const ADMIN_ERROR: &str = "The administrator request was cancelled or did not finish.";
 const OSASCRIPT: &str = "/usr/bin/osascript";
+const PGREP: &str = "/usr/bin/pgrep";
+const KILL: &str = "/bin/kill";
+const SLEEP: &str = "/bin/sleep";
 // Fixed scripts: macOS shows its own administrator prompt, and nothing here comes from IPC.
 // A boot job that is already loaded makes bootstrap fail, which the next command covers.
 const BOOT_START: &str = "do shell script \"/bin/launchctl enable system/app.emulator-content-server; /bin/launchctl bootstrap system /Library/LaunchDaemons/app.emulator-content-server.plist 2>/dev/null; /bin/launchctl kickstart system/app.emulator-content-server\" with prompt \"Emulation Server wants to start its boot service.\" with administrator privileges";
@@ -100,6 +106,9 @@ pub fn execute(action: Action) -> Result<String, String> {
         && !boot_installed
         && registration_arguments(&home.join(AGENT_PLIST))
             .is_some_and(|arguments| !launcher_present(&arguments));
+    let boot_signals = boot_installed
+        && registration_arguments(std::path::Path::new(BOOT_PLIST))
+            .is_some_and(|arguments| launcher_signals(&arguments));
     Service {
         platform,
         uid,
@@ -107,6 +116,7 @@ pub fn execute(action: Action) -> Result<String, String> {
         installed,
         boot_installed,
         program_missing,
+        boot_signals,
     }
     .run(action, &mut command)
     .map(str::to_owned)
@@ -168,17 +178,30 @@ impl Service {
         runner: &mut impl FnMut(&str, &[&str]) -> Result<Reply, String>,
     ) -> Result<&'static str, String> {
         if self.boot_installed {
+            // The boot job is a launcher that keeps the server as its only child. It runs as the
+            // person who installed it, so that person can signal it; a launcher with no child has
+            // been asked to stop its server and is waiting to be asked to start it.
             let status = |runner: &mut dyn FnMut(&str, &[&str]) -> Result<Reply, String>| {
                 let reply = runner("/bin/launchctl", &["print", BOOT_SERVICE])?;
                 match reply.code {
                     0 if reply.stdout.lines().any(|line| line == "\tstate = running") => {
-                        Ok("boot-running")
+                        let launcher = reply
+                            .stdout
+                            .lines()
+                            .find_map(|line| line.strip_prefix("\tpid = "))
+                            .and_then(|pid| pid.parse::<u32>().ok())
+                            .filter(|pid| *pid > 1 && self.boot_signals);
+                        let idle = match launcher {
+                            Some(pid) => runner(PGREP, &["-P", &pid.to_string()])?.code == 1,
+                            None => false,
+                        };
+                        Ok((if idle { "boot-stopped" } else { "boot-running" }, launcher))
                     }
-                    0 | 113 => Ok("boot-stopped"),
+                    0 | 113 => Ok(("boot-stopped", None)),
                     _ => Err(MANAGER_ERROR.to_string()),
                 }
             };
-            let now = status(&mut *runner)?;
+            let (now, launcher) = status(&mut *runner)?;
             let script = match (action, now) {
                 (Action::Status, _)
                 | (Action::Start, "boot-running")
@@ -187,10 +210,31 @@ impl Service {
                 (Action::Restart, _) => BOOT_RESTART,
                 (Action::Stop, _) => BOOT_STOP,
             };
+            // No administrator is needed to signal your own launcher. Anything that does not
+            // work this way (another person's job, an unloaded one) falls back to the prompt.
+            if let Some(pid) = launcher {
+                let pid_text = pid.to_string();
+                if matches!(action, Action::Stop) {
+                    if runner(KILL, &["-USR2", &pid_text])?.code == 0 {
+                        // The server finishes what it is doing first; say what is true.
+                        let mut state = now;
+                        for _ in 0..10 {
+                            runner(SLEEP, &["1"])?;
+                            state = status(&mut *runner)?.0;
+                            if state == "boot-stopped" {
+                                break;
+                            }
+                        }
+                        return Ok(state);
+                    }
+                } else if runner(KILL, &["-HUP", &pid_text])?.code == 0 {
+                    return Ok("boot-running");
+                }
+            }
             if runner(OSASCRIPT, &["-e", script])?.code != 0 {
                 return Err(ADMIN_ERROR.into());
             }
-            return status(&mut *runner);
+            return Ok(status(&mut *runner)?.0);
         }
         if !self.installed {
             return available("absent", action);
@@ -371,6 +415,15 @@ pub(crate) fn launcher_present(arguments: &[String]) -> bool {
             let file = std::path::Path::new(file);
             file.is_absolute() && file.is_file()
         })
+}
+
+/// Whether the registered launcher is a build that handles the restart and stop signals.
+pub(crate) fn launcher_signals(arguments: &[String]) -> bool {
+    launcher_present(arguments)
+        && std::path::Path::new(&arguments[1])
+            .parent()
+            .and_then(|folder| std::fs::read_to_string(folder.join("update-supervisor.js")).ok())
+            .is_some_and(|source| source.contains("'SIGUSR2'"))
 }
 
 /// What follows `serve` in a registration: the data folder and listen options to keep.
@@ -575,6 +628,7 @@ mod tests {
             installed,
             boot_installed: false,
             program_missing: false,
+            boot_signals: false,
         }
     }
 
@@ -660,6 +714,119 @@ mod tests {
             assert!(script.ends_with("with administrator privileges"));
             assert!(script.contains("system/app.emulator-content-server"));
         }
+    }
+
+    #[test]
+    fn boot_service_owner_controls_it_without_an_administrator() {
+        let mut svc = service(Platform::Mac, false);
+        svc.boot_installed = true;
+        svc.boot_signals = true;
+        let launcher = "\tstate = running\n\tpid = 4242\n";
+        let children = |code| (PGREP, vec!["-P", "4242"], code, "");
+        assert_eq!(
+            run(&svc, Action::Status, vec![boot(launcher), children(0)]).unwrap(),
+            "boot-running"
+        );
+        // A launcher with no server behind it was asked to stop.
+        assert_eq!(
+            run(&svc, Action::Status, vec![boot(launcher), children(1)]).unwrap(),
+            "boot-stopped"
+        );
+        assert_eq!(
+            run(
+                &svc,
+                Action::Restart,
+                vec![
+                    boot(launcher),
+                    children(0),
+                    (KILL, vec!["-HUP", "4242"], 0, "")
+                ]
+            )
+            .unwrap(),
+            "boot-running"
+        );
+        assert_eq!(
+            run(
+                &svc,
+                Action::Start,
+                vec![
+                    boot(launcher),
+                    children(1),
+                    (KILL, vec!["-HUP", "4242"], 0, "")
+                ]
+            )
+            .unwrap(),
+            "boot-running"
+        );
+        assert_eq!(
+            run(
+                &svc,
+                Action::Stop,
+                vec![
+                    boot(launcher),
+                    children(0),
+                    (KILL, vec!["-USR2", "4242"], 0, ""),
+                    (SLEEP, vec!["1"], 0, ""),
+                    boot(launcher),
+                    children(1),
+                ]
+            )
+            .unwrap(),
+            "boot-stopped"
+        );
+        // A server still finishing its work is reported as it is, then as stopped.
+        assert_eq!(
+            run(
+                &svc,
+                Action::Stop,
+                vec![
+                    boot(launcher),
+                    children(0),
+                    (KILL, vec!["-USR2", "4242"], 0, ""),
+                    (SLEEP, vec!["1"], 0, ""),
+                    boot(launcher),
+                    children(0),
+                    (SLEEP, vec!["1"], 0, ""),
+                    boot(launcher),
+                    children(1),
+                ]
+            )
+            .unwrap(),
+            "boot-stopped"
+        );
+        // An older launcher would exit on a signal, so it is asked through the prompt.
+        svc.boot_signals = false;
+        assert_eq!(
+            run(
+                &svc,
+                Action::Restart,
+                vec![
+                    boot(launcher),
+                    (OSASCRIPT, vec!["-e", BOOT_RESTART], 0, ""),
+                    boot(launcher),
+                ]
+            )
+            .unwrap(),
+            "boot-running"
+        );
+        svc.boot_signals = true;
+        // Someone else's boot service cannot be signalled, so the prompt is used.
+        assert_eq!(
+            run(
+                &svc,
+                Action::Restart,
+                vec![
+                    boot(launcher),
+                    children(0),
+                    (KILL, vec!["-HUP", "4242"], 1, ""),
+                    (OSASCRIPT, vec!["-e", BOOT_RESTART], 0, ""),
+                    boot(launcher),
+                    children(0),
+                ]
+            )
+            .unwrap(),
+            "boot-running"
+        );
     }
 
     #[test]

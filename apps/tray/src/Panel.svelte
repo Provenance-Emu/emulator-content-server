@@ -97,8 +97,8 @@
     </p>
     {#if isBootService($service)}
       <p class="dim">
-        This server starts with the computer. Starting, stopping or restarting it asks for an
-        administrator password.
+        This server starts with the computer. You can start, stop and restart it yourself; macOS
+        asks for an administrator only if someone else installed it or it was switched off.
       </p>
     {:else if $service.state === 'broken'}
       <p>
