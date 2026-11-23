@@ -85,6 +85,20 @@
   // A trap inside the emulator's frame loop reaches neither print nor printErr.
   addEventListener('error',event=>log('Emulator error: '+String(event?.error?.stack||event?.message||'unknown')));
   addEventListener('unhandledrejection',event=>log('Emulator error: '+String(event?.reason?.stack||event?.reason||'unknown')));
+  // The browser hides what went wrong ("Script error.") once a failure has left the emulator's own
+  // code, so its frame and timer callbacks are run where the failure can still be read.
+  let trapsShown=0;
+  const guarded=callback=>typeof callback!=='function'?callback:function(...args){
+    try{return callback.apply(this,args);}
+    catch(error){
+      if(++trapsShown<=3)for(const line of String(error?.stack||error).split('\n').slice(0,12))log('Emulator error: '+line.trim());
+      throw error;
+    }
+  };
+  for(const name of ['requestAnimationFrame','setTimeout','setInterval']){
+    const original=globalThis[name];
+    if(typeof original==='function')globalThis[name]=function(callback,...rest){return original.call(globalThis,guarded(callback),...rest);};
+  }
   const blob = (bytes,type) => { const url = URL.createObjectURL(new Blob([bytes],{type})); urls.add(url); return url; };
   const shaderHooks=()=>['_cmd_set_shader','stringToNewUTF8','_free'].every(key=>typeof runtime[key]==='function');
   function nativeShader(id){const pointer=runtime.stringToNewUTF8(id==='off'?'':'/ecs/shaders/'+id+'.glslp');if(!pointer)throw Error('Shader allocation failed');try{return !!runtime._cmd_set_shader(pointer);}finally{runtime._free(pointer);}}
