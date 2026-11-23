@@ -1,3 +1,8 @@
+<script lang="ts" module>
+  /** The height of a drawn card, kept between visits to the grid. */
+  let cardSize = 0;
+</script>
+
 <script lang="ts">
   import type { LibraryBrowseEntry, SystemSummary } from '@ecs/client';
   import { onDestroy } from 'svelte';
@@ -60,11 +65,50 @@
     void byKey;
     schedule();
   });
+  /**
+   * Cards away from the screen are not laid out (`content-visibility` in app.css), so the page
+   * needs their height to keep its length and the scroll position honest. It is measured from
+   * the first card, which changes with the width of the window.
+   */
+  function measure(list: HTMLElement) {
+    if (typeof ResizeObserver === 'undefined') return {};
+    const apply = () => {
+      if (cardSize > 0) list.style.setProperty('--game-card-size', `${cardSize}px`);
+    };
+    // The grid is rebuilt when a game is closed, and the place in it is restored straight away.
+    apply();
+    let watched: Element | null = null;
+    const sizes = new ResizeObserver((records) => {
+      // Not rounded: a fraction of a pixel a card adds up to a visible shift over a long list.
+      const height = records[0]?.borderBoxSize?.[0]?.blockSize ?? 0;
+      if (height <= 0 || height === cardSize) return;
+      cardSize = height;
+      apply();
+    });
+    // The card inside the first place is only sized while it is drawn, so a place that has
+    // scrolled away never reports the estimate back as a measurement.
+    const follow = () => {
+      const first = list.firstElementChild?.firstElementChild ?? null;
+      if (first === watched) return;
+      if (watched) sizes.unobserve(watched);
+      watched = first;
+      if (first) sizes.observe(first);
+    };
+    const children = new MutationObserver(follow);
+    children.observe(list, { childList: true });
+    follow();
+    return {
+      destroy() {
+        children.disconnect();
+        sizes.disconnect();
+      },
+    };
+  }
   onDestroy(() => observer?.disconnect());
 </script>
 
 {#if grid}
-  <ul class="game-grid" aria-label="Collection results">
+  <ul class="game-grid" aria-label="Collection results" use:measure>
     {#each items as entry (entryKey(entry))}<li>
         <button
           type="button"

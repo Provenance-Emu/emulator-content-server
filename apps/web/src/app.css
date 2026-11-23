@@ -738,6 +738,10 @@ dialog label {
 }
 .game-grid li {
   min-width: 0;
+  /* A long collection keeps every card in the page. Cards away from the screen are not laid out
+     or painted until they come near, so scrolling stays smooth however many are loaded. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--game-card-size, 17rem);
 }
 .game-card {
   display: flex;
