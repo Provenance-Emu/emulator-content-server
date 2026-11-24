@@ -4,22 +4,95 @@
   background: #111723;
   color: #f5f6ff;
 }
-* { box-sizing: border-box; }
-body { margin: 0; }
-.frame { width: min(70rem, 100% - 3rem); margin-inline: auto; }
-.top, nav, footer, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
-.top { justify-content: space-between; padding-block: 1.5rem; border-bottom: 1px solid #364052; }
-a { color: #cbd9ff; text-underline-offset: .25em; }
-a:focus-visible { outline: 2px solid #b6f1d2; outline-offset: .3rem; }
-.brand { color: inherit; font-weight: 750; text-decoration: none; }
-.intro { padding-block: clamp(3rem, 8vw, 7rem); }
-.status, .platforms { color: #b6f1d2; font-size: .9rem; }
-h1 { margin-block: .25em; font-size: clamp(3rem, 8vw, 7rem); letter-spacing: -.065em; line-height: .99; }
-.lede { max-width: 38rem; color: #ced6e7; font-size: 1.2rem; line-height: 1.55; }
-.actions { margin-block: 1.75rem 1rem; }
-.download { display: inline-block; background: #b6f1d2; color: #12231d; border-radius: .4rem; padding: .8rem 1rem; font-weight: 750; text-decoration: none; }
-.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
-article { background: #1c2637; border: 1px solid #364052; border-radius: .65rem; padding: 1rem 1.25rem; }
-article h3 { margin-block: .25rem; }
-article p { color: #ced6e7; line-height: 1.55; }
-footer { margin-block: 3rem; padding-block: 1.25rem; border-top: 1px solid #364052; }
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.frame {
+  width: min(70rem, 100% - 3rem);
+  margin-inline: auto;
+}
+.top,
+nav,
+footer,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+}
+.top {
+  justify-content: space-between;
+  padding-block: 1.5rem;
+  border-bottom: 1px solid #364052;
+}
+a {
+  color: #cbd9ff;
+  text-underline-offset: 0.25em;
+}
+a:focus-visible {
+  outline: 2px solid #b6f1d2;
+  outline-offset: 0.3rem;
+}
+.brand {
+  color: inherit;
+  font-weight: 750;
+  text-decoration: none;
+}
+.intro {
+  padding-block: clamp(3rem, 8vw, 7rem);
+}
+.status,
+.platforms {
+  color: #b6f1d2;
+  font-size: 0.9rem;
+}
+h1 {
+  margin-block: 0.25em;
+  font-size: clamp(3rem, 8vw, 7rem);
+  letter-spacing: -0.065em;
+  line-height: 0.99;
+}
+.lede {
+  max-width: 38rem;
+  color: #ced6e7;
+  font-size: 1.2rem;
+  line-height: 1.55;
+}
+.actions {
+  margin-block: 1.75rem 1rem;
+}
+.download {
+  display: inline-block;
+  background: #b6f1d2;
+  color: #12231d;
+  border-radius: 0.4rem;
+  padding: 0.8rem 1rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+}
+article {
+  background: #1c2637;
+  border: 1px solid #364052;
+  border-radius: 0.65rem;
+  padding: 1rem 1.25rem;
+}
+article h3 {
+  margin-block: 0.25rem;
+}
+article p {
+  color: #ced6e7;
+  line-height: 1.55;
+}
+footer {
+  margin-block: 3rem;
+  padding-block: 1.25rem;
+  border-top: 1px solid #364052;
+}
