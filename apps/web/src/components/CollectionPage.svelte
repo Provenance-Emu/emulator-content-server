@@ -7,6 +7,7 @@
   import type { LibraryBrowseEntry, SystemSummary } from '@ecs/client';
   import { onDestroy } from 'svelte';
   import { coverSize } from '../lib/cover-size';
+  import SystemIcon from './SystemIcon.svelte';
   import { availabilityLabel, entryKey, fileTypeLabel, kindLabel, systemLabel } from '../lib/content-format';
   import { bytes } from '../lib/format';
   let {
@@ -166,7 +167,7 @@
                   };
                 }}
               />{:else}<span class="title-placeholder" aria-hidden="true">
-                <span class="placeholder-system">{systemLabel(entry.systemId, systems)}</span>
+                <span class="placeholder-system"><SystemIcon system={entry.systemId} />{systemLabel(entry.systemId, systems)}</span>
                 <span class="placeholder-title">{entry.name}</span>
               </span>{/if}
           </span>

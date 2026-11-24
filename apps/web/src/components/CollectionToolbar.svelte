@@ -3,6 +3,8 @@
   import { onDestroy, tick } from 'svelte';
   import { systemLabel } from '../lib/content-format';
   import { COVER_SIZE, coverSize, setCoverSize } from '../lib/cover-size';
+  import { orderSystems, recentSystems } from '../lib/system-order';
+  import SystemIcon from './SystemIcon.svelte';
   import type { BrowseFilters } from '../lib/library-browser';
   let {
     filters,
@@ -53,6 +55,10 @@
       });
     else onchange({ systemIds: chosen.length === 1 && chosen[0] === id ? [] : [id] });
   }
+  /** Lately opened systems first, then the largest. A chosen system stays where it is. */
+  const ordered = $derived(
+    orderSystems(systemCounts, $recentSystems, (id) => systemLabel(id, systems)),
+  );
   let chips = $state<HTMLDivElement>();
   let expanded = $state(false);
   let overflowing = $state(false);
@@ -97,7 +103,7 @@
   </form>
   <div class="collection-view-options">
     {#if folders.length || filters.rootId}<label class="toolbar-select">
-        Library folder
+        <span class="toolbar-label">Library folder</span>
         <select
           value={filters.rootId}
           onchange={(event) => onchange({ rootId: event.currentTarget.value })}
@@ -109,7 +115,7 @@
         </select>
       </label>{/if}
     <label class="toolbar-select">
-      Sort
+      <span class="toolbar-label">Sort</span>
       <select
         value={filters.sort}
         onchange={(event) => onchange({ sort: event.currentTarget.value as BrowseFilters['sort'] })}
@@ -119,7 +125,7 @@
       </select>
     </label>
     {#if filters.view === 'grid'}<label class="toolbar-select cover-size">
-        Cover size
+        <span class="toolbar-label">Cover size</span>
         <input
           type="range"
           min={COVER_SIZE.min}
@@ -148,9 +154,9 @@
       <legend class="visually-hidden">Systems with games</legend>
       <div class="system-chips" class:folded={!expanded} bind:this={chips}>
         <button type="button" aria-pressed={chosen.length === 0} onclick={() => onchange({ systemIds: [], systemId: '' })}>All systems</button>
-        {#each systemCounts as system (system.systemId)}
+        {#each ordered as system (system.systemId)}
           <button type="button" aria-pressed={chosen.includes(system.systemId)} onclick={(event) => choose(system.systemId, event)}>
-            {systemLabel(system.systemId, systems)} <span class="system-count">{system.count}</span>
+            <SystemIcon system={system.systemId} />{systemLabel(system.systemId, systems)} <span class="system-count">{system.count}</span>
           </button>
         {/each}
       </div>

@@ -469,6 +469,15 @@ test('the cover size slider and the arrow keys work across the grid and bring mo
       const top = (places[0] as HTMLElement).offsetTop;
       return places.filter((place) => (place as HTMLElement).offsetTop === top).length;
     });
+  // Each system chip carries its picture, drawn from a file this server sends.
+  const picture = page.locator('.system-chips .system-icon').first();
+  await expect(picture).toBeVisible();
+  expect(
+    await picture.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return style.maskImage || style.webkitMaskImage;
+    }),
+  ).toMatch(/^url\(/);
   const usual = await across();
   const slider = page.getByRole('slider', { name: 'Cover size', exact: true });
   await slider.fill('5');

@@ -19,6 +19,7 @@
   import { entryKey } from './lib/content-format';
   import CategoryTabs from './components/CategoryTabs.svelte';
   import CollectionToolbar from './components/CollectionToolbar.svelte';
+  import { noteSystem } from './lib/system-order';
   import CollectionPage from './components/CollectionPage.svelte';
   import ListMore from './components/ListMore.svelte';
   import ViewState from './components/ViewState.svelte';
@@ -347,7 +348,11 @@
    * returns to the list. Stepping to a neighbour replaces that step, so Back still does.
    */
   function open(entry: LibraryBrowseEntry, record: 'push' | 'replace' | 'none' = 'push') {
-    if (record === 'push') listScroll = window.scrollY;
+    if (record === 'push') {
+      listScroll = window.scrollY;
+      // The systems someone opens games from lead the filter row next time.
+      noteSystem(entry.systemId);
+    }
     browser.open(entry, { scrollTop: listScroll, focusKey: entryKey(entry) });
     const state = { ...(window.history.state as object | null), [GAME_STATE]: entryKey(entry) };
     if (record === 'push') window.history.pushState(state, '');

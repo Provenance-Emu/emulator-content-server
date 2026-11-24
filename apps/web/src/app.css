@@ -1208,6 +1208,18 @@ dialog input[type="file"] {
   }
 }
 
+/* A system's picture beside its name. It is a mask, so it takes the colour of the text. */
+.system-icon {
+  display: inline-block;
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 0.35em;
+  vertical-align: -0.28em;
+  background: currentColor;
+  mask: center / contain no-repeat;
+  -webkit-mask: center / contain no-repeat;
+}
 .system-count {
   margin-left: 0.4rem;
   font-variant-numeric: tabular-nums;
@@ -2175,8 +2187,45 @@ details[open] > summary::before {
   .system-more {
     display: none;
   }
+  /* A phone keeps every choice on the page, in one row that scrolls sideways like the systems. */
   .collection-view-options {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
     margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Room for a focus ring inside the scrolling row. */
+    padding: var(--space-1);
+    margin: calc(-1 * var(--space-1));
+  }
+  .collection-view-options > * {
+    flex: none;
+  }
+  /* Grid or List is the choice people reach for, so it is the one that never scrolls away. */
+  .collection-view-options .view-switch {
+    order: -1;
+  }
+  /* The folder and the order say what they are by their value. */
+  .toolbar-select:has(select) .toolbar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .toolbar-select {
+    position: relative;
+  }
+  .collection-toolbar {
+    margin-bottom: var(--space-2);
+  }
+  .category-tabs {
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  .page-heading:has(+ .category-tabs) {
+    margin-bottom: var(--space-3);
   }
 }
 .theme-picker {
