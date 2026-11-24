@@ -22,6 +22,7 @@ export const HTTP_OPERATIONS = [
   'POST /api/v1/users',
   'PATCH /api/v1/users/:userId',
   'GET /api/v1/browse',
+  'GET /api/v1/browse/find',
   'GET /api/v1/browse-libraries',
   'GET /api/v1/root-summaries',
   'PATCH /api/v1/libraries/:libraryId',

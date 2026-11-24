@@ -94,7 +94,7 @@ export function registerLibraryBrowse(
       nextCursor: null,
     };
   });
-  app.get('/api/v1/browse', async (request) => {
+  const browse = async (request: FastifyRequest, find: boolean) => {
     const actor = requireActor(request);
     const libraryId = scope(request) ?? null;
     if (libraryId === null && !actualOwner(actor))
@@ -163,6 +163,21 @@ export function registerLibraryBrowse(
     const played = query(request, 'played');
     if (played !== undefined && (played !== 'recent' || category !== 'games'))
       throw new DomainError('invalid-query', 400, 'played=recent applies to category=games');
+    const md5 = find ? query(request, 'md5')?.toLowerCase() : undefined;
+    const rawNames = find ? query(request, 'names') : undefined;
+    const names = rawNames?.split(',') ?? [];
+    if (
+      find &&
+      (category !== 'games' ||
+        systemIds?.length !== 1 ||
+        (md5 !== undefined && !/^[a-f0-9]{32}$/.test(md5)) ||
+        (rawNames?.length ?? 0) > 2050 ||
+        names.length > 2 ||
+        names.some((name) => !/^[\p{L}\p{N}]+$/u.test(name)) ||
+        (!md5 && names.length === 0))
+    )
+      throw new DomainError('invalid-query', 400, 'Invalid ROM lookup');
+    const lookup = find ? { md5, names } : undefined;
     const selection: BrowseSelection = {
       actor,
       libraryId,
@@ -171,6 +186,7 @@ export function registerLibraryBrowse(
       systemId,
       systemIds,
       search,
+      lookup,
       sort,
       limit,
       includeRomDownload: includeRomDownload === 'true',
@@ -185,6 +201,7 @@ export function registerLibraryBrowse(
           systemId: systemIds === undefined ? (systemId ?? null) : null,
           systemIds: systemIds ?? null,
           search,
+          lookup,
           sort,
           limit,
           actor:
@@ -369,7 +386,9 @@ export function registerLibraryBrowse(
       systemCounts: page.systemCounts,
       nextCursor: page.next ? encodeBrowseCursor(fingerprint, page.next) : null,
     };
-  });
+  };
+  app.get('/api/v1/browse', (request) => browse(request, false));
+  app.get('/api/v1/browse/find', (request) => browse(request, true));
   app.post('/api/v1/plays', async (request, reply) => {
     const actor = requireActor(request);
     if (actor.kind !== 'user')

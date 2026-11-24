@@ -3,6 +3,40 @@ import test from 'node:test';
 import type { LightMyRequestResponse } from 'fastify';
 import { libraryFixture } from './library-fixture.js';
 
+test('ROM lookup searches by hash or normalized name within the authorized system', async () => {
+  const f = await libraryFixture({ localTrust: false });
+  try {
+    const byName = f.item('Pokémon, Red!');
+    const md5 = 'a'.repeat(32);
+    const byHash = f.catalog.createItem({
+      libraryId: f.library.id,
+      title: 'Different Filename',
+      systemIdentifier: 'com.provenance.nes',
+      md5,
+      crc: null,
+      actorId: f.owner.id,
+    });
+    f.item('Unrelated ROM');
+    const url = `/api/v1/browse/find?libraryId=${f.library.id}&category=games&systemIds=com.provenance.nes`;
+    const result = await f.app.inject({
+      url: `${url}&names=pokemonred&md5=${md5}`,
+      headers: f.auth,
+    });
+    assert.equal(result.statusCode, 200, result.body);
+    assert.deepEqual(
+      new Set(result.json().items.map((entry: { id: string }) => entry.id)),
+      new Set([byName.id, byHash.id]),
+    );
+    assert.equal(
+      (await f.app.inject({ url: `${url}&md5=invalid`, headers: f.auth })).statusCode,
+      400,
+    );
+    assert.equal((await f.app.inject({ url: `${url}&md5=${md5}` })).statusCode, 401);
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('browse defaults to 50, pages original identities and validates bound filters', async () => {
   const f = await libraryFixture();
   try {

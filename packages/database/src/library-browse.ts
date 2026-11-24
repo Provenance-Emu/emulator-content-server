@@ -22,6 +22,7 @@ export interface BrowseSelection {
   systemId?: string | null;
   systemIds?: string[];
   search?: string;
+  lookup?: { md5?: string; names: string[] };
   sort: 'name_asc' | 'name_desc';
   limit: number;
   position?: BrowsePosition | null;
@@ -88,6 +89,8 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
       .normalize('NFC')
       .toLowerCase()
       .replace(/[\\%_]/g, '\\$&')}%`,
+    input.lookup?.md5 ?? null,
+    input.lookup ? JSON.stringify(input.lookup.names) : null,
   ];
   const kinds = {
     games: "'rom'",
@@ -114,7 +117,7 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
     AND f.kind = 'rom' AND f.group_anchor IS NULL`;
   const projection = `WITH c AS (SELECT ? AS library_id, ? AS is_owner, ? AS can_read,
     ? AS see_all, ? AS user_id, ? AS is_guest, ? AS guest_library, ? AS guest_item,
-    ? AS restricted, ? AS root_id, ? AS system_ids, ? AS search),
+    ? AS restricted, ? AS root_id, ? AS system_ids, ? AS search, ? AS md5, ? AS names),
   eligible AS (
     SELECT 'item' AS entity_type, i.id, ecs_browse_fold(i.title) AS folded_name, COALESCE(NULLIF(i.system_identifier,''),'unknown') AS system_id,
       (SELECT p.id FROM assets p WHERE p.item_id = i.id AND p.deleted_at IS NULL
@@ -123,6 +126,8 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
     WHERE ${input.category === 'games' ? '1' : '0'} = 1
       AND i.library_id = c.library_id AND l.deleted_at IS NULL AND i.deleted_at IS NULL
       AND c.root_id IS NULL AND ${itemAccess} AND ${system('i.system_identifier')}
+      AND (c.names IS NULL OR lower(i.md5) = c.md5 OR
+        ecs_recovery_name(i.title) IN (SELECT value FROM json_each(c.names)))
       AND (ecs_browse_fold(i.title) LIKE c.search ESCAPE '\\'
         OR EXISTS (SELECT 1 FROM assets n WHERE n.item_id = i.id AND n.deleted_at IS NULL
           AND n.kind = 'rom' AND ${assetAccess('n')}
@@ -158,6 +163,8 @@ function projectionFor(input: BrowseSelection): { projection: string; params: SQ
           : '1'
       }
       AND s.kind IN (${kinds}) AND ${system(sourceSystemSql)}
+      AND (c.names IS NULL OR
+        ecs_recovery_name(${sourceTitleSql}) IN (SELECT value FROM json_each(c.names)))
       -- A matched game is listed under its title, so its file name is searched as well:
       -- that is how someone finds every .chd, or a game by the name it has on disk.
       AND (ecs_browse_fold(${sourceTitleSql}) LIKE c.search ESCAPE '\\'

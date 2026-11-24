@@ -211,6 +211,13 @@ export class CatalogDatabase {
           .normalize('NFC')
           .toLowerCase(),
       );
+      this.db.function('ecs_recovery_name', { deterministic: true }, (value) =>
+        String(value ?? '')
+          .replace(/(?<=.)\.[^./]+$/, '')
+          .normalize('NFD')
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}]/gu, ''),
+      );
       this.db.function('ecs_companion_parent', { deterministic: true }, (value) =>
         companionDirectory(String(value ?? '')),
       );

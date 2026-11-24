@@ -787,6 +787,31 @@ paths:
       responses:
         '204': { description: "Stopping, or nothing was running." }
         '403': { description: Only the server owner can use iCloud saves. }
+  /api/v1/browse/find:
+    get:
+      operationId: findLibraryROM
+      tags: [Libraries and items]
+      security: [{ bearerAuth: [] }, {}]
+      description: Find candidates for a missing ROM by MD5 or normalized name using the same access rules as library browsing.
+      parameters:
+        - { name: libraryId, in: query, schema: { type: string } }
+        - { name: unassigned, in: query, schema: { type: boolean } }
+        - { name: category, in: query, required: true, schema: { type: string, enum: [games] } }
+        - { name: systemIds, in: query, required: true, description: One system identifier., schema: { type: string } }
+        - { name: md5, in: query, schema: { type: string, minLength: 32, maxLength: 32 } }
+        - { name: names, in: query, description: Up to two comma-separated normalized names., schema: { type: string, maxLength: 2050 } }
+        - { name: cursor, in: query, schema: { type: string, maxLength: 4096 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        '200':
+          description: Authorized page of candidates.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryBrowsePage' }
+        '400': { description: Invalid query or cursor. }
+        '401': { description: Authentication required. }
+        '403': { description: Read scope or owner authority required. }
+        '404': { description: Scope or folder unavailable. }
   /api/v1/browse-libraries:
     get:
       operationId: browseLibraries
