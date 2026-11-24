@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  findSystems,
   orderSystems,
   RECENT_SYSTEMS,
   readRecentSystems,
@@ -62,4 +63,22 @@ test('whatever is stored reads as a short list of names', () => {
     }),
     [],
   );
+});
+
+test('typing part of a name or the short identifier finds a system', () => {
+  const names: Record<string, string> = {
+    'com.provenance.snes': 'Super Nintendo',
+    'com.provenance.nes': 'Nintendo',
+    'com.provenance.psx': 'PlayStation',
+  };
+  const list = Object.keys(names).map((systemId) => ({ systemId }));
+  const find = (query: string) => ids(findSystems(list, query, (id) => names[id] ?? id));
+  assert.deepEqual(find(''), Object.keys(names));
+  assert.deepEqual(find('  '), Object.keys(names));
+  assert.deepEqual(find('NINT'), ['com.provenance.snes', 'com.provenance.nes']);
+  assert.deepEqual(find('nintendo super'), ['com.provenance.snes']);
+  assert.deepEqual(find('psx'), ['com.provenance.psx']);
+  // The shared prefix of every identifier is not something anyone types to find a system.
+  assert.deepEqual(find('provenance'), []);
+  assert.deepEqual(find('zzz'), []);
 });

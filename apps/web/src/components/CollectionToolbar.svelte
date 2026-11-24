@@ -3,7 +3,7 @@
   import { onDestroy, tick } from 'svelte';
   import { systemLabel } from '../lib/content-format';
   import { COVER_SIZE, coverSize, setCoverSize } from '../lib/cover-size';
-  import { orderSystems, recentSystems } from '../lib/system-order';
+  import { FIND_SYSTEMS_FROM, findSystems, orderSystems, recentSystems } from '../lib/system-order';
   import SystemIcon from './SystemIcon.svelte';
   import type { BrowseFilters } from '../lib/library-browser';
   let {
@@ -59,11 +59,28 @@
   const ordered = $derived(
     orderSystems(systemCounts, $recentSystems, (id) => systemLabel(id, systems)),
   );
+  /** Typing narrows a long row of systems; Enter takes the first one left. */
+  let finding = $state('');
+  const label = (id: string) => systemLabel(id, systems);
+  const found = $derived(findSystems(ordered, finding, label));
+  const narrowed = $derived(!!finding.trim());
+  function findKey(event: KeyboardEvent) {
+    if (event.key === 'Escape' && finding) {
+      event.preventDefault();
+      finding = '';
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const first = narrowed ? found[0] : undefined;
+      if (!first) return;
+      finding = '';
+      onchange({ systemIds: [first.systemId] });
+    }
+  }
   let chips = $state<HTMLDivElement>();
   let expanded = $state(false);
   let overflowing = $state(false);
   function measure() {
-    if (!chips || expanded) return;
+    if (!chips || expanded || narrowed) return;
     overflowing = chips.scrollHeight > chips.clientHeight + 1;
     const bottom = chips.getBoundingClientRect().bottom;
     const pressed = Array.from(chips.querySelectorAll<HTMLElement>('[aria-pressed="true"]'));
@@ -78,6 +95,7 @@
     void systemCounts;
     void chosen;
     void expanded;
+    void narrowed;
     void tick().then(measure);
   });
   $effect(() => {
@@ -152,15 +170,20 @@
   {#if systemCounts.length || filtered}
     <fieldset class="system-filter">
       <legend class="visually-hidden">Systems with games</legend>
-      <div class="system-chips" class:folded={!expanded} bind:this={chips}>
+      <div class="system-chips" class:folded={!expanded && !narrowed} bind:this={chips}>
+        {#if ordered.length >= FIND_SYSTEMS_FROM}<label class="system-find">
+            <span class="visually-hidden">Find a system</span>
+            <input type="search" bind:value={finding} onkeydown={findKey} placeholder="Find a system" autocomplete="off" />
+          </label>{/if}
         <button type="button" aria-pressed={chosen.length === 0} onclick={() => onchange({ systemIds: [], systemId: '' })}>All systems</button>
-        {#each ordered as system (system.systemId)}
+        {#each found as system (system.systemId)}
           <button type="button" aria-pressed={chosen.includes(system.systemId)} onclick={(event) => choose(system.systemId, event)}>
             <SystemIcon system={system.systemId} />{systemLabel(system.systemId, systems)} <span class="system-count">{system.count}</span>
           </button>
         {/each}
+        {#if narrowed && !found.length}<span class="dim system-none" role="status">No system by that name</span>{/if}
       </div>
-      {#if overflowing || expanded}<button type="button" class="text-button system-more" aria-expanded={expanded} onclick={() => (expanded = !expanded)}>{expanded ? 'Fewer systems' : 'More systems'}</button>{/if}
+      {#if (overflowing || expanded) && !narrowed}<button type="button" class="text-button system-more" aria-expanded={expanded} onclick={() => (expanded = !expanded)}>{expanded ? 'Fewer systems' : 'More systems'}</button>{/if}
       {#if filtered}<button type="button" class="text-button" onclick={() => { clearTimeout(timer); onchange({ search: '', systemId: '', systemIds: [], rootId: '' }); }}>Clear filters</button>{/if}
     </fieldset>
   {/if}

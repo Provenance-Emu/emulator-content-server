@@ -2100,6 +2100,21 @@ details[open] > summary::before {
   font-size: var(--text-small);
   white-space: nowrap;
 }
+.system-find {
+  flex: 0 0 auto;
+}
+.system-find input {
+  width: 9rem;
+  min-height: var(--chip-height);
+  height: var(--chip-height);
+  padding: 0 0.7rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+}
+.system-none {
+  font-size: var(--text-small);
+  white-space: nowrap;
+}
 .system-chips button[aria-pressed="true"] {
   background: var(--color-selected);
   border-color: var(--color-selected-border);
@@ -2167,6 +2182,7 @@ details[open] > summary::before {
     --chip-height: var(--control-height-touch);
   }
   .system-chips button,
+  .system-find input,
   .system-filter .text-button {
     padding-inline: var(--space-3);
     font-size: var(--text-label);
@@ -2191,7 +2207,6 @@ details[open] > summary::before {
   .collection-view-options {
     flex: 1 1 100%;
     flex-wrap: nowrap;
-    margin-left: 0;
     overflow-x: auto;
     scrollbar-width: none;
     /* Room for a focus ring inside the scrolling row. */

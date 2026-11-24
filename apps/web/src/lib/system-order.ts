@@ -60,6 +60,27 @@ export function orderSystems<T extends { systemId: string; count: number }>(
   );
 }
 
+/** A row this long is quicker to type into than to read. */
+export const FIND_SYSTEMS_FROM = 8;
+
+/**
+ * The systems a typed fragment means: every word must appear in the name or the short
+ * identifier, so "super" finds Super Nintendo and "snes" does too. Order is kept.
+ */
+export function findSystems<T extends { systemId: string }>(
+  systems: readonly T[],
+  query: string,
+  label: (id: string) => string = (id) => id,
+): T[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [...systems];
+  return systems.filter((system) => {
+    const text =
+      `${label(system.systemId)} ${system.systemId.split('.').pop() ?? ''}`.toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+}
+
 export const recentSystems = writable(readRecentSystems());
 export function noteSystem(id: string | null | undefined, storage?: OrderStorage): void {
   recentSystems.update((recent) => {
