@@ -72,6 +72,8 @@ Signed Apple Silicon nightlies installed in Applications check for updates at la
 
 Linux and Windows nightly desktop installers are unsigned. When macOS signing is enabled, the macOS desktop installer is Developer ID signed and Apple notarized from the same commit as the server archives. Repositories with signing disabled retain their last notarized DMG and can download the unsigned desktop build as a workflow test artifact.
 
+When the signing certificate expires, the signing job fails and nothing is published. On a Mac whose login keychain holds a valid Developer ID Application certificate, run `scripts/rotate-macos-signing-secret.sh`. It picks the certificate that expires last, packs it alone under a password made for the occasion, and replaces `ECS_MACOS_SIGNING_P12` and `ECS_MACOS_SIGNING_PASSWORD` in the `nightly-macos-signing` environment. `--dry-run` uploads nothing. Then re-run the failed job.
+
 ## What CI proves and what to test
 
 Every server archive is extracted into a clean temporary directory on its native OS/architecture, then tested using its bundled Node runtime: launcher help, SQLite initialization, `/health`, `/ui/`, referenced JavaScript/CSS assets and `doctor`. Desktop jobs run interface checks, generated native service/process tests, and package the installers. CI verifies every archive/installer checksum before publishing the complete set.

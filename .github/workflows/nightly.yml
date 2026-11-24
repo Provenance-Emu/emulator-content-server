@@ -178,8 +178,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" >/dev/null
           rm "$credentials/identity.p12"
           unset P12_BASE64 P12_PASSWORD ASC_KEY_P8 keychain_password
-          identity=$(security find-identity -v -p codesigning "$keychain" |
-            awk '/Developer ID Application:/ {hash=$2; count++} END {if (count != 1) exit 1; print hash}')
+          identities=$(security find-identity -p codesigning "$keychain")
+          identity=$(printf '%s\n' "$identities" |
+            awk '/Valid identities only/ {valid=1}
+              valid && /Developer ID Application:/ {hash=$2; count++}
+              END {if (count != 1) exit 1; print hash}') || {
+            echo '::error::ECS_MACOS_SIGNING_P12 must hold exactly one valid Developer ID Application identity. It has probably expired: run scripts/rotate-macos-signing-secret.sh on a Mac that holds the certificate.'
+            printf '%s\n' "$identities" | grep 'Developer ID Application:' >&2 || true
+            exit 1
+          }
           (cd "$RUNNER_TEMP/ecs-unsigned" && shasum -a 256 --check SHA256SUMS-desktop-darwin-arm64.txt)
           name=Emulation-Server-nightly-macos-arm64.dmg
           mkdir "$RUNNER_TEMP/ecs-signed"
