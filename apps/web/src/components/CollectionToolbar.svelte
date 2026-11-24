@@ -2,6 +2,7 @@
   import type { ContentRootSummary, SystemSummary, SystemCount } from '@ecs/client';
   import { onDestroy, tick } from 'svelte';
   import { systemLabel } from '../lib/content-format';
+  import { COVER_SIZE, coverSize, setCoverSize } from '../lib/cover-size';
   import type { BrowseFilters } from '../lib/library-browser';
   let {
     filters,
@@ -117,6 +118,17 @@
         <option value="name_desc">Name Z–A</option>
       </select>
     </label>
+    {#if filters.view === 'grid'}<label class="toolbar-select cover-size">
+        Cover size
+        <input
+          type="range"
+          min={COVER_SIZE.min}
+          max={COVER_SIZE.max}
+          step={COVER_SIZE.step}
+          value={$coverSize}
+          oninput={(event) => setCoverSize(Number(event.currentTarget.value))}
+        />
+      </label>{/if}
     <fieldset class="view-switch">
       <legend>Collection view</legend>
       {#each ['grid', 'list'] as view}<label>

@@ -6,6 +6,7 @@
 <script lang="ts">
   import type { LibraryBrowseEntry, SystemSummary } from '@ecs/client';
   import { onDestroy } from 'svelte';
+  import { coverSize } from '../lib/cover-size';
   import { availabilityLabel, entryKey, fileTypeLabel, kindLabel, systemLabel } from '../lib/content-format';
   import { bytes } from '../lib/format';
   let {
@@ -66,12 +67,44 @@
     schedule();
   });
   /**
+   * Arrow keys move between covers the way they look on screen. Tab still visits every card, so
+   * nothing depends on knowing this. Reaching the last card brings the next batch as scrolling does.
+   */
+  function arrows(event: KeyboardEvent) {
+    if (event.altKey || event.metaKey || event.shiftKey) return;
+    const list = event.currentTarget as HTMLElement;
+    const places = [...list.children] as HTMLElement[];
+    const index = places.findIndex((place) => place.contains(event.target as Node));
+    if (index < 0) return;
+    const top = places[0]?.offsetTop;
+    const columns = Math.max(1, places.findIndex((place) => place.offsetTop !== top));
+    const row = index - (index % columns);
+    const last = places.length - 1;
+    const moves: Record<string, number> = {
+      ArrowLeft: index - 1,
+      ArrowRight: index + 1,
+      ArrowUp: index - columns,
+      // From the row above a short last row, Down goes to the last card.
+      ArrowDown: index + columns > last && row + columns <= last ? last : index + columns,
+      Home: event.ctrlKey ? 0 : row,
+      End: event.ctrlKey ? last : Math.min(last, row + columns - 1),
+    };
+    const next = moves[event.key];
+    if (next === undefined || (event.ctrlKey && event.key.startsWith('Arrow'))) return;
+    // Past either end the key keeps its usual meaning, so the page still scrolls.
+    if (next < 0 || next > last || next === index) return;
+    event.preventDefault();
+    places[next]?.querySelector<HTMLElement>('.game-card')?.focus();
+  }
+  /**
    * Cards away from the screen are not laid out (`content-visibility` in app.css), so the page
    * needs their height to keep its length and the scroll position honest. It is measured from
    * the first card, which changes with the width of the window.
    */
   function measure(list: HTMLElement) {
-    if (typeof ResizeObserver === 'undefined') return {};
+    list.addEventListener('keydown', arrows);
+    if (typeof ResizeObserver === 'undefined')
+      return { destroy: () => list.removeEventListener('keydown', arrows) };
     const apply = () => {
       if (cardSize > 0) list.style.setProperty('--game-card-size', `${cardSize}px`);
     };
@@ -80,7 +113,9 @@
     let watched: Element | null = null;
     const sizes = new ResizeObserver((records) => {
       // Not rounded: a fraction of a pixel a card adds up to a visible shift over a long list.
-      const height = records[0]?.borderBoxSize?.[0]?.blockSize ?? 0;
+      // The place, not the card: cards in one row differ by a sliver and the row takes the tallest.
+      const place = records[0]?.target.parentElement;
+      const height = place?.getBoundingClientRect().height ?? 0;
       if (height <= 0 || height === cardSize) return;
       cardSize = height;
       apply();
@@ -99,6 +134,7 @@
     follow();
     return {
       destroy() {
+        list.removeEventListener('keydown', arrows);
         children.disconnect();
         sizes.disconnect();
       },
@@ -108,7 +144,7 @@
 </script>
 
 {#if grid}
-  <ul class="game-grid" aria-label="Collection results" use:measure>
+  <ul class="game-grid" aria-label="Collection results" style:--game-cover={`${$coverSize}rem`} use:measure>
     {#each items as entry (entryKey(entry))}<li>
         <button
           type="button"
@@ -134,11 +170,18 @@
                 <span class="placeholder-title">{entry.name}</span>
               </span>{/if}
           </span>
-          <strong>{entry.name}</strong>
+          <strong title={entry.name}>{entry.name}</strong>
           {#if entry.parentItem}<span class="game-parent dim">{entry.parentItem.title}</span>{/if}
-          <span class="dim">{systemLabel(entry.systemId, systems)}{#if fileTypeLabel(entry)} · {fileTypeLabel(entry)}{/if}</span>
-          {#if entry.source}<span class="availability">
-              {availabilityLabel(entry.source.availability)}{#if (entry.source.groupFileCount ?? 0) > 1} · {entry.source.groupFileCount} files{/if}
+          <span class="dim">{[
+              systemLabel(entry.systemId, systems),
+              fileTypeLabel(entry),
+              (entry.source?.groupFileCount ?? 0) > 1 ? `${entry.source?.groupFileCount} files` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}</span>
+          <!-- A game that is where it should be says nothing; only a problem earns a line. -->
+          {#if entry.source && entry.source.availability !== 'local'}<span class="availability">
+              {availabilityLabel(entry.source.availability)}
             </span>{/if}
         </button>
       </li>{/each}

@@ -455,3 +455,57 @@ test('disc organization preview lists every track and companion before a move', 
   await expect(organization.locator('.organization-files')).toContainText('Disc 2.bin');
   expect(await readFile(join(root.path, 'Disc 1.bin'), 'utf8')).toBe('generated disc 1');
 });
+
+test('the cover size slider and the arrow keys work across the grid and bring more games', async ({
+  page,
+  fixture,
+}) => {
+  await signIn(page, fixture);
+  await page.getByRole('button', { name: 'Arcade', exact: true }).click();
+  const results = page.getByRole('button', { name: /^Open Game / });
+  await expect(results).toHaveCount(50);
+  const across = () =>
+    page.locator('.game-grid > li').evaluateAll((places) => {
+      const top = (places[0] as HTMLElement).offsetTop;
+      return places.filter((place) => (place as HTMLElement).offsetTop === top).length;
+    });
+  const usual = await across();
+  const slider = page.getByRole('slider', { name: 'Cover size', exact: true });
+  await slider.fill('5');
+  await expect.poll(across).toBeGreaterThan(usual);
+  await slider.fill('14');
+  await expect.poll(across).toBeLessThan(usual);
+  await slider.fill('5');
+  // Small covers fit more than one batch on the screen, and the rest still arrive.
+  await expect.poll(() => results.count()).toBeGreaterThan(50);
+  const columns = await across();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await results.first().focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(results.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(results.nth(1 + columns)).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(results.nth(columns)).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(results.nth(2 * columns - 1)).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(results.nth(columns - 1)).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(results.first()).toBeFocused();
+  // Holding Down walks to the end of everything, loading as it goes.
+  for (let presses = 0; presses < 200 && (await results.count()) < 120; presses += 1)
+    await page.keyboard.press('ArrowDown');
+  await expect(results).toHaveCount(120);
+  await page.keyboard.press('Control+End');
+  await expect(results.last()).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Game 119', exact: true })).toBeVisible();
+
+  // The size is kept on this device, and the list view has no use for it.
+  await page.reload();
+  await expect(slider).toHaveValue('5');
+  await page.getByRole('radio', { name: 'List', exact: true }).check();
+  await expect(slider).toHaveCount(0);
+});
