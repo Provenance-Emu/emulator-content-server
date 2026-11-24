@@ -81,6 +81,48 @@ export function findSystems<T extends { systemId: string }>(
   });
 }
 
+/** A row this long reads better in groups than as one run of names. */
+export const GROUP_SYSTEMS_FROM = 12;
+
+export interface SystemGroup<T> {
+  /** Empty when the row is not grouped. */
+  name: string;
+  systems: T[];
+}
+
+/**
+ * A long row split by who made each system. The systems opened lately lead as their own group so
+ * they stay one glance away; makers follow with the most games first, and systems without a
+ * maker close the row. A short row, or one where a single maker has everything, stays as it is.
+ */
+export function groupSystems<T extends { systemId: string; count: number }>(
+  ordered: readonly T[],
+  recent: readonly string[],
+  maker: (id: string) => string | undefined,
+): SystemGroup<T>[] {
+  const makers = new Set(ordered.map((system) => maker(system.systemId) ?? ''));
+  if (ordered.length < GROUP_SYSTEMS_FROM || makers.size < 2)
+    return [{ name: '', systems: [...ordered] }];
+  const lead = ordered.filter((system) => recent.includes(system.systemId));
+  const groups = new Map<string, T[]>();
+  for (const system of ordered) {
+    if (lead.includes(system)) continue;
+    const name = maker(system.systemId) ?? '';
+    groups.set(name, [...(groups.get(name) ?? []), system]);
+  }
+  const total = (systems: readonly T[]) => systems.reduce((sum, system) => sum + system.count, 0);
+  const named = [...groups]
+    .filter(([name]) => name)
+    .sort((a, b) => total(b[1]) - total(a[1]) || a[0].localeCompare(b[0]))
+    .map(([name, systems]) => ({ name, systems }));
+  const other = groups.get('');
+  return [
+    ...(lead.length ? [{ name: 'Recent', systems: lead }] : []),
+    ...named,
+    ...(other ? [{ name: 'Other', systems: other }] : []),
+  ];
+}
+
 export const recentSystems = writable(readRecentSystems());
 export function noteSystem(id: string | null | undefined, storage?: OrderStorage): void {
   recentSystems.update((recent) => {

@@ -2995,6 +2995,7 @@ components:
       properties:
         identifier: { type: string }
         name: { type: string }
+        maker: { type: string, description: 'Who made the system, or the kind of machine it is (Nintendo, Sega, Arcade, Computers). Absent when neither groups it usefully. For grouping a list of systems.' }
     SystemList:
       type: object
       required: [systems, closed]

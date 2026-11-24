@@ -2100,6 +2100,24 @@ details[open] > summary::before {
   font-size: var(--text-small);
   white-space: nowrap;
 }
+/* A group adds its name to the row; its chips still wrap with everyone else's. */
+.system-group {
+  display: contents;
+}
+.system-group-head {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+}
+.system-group-name {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
 .system-find {
   flex: 0 0 auto;
 }

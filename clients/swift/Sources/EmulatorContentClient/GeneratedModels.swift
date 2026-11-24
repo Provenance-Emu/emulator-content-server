@@ -417,10 +417,12 @@ public struct Limits: Codable, Equatable, Sendable {
 public struct SystemSummary: Codable, Equatable, Sendable {
     public var identifier: String
     public var name: String
+    public var maker: String?
 
-    public init(identifier: String, name: String) {
+    public init(identifier: String, name: String, maker: String? = nil) {
         self.identifier = identifier
         self.name = name
+        self.maker = maker
     }
 }
 

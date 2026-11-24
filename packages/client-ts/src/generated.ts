@@ -209,6 +209,7 @@ export interface Limits {
 export interface SystemSummary {
   identifier: string;
   name: string;
+  maker?: string;
 }
 
 export interface SystemList {

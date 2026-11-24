@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   findSystems,
+  GROUP_SYSTEMS_FROM,
+  groupSystems,
   orderSystems,
   RECENT_SYSTEMS,
   readRecentSystems,
@@ -81,4 +83,49 @@ test('typing part of a name or the short identifier finds a system', () => {
   // The shared prefix of every identifier is not something anyone types to find a system.
   assert.deepEqual(find('provenance'), []);
   assert.deepEqual(find('zzz'), []);
+});
+
+test('a long row is grouped by maker, recent systems first and the unplaced last', () => {
+  const makers: Record<string, string> = {
+    nes: 'Nintendo',
+    snes: 'Nintendo',
+    gb: 'Nintendo',
+    genesis: 'Sega',
+    saturn: 'Sega',
+    psx: 'Sony',
+    mame: 'Arcade',
+  };
+  const list = [
+    ...Object.keys(makers),
+    ...Array.from({ length: GROUP_SYSTEMS_FROM }, (_, index) => `odd${index}`),
+  ].map((systemId) => ({ systemId, count: systemId === 'psx' ? 500 : 10 }));
+  const groups = groupSystems(orderSystems(list, ['saturn']), ['saturn'], (id) => makers[id]);
+  assert.deepEqual(
+    groups.map((group) => group.name),
+    ['Recent', 'Sony', 'Nintendo', 'Arcade', 'Sega', 'Other'],
+  );
+  assert.deepEqual(ids(groups[0]?.systems ?? []), ['saturn']);
+  assert.deepEqual(ids(groups[4]?.systems ?? []), ['genesis']);
+  assert.equal(groups.at(-1)?.systems.length, GROUP_SYSTEMS_FROM);
+  // Nothing is shown twice or dropped.
+  assert.equal(groups.flatMap((group) => group.systems).length, list.length);
+});
+
+test('a short row, or one maker alone, is not grouped', () => {
+  const few = [
+    { systemId: 'nes', count: 1 },
+    { systemId: 'psx', count: 1 },
+  ];
+  assert.deepEqual(
+    groupSystems(few, [], (id) => (id === 'nes' ? 'Nintendo' : 'Sony')),
+    [{ name: '', systems: few }],
+  );
+  const many = Array.from({ length: GROUP_SYSTEMS_FROM + 2 }, (_, index) => ({
+    systemId: `n${index}`,
+    count: 1,
+  }));
+  assert.deepEqual(
+    groupSystems(many, ['n3'], () => 'Nintendo'),
+    [{ name: '', systems: many }],
+  );
 });

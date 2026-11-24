@@ -3,7 +3,13 @@
   import { onDestroy, tick } from 'svelte';
   import { systemLabel } from '../lib/content-format';
   import { COVER_SIZE, coverSize, setCoverSize } from '../lib/cover-size';
-  import { FIND_SYSTEMS_FROM, findSystems, orderSystems, recentSystems } from '../lib/system-order';
+  import {
+    FIND_SYSTEMS_FROM,
+    findSystems,
+    groupSystems,
+    orderSystems,
+    recentSystems,
+  } from '../lib/system-order';
   import SystemIcon from './SystemIcon.svelte';
   import type { BrowseFilters } from '../lib/library-browser';
   let {
@@ -64,6 +70,13 @@
   const label = (id: string) => systemLabel(id, systems);
   const found = $derived(findSystems(ordered, finding, label));
   const narrowed = $derived(!!finding.trim());
+  const makers = $derived(new Map(systems.map((system) => [system.identifier, system.maker])));
+  /** Grouping is decided by the whole row, so typing does not reshuffle what is left. */
+  const groups = $derived(
+    groupSystems(ordered, $recentSystems, (id) => makers.get(id))
+      .map((group) => ({ ...group, systems: group.systems.filter((system) => found.includes(system)) }))
+      .filter((group) => group.systems.length),
+  );
   function findKey(event: KeyboardEvent) {
     if (event.key === 'Escape' && finding) {
       event.preventDefault();
@@ -176,10 +189,18 @@
             <input type="search" bind:value={finding} onkeydown={findKey} placeholder="Find a system" autocomplete="off" />
           </label>{/if}
         <button type="button" aria-pressed={chosen.length === 0} onclick={() => onchange({ systemIds: [], systemId: '' })}>All systems</button>
-        {#each found as system (system.systemId)}
+        {#snippet chip(system: (typeof ordered)[number])}
           <button type="button" aria-pressed={chosen.includes(system.systemId)} onclick={(event) => choose(system.systemId, event)}>
             <SystemIcon system={system.systemId} />{systemLabel(system.systemId, systems)} <span class="system-count">{system.count}</span>
           </button>
+        {/snippet}
+        {#each groups as group (group.name)}
+          <div class="system-group" role={group.name ? 'group' : undefined} aria-label={group.name || undefined}>
+            {#each group.systems as system, index (system.systemId)}
+              <!-- The name stays on the line of its first system. -->
+              {#if group.name && index === 0}<span class="system-group-head"><span class="system-group-name" aria-hidden="true">{group.name}</span>{@render chip(system)}</span>{:else}{@render chip(system)}{/if}
+            {/each}
+          </div>
         {/each}
         {#if narrowed && !found.length}<span class="dim system-none" role="status">No system by that name</span>{/if}
       </div>

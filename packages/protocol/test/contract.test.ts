@@ -134,3 +134,17 @@ test('Swagger groups every operation and has authored examples for JSON request 
   // A documented mutation with no body cannot be exercised in Swagger UI.
   assert.ok(document.paths['/api/v1/items']?.post?.requestBody?.content?.['application/json']);
 });
+
+test('known systems have unique identifiers and a maker only where one is named', async () => {
+  const { PROVENANCE_SYSTEMS } = await import('../src/index.js');
+  const identifiers = PROVENANCE_SYSTEMS.map((system) => system.identifier);
+  assert.equal(new Set(identifiers).size, identifiers.length);
+  for (const system of PROVENANCE_SYSTEMS)
+    assert.ok(system.maker === undefined || (system.maker.trim() === system.maker && system.maker));
+  const maker = (suffix: string) =>
+    PROVENANCE_SYSTEMS.find((system) => system.identifier === `com.provenance.${suffix}`)?.maker;
+  assert.equal(maker('snes'), 'Nintendo');
+  assert.equal(maker('psx'), 'Sony');
+  assert.equal(maker('mame'), 'Arcade');
+  assert.equal(maker('vectrex'), undefined);
+});
