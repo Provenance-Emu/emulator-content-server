@@ -2,7 +2,8 @@ import { copyFile, mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
 const require = createRequire(new URL('../apps/server/package.json', import.meta.url));
-const output = new URL('../dist/api-reference/', import.meta.url);
+const site = new URL('../dist/api-reference/', import.meta.url);
+const output = new URL('api/', site);
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -19,7 +20,7 @@ const html = `<!doctype html>
     <div class="wrapper">
       <h1>Emulator Content Server REST API</h1>
       <p>Browse operations and examples from the main branch. To run requests, open <code>/docs/</code> on your ECS server.</p>
-      <p><a href="./openapi.yaml">Download OpenAPI YAML</a> · <a href="https://github.com/Provenance-Emu/emulator-content-server/wiki">Project wiki</a></p>
+      <p><a href="../">Emulation Server</a> · <a href="./openapi.yaml">Download OpenAPI YAML</a> · <a href="https://github.com/Provenance-Emu/emulator-content-server/wiki">Project wiki</a></p>
     </div>
   </header>
   <main id="swagger-ui"></main>
@@ -50,11 +51,18 @@ const init = `window.ui = SwaggerUIBundle({
 await mkdir(output, { recursive: true });
 const outputPath = (file) => new URL(file, output);
 await Promise.all([
+  ...['index.html', 'site.css', 'api-link.js'].map((file) =>
+    copyFile(new URL(`../docs/site/${file}`, import.meta.url), new URL(file, site)),
+  ),
   writeFile(outputPath('index.html'), html),
   writeFile(outputPath('init.js'), init),
   copyFile(
     new URL('../packages/protocol/openapi/openapi.yaml', import.meta.url),
     outputPath('openapi.yaml'),
+  ),
+  copyFile(
+    new URL('../packages/protocol/openapi/openapi.yaml', import.meta.url),
+    new URL('openapi.yaml', site),
   ),
   ...['swagger-ui-bundle.js', 'swagger-ui.css', 'LICENSE'].map((file) =>
     copyFile(require.resolve(`swagger-ui-dist/${file}`), outputPath(file)),

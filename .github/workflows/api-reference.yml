@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/api-reference.yml
       - scripts/build-api-reference.mjs
+      - docs/site/**
       - packages/protocol/openapi/openapi.yaml
       - apps/server/package.json
       - pnpm-lock.yaml
