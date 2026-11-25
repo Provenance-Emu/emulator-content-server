@@ -20,6 +20,7 @@
   import CategoryTabs from './components/CategoryTabs.svelte';
   import CollectionToolbar from './components/CollectionToolbar.svelte';
   import { noteSystem } from './lib/system-order';
+  import RecentGames from './components/RecentGames.svelte';
   import CollectionPage from './components/CollectionPage.svelte';
   import ListMore from './components/ListMore.svelte';
   import ViewState from './components/ViewState.svelte';
@@ -144,9 +145,13 @@
     upload = false;
     folders = [];
   }
+  /** What this account played last in this library, newest first. The server decides what is listed.
+   * Declared before anything that can refuse access while the page is still starting. */
+  let recent = $state<LibraryBrowseEntry[]>([]);
   function rejectAccess(status: 401 | 403 | 404) {
     if (disposed || get(application).authEpoch !== authEpoch) return;
     clearDetail();
+    recent = [];
     if (status === 401) {
       void application.signOut();
       disposePrivate();
@@ -335,6 +340,34 @@
       'libraryId' in scope &&
       libraries.some((library) => library.id === scope.libraryId && library.canCreateItems),
   );
+  $effect(() => {
+    const libraryId = scope && 'libraryId' in scope ? scope.libraryId : '';
+    const wanted =
+      $application.capabilities?.features.playHistory === true &&
+      !!libraryId &&
+      $browser.filters.category === 'games';
+    // Read again when the library changes underneath, so a removed game leaves the row.
+    void $application.invalidation;
+    if (!wanted) {
+      recent = [];
+      return;
+    }
+    let stale = false;
+    context.client
+      .browse({ libraryId, category: 'games', played: 'recent', limit: 12 })
+      .then((page) => {
+        if (stale || disposed) return;
+        recent = page.items;
+        void previews.request(page.items);
+      })
+      // The row is an extra: without it the library is whole.
+      .catch(() => {
+        if (!stale) recent = [];
+      });
+    return () => {
+      stale = true;
+    };
+  });
   const filtered = $derived(!!($browser.filters.search || $browser.filters.systemId || $browser.filters.systemIds.length || $browser.filters.rootId));
   const canAdd = $derived(!!(canCreate || (owner && scope && 'libraryId' in scope)));
   /** Marks the browser-history entry that stands for an open game. */
@@ -544,6 +577,12 @@
           This list changed on the server.
           <button type="button" onclick={refreshCollection}>Load it again</button>
         </p>{/if}
+      {#if recent.length && !filtered && !$browser.failure && $browser.items.length}<RecentGames
+          items={recent}
+          {systems}
+          urls={$previews.urls}
+          onopen={open}
+        />{/if}
       <CollectionPage
         items={$browser.items}
         {systems}

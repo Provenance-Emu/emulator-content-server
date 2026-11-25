@@ -509,6 +509,21 @@ export const MIGRATIONS: readonly Migration[] = [
     UPDATE source_match_selections SET content_sha256=ecs_sha256(content) WHERE content IS NOT NULL;
   `,
   },
+  {
+    // What an account played and when, one row a game, so every device can show it. The game is
+    // named by identifier only: whether it may still be listed is decided when it is read.
+    version: 27,
+    sql: `
+    CREATE TABLE play_history (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      entity_type TEXT NOT NULL CHECK (entity_type IN ('item', 'source')),
+      entity_id TEXT NOT NULL,
+      played_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, entity_type, entity_id)
+    );
+    CREATE INDEX play_history_recent ON play_history(user_id, played_at);
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

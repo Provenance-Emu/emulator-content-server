@@ -160,6 +160,9 @@ export function registerLibraryBrowse(
       )
         throw new DomainError('not-found', 404, 'Folder is not available');
     }
+    const played = query(request, 'played');
+    if (played !== undefined && (played !== 'recent' || category !== 'games'))
+      throw new DomainError('invalid-query', 400, 'played=recent applies to category=games');
     const selection: BrowseSelection = {
       actor,
       libraryId,
@@ -171,6 +174,7 @@ export function registerLibraryBrowse(
       sort,
       limit,
       includeRomDownload: includeRomDownload === 'true',
+      ...(played ? { played: 'recent' as const } : {}),
     };
     const fingerprint = createHash('sha256')
       .update(
@@ -197,6 +201,8 @@ export function registerLibraryBrowse(
       )
       .digest('hex');
     const cursor = query(request, 'cursor');
+    if (cursor && played)
+      throw new DomainError('invalid-query', 400, 'played=recent is one page without a cursor');
     if (cursor) {
       selection.position = decodeBrowseCursor(cursor, fingerprint);
       if (!selection.position)
@@ -321,6 +327,7 @@ export function registerLibraryBrowse(
                 : {}),
               canUpload: canWrite(catalog, actor, row.item),
               canAdopt: false,
+              ...(row.playedAt ? { lastPlayedAt: row.playedAt } : {}),
             };
           }
           if (row.entityType === 'asset') {
@@ -355,12 +362,35 @@ export function registerLibraryBrowse(
             source: sources.get(row.source.id),
             canUpload: false,
             canAdopt: false,
+            ...(row.playedAt ? { lastPlayedAt: row.playedAt } : {}),
           };
         }),
       ),
       systemCounts: page.systemCounts,
       nextCursor: page.next ? encodeBrowseCursor(fingerprint, page.next) : null,
     };
+  });
+  app.post('/api/v1/plays', async (request, reply) => {
+    const actor = requireActor(request);
+    if (actor.kind !== 'user')
+      throw new DomainError('forbidden', 403, 'A guest link keeps no play history');
+    if (!actor.scopes.includes('read'))
+      throw new DomainError('forbidden', 403, 'Read permission is required');
+    const body = jsonObject(request.body);
+    const sourceId = body.sourceId;
+    const itemId = body.itemId;
+    const id = sourceId ?? itemId;
+    if (
+      (sourceId === undefined) === (itemId === undefined) ||
+      typeof id !== 'string' ||
+      !id ||
+      id.length > 200
+    )
+      throw new DomainError('invalid-body', 400, 'Send exactly one of sourceId or itemId');
+    // One answer whether the game is missing or not this account's to see.
+    if (!catalog.recordPlay(actor, { entityType: sourceId === undefined ? 'item' : 'source', id }))
+      throw new DomainError('not-found', 404, 'Game is not available');
+    return reply.code(204).send();
   });
   app.get('/api/v1/root-summaries', async (request) => {
     const actor = requireOwner(request, 'Only the server owner can read folder summaries');

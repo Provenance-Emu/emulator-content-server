@@ -135,6 +135,8 @@ export type LibraryBrowseQuery = LibraryScope & {
   sort?: BrowseSort;
   cursor?: string;
   limit?: number;
+  /** Only games this account has played, most recent first. One page; no sort or cursor. */
+  played?: 'recent';
 };
 
 export interface ResumePlan {
@@ -658,6 +660,20 @@ export class ContentClient {
     );
     validateBrowsePage(page);
     return page;
+  }
+
+  /**
+   * Notes that this account started a game, so `browse({ played: 'recent' })` lists it on every
+   * device. Check `capabilities().features.playHistory`; an older server answers 404.
+   */
+  async recordPlay(target: { sourceId: string } | { itemId: string }): Promise<void> {
+    const response = await fetch(this.url('/api/v1/plays'), {
+      method: 'POST',
+      headers: { ...this.headers(), 'content-type': 'application/json' },
+      body: JSON.stringify(target),
+      signal: this.requestSignal(),
+    });
+    if (!response.ok) throw await failure(response);
   }
 
   browseLibraries(): Promise<LibraryList> {

@@ -21,13 +21,14 @@ import {
 import { InvestigatorRepository } from './investigators.js';
 import {
   type BrowsePosition,
-  type BrowseRecord,
   type BrowseSelection,
   browseKeys,
   browseRomDownloads,
   browseSystemCounts,
   type ContentRootSummaryRecord,
+  type PlayedRecord,
   type RootSummaryFilter,
+  recordPlay,
 } from './library-browse.js';
 import { LibraryJobRepository } from './library-jobs.js';
 import { pendingMigrations } from './schema.js';
@@ -687,14 +688,23 @@ export class CatalogDatabase {
     return { id, name, ownerId, revision: 1, createdAt };
   }
 
+  /** False when the game is not one this account can list. */
+  recordPlay(
+    actor: Actor,
+    target: { entityType: 'item' | 'source'; id: string },
+    playedAt = new Date().toISOString(),
+  ): boolean {
+    return this.transaction(() => recordPlay(this.db, actor, target, playedAt));
+  }
+
   browseLibrary(input: BrowseSelection): {
-    items: BrowseRecord[];
+    items: PlayedRecord[];
     next: BrowsePosition | null;
     systemCounts: { systemId: string; count: number }[];
   } {
     return this.transaction(() => {
       const keys = browseKeys(this.db, input);
-      const more = keys.length > input.limit;
+      const more = !input.played && keys.length > input.limit;
       const selected = keys.slice(0, input.limit);
       const downloads = input.includeRomDownload
         ? browseRomDownloads(
@@ -703,7 +713,8 @@ export class CatalogDatabase {
             selected.filter((key) => key.entity_type === 'item').map((key) => key.id),
           )
         : undefined;
-      const items: BrowseRecord[] = selected.map((key) => {
+      const items: PlayedRecord[] = selected.map((key) => {
+        const played = key.played_at ? { playedAt: key.played_at } : {};
         if (key.entity_type === 'item') {
           const item = this.getItem(key.id);
           if (!item) throw new DomainError('not-found', 404, 'Item not found');
@@ -712,12 +723,13 @@ export class CatalogDatabase {
             item,
             previewAsset: key.preview_id ? this.getAsset(key.preview_id) : null,
             ...(downloads ? { romDownload: downloads.get(item.id) } : {}),
+            ...played,
           };
         }
         if (key.entity_type === 'source') {
           const source = this.getSource(key.id);
           if (!source) throw new DomainError('not-found', 404, 'Source not found');
-          return { entityType: 'source', source };
+          return { entityType: 'source', source, ...played };
         }
         const asset = this.getAsset(key.id);
         if (!asset) throw new DomainError('not-found', 404, 'Asset not found');

@@ -339,3 +339,45 @@ test('version 19 preserves selection bytes, backfills artwork roles, and opens r
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('version 27 adds play history to a catalog that has rows, and opens twice', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ecs-migrate-'));
+  const filename = join(dir, 'library.sqlite');
+  try {
+    // A catalog as version 26 left it: everything but the new table and its ledger row.
+    new CatalogDatabase(filename).close();
+    const earlier = new DatabaseSync(filename);
+    earlier.exec('DROP TABLE play_history; DELETE FROM schema_migrations WHERE version = 27;');
+    earlier
+      .prepare(
+        'INSERT INTO users (id, username, password_hash, is_owner, created_at) VALUES (?, ?, ?, 1, ?)',
+      )
+      .run('owner-1', 'owner', 'not-a-password-hash', '2026-11-20T00:00:00Z');
+    earlier.close();
+
+    for (const round of [1, 2]) {
+      const catalog = new CatalogDatabase(filename);
+      try {
+        assert.equal(catalog.integrity(), 'ok');
+        assert.equal(catalog.listUsers()[0]?.username, 'owner', `round ${round}`);
+      } finally {
+        catalog.close();
+      }
+    }
+    const inspect = new DatabaseSync(filename);
+    try {
+      assert.deepEqual(
+        { ...inspect.prepare('SELECT COUNT(*) AS n FROM play_history').get() },
+        {
+          n: 0,
+        },
+      );
+      const ledger = inspect.prepare('SELECT MAX(version) AS v FROM schema_migrations').get();
+      assert.equal((ledger as { v: number }).v, SCHEMA_VERSION);
+    } finally {
+      inspect.close();
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

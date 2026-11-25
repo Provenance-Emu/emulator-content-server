@@ -17,6 +17,7 @@ export interface Capabilities {
     webdav: boolean;
     natTraversal: boolean;
     webPlayback?: boolean;
+    playHistory?: boolean;
     romDownloadSummaries?: boolean;
     gameCompanions?: boolean;
     gameCopySelection?: boolean;
@@ -59,6 +60,7 @@ export function buildCapabilities(input: {
       webdav: input.webdavEnabled === true,
       natTraversal: false,
       webPlayback: input.webPlayback === true,
+      playHistory: true,
       romDownloadSummaries: true,
       gameCompanions: true,
       gameCopySelection: true,

@@ -141,6 +141,7 @@
     "POST /api/v1/player/isolated-sessions",
     "POST /api/v1/player/management/install",
     "POST /api/v1/player/management/install/:id",
+    "POST /api/v1/plays",
     "POST /api/v1/plugins/defaults",
     "POST /api/v1/plugins/doctor",
     "POST /api/v1/roots",
@@ -365,6 +366,7 @@
         "localOwnerSignIn",
         "multiRange",
         "natTraversal",
+        "playHistory",
         "rangeRequests",
         "resumableUploads",
         "romDownloadSummaries",
@@ -1835,6 +1837,7 @@
         "entityType",
         "id",
         "item",
+        "lastPlayedAt",
         "libraryId",
         "name",
         "parentItem",
@@ -1852,6 +1855,13 @@
         "name",
         "systemId"
       ]
+    },
+    "PlayRecordRequest": {
+      "properties": [
+        "itemId",
+        "sourceId"
+      ],
+      "required": []
     },
     "GameSourceLink": {
       "properties": [

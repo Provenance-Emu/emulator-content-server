@@ -100,6 +100,7 @@ export interface FeatureFlags {
   webdav: boolean;
   natTraversal: boolean;
   webPlayback?: boolean;
+  playHistory?: boolean;
   romDownloadSummaries?: boolean;
   gameCompanions?: boolean;
   gameCopySelection?: boolean;
@@ -879,6 +880,12 @@ export interface LibraryBrowseEntry {
   parentItem?: Item;
   previewAsset?: Asset;
   romDownload?: RomDownloadSummary;
+  lastPlayedAt?: string;
+}
+
+export interface PlayRecordRequest {
+  sourceId?: string;
+  itemId?: string;
 }
 
 export interface GameSourceLink {

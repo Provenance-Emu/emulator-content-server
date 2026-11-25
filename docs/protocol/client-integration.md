@@ -61,6 +61,14 @@ A game grid needs one request per page and no ROM downloads. Each `source` row i
 
 Covers are returned at their stored size (up to 8 MB, usually far smaller). Downscale on the device and cache the result. The Authorization header is required, so configure the image loader with a request modifier; a bare URL loader such as `AsyncImage` cannot fetch a cover.
 
+## Show what was played last
+
+When `capabilities.features.playHistory` is true, tell the server when someone starts a game: `POST /api/v1/plays` with `{"sourceId": "…"}` for a scanned file or `{"itemId": "…"}` for an uploaded game. It answers `204`. Do it once the game is running, not when its page opens, and do not make playing wait on it or fail because of it.
+
+`GET /api/v1/browse?libraryId=…&category=games&played=recent&limit=12` then returns the games that account has played in that library, most recent first, each with `lastPlayedAt`. The entries are the same as on any browse page, so a row of covers needs nothing else. It is one page: `sort` and `cursor` do not apply.
+
+The history belongs to the signed-in account and follows it to every device. A guest link keeps none: recording answers `403` and the list is empty. Only the latest time for each game is kept, for the 200 most recent games. A game the account can no longer see is not listed, and recording one it cannot see answers `404`.
+
 ## Edit a game's details from a device
 
 An app that lets the user rename a game or change its cover can save the change back with two routes. Check `features.sourceDetailsWrite` in `GET /api/v1/capabilities` first; an older server does not have them.

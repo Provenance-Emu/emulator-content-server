@@ -328,6 +328,8 @@
         progress(step) { loadingStep = step; },
       });
       if(disposed){session?.releaseLoader();return;}
+      // The library's Recently played row. Playing never waits on it or fails because of it.
+      void client.recordPlay(sourceId ? { sourceId } : { itemId: targetId }).catch(() => {});
       inputSession=new InputSession(session.runtime,createInputPreferences(window.location.origin,session.prepared.core,sourceId?`source:${sourceId}`:targetId?`item:${targetId}`:undefined));
       unsubscribeInput=inputSession.subscribe(()=>inputRevision++);
       const input=inputSession;const prepared=session.prepared;

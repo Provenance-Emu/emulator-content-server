@@ -26,7 +26,11 @@ export interface BrowseSelection {
   limit: number;
   position?: BrowsePosition | null;
   includeRomDownload?: boolean;
+  /** Only what this account has played, most recent first. One page, no cursor. */
+  played?: 'recent';
 }
+/** Plays kept for an account. Older ones fall off as new games are played. */
+export const PLAY_HISTORY_LIMIT = 200;
 interface RomDownloadSummary {
   romFileCount: number;
   requiresSystemFiles: boolean;
@@ -42,6 +46,7 @@ export type BrowseRecord =
     }
   | { entityType: 'asset'; asset: AssetRecord; item: ItemRecord }
   | { entityType: 'source'; source: SourceFileRecord };
+export type PlayedRecord = BrowseRecord & { playedAt?: string };
 export interface RootSummaryFilter {
   actor: Actor;
   libraryId?: string | null;
@@ -180,8 +185,34 @@ export function browseSystemCounts(
 export function browseKeys(
   db: DatabaseSync,
   input: BrowseSelection,
-): { entity_type: BrowsePosition['entityType']; id: string; preview_id: string | null }[] {
+): {
+  entity_type: BrowsePosition['entityType'];
+  id: string;
+  preview_id: string | null;
+  played_at?: string;
+}[] {
   const { projection, params } = projectionFor(input);
+  if (input.played) {
+    // The same projection as any page decides what may be listed; the history only orders it.
+    // A file played before it was joined to a game counts for that game.
+    const user = input.actor.kind === 'user' ? input.actor.userId : null;
+    return db
+      .prepare(`${projection}, played AS (
+        SELECT entity_type, entity_id AS id, played_at FROM play_history WHERE user_id = ?
+        UNION ALL
+        SELECT 'item', g.item_id, p.played_at FROM play_history p
+        JOIN game_source_copies g ON g.source_id = p.entity_id
+        WHERE p.user_id = ? AND p.entity_type = 'source')
+      SELECT e.entity_type, e.id, e.preview_id, MAX(p.played_at) AS played_at
+      FROM played p JOIN eligible e ON e.entity_type = p.entity_type AND e.id = p.id
+      GROUP BY e.entity_type, e.id ORDER BY played_at DESC, e.id LIMIT ?`)
+      .all(...params, user, user, input.limit) as Array<{
+      entity_type: BrowsePosition['entityType'];
+      id: string;
+      preview_id: string | null;
+      played_at: string;
+    }>;
+  }
   // Both anchor and page use the same projection so revoked access or changed filters
   // cannot retain a formerly readable name in a keyset comparison.
   const direction = input.sort === 'name_desc' ? 'DESC' : 'ASC';
@@ -246,4 +277,63 @@ export function browseRomDownloads(
         : {}),
     });
   return summaries;
+}
+
+/**
+ * Notes that an account started a game. The game must be one the account can list right now, by
+ * the same projection a page uses, so nothing is recorded about a game it cannot see. Returns
+ * false when it is not available.
+ */
+export function recordPlay(
+  db: DatabaseSync,
+  actor: Actor,
+  target: { entityType: 'item' | 'source'; id: string },
+  playedAt: string,
+): boolean {
+  if (actor.kind !== 'user') return false;
+  let { entityType, id } = target;
+  let libraryId: string | null;
+  if (entityType === 'source') {
+    const source = db
+      .prepare(`SELECT r.library_id AS library_id,
+        (SELECT g.item_id FROM game_source_copies g JOIN items i ON i.id = g.item_id
+         WHERE g.source_id = s.id AND i.deleted_at IS NULL AND i.library_id = r.library_id) AS item_id
+        FROM live_source_files s JOIN content_roots r ON r.id = s.root_id WHERE s.id = ?`)
+      .get(id) as { library_id: string | null; item_id: string | null } | undefined;
+    if (!source) return false;
+    libraryId = source.library_id;
+    // A file that belongs to a game is listed as that game.
+    if (source.item_id) {
+      entityType = 'item';
+      id = source.item_id;
+    }
+  } else {
+    const item = db
+      .prepare('SELECT library_id FROM items WHERE id = ? AND deleted_at IS NULL')
+      .get(id) as { library_id: string } | undefined;
+    if (!item) return false;
+    libraryId = item.library_id;
+  }
+  const { projection, params } = projectionFor({
+    actor,
+    libraryId,
+    category: 'games',
+    sort: 'name_asc',
+    limit: 1,
+  });
+  const listed = db
+    .prepare(`${projection} SELECT 1 FROM eligible WHERE entity_type = ? AND id = ? LIMIT 1`)
+    .get(...params, entityType, id);
+  if (!listed) return false;
+  db.prepare(`INSERT INTO play_history (user_id, entity_type, entity_id, played_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT (user_id, entity_type, entity_id) DO UPDATE SET played_at = excluded.played_at
+    WHERE excluded.played_at > play_history.played_at`).run(actor.userId, entityType, id, playedAt);
+  db.prepare(`DELETE FROM play_history WHERE user_id = ? AND rowid NOT IN (
+    SELECT rowid FROM play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT ?)`).run(
+    actor.userId,
+    actor.userId,
+    PLAY_HISTORY_LIMIT,
+  );
+  return true;
 }

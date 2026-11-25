@@ -192,13 +192,14 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var webdav: Bool
     public var natTraversal: Bool
     public var webPlayback: Bool?
+    public var playHistory: Bool?
     public var romDownloadSummaries: Bool?
     public var gameCompanions: Bool?
     public var gameCopySelection: Bool?
     public var sourceDetailsWrite: Bool?
     public var localOwnerSignIn: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, gameCopySelection: Bool? = nil, sourceDetailsWrite: Bool? = nil, localOwnerSignIn: Bool? = nil) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, playHistory: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, gameCopySelection: Bool? = nil, sourceDetailsWrite: Bool? = nil, localOwnerSignIn: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -208,6 +209,7 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.webdav = webdav
         self.natTraversal = natTraversal
         self.webPlayback = webPlayback
+        self.playHistory = playHistory
         self.romDownloadSummaries = romDownloadSummaries
         self.gameCompanions = gameCompanions
         self.gameCopySelection = gameCopySelection
@@ -1746,8 +1748,9 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
     public var parentItem: Item?
     public var previewAsset: Asset?
     public var romDownload: RomDownloadSummary?
+    public var lastPlayedAt: String?
 
-    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil, romDownload: RomDownloadSummary? = nil) {
+    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil, romDownload: RomDownloadSummary? = nil, lastPlayedAt: String? = nil) {
         self.entityType = entityType
         self.id = id
         self.name = name
@@ -1761,6 +1764,17 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
         self.parentItem = parentItem
         self.previewAsset = previewAsset
         self.romDownload = romDownload
+        self.lastPlayedAt = lastPlayedAt
+    }
+}
+
+public struct PlayRecordRequest: Codable, Equatable, Sendable {
+    public var sourceId: String?
+    public var itemId: String?
+
+    public init(sourceId: String? = nil, itemId: String? = nil) {
+        self.sourceId = sourceId
+        self.itemId = itemId
     }
 }
 
