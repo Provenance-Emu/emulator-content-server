@@ -82,7 +82,20 @@ export function registerIcloudRoutes(
   store: StoreImportedSave,
 ): void {
   const options = context.icloud;
-  if (!options) return;
+  if (!options) {
+    // Every operation in the contract exists on every server; without a token each says so.
+    const absent = async () => {
+      throw new DomainError('not-found', 404, 'iCloud saves are not set up on this server');
+    };
+    app.get('/api/v1/icloud', absent);
+    app.post('/api/v1/icloud/sign-in', absent);
+    app.put('/api/v1/icloud/session', absent);
+    app.delete('/api/v1/icloud/session', absent);
+    app.post('/api/v1/icloud/preview', absent);
+    app.post('/api/v1/icloud/import', absent);
+    app.post('/api/v1/icloud/import/cancel', absent);
+    return;
+  }
   const { catalog } = context;
   const container = options.container ?? ICLOUD_CONTAINER;
   const origin = `icloud:${container}`;

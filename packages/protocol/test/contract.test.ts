@@ -148,3 +148,20 @@ test('known systems have unique identifiers and a maker only where one is named'
   assert.equal(maker('mame'), 'Arcade');
   assert.equal(maker('vectrex'), undefined);
 });
+
+test('a one-line description with a comma is quoted, so it does not spill into stray keys', () => {
+  // `{ description: One thing, or another. }` parses as two keys, the second with no value.
+  // The generators that build the source SDKs reject the document for it.
+  const stray: string[] = [];
+  const walk = (value: unknown, path: string) => {
+    if (Array.isArray(value)) value.forEach((entry, index) => walk(entry, `${path}[${index}]`));
+    else if (value && typeof value === 'object')
+      for (const [key, child] of Object.entries(value)) {
+        if (key === 'example' || key === 'examples' || key === 'default') continue;
+        if (child === null) stray.push(`${path}.${key}`);
+        else walk(child, `${path}.${key}`);
+      }
+  };
+  walk(parse(readFileSync(openApiFile(), 'utf8')), '');
+  assert.deepEqual(stray, []);
+});

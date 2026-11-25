@@ -742,7 +742,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/IcloudStatus' }
         '400': { description: webAuthToken is missing or too long. }
-        '403': { description: Only the server owner can use iCloud saves, or Apple refused the sign-in. }
+        '403': { description: "Only the server owner can use iCloud saves, or Apple refused the sign-in." }
         '404': { description: This server has no iCloud API token. }
         '502': { description: Apple did not answer as expected. }
     delete:
@@ -764,7 +764,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/IcloudPreview' }
         '403': { description: Only the server owner can use iCloud saves. }
-        '409': { description: Not connected, the sign-in ran out, or an import is running. }
+        '409': { description: "Not connected, the sign-in ran out, or an import is running." }
         '502': { description: Apple did not answer as expected. }
   /api/v1/icloud/import:
     post:
@@ -778,14 +778,14 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/IcloudImport' }
         '403': { description: Only the server owner can use iCloud saves. }
-        '409': { description: Not connected, or an import is already running. }
+        '409': { description: "Not connected, or an import is already running." }
   /api/v1/icloud/import/cancel:
     post:
       operationId: icloudCancelImport
       tags: [Server and plugins]
       description: Actual owner only. Stops a running import after the save it is copying. Saves already brought in stay.
       responses:
-        '204': { description: Stopping, or nothing was running. }
+        '204': { description: "Stopping, or nothing was running." }
         '403': { description: Only the server owner can use iCloud saves. }
   /api/v1/browse-libraries:
     get:
@@ -2921,7 +2921,7 @@ components:
       required: [kind, id, name, libraryId, itemId, itemTitle, systemIdentifier, size, fileCount, deletedAt, purgeAfter, itemDeleted]
       properties:
         kind: { type: string, enum: [item, file] }
-        id: { type: string, description: Item id when kind is item, file id when kind is file. }
+        id: { type: string, description: "Item id when kind is item, file id when kind is file." }
         name: { type: string }
         libraryId: { type: string }
         itemId: { type: string }
@@ -2971,12 +2971,12 @@ components:
         natTraversal: { type: boolean }
         webPlayback: { type: boolean }
         playHistory: { type: boolean, description: Supports recordPlay and browse played=recent. }
-        icloudSaves: { type: boolean, description: The server has an iCloud API token, so the owner can bring saves in from iCloud with the icloud operations. }
+        icloudSaves: { type: boolean, description: "The server has an iCloud API token, so the owner can bring saves in from iCloud with the icloud operations." }
         romDownloadSummaries: { type: boolean, description: Supports the opt-in ROM download summary on browse rows. }
         gameCompanions: { type: boolean, description: Supports companion discovery and authorized downloads. Inspect supportedKinds on each game. }
         gameCopySelection: { type: boolean, description: Supports game copy links and per-system ROM format negotiation. }
         sourceDetailsWrite: { type: boolean, description: Supports saving a game's title and details and cover from a device with saveSourceDetails and saveSourceCover. }
-        localOwnerSignIn: { type: boolean, description: The server wrote a local owner key this run, so localSignIn works from this computer. }
+        localOwnerSignIn: { type: boolean, description: "The server wrote a local owner key this run, so localSignIn works from this computer." }
     PlayerCoreResource:
       type: object
       required: [url, sha256, sizeBytes]
@@ -4014,7 +4014,7 @@ components:
         saves: { type: integer, description: Save states found in iCloud. }
         bytes: { type: integer, description: Their size together. }
         games: { type: integer, description: Games those saves belong to. }
-        gamesHere: { type: integer, description: Of those, games this server has. }
+        gamesHere: { type: integer, description: "Of those, games this server has." }
         ready: { type: integer, description: Saves an import would copy now. }
         alreadyHere: { type: integer, description: Saves brought in before. }
         unmatched:
@@ -4025,7 +4025,7 @@ components:
       type: object
       required: [gameId, systemIdentifier, saves]
       properties:
-        gameId: { type: string, description: The identifier the app filed the saves under, usually the game's MD5. }
+        gameId: { type: string, description: "The identifier the app filed the saves under, usually the game's MD5." }
         systemIdentifier: { type: [string, 'null'] }
         saves: { type: integer }
     IcloudImport:
@@ -4036,11 +4036,11 @@ components:
         total: { type: integer }
         processed: { type: integer }
         imported: { type: integer, description: Saves copied in. }
-        skipped: { type: integer, description: Saves with no game here, or brought in before. }
+        skipped: { type: integer, description: "Saves with no game here, or brought in before." }
         failed: { type: integer, description: Saves that could not be downloaded. They are tried again next time. }
         startedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
-        message: { type: [string, 'null'], description: Why it stopped, in plain words. }
+        message: { type: [string, 'null'], description: "Why it stopped, in plain words." }
     GameSourceLink:
       type: object
       properties:
@@ -4133,7 +4133,7 @@ components:
         sizeBytes: { type: integer, format: int64, minimum: 1 }
         sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
         contentPath: { type: string }
-        format: { type: string, description: Patch format such as ips, bps, or ups. }
+        format: { type: string, description: "Patch format such as ips, bps, or ups." }
         base: { $ref: '#/components/schemas/CompanionBase' }
     CompanionBase:
       type: object
