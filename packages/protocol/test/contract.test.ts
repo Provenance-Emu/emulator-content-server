@@ -154,8 +154,9 @@ test('a one-line description with a comma is quoted, so it does not spill into s
   // The generators that build the source SDKs reject the document for it.
   const stray: string[] = [];
   const walk = (value: unknown, path: string) => {
-    if (Array.isArray(value)) value.forEach((entry, index) => walk(entry, `${path}[${index}]`));
-    else if (value && typeof value === 'object')
+    if (Array.isArray(value)) {
+      for (const [index, entry] of value.entries()) walk(entry, `${path}[${index}]`);
+    } else if (value && typeof value === 'object')
       for (const [key, child] of Object.entries(value)) {
         if (key === 'example' || key === 'examples' || key === 'default') continue;
         if (child === null) stray.push(`${path}.${key}`);
