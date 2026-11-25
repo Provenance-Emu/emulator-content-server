@@ -31,6 +31,14 @@ import {
   recordPlay,
 } from './library-browse.js';
 import { LibraryJobRepository } from './library-jobs.js';
+import {
+  type GameForDigest,
+  gameForMd5,
+  importedSaveKeys,
+  liveSaveWithDigest,
+  recordSaveImport,
+  type SaveImportRecord,
+} from './save-imports.js';
 import { pendingMigrations } from './schema.js';
 import {
   companionDirectory,
@@ -2797,6 +2805,23 @@ export class CatalogDatabase {
 
   forgetBlob(sha256: string): boolean {
     return this.trash.forgetBlob(sha256);
+  }
+
+  /** The game a ROM digest names, or a scanned file with that digest and no game entry yet. */
+  gameForMd5(md5: string): GameForDigest | null {
+    return gameForMd5(this.db, md5);
+  }
+
+  importedSaveKeys(origin: string): Set<string> {
+    return importedSaveKeys(this.db, origin);
+  }
+
+  recordSaveImport(input: SaveImportRecord): void {
+    recordSaveImport(this.db, input, nowIso());
+  }
+
+  liveSaveWithDigest(itemId: string, sha256: string): string | null {
+    return liveSaveWithDigest(this.db, itemId, sha256);
   }
 
   gameForSource(sourceId: string): ItemRecord | null {

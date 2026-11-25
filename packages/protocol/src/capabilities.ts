@@ -18,6 +18,8 @@ export interface Capabilities {
     natTraversal: boolean;
     webPlayback?: boolean;
     playHistory?: boolean;
+    /** The owner can bring saves in from iCloud. */
+    icloudSaves?: boolean;
     romDownloadSummaries?: boolean;
     gameCompanions?: boolean;
     gameCopySelection?: boolean;
@@ -44,6 +46,8 @@ export function buildCapabilities(input: {
   localOwnerSignIn?: boolean;
   webdavEnabled?: boolean;
   webPlayback?: boolean;
+  /** True when the server was given an iCloud API token. */
+  icloudSaves?: boolean;
   /** Days a deleted game or file stays restorable. Omit when the server keeps no trash. */
   trashRetentionDays?: number;
 }): Capabilities {
@@ -61,6 +65,7 @@ export function buildCapabilities(input: {
       natTraversal: false,
       webPlayback: input.webPlayback === true,
       playHistory: true,
+      ...(input.icloudSaves === true ? { icloudSaves: true } : {}),
       romDownloadSummaries: true,
       gameCompanions: true,
       gameCopySelection: true,

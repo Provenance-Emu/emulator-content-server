@@ -524,6 +524,28 @@ export const MIGRATIONS: readonly Migration[] = [
     CREATE INDEX play_history_recent ON play_history(user_id, played_at);
   `,
   },
+  {
+    // One row for each record brought in from an outside store of saves, so the same record is
+    // copied once and a file can say where it came from. The file row may be deleted later; the
+    // record stays remembered so a deleted save is not brought back uninvited.
+    version: 28,
+    sql: `
+    CREATE TABLE save_imports (
+      origin TEXT NOT NULL,
+      record_name TEXT NOT NULL,
+      change_tag TEXT NOT NULL,
+      asset_id TEXT REFERENCES assets(id) ON DELETE SET NULL,
+      device TEXT,
+      modified_at TEXT,
+      imported_at TEXT NOT NULL,
+      PRIMARY KEY (origin, record_name, change_tag)
+    );
+    CREATE INDEX save_imports_asset ON save_imports(asset_id);
+    CREATE INDEX items_md5 ON items(md5) WHERE md5 IS NOT NULL;
+    CREATE INDEX assets_md5 ON assets(md5) WHERE md5 IS NOT NULL;
+    CREATE INDEX source_fingerprints_md5 ON source_fingerprints(md5);
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

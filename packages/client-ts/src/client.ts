@@ -56,6 +56,9 @@ import type {
   GuestGrantCreated,
   GuestGrantDraft,
   GuestGrantList,
+  IcloudImport,
+  IcloudPreview,
+  IcloudStatus,
   InvestigatorCreated,
   InvestigatorDiagnostics,
   InvestigatorDraft,
@@ -674,6 +677,57 @@ export class ContentClient {
       signal: this.requestSignal(),
     });
     if (!response.ok) throw await failure(response);
+  }
+
+  /** Owner only. Check `capabilities().features.icloudSaves` first; otherwise this is a 404. */
+  icloudStatus(): Promise<IcloudStatus> {
+    return this.getJson('/api/v1/icloud');
+  }
+
+  /** The address of Apple's sign-in page. Open it in a new window and pass on what it hands back. */
+  async icloudSignIn(): Promise<string> {
+    return (await this.icloudSend<{ signInUrl: string }>('POST', '/sign-in')).signInUrl;
+  }
+
+  /** Hands the server the token Apple gave the sign-in window. Keep no copy of it. */
+  icloudConnect(webAuthToken: string): Promise<IcloudStatus> {
+    return this.icloudSend('PUT', '/session', { webAuthToken });
+  }
+
+  async icloudDisconnect(): Promise<void> {
+    await this.icloudSend('DELETE', '/session');
+  }
+
+  /** Counts the saves in iCloud and which belong to games here. Copies nothing. */
+  icloudPreview(): Promise<IcloudPreview> {
+    return this.icloudSend('POST', '/preview');
+  }
+
+  /** Starts copying in the background. Read progress from `icloudStatus()`. */
+  icloudImport(): Promise<IcloudImport> {
+    return this.icloudSend('POST', '/import');
+  }
+
+  async icloudCancelImport(): Promise<void> {
+    await this.icloudSend('POST', '/import/cancel');
+  }
+
+  private async icloudSend<T>(
+    method: 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
+    const response = await fetch(this.url(`/api/v1/icloud${path}`), {
+      method,
+      headers: {
+        ...this.headers(),
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: this.requestSignal(),
+    });
+    if (!response.ok) throw await failure(response);
+    return (response.status === 204 ? undefined : await response.json()) as T;
   }
 
   browseLibraries(): Promise<LibraryList> {

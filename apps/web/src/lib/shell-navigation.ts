@@ -3,6 +3,7 @@ export const settingsSections = [
   { id: 'scans', label: 'Scans & details', group: 'Collection' },
   { id: 'storage', label: 'Storage', group: 'Collection' },
   { id: 'emulators', label: 'Emulators', group: 'Collection' },
+  { id: 'icloud', label: 'iCloud saves', group: 'Collection' },
   { id: 'trash', label: 'Trash', group: 'Collection' },
   { id: 'plugins', label: 'Plugins', group: 'Server' },
   { id: 'access', label: 'Access', group: 'Sharing' },

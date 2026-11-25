@@ -31,6 +31,7 @@ export {
   type LibraryJobScope,
   PROVIDERS_FAILED_REASON,
 } from './library-jobs.js';
+export { type GameForDigest, type SaveImportRecord, saveImportKey } from './save-imports.js';
 export { MIGRATIONS, type Migration, pendingMigrations, SCHEMA_VERSION } from './schema.js';
 export {
   type PurgeResult,

@@ -694,6 +694,99 @@ paths:
         '401': { description: Authentication required. }
         '403': { description: Read scope and a user account are required; a guest link keeps no play history. }
         '404': { description: The game is not available to this account. }
+  /api/v1/icloud:
+    get:
+      operationId: icloudStatus
+      tags: [Server and plugins]
+      description: Actual owner only. Whether an Apple sign-in is held for bringing saves in from iCloud, the last preview, and the progress of an import. Offered only when capabilities.features.icloudSaves is true. The server only ever reads iCloud.
+      responses:
+        '200':
+          description: Current state.
+          content:
+            application/json:
+              example: {"connected": false, "container": "iCloud.org.provenance-emu.provenance"}
+              schema: { $ref: '#/components/schemas/IcloudStatus' }
+        '401': { description: Authentication required. }
+        '403': { description: Only the server owner can use iCloud saves. }
+        '404': { description: This server has no iCloud API token. }
+  /api/v1/icloud/sign-in:
+    post:
+      operationId: icloudSignIn
+      tags: [Server and plugins]
+      description: Actual owner only. Asks Apple for the address of its sign-in page. Open it in a new window; Apple hands that window's opener a message whose data carries ckWebAuthToken. Send that value to icloudConnect.
+      responses:
+        '200':
+          description: Where to sign in.
+          content:
+            application/json:
+              example: {"signInUrl": "https://idmsa.apple.com/appleauth/auth/authorize/signin"}
+              schema: { $ref: '#/components/schemas/IcloudSignIn' }
+        '403': { description: Only the server owner can use iCloud saves. }
+        '404': { description: This server has no iCloud API token. }
+        '502': { description: Apple did not answer as expected. }
+  /api/v1/icloud/session:
+    put:
+      operationId: icloudConnect
+      tags: [Server and plugins]
+      description: Actual owner only. Hands the server the web auth token Apple gave the sign-in window. The server checks it with Apple, holds it in memory until disconnect or restart, and never returns or stores it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"webAuthToken": "value-from-the-sign-in-window"}
+            schema: { $ref: '#/components/schemas/IcloudConnect' }
+      responses:
+        '200':
+          description: Connected.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IcloudStatus' }
+        '400': { description: webAuthToken is missing or too long. }
+        '403': { description: Only the server owner can use iCloud saves, or Apple refused the sign-in. }
+        '404': { description: This server has no iCloud API token. }
+        '502': { description: Apple did not answer as expected. }
+    delete:
+      operationId: icloudDisconnect
+      tags: [Server and plugins]
+      description: Actual owner only. Forgets the Apple sign-in and stops a running import. Saves already brought in stay.
+      responses:
+        '204': { description: Disconnected. }
+        '403': { description: Only the server owner can use iCloud saves. }
+  /api/v1/icloud/preview:
+    post:
+      operationId: icloudPreview
+      tags: [Server and plugins]
+      description: Actual owner only. Lists the saves in iCloud and counts which belong to games in this server's libraries. Copies nothing.
+      responses:
+        '200':
+          description: What was found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IcloudPreview' }
+        '403': { description: Only the server owner can use iCloud saves. }
+        '409': { description: Not connected, the sign-in ran out, or an import is running. }
+        '502': { description: Apple did not answer as expected. }
+  /api/v1/icloud/import:
+    post:
+      operationId: icloudImport
+      tags: [Server and plugins]
+      description: Actual owner only. Starts copying saves for games this server has. Runs in the background; read progress from icloudStatus. A save is added beside what is there and never replaces a game's live save. A record brought in before is skipped.
+      responses:
+        '202':
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IcloudImport' }
+        '403': { description: Only the server owner can use iCloud saves. }
+        '409': { description: Not connected, or an import is already running. }
+  /api/v1/icloud/import/cancel:
+    post:
+      operationId: icloudCancelImport
+      tags: [Server and plugins]
+      description: Actual owner only. Stops a running import after the save it is copying. Saves already brought in stay.
+      responses:
+        '204': { description: Stopping, or nothing was running. }
+        '403': { description: Only the server owner can use iCloud saves. }
   /api/v1/browse-libraries:
     get:
       operationId: browseLibraries
@@ -2878,6 +2971,7 @@ components:
         natTraversal: { type: boolean }
         webPlayback: { type: boolean }
         playHistory: { type: boolean, description: Supports recordPlay and browse played=recent. }
+        icloudSaves: { type: boolean, description: The server has an iCloud API token, so the owner can bring saves in from iCloud with the icloud operations. }
         romDownloadSummaries: { type: boolean, description: Supports the opt-in ROM download summary on browse rows. }
         gameCompanions: { type: boolean, description: Supports companion discovery and authorized downloads. Inspect supportedKinds on each game. }
         gameCopySelection: { type: boolean, description: Supports game copy links and per-system ROM format negotiation. }
@@ -3894,6 +3988,59 @@ components:
       properties:
         sourceId: { type: string, maxLength: 200 }
         itemId: { type: string, maxLength: 200 }
+    IcloudStatus:
+      type: object
+      required: [connected, container]
+      properties:
+        connected: { type: boolean, description: An Apple sign-in is held. It is lost when the server restarts or Apple ends it. }
+        container: { type: string }
+        preview: { $ref: '#/components/schemas/IcloudPreview', description: The last look at iCloud since connecting. Absent before one. }
+        import: { $ref: '#/components/schemas/IcloudImport', description: The running or last import since the server started. Absent before one. }
+    IcloudSignIn:
+      type: object
+      required: [signInUrl]
+      properties:
+        signInUrl: { type: string, format: uri }
+    IcloudConnect:
+      type: object
+      required: [webAuthToken]
+      properties:
+        webAuthToken: { type: string, minLength: 1, maxLength: 8192 }
+    IcloudPreview:
+      type: object
+      required: [checkedAt, saves, bytes, games, gamesHere, ready, alreadyHere, unmatched]
+      properties:
+        checkedAt: { type: string, format: date-time }
+        saves: { type: integer, description: Save states found in iCloud. }
+        bytes: { type: integer, description: Their size together. }
+        games: { type: integer, description: Games those saves belong to. }
+        gamesHere: { type: integer, description: Of those, games this server has. }
+        ready: { type: integer, description: Saves an import would copy now. }
+        alreadyHere: { type: integer, description: Saves brought in before. }
+        unmatched:
+          type: array
+          description: Games in iCloud this server does not have, largest first. At most 50.
+          items: { $ref: '#/components/schemas/IcloudUnmatchedGame' }
+    IcloudUnmatchedGame:
+      type: object
+      required: [gameId, systemIdentifier, saves]
+      properties:
+        gameId: { type: string, description: The identifier the app filed the saves under, usually the game's MD5. }
+        systemIdentifier: { type: [string, 'null'] }
+        saves: { type: integer }
+    IcloudImport:
+      type: object
+      required: [state, total, processed, imported, skipped, failed, startedAt, finishedAt, message]
+      properties:
+        state: { type: string, enum: [running, completed, failed, cancelled] }
+        total: { type: integer }
+        processed: { type: integer }
+        imported: { type: integer, description: Saves copied in. }
+        skipped: { type: integer, description: Saves with no game here, or brought in before. }
+        failed: { type: integer, description: Saves that could not be downloaded. They are tried again next time. }
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        message: { type: [string, 'null'], description: Why it stopped, in plain words. }
     GameSourceLink:
       type: object
       properties:

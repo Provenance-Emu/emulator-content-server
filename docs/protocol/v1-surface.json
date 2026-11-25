@@ -5,6 +5,7 @@
     "DELETE /api/v1/device-tokens/:tokenId",
     "DELETE /api/v1/files/:assetId",
     "DELETE /api/v1/guest-grants/:grantId",
+    "DELETE /api/v1/icloud/session",
     "DELETE /api/v1/investigators/:credentialId",
     "DELETE /api/v1/items/:itemId",
     "DELETE /api/v1/items/:itemId/access/:userId",
@@ -31,6 +32,7 @@
     "GET /api/v1/files/:assetId/entries/:entryId/content",
     "GET /api/v1/folders",
     "GET /api/v1/guest-grants",
+    "GET /api/v1/icloud",
     "GET /api/v1/investigator/diagnostics",
     "GET /api/v1/investigator/libraries",
     "GET /api/v1/investigator/libraries/:libraryId/sources",
@@ -124,6 +126,10 @@
     "POST /api/v1/files/:assetId/adopt",
     "POST /api/v1/files/:assetId/restore",
     "POST /api/v1/guest-grants",
+    "POST /api/v1/icloud/import",
+    "POST /api/v1/icloud/import/cancel",
+    "POST /api/v1/icloud/preview",
+    "POST /api/v1/icloud/sign-in",
     "POST /api/v1/investigator/runs",
     "POST /api/v1/investigator/runs/:runId/cancel",
     "POST /api/v1/investigator/runs/:runId/finish",
@@ -174,6 +180,7 @@
     "POST /api/v1/workflow-workers/runs/:runId/sources/:sourceId/catalog",
     "POST /api/v1/workflow-workers/runs/:runId/suggestions",
     "PUT /api/v1/access",
+    "PUT /api/v1/icloud/session",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
     "PUT /api/v1/player/management/:id/system/:name",
@@ -363,6 +370,7 @@
         "gameCompanions",
         "gameCopySelection",
         "guestGrants",
+        "icloudSaves",
         "localOwnerSignIn",
         "multiRange",
         "natTraversal",
@@ -1862,6 +1870,92 @@
         "sourceId"
       ],
       "required": []
+    },
+    "IcloudStatus": {
+      "properties": [
+        "connected",
+        "container",
+        "import",
+        "preview"
+      ],
+      "required": [
+        "connected",
+        "container"
+      ]
+    },
+    "IcloudSignIn": {
+      "properties": [
+        "signInUrl"
+      ],
+      "required": [
+        "signInUrl"
+      ]
+    },
+    "IcloudConnect": {
+      "properties": [
+        "webAuthToken"
+      ],
+      "required": [
+        "webAuthToken"
+      ]
+    },
+    "IcloudPreview": {
+      "properties": [
+        "alreadyHere",
+        "bytes",
+        "checkedAt",
+        "games",
+        "gamesHere",
+        "ready",
+        "saves",
+        "unmatched"
+      ],
+      "required": [
+        "alreadyHere",
+        "bytes",
+        "checkedAt",
+        "games",
+        "gamesHere",
+        "ready",
+        "saves",
+        "unmatched"
+      ]
+    },
+    "IcloudUnmatchedGame": {
+      "properties": [
+        "gameId",
+        "saves",
+        "systemIdentifier"
+      ],
+      "required": [
+        "gameId",
+        "saves",
+        "systemIdentifier"
+      ]
+    },
+    "IcloudImport": {
+      "properties": [
+        "failed",
+        "finishedAt",
+        "imported",
+        "message",
+        "processed",
+        "skipped",
+        "startedAt",
+        "state",
+        "total"
+      ],
+      "required": [
+        "failed",
+        "finishedAt",
+        "imported",
+        "message",
+        "processed",
+        "skipped",
+        "startedAt",
+        "state",
+        "total"
+      ]
     },
     "GameSourceLink": {
       "properties": [

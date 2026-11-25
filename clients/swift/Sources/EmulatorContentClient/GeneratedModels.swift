@@ -193,13 +193,14 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
     public var natTraversal: Bool
     public var webPlayback: Bool?
     public var playHistory: Bool?
+    public var icloudSaves: Bool?
     public var romDownloadSummaries: Bool?
     public var gameCompanions: Bool?
     public var gameCopySelection: Bool?
     public var sourceDetailsWrite: Bool?
     public var localOwnerSignIn: Bool?
 
-    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, playHistory: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, gameCopySelection: Bool? = nil, sourceDetailsWrite: Bool? = nil, localOwnerSignIn: Bool? = nil) {
+    public init(rangeRequests: Bool, multiRange: Bool, resumableUploads: Bool, changeFeed: Bool, guestGrants: Bool, virtualFormats: [String], webdav: Bool, natTraversal: Bool, webPlayback: Bool? = nil, playHistory: Bool? = nil, icloudSaves: Bool? = nil, romDownloadSummaries: Bool? = nil, gameCompanions: Bool? = nil, gameCopySelection: Bool? = nil, sourceDetailsWrite: Bool? = nil, localOwnerSignIn: Bool? = nil) {
         self.rangeRequests = rangeRequests
         self.multiRange = multiRange
         self.resumableUploads = resumableUploads
@@ -210,6 +211,7 @@ public struct FeatureFlags: Codable, Equatable, Sendable {
         self.natTraversal = natTraversal
         self.webPlayback = webPlayback
         self.playHistory = playHistory
+        self.icloudSaves = icloudSaves
         self.romDownloadSummaries = romDownloadSummaries
         self.gameCompanions = gameCompanions
         self.gameCopySelection = gameCopySelection
@@ -1775,6 +1777,94 @@ public struct PlayRecordRequest: Codable, Equatable, Sendable {
     public init(sourceId: String? = nil, itemId: String? = nil) {
         self.sourceId = sourceId
         self.itemId = itemId
+    }
+}
+
+public struct IcloudStatus: Codable, Equatable, Sendable {
+    public var connected: Bool
+    public var container: String
+    public var preview: IcloudPreview?
+    public var import: IcloudImport?
+
+    public init(connected: Bool, container: String, preview: IcloudPreview? = nil, import: IcloudImport? = nil) {
+        self.connected = connected
+        self.container = container
+        self.preview = preview
+        self.import = import
+    }
+}
+
+public struct IcloudSignIn: Codable, Equatable, Sendable {
+    public var signInUrl: String
+
+    public init(signInUrl: String) {
+        self.signInUrl = signInUrl
+    }
+}
+
+public struct IcloudConnect: Codable, Equatable, Sendable {
+    public var webAuthToken: String
+
+    public init(webAuthToken: String) {
+        self.webAuthToken = webAuthToken
+    }
+}
+
+public struct IcloudPreview: Codable, Equatable, Sendable {
+    public var checkedAt: String
+    public var saves: Int
+    public var bytes: Int
+    public var games: Int
+    public var gamesHere: Int
+    public var ready: Int
+    public var alreadyHere: Int
+    public var unmatched: [IcloudUnmatchedGame]
+
+    public init(checkedAt: String, saves: Int, bytes: Int, games: Int, gamesHere: Int, ready: Int, alreadyHere: Int, unmatched: [IcloudUnmatchedGame]) {
+        self.checkedAt = checkedAt
+        self.saves = saves
+        self.bytes = bytes
+        self.games = games
+        self.gamesHere = gamesHere
+        self.ready = ready
+        self.alreadyHere = alreadyHere
+        self.unmatched = unmatched
+    }
+}
+
+public struct IcloudUnmatchedGame: Codable, Equatable, Sendable {
+    public var gameId: String
+    public var systemIdentifier: String?
+    public var saves: Int
+
+    public init(gameId: String, systemIdentifier: String? = nil, saves: Int) {
+        self.gameId = gameId
+        self.systemIdentifier = systemIdentifier
+        self.saves = saves
+    }
+}
+
+public struct IcloudImport: Codable, Equatable, Sendable {
+    public var state: String
+    public var total: Int
+    public var processed: Int
+    public var imported: Int
+    public var skipped: Int
+    public var failed: Int
+    public var startedAt: String
+    public var finishedAt: String?
+    public var message: String?
+
+    public init(state: String, total: Int, processed: Int, imported: Int, skipped: Int, failed: Int, startedAt: String, finishedAt: String? = nil, message: String? = nil) {
+        self.state = state
+        self.total = total
+        self.processed = processed
+        self.imported = imported
+        self.skipped = skipped
+        self.failed = failed
+        self.startedAt = startedAt
+        self.finishedAt = finishedAt
+        self.message = message
     }
 }
 

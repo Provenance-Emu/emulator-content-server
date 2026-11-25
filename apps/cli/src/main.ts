@@ -248,6 +248,7 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       playerPluginsDir: selectedAbsolutePath('--player-plugins', 'ECS_PLAYER_PLUGINS', 'directory'),
       playerCatalogSnapshot: selectedCatalog,
       webdavEnabled: listen.webdavEnabled,
+      ...icloudFromEnv(process.env),
       // A public bind sits behind a proxy on loopback, so the socket address
       // cannot decide who is local.
       localTrust: !listen.publicInternet,
@@ -497,3 +498,19 @@ main().catch((error: unknown) => {
   console.error(message);
   process.exitCode = 1;
 });
+
+/** The API token is the application's, not a person's; without it iCloud saves are not offered. */
+function icloudFromEnv(env: NodeJS.ProcessEnv): {
+  icloud?: { apiToken: string; container?: string; environment?: 'production' | 'development' };
+} {
+  const apiToken = env.ECS_ICLOUD_API_TOKEN?.trim();
+  if (!apiToken) return {};
+  const container = env.ECS_ICLOUD_CONTAINER?.trim();
+  return {
+    icloud: {
+      apiToken,
+      ...(container ? { container } : {}),
+      ...(env.ECS_ICLOUD_ENVIRONMENT === 'development' ? { environment: 'development' } : {}),
+    },
+  };
+}

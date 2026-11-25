@@ -340,14 +340,16 @@ test('version 19 preserves selection bytes, backfills artwork roles, and opens r
   }
 });
 
-test('version 27 adds play history to a catalog that has rows, and opens twice', async () => {
+test('versions 27 and 28 add play history and save imports to a catalog that has rows, and open twice', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ecs-migrate-'));
   const filename = join(dir, 'library.sqlite');
   try {
-    // A catalog as version 26 left it: everything but the new table and its ledger row.
+    // A catalog as version 26 left it: everything but the new tables, indexes and ledger rows.
     new CatalogDatabase(filename).close();
     const earlier = new DatabaseSync(filename);
-    earlier.exec('DROP TABLE play_history; DELETE FROM schema_migrations WHERE version = 27;');
+    earlier.exec(`DROP TABLE play_history; DROP TABLE save_imports; DROP INDEX items_md5;
+      DROP INDEX assets_md5; DROP INDEX source_fingerprints_md5;
+      DELETE FROM schema_migrations WHERE version >= 27;`);
     earlier
       .prepare(
         'INSERT INTO users (id, username, password_hash, is_owner, created_at) VALUES (?, ?, ?, 1, ?)',
@@ -372,6 +374,17 @@ test('version 27 adds play history to a catalog that has rows, and opens twice',
           n: 0,
         },
       );
+      assert.deepEqual(
+        { ...inspect.prepare('SELECT COUNT(*) AS n FROM save_imports').get() },
+        {
+          n: 0,
+        },
+      );
+      const indexes = inspect
+        .prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'index'
+          AND name IN ('items_md5', 'assets_md5', 'source_fingerprints_md5')`)
+        .get();
+      assert.equal((indexes as { n: number }).n, 3);
       const ledger = inspect.prepare('SELECT MAX(version) AS v FROM schema_migrations').get();
       assert.equal((ledger as { v: number }).v, SCHEMA_VERSION);
     } finally {

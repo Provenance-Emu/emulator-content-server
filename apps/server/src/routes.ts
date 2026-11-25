@@ -83,6 +83,7 @@ import {
   stringList,
   withIdempotency,
 } from './http.js';
+import { registerIcloudRoutes } from './icloud.js';
 import { registerInvestigatorRoutes } from './investigator-routes.js';
 import { registerLibraryBrowse } from './library-browse.js';
 import {
@@ -161,6 +162,36 @@ export function registerRoutes(
   }
 
   const placements = new Map<string, number>();
+  // An imported save never matches the game's revision, so it lands beside a save already at
+  // its path as a conflict copy and never replaces the live one.
+  registerIcloudRoutes(app, context, (input) =>
+    blobGate(context).shared(async () => {
+      const placed = await placeUploadBytes(
+        context,
+        stagingPath(context, input.uploadId),
+        reserveLocation,
+      );
+      try {
+        const held = catalog.liveSaveWithDigest(input.itemId, placed.sha256);
+        if (held) return { id: held };
+        return catalog.completeUpload({
+          ...input,
+          kind: 'save_state',
+          baseRevision: -1,
+          sha256: placed.sha256,
+          size: placed.size,
+          md5: placed.md5,
+          crc: placed.crc,
+          shareable: !isRestrictedAssetKind('save_state'),
+          deviceId: null,
+          locationId: placed.locationId,
+        });
+      } finally {
+        placed.release();
+      }
+    }),
+  );
+
   function reserveLocation(id: string): () => void {
     placements.set(id, (placements.get(id) ?? 0) + 1);
     return () => {
@@ -320,6 +351,7 @@ export function registerRoutes(
       lanOpen: context.localTrust && policy.mode !== 'token',
       localOwnerSignIn: context.localTrust && !!context.localOwnerKey,
       webdavEnabled: context.webdavEnabled,
+      icloudSaves: context.icloud !== undefined,
       webPlayback: Boolean(context.player || context.playerProfiles.size),
       trashRetentionDays: TRASH_RETENTION_DAYS,
     });

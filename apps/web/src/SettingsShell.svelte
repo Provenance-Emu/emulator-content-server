@@ -19,6 +19,7 @@
   import EmulatorSettings from './EmulatorSettings.svelte';
   import Audit from './Audit.svelte';
   import Status from './Status.svelte';
+  import IcloudSaves from './IcloudSaves.svelte';
   import Trash from './Trash.svelte';
   import ServerUpdateSettings from './ServerUpdateSettings.svelte';
 
@@ -59,6 +60,7 @@
   const visibleSections = $derived(settingsSections.filter(section =>
     section.id === 'webdav'
       ? appState.capabilities?.features.webdav && appState.hasSession
+      : section.id === 'icloud' ? appState.owner && appState.hasSession && appState.capabilities?.features.icloudSaves === true
       : section.id === 'trash' ? appState.owner || appState.hasSession
       : section.id === 'updates' ? desktopUpdates || (appState.owner && appState.hasSession && updates)
       : appState.owner || section.id === 'status',
@@ -124,6 +126,9 @@
     />{:else if appState.owner && active === 'emulators'}<EmulatorSettings
       {client} {onrejected} onchange={onplayerschange ?? context.onchanged ?? (() => {})}
     />{:else if appState.owner && active === 'plugins'}<PluginSettings {client} {onrejected} onemulators={() => choose('emulators')} />
+    {:else if appState.owner && active === 'icloud'}<IcloudSaves
+      {client} {onrejected} onchanged={() => void context.onchanged?.()}
+    />
     {:else if active === 'trash'}<Trash
       {client} {onrejected} retentionDays={appState.capabilities?.trash?.retentionDays ?? null}
       onchanged={() => void context.onchanged?.()}

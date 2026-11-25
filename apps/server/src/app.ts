@@ -66,6 +66,8 @@ export interface OpenServerOptions {
   loginLimit?: number;
   /** Defaults to true. Pass false when the process is bound for the public internet. */
   localTrust?: boolean;
+  /** An API token for the apps' iCloud container. Without it the owner is not offered iCloud saves. */
+  icloud?: import('./icloud.js').IcloudOptions;
 }
 
 declare module 'fastify' {
@@ -136,6 +138,7 @@ export async function openServer(options: OpenServerOptions): Promise<{
     uiDir: options.uiDir ?? null,
     localTrust: options.localTrust !== false,
     localOwnerKey: null,
+    ...(options.icloud?.apiToken ? { icloud: options.icloud } : {}),
   };
   context.playerManager = new PlayerManager(context, profiles.items, selectedCatalog?.entries);
   try {

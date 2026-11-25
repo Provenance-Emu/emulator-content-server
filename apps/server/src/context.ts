@@ -28,6 +28,8 @@ export interface ServerContext {
   localTrust: boolean;
   /** This run's local owner key, or null when local owner sign-in is not offered. */
   localOwnerKey?: import('./local-owner-key.js').LocalOwnerKey | null;
+  /** Set when the server was given an iCloud API token. See `icloud.ts`. */
+  icloud?: import('./icloud.js').IcloudOptions;
   /** Created on first use. See `blobGate` in `trash.ts`. */
   blobGate?: import('./trash.js').BlobGate;
 }

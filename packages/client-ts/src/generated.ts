@@ -101,6 +101,7 @@ export interface FeatureFlags {
   natTraversal: boolean;
   webPlayback?: boolean;
   playHistory?: boolean;
+  icloudSaves?: boolean;
   romDownloadSummaries?: boolean;
   gameCompanions?: boolean;
   gameCopySelection?: boolean;
@@ -886,6 +887,50 @@ export interface LibraryBrowseEntry {
 export interface PlayRecordRequest {
   sourceId?: string;
   itemId?: string;
+}
+
+export interface IcloudStatus {
+  connected: boolean;
+  container: string;
+  preview?: IcloudPreview;
+  import?: IcloudImport;
+}
+
+export interface IcloudSignIn {
+  signInUrl: string;
+}
+
+export interface IcloudConnect {
+  webAuthToken: string;
+}
+
+export interface IcloudPreview {
+  checkedAt: string;
+  saves: number;
+  bytes: number;
+  games: number;
+  gamesHere: number;
+  ready: number;
+  alreadyHere: number;
+  unmatched: IcloudUnmatchedGame[];
+}
+
+export interface IcloudUnmatchedGame {
+  gameId: string;
+  systemIdentifier: string | null;
+  saves: number;
+}
+
+export interface IcloudImport {
+  state: string;
+  total: number;
+  processed: number;
+  imported: number;
+  skipped: number;
+  failed: number;
+  startedAt: string;
+  finishedAt: string | null;
+  message: string | null;
 }
 
 export interface GameSourceLink {

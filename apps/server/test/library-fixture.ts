@@ -6,7 +6,12 @@ import type { Actor, AssetKind } from '@ecs/domain';
 import { openServer } from '../src/index.js';
 
 export async function libraryFixture(
-  options: { matchingPluginsDir?: string; automaticMatching?: boolean; localTrust?: boolean } = {},
+  options: {
+    matchingPluginsDir?: string;
+    automaticMatching?: boolean;
+    localTrust?: boolean;
+    icloud?: import('../src/icloud.js').IcloudOptions;
+  } = {},
 ) {
   const base = await realpath(await mkdtemp(join(tmpdir(), 'ecs-browse-')));
   const server = await openServer({
