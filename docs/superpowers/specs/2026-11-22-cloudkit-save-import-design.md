@@ -47,7 +47,7 @@ Nothing here needs a flag or a second screen to start working, and nothing is de
 
 Apple's CloudKit web service lets a private database be read on behalf of a person who signed in with their Apple account. A server key cannot do this; it reaches the public database only. Two values are involved:
 
-- An **API token** for the container, created once in the CloudKit Console by whoever owns the container, with the sign-in callback left at its default (a message to the opening window) and any origin allowed. It identifies the application, not a person, and is the same kind of value Apple expects to be embedded in a web page. The operator supplies it as `ECS_ICLOUD_API_TOKEN`; without it the feature is absent. Once one exists for the production container it can ship as the default, so a household configures nothing.
+- An **API token** for the container, created once in the CloudKit Console by whoever owns the container, with the sign-in callback left at its default (a message to the opening window) and any origin allowed. It identifies the application, not a person, and is the same kind of value Apple expects to be embedded in a web page. The server carries the one for Provenance's production container (`apps/server/src/icloud-defaults.ts`), so a household configures nothing. `ECS_ICLOUD_API_TOKEN` replaces it, and `off` removes the feature. Because any page can present a public token to Apple's sign-in, the protection for a person's data is that sign-in and Apple naming the app on it, not the token.
 - A **web auth token** for the person, handed back by Apple after sign-in. Apple replaces it on every call, and it lasts 30 minutes, or two weeks if the person asks to stay signed in.
 
 ### The sign-in token

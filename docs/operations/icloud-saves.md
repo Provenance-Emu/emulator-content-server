@@ -4,19 +4,22 @@ Provenance keeps the saves made on a phone, tablet or TV in the owner's iCloud. 
 
 ## Turn it on
 
-The server needs an API token for the app's iCloud container. It identifies the application, not a person.
+There is nothing to turn on. The server carries the API token for Provenance's production iCloud container, so **Settings → iCloud saves** is there for the owner on every installation.
 
-1. In the [CloudKit Console](https://icloud.developer.apple.com/), open the container `iCloud.org.provenance-emu.provenance`, then **Tokens & Keys** and **New API Token**.
-2. Leave **Sign in Callback** at its default, which hands the result to the window that opened the sign-in. Allow any origin, because each household reaches its server at a different address.
-3. Start the server with the token in its environment:
+The token names the application, not a person, and is the kind of value Apple expects a web page to carry in the open. Reading someone's saves also takes that person's own Apple sign-in, which the server holds in memory and never stores.
 
-   ```sh
-   ECS_ICLOUD_API_TOKEN=… ./ecs serve --data "$HOME/EmulationServerData"
-   ```
+To change that, set one of these in the server's environment:
 
-   For an installed service, add the variable to the service's environment. `ECS_ICLOUD_ENVIRONMENT=development` and `ECS_ICLOUD_CONTAINER` select the development database or another container.
+| Variable | Effect |
+| --- | --- |
+| `ECS_ICLOUD_API_TOKEN=off` | iCloud saves are not offered. |
+| `ECS_ICLOUD_API_TOKEN=<token>` | Use your own API token in place of the built-in one. |
+| `ECS_ICLOUD_ENVIRONMENT=development` | Read the development database. Needs your own token. |
+| `ECS_ICLOUD_CONTAINER=<identifier>` | Read another container. Needs your own token. |
 
-Without the token, `GET /api/v1/capabilities` leaves `icloudSaves` out and Settings shows no entry.
+A token of your own is made in the [CloudKit Console](https://icloud.developer.apple.com/) under the container's **Tokens & Keys**, with **Sign in Callback** left at Post Message and any domain allowed, because each household reaches its server at a different address.
+
+When the feature is off, `GET /api/v1/capabilities` leaves `icloudSaves` out and Settings shows no entry.
 
 ## Use it
 
