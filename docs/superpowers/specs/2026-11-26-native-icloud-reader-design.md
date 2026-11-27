@@ -39,7 +39,9 @@ An SSH inspection found the probe’s LaunchAgent in the owner’s `gui/<uid>` d
 
 The supplied transcript shows `Permission denied` during signature verification of the copy under `/Library/Application Support`. The SSH inspection found neither the probe’s system LaunchDaemon registration nor its plist, and no daemon output was available. The daemon’s iCloud access remains unverified both while a GUI session exists and before GUI login. The permission failure supplies no CloudKit result.
 
-A follow-up SSH inspection found that the system copy’s embedded provisioning profile was owned by `root:wheel` with mode `0600`. The bundle directories and executable were accessible to the owner, but signature verification as the owner still returned `Permission denied`. The next attempt needs an administrator to make that profile readable by the daemon’s configured user, verify the bundle as that user, and load the system job. For the boot case, capture the console owner at probe start alongside the CloudKit result so a run before GUI login can be distinguished from one after login.
+A follow-up SSH inspection found that the system copy’s embedded provisioning profile was owned by `root:wheel` with mode `0600`. The owner changed it to `0644`, verified the signature under the daemon’s configured user, and loaded the job in the system domain. The log recorded `jmattiello` as the console owner at probe start. The probe threw `CKErrorDomain` code 6 (`serviceUnavailable`) at `accountStatus()` and exited 5. This attempt reached CloudKit from the daemon while the owner was logged in. It produced no account status, query result, or asset. The error does not establish whether the daemon lacked an iCloud session or encountered another service failure.
+
+The pre-login case still needs a boot run. The test job records the console owner at probe start alongside the CloudKit result.
 
 ## As built so far, 2026-11-26
 
@@ -277,7 +279,7 @@ CloudKit does not exist there, and neither does the helper. The framework is clo
 
 ## Try on real hardware first
 
-Experiment 1 passed on the owner’s laptop and in the Mac Studio’s desktop login session. Experiment 2(a) passed on the Studio. The remaining launchd cases still need results.
+Experiment 1 passed on the owner’s laptop and in the Mac Studio’s desktop login session. Experiment 2(a) passed on the Studio. Experiment 2(b) reached CloudKit and returned `serviceUnavailable`. The pre-login cases still need results.
 
 1. **Done. Smallest first experiment: can a Developer ID helper read the container at all?** As first written: in a scratch folder outside this repository: register the App ID, assign the container, create the Developer ID profile, and build a 40-line Swift app bundle that prints `accountStatus` and the count of `SaveState` records in the private database, plus the size of one `fileData` asset after fetching it. Sign with the existing Developer ID certificate and the entitlements above, notarize, and run it from Terminal on the Mac Studio while logged in, with Advanced Data Protection on. Pass: a non-zero count and a readable asset. This single run answers the profile question, the Advanced Data Protection question, the index question and whether macOS shows any prompt.
 2. **Which launchd shapes have an iCloud session.** Run the same binary (a) from a LaunchAgent in the login session, (b) from a LaunchDaemon with `UserName` set to the owner, (c) as (b) after a restart with nobody logged in, (d) over SSH with nobody logged in at the screen. Record `accountStatus` and the first error for each.
