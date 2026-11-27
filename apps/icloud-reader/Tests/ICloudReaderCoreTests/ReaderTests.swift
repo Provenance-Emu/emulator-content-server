@@ -18,7 +18,12 @@ struct FakeStore: SaveStore {
   func games() async throws -> [GameDescription] {
     [GameDescription(gameId: "generated", filename: "game.nes", size: 9, title: "Game", playCount: 3)]
   }
-  func file(recordName: String) async throws -> URL {
+  func file(recordName: String, _ file: RecordFile) async throws -> URL {
+    if file == .cover {
+      let url = folder.appendingPathComponent(UUID().uuidString)
+      try Data("cover of \(recordName)".utf8).write(to: url)
+      return url
+    }
     if unreadable.contains(recordName) { throw ReadFailure.noFile }
     guard saves.contains(where: { $0.recordName == recordName }) else { throw ReadFailure.missing }
     let url = folder.appendingPathComponent(UUID().uuidString)
@@ -38,10 +43,10 @@ final class BusyOnceStore: SaveStore, @unchecked Sendable {
     try await inner.list(page: page)
   }
   func games() async throws -> [GameDescription] { [] }
-  func file(recordName: String) async throws -> URL {
+  func file(recordName: String, _ file: RecordFile) async throws -> URL {
     let first = lock.withLock { seen.insert(recordName).inserted }
     if first { throw ReadFailure.busy }
-    return try await inner.file(recordName: recordName)
+    return try await inner.file(recordName: recordName, file)
   }
 }
 
@@ -132,6 +137,16 @@ final class ReaderTests: XCTestCase {
     _ = await Reader(store: store, link: link, retryDelay: .milliseconds(5)).run()
     let events = await link.events
     XCTAssertEqual(events.last, "save r1 bytes of savestate_one")
+  }
+
+  func testSendsAGamesCoverWhenThatIsTheFileAskedFor() async {
+    let store = FakeStore(saves: [save("one")], folder: folder)
+    let link = FakeLink([
+      .fetch([WantedSave(requestId: "c1", recordName: "rom_generated", file: "cover")])
+    ])
+    _ = await Reader(store: store, link: link).run()
+    let events = await link.events
+    XCTAssertEqual(events.last, "save c1 cover of rom_generated")
   }
 
   func testReportsASignedOutMacAndTakesOnlyALoopbackServer() async {

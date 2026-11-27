@@ -1,6 +1,6 @@
 # Bringing game details and covers in from iCloud
 
-Status: design only, nothing built. Date: 2026-11-27. Follows `2026-11-26-native-icloud-reader-design.md`, which already brings saves and play history through the reader on the Mac.
+Status: built 2026-11-27 as designed, with the open questions decided as proposed; see "As built". Date: 2026-11-27. Follows `2026-11-26-native-icloud-reader-design.md`, which already brings saves and play history through the reader on the Mac.
 
 ## The situation
 
@@ -102,3 +102,21 @@ Additive:
 2. **Should the owner's cover from Provenance replace an automatic cover without asking?** Proposed: yes, with the count shown in the preview first. A per-game choice would be safer and much slower for 685 games.
 3. **How many custom covers are there, and how big?** Not measured. If it is hundreds, the import should bring them after the saves and show progress for them separately.
 4. **Does a different title in Provenance mean an edit?** Not reliably. The design therefore only uses it where the server has nothing. If the owner wants their titles everywhere, that is a different rule ("Provenance's title wins unless changed here") and should be a setting chosen once, not a guess.
+
+## As built, 2026-11-27
+
+- `apps/server/src/icloud-details.ts` holds the rules (`planDetails`, `coverRecord`); `icloud.ts` applies them at the end of an import, after saves and play history.
+- **Open question 1 needed no rule.** Automatic matching only fills a slot that is empty, so a details record from Provenance is already safe from it.
+- A record the server matched that gains fields is saved under a new identifier (the old one with `~filled-` and a mark), because saving under the identifier already in place changes nothing.
+- The cover flag is the record's `customArtworkURL`; the cover itself is fetched only when the server asks. A record that names a cover and holds no file is settled, not retried.
+- The applied-once ledger is `save_imports` under the origin `icloud:<container>:games`.
+- Live run on the laptop against a throwaway server with the iCloud Drive games folder: details filled for 32 games and 6 covers brought in; 3 more records named a cover and held none.
+- **Changed after review, against the design above:**
+  - **A cover from the app only goes where there is no cover.** The design let it replace an automatic one. A cover the owner picks from the server's suggestions is saved exactly like an automatic one, so the server cannot tell them apart, and replacing it would lose the owner's choice with no way back. Marking automatic saves so they can be told apart is the way to get the designed behaviour back.
+  - **A game the app knows only by name gets no record.** A record here stops the server looking the game up itself; that is a fair trade for real details and a poor one for a title alone.
+  - **Each write is planned at the moment it is made**, from what is saved then and against that revision, so an edit made while an import runs is never written over. The first version planned everything up front.
+  - Text from the app is cleaned as typed text is: no control characters, a year of four digits or nothing, lengths cut at whole characters.
+  - A cover too large to take is settled like a missing one, not fetched again every time.
+  - Finding a game by its file asks the catalog for that name only, and each answer is kept for the length of one look or import.
+- Known and left: a record that gained fields no longer shows its original suggestion as the selected one on the details screen, and choosing that suggestion again drops the added fields.
+- Not built: showing "From Provenance" in the details disclosure. The record carries the provider name; the screen shows it as it shows any provider.

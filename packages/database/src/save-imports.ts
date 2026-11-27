@@ -59,14 +59,22 @@ export function gameForRomFile(
 ): GameForDigest | null {
   const wanted = input.filename.toLowerCase();
   if (!wanted || /[\\/]/.test(wanted)) return null;
+  const literal = input.filename.replace(/[!%_]/g, '!$&');
   const rows = db
     .prepare(`SELECT s.id AS source_id, s.relative_path AS path, s.size AS size,
         (SELECT g.item_id FROM game_source_copies g JOIN items i ON i.id = g.item_id
          WHERE g.source_id = s.id AND i.deleted_at IS NULL AND i.library_id = r.library_id) AS item_id
       FROM live_source_files s JOIN content_roots r ON r.id = s.root_id
       WHERE s.system_id = ? AND s.kind = 'rom' AND s.group_anchor IS NULL
-        AND r.library_id IS NOT NULL`)
-    .all(input.systemIdentifier) as Array<{
+        AND r.library_id IS NOT NULL
+        AND (s.relative_path LIKE ? ESCAPE '!' OR s.relative_path LIKE ? ESCAPE '!')`)
+    .all(
+      input.systemIdentifier,
+      // The name alone, or as the last part of a longer path, with LIKE's own characters taken
+      // literally. LIKE narrows the rows; the comparison below decides.
+      literal,
+      `%/${literal}`,
+    ) as Array<{
     source_id: string;
     path: string;
     size: number;

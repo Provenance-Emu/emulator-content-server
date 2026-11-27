@@ -85,7 +85,24 @@ export interface CloudRom {
   lastPlayedAt?: string | null;
   playCount?: number | null;
   secondsPlayed?: number | null;
+  /** The game record itself, and the details the app shows for the game. */
+  recordName?: string | null;
+  changeTag?: string | null;
+  details?: Partial<Record<CloudDetail, string>>;
+  hasCustomCover?: boolean;
 }
+
+/** The details a game can carry here, by the names this server uses for them. */
+export const CLOUD_DETAILS = [
+  'description',
+  'developer',
+  'publisher',
+  'year',
+  'genre',
+  'region',
+  'language',
+] as const;
+export type CloudDetail = (typeof CLOUD_DETAILS)[number];
 
 const HOST = 'https://api.apple-cloudkit.com';
 const PAGE = 200;

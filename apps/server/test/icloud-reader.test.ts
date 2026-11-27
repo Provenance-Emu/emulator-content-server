@@ -590,3 +590,201 @@ test('play history comes in with the saves and never goes backwards', { skip }, 
     await f.dispose();
   }
 });
+
+test('details and covers from the app fill what is missing and replace nothing chosen here', {
+  skip,
+}, async () => {
+  const { f, owner, attach, reader, finished } = await fixture();
+  try {
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    const shelf = join(f.base, 'shelf');
+    await mkdir(shelf);
+    for (const name of ['Bare.nes', 'Matched.nes', 'Edited.nes', 'Badcover.nes'])
+      await writeFile(join(shelf, name), `generated ${name}`);
+    const root = f.catalog.createContentRoot({
+      path: shelf,
+      label: 'shelf',
+      libraryId: f.library.id,
+      actorId: f.owner.id,
+    });
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${root.id}/scan`, headers: f.auth });
+    const file = (name: string) => {
+      const found = f.catalog.listSources(root.id).find((source) => source.relativePath === name);
+      assert.ok(found?.systemId);
+      return found as typeof found & { systemId: string };
+    };
+    const record = (sourceId: string, kind: 'metadata' | 'artwork') =>
+      f.catalog.sourceMatches(sourceId).matches.find((match) => match.kind === kind);
+    const save = (sourceId: string, providerId: string, metadata: Record<string, string>) =>
+      f.catalog.saveSourceMatch(
+        sourceId,
+        f.catalog.sourceMatches(sourceId).revision,
+        'metadata',
+        {
+          id: `${providerId}:metadata:generated`,
+          providerId,
+          kind: 'metadata',
+          title: metadata.title ?? 'Generated',
+          confidence: providerId === 'manual' ? 'local' : 'name',
+          metadata,
+          originKind: null,
+          contentAvailable: false,
+          contentType: null,
+          fileName: null,
+          updatedAt: new Date().toISOString(),
+        },
+        null,
+        f.owner.id,
+      );
+    const [bare, matched, edited, badcover] = [
+      'Bare.nes',
+      'Matched.nes',
+      'Edited.nes',
+      'Badcover.nes',
+    ].map(file);
+    assert.ok(bare && matched && edited && badcover);
+    save(matched.id, 'org.generated.matcher', {
+      title: 'Matched by the server',
+      developer: 'Server Dev',
+    });
+    save(edited.id, 'manual', { title: 'Typed here', description: 'Typed here too' });
+
+    const about = (name: string, tag: string, extra: object) => ({
+      gameId: createHashFor(name),
+      systemIdentifier: bare.systemId,
+      filename: name,
+      recordName: `rom_${name}`,
+      changeTag: tag,
+      ...extra,
+    });
+    const png = Buffer.concat([
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+      Buffer.from('generated cover'),
+    ]);
+    const bring = async (games: object[], covers: Record<string, Buffer> = {}) => {
+      assert.equal((await owner('POST', '/import', { source: 'mac' })).statusCode, 202);
+      assert.equal((await reader(ticket, 'GET', '/work')).json().work, 'list');
+      await reader(ticket, 'POST', '/listing', { saves: [], done: true, games });
+      const asked: string[] = [];
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const state = (await owner('GET', '')).json().import;
+        if (state.state !== 'running') break;
+        const work = (await reader(ticket, 'GET', '/work')).json();
+        for (const wanted of work.saves ?? []) {
+          assert.equal(wanted.file, 'cover');
+          asked.push(wanted.recordName);
+          await reader(
+            ticket,
+            'PUT',
+            `/saves/${wanted.requestId}`,
+            covers[wanted.recordName] ?? Buffer.from('x'),
+          );
+        }
+      }
+      return { done: await finished(), asked };
+    };
+    const { ticket } = (await attach()).json();
+    await reader(ticket, 'PUT', '/account', { state: 'available' });
+
+    const games = [
+      about('Bare.nes', 't1', {
+        title: 'Bare Game',
+        description: 'From the app',
+        year: '1990',
+        hasCustomCover: true,
+      }),
+      about('Matched.nes', 't1', {
+        title: 'App title',
+        developer: 'App Dev',
+        publisher: 'App Pub',
+      }),
+      about('Edited.nes', 't1', {
+        title: 'App title',
+        description: 'App description',
+        genre: 'Action',
+      }),
+      about('Badcover.nes', 't1', { hasCustomCover: true }),
+    ];
+    const first = await bring(games, {
+      'rom_Bare.nes': png,
+      'rom_Badcover.nes': Buffer.from('not an image'),
+    });
+    assert.deepEqual(
+      [first.done.state, first.done.detailsUpdated, first.done.coversUpdated],
+      ['completed', 2, 1],
+    );
+    assert.deepEqual(first.asked.sort(), ['rom_Badcover.nes', 'rom_Bare.nes']);
+
+    // A game with nothing here takes the app's title and details, and its owner's cover.
+    const filled = record(bare.id, 'metadata');
+    assert.equal(filled?.providerId, 'provenance');
+    assert.deepEqual(
+      [filled?.title, filled?.metadata.description, filled?.metadata.year],
+      ['Bare Game', 'From the app', '1990'],
+    );
+    assert.equal(record(bare.id, 'artwork')?.providerId, 'provenance');
+    // A game the server matched keeps its title and what it knew; only the blank is filled.
+    const kept = record(matched.id, 'metadata');
+    assert.deepEqual(
+      [kept?.providerId, kept?.title, kept?.metadata.developer, kept?.metadata.publisher],
+      ['org.generated.matcher', 'Matched by the server', 'Server Dev', 'App Pub'],
+    );
+    // What a person typed here is not touched, not even to fill a blank.
+    const typed = record(edited.id, 'metadata');
+    assert.deepEqual(
+      [typed?.providerId, typed?.title, typed?.metadata.description, typed?.metadata.genre],
+      ['manual', 'Typed here', 'Typed here too', undefined],
+    );
+    // A file that is not an image is not a cover.
+    assert.equal(record(badcover.id, 'artwork'), undefined);
+
+    // A blank the owner makes afterwards stays blank until the record changes in iCloud.
+    save(matched.id, 'org.generated.matcher', {
+      title: 'Matched by the server',
+      developer: 'Server Dev',
+    });
+    const again = await bring(games);
+    assert.deepEqual(
+      [again.done.detailsUpdated, again.done.coversUpdated, again.asked],
+      [0, 0, []],
+    );
+    assert.equal(record(matched.id, 'metadata')?.metadata.publisher, undefined);
+    const changed = await bring([about('Matched.nes', 't2', { publisher: 'App Pub' })]);
+    assert.equal(changed.done.detailsUpdated, 1);
+    assert.equal(record(matched.id, 'metadata')?.metadata.publisher, 'App Pub');
+
+    // A cover chosen in the app does not replace one chosen here.
+    f.catalog.saveSourceMatch(
+      bare.id,
+      f.catalog.sourceMatches(bare.id).revision,
+      'artwork',
+      {
+        id: 'manual:artwork:generated',
+        providerId: 'manual',
+        kind: 'artwork',
+        artworkRole: 'front',
+        title: 'Bare Game',
+        confidence: 'local',
+        metadata: { artworkRole: 'front' },
+        originKind: null,
+        contentAvailable: true,
+        contentType: 'image/png',
+        fileName: 'cover.png',
+        updatedAt: new Date().toISOString(),
+      },
+      png,
+      f.owner.id,
+      'front',
+    );
+    const later = await bring([about('Bare.nes', 't2', { hasCustomCover: true })]);
+    assert.deepEqual([later.done.coversUpdated, later.asked], [0, []]);
+    assert.equal(record(bare.id, 'artwork')?.providerId, 'manual');
+  } finally {
+    await f.dispose();
+  }
+});
+
+/** A stand-in for the app's identifier: stable for a name, and the MD5 of no file here. */
+function createHashFor(name: string): string {
+  return Buffer.from(name.padEnd(16, '_')).toString('hex').slice(0, 32).toUpperCase();
+}

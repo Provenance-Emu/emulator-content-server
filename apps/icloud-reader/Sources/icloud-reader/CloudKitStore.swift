@@ -45,7 +45,8 @@ struct CloudKitStore: SaveStore {
     // The game's file itself is never asked for: only what describes it.
     let keys = [
       "md5", "systemIdentifier", "originalFilename", "fileSize", "title", "lastPlayed", "playCount",
-      "timeSpentInGame",
+      "timeSpentInGame", "gameDescription", "developer", "publisher", "publishDate", "genres",
+      "regionName", "language", "customArtworkURL",
     ]
     let stamp = ISO8601DateFormatter()
     stamp.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -64,7 +65,7 @@ struct CloudKitStore: SaveStore {
           let text: (String) -> String? = { key in
             (record[key] as? String).flatMap { $0.isEmpty ? nil : $0 }
           }
-          games.append(
+          var game =
             GameDescription(
               gameId: md5,
               systemIdentifier: text("systemIdentifier"),
@@ -73,7 +74,19 @@ struct CloudKitStore: SaveStore {
               title: text("title"),
               lastPlayedAt: (record["lastPlayed"] as? Date).map(stamp.string(from:)),
               playCount: count("playCount"),
-              secondsPlayed: count("timeSpentInGame")))
+              secondsPlayed: count("timeSpentInGame"))
+          game.recordName = record.recordID.recordName
+          game.changeTag = record.recordChangeTag
+          game.description = text("gameDescription")
+          game.developer = text("developer")
+          game.publisher = text("publisher")
+          game.year = Self.year(record["publishDate"])
+          game.genre = text("genres")
+          game.region = text("regionName")
+          game.language = text("language")
+          // The cover itself is fetched only if the server asks; its key says whether one exists.
+          game.hasCustomCover = text("customArtworkURL") != nil
+          games.append(game)
         }
         guard let cursor = found.queryCursor else { return games }
         found = try await database.records(
@@ -84,16 +97,26 @@ struct CloudKitStore: SaveStore {
     }
   }
 
-  func file(recordName: String) async throws -> URL {
+  func file(recordName: String, _ file: RecordFile) async throws -> URL {
+    let field = file == .cover ? "customArtworkAsset" : "fileData"
     do {
       let results = try await database.records(
-        for: [CKRecord.ID(recordName: recordName)], desiredKeys: ["fileData"])
+        for: [CKRecord.ID(recordName: recordName)], desiredKeys: [field])
       guard case .success(let record)? = results.values.first else { throw ReadFailure.missing }
-      guard let url = (record["fileData"] as? CKAsset)?.fileURL else { throw ReadFailure.noFile }
+      guard let url = (record[field] as? CKAsset)?.fileURL else { throw ReadFailure.noFile }
       return url
     } catch let error as CKError {
       throw Self.failure(error)
     }
+  }
+
+  /// The four-digit year in a release date the app stores as text or as a date.
+  private static func year(_ value: Any?) -> String? {
+    if let date = value as? Date {
+      return String(Calendar(identifier: .gregorian).component(.year, from: date))
+    }
+    guard let text = value as? String else { return nil }
+    return text.range(of: #"(19|20)\d\d"#, options: .regularExpression).map { String(text[$0]) }
   }
 
   private static func describe(_ result: Result<CKRecord, Error>) -> SaveDescription? {

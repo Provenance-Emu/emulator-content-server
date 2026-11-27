@@ -126,11 +126,11 @@ public actor Reader {
 
   /// Reads one save's file, trying again a couple of times when iCloud asks for a pause or the
   /// network drops. Anything else fails at once.
-  private func readFile(_ recordName: String) async throws -> URL {
+  private func readFile(_ recordName: String, _ file: RecordFile) async throws -> URL {
     var tries = 0
     while true {
       do {
-        return try await store.file(recordName: recordName)
+        return try await store.file(recordName: recordName, file)
       } catch let failure as ReadFailure where (failure == .busy || failure == .network) && tries < 2 {
         tries += 1
         log("save read again after: \(failure.rawValue)")
@@ -141,7 +141,7 @@ public actor Reader {
 
   private func send(_ wanted: WantedSave) async {
     do {
-      let file = try await readFile(wanted.recordName)
+      let file = try await readFile(wanted.recordName, wanted.file == "cover" ? .cover : .save)
       try Task.checkCancellation()
       try await link.upload(requestId: wanted.requestId, file: file)
     } catch is CancellationError {

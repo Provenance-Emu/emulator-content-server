@@ -922,6 +922,7 @@ export interface IcloudReaderWork {
 export interface IcloudReaderFetch {
   requestId: string;
   recordName: string;
+  file?: string;
 }
 
 export interface IcloudReaderAccount {
@@ -943,6 +944,16 @@ export interface IcloudReaderGameDescription {
   lastPlayedAt?: string | null;
   playCount?: number | null;
   secondsPlayed?: number | null;
+  recordName?: string | null;
+  changeTag?: string | null;
+  description?: string | null;
+  developer?: string | null;
+  publisher?: string | null;
+  year?: string | null;
+  genre?: string | null;
+  region?: string | null;
+  language?: string | null;
+  hasCustomCover?: boolean | null;
 }
 
 export interface IcloudReaderSaveDescription {
@@ -979,6 +990,8 @@ export interface IcloudPreview {
   ready: number;
   alreadyHere: number;
   playedGames?: number;
+  detailsToBring?: number;
+  coversToBring?: number;
   unmatched: IcloudUnmatchedGame[];
 }
 
@@ -998,6 +1011,8 @@ export interface IcloudImport {
   skipped: number;
   failed: number;
   playsUpdated?: number;
+  detailsUpdated?: number;
+  coversUpdated?: number;
   startedAt: string;
   finishedAt: string | null;
   message: string | null;

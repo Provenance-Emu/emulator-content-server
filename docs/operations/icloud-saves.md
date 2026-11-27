@@ -39,7 +39,21 @@ The sign-in is held in memory. Restarting the server, or two weeks passing, mean
 
 ### Play history
 
-When saves are read on the Mac, **Bring them in** also brings play history from Provenance for every game this server has: when it was last played, how many times, and for how long. It goes to the owner's account and shows under recently played. It only moves forward: a later date and larger counts replace what is here, and an older record changes nothing, so bringing it in again is harmless. Recently played keeps the 200 most recent games. Favourites, ratings and edited details are not brought in.
+When saves are read on the Mac, **Bring them in** also brings play history from Provenance for every game this server has: when it was last played, how many times, and for how long. It goes to the owner's account and shows under recently played. It only moves forward: a later date and larger counts replace what is here, and an older record changes nothing, so bringing it in again is harmless. Recently played keeps the 200 most recent games. Favourites and ratings are not brought in.
+
+### Details and covers
+
+**Bring them in** also fills in what this server does not know about each game from Provenance: description, developer, publisher, year, genre, region and language, and with them Provenance's title for a game that has only its file name. If you chose your own cover for a game in Provenance, it is brought in when the game has no cover here.
+
+- Nothing you set on this server is replaced. A game whose details or cover you edited here is left alone.
+- A detail the server already has stays, even when Provenance says something different.
+- A cover from Provenance only goes where there is no cover. It never replaces one already here, because a cover you picked from the server's suggestions looks the same to the server as one it found by itself.
+- A game Provenance knows only by name gets nothing, so the server can still look it up itself.
+- Each game is looked at once per change in iCloud. If you clear a field here afterwards, it stays clear until that game's record changes in Provenance.
+- Only games in library folders get details. A game you uploaded keeps just its title.
+- Favourites and ratings are not brought in.
+
+Every change can be undone on the game's details screen.
 
 ### Reading on the Mac
 

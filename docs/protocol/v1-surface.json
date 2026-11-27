@@ -1933,6 +1933,7 @@
     },
     "IcloudReaderFetch": {
       "properties": [
+        "file",
         "recordName",
         "requestId"
       ],
@@ -1962,14 +1963,24 @@
     },
     "IcloudReaderGameDescription": {
       "properties": [
+        "changeTag",
+        "description",
+        "developer",
         "filename",
         "gameId",
+        "genre",
+        "hasCustomCover",
+        "language",
         "lastPlayedAt",
         "playCount",
+        "publisher",
+        "recordName",
+        "region",
         "secondsPlayed",
         "size",
         "systemIdentifier",
-        "title"
+        "title",
+        "year"
       ],
       "required": [
         "gameId"
@@ -2024,6 +2035,8 @@
         "alreadyHere",
         "bytes",
         "checkedAt",
+        "coversToBring",
+        "detailsToBring",
         "games",
         "gamesHere",
         "playedGames",
@@ -2058,6 +2071,8 @@
     },
     "IcloudImport": {
       "properties": [
+        "coversUpdated",
+        "detailsUpdated",
         "failed",
         "finishedAt",
         "imported",

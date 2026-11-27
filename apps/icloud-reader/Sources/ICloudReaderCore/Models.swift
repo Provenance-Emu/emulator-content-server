@@ -39,6 +39,16 @@ public struct GameDescription: Codable, Equatable, Sendable {
   public var lastPlayedAt: String?
   public var playCount: Int64?
   public var secondsPlayed: Int64?
+  public var recordName: String?
+  public var changeTag: String?
+  public var description: String?
+  public var developer: String?
+  public var publisher: String?
+  public var year: String?
+  public var genre: String?
+  public var region: String?
+  public var language: String?
+  public var hasCustomCover: Bool?
 
   public init(
     gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int64? = nil,
@@ -68,10 +78,18 @@ public enum ReadFailure: String, Codable, Error, Sendable {
 public struct WantedSave: Codable, Equatable, Sendable {
   public var requestId: String
   public var recordName: String
-  public init(requestId: String, recordName: String) {
+  /// Which file of the record: nil or "save" for the save state, "cover" for the game's cover.
+  public var file: String?
+  public init(requestId: String, recordName: String, file: String? = nil) {
     self.requestId = requestId
     self.recordName = recordName
+    self.file = file
   }
+}
+
+/// A file a record can carry. The names are this program's; the store maps them to fields.
+public enum RecordFile: Sendable {
+  case save, cover
 }
 
 public enum Work: Equatable, Sendable {
@@ -88,8 +106,8 @@ public protocol SaveStore: Sendable {
   /// What the app records about each of the person's games: its file's name and size, and when
   /// and how much it was played. Throws `ReadFailure`.
   func games() async throws -> [GameDescription]
-  /// A local file holding the save's bytes. Throws `ReadFailure`.
-  func file(recordName: String) async throws -> URL
+  /// A local file holding one of a record's files. Throws `ReadFailure`.
+  func file(recordName: String, _ file: RecordFile) async throws -> URL
 }
 
 public enum LinkError: Error, Equatable {

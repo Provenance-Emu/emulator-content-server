@@ -1843,10 +1843,12 @@ public struct IcloudReaderWork: Codable, Equatable, Sendable {
 public struct IcloudReaderFetch: Codable, Equatable, Sendable {
     public var requestId: String
     public var recordName: String
+    public var file: String?
 
-    public init(requestId: String, recordName: String) {
+    public init(requestId: String, recordName: String, file: String? = nil) {
         self.requestId = requestId
         self.recordName = recordName
+        self.file = file
     }
 }
 
@@ -1879,8 +1881,18 @@ public struct IcloudReaderGameDescription: Codable, Equatable, Sendable {
     public var lastPlayedAt: String?
     public var playCount: Int?
     public var secondsPlayed: Int?
+    public var recordName: String?
+    public var changeTag: String?
+    public var description: String?
+    public var developer: String?
+    public var publisher: String?
+    public var year: String?
+    public var genre: String?
+    public var region: String?
+    public var language: String?
+    public var hasCustomCover: Bool?
 
-    public init(gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int? = nil, title: String? = nil, lastPlayedAt: String? = nil, playCount: Int? = nil, secondsPlayed: Int? = nil) {
+    public init(gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int? = nil, title: String? = nil, lastPlayedAt: String? = nil, playCount: Int? = nil, secondsPlayed: Int? = nil, recordName: String? = nil, changeTag: String? = nil, description: String? = nil, developer: String? = nil, publisher: String? = nil, year: String? = nil, genre: String? = nil, region: String? = nil, language: String? = nil, hasCustomCover: Bool? = nil) {
         self.gameId = gameId
         self.systemIdentifier = systemIdentifier
         self.filename = filename
@@ -1889,6 +1901,16 @@ public struct IcloudReaderGameDescription: Codable, Equatable, Sendable {
         self.lastPlayedAt = lastPlayedAt
         self.playCount = playCount
         self.secondsPlayed = secondsPlayed
+        self.recordName = recordName
+        self.changeTag = changeTag
+        self.description = description
+        self.developer = developer
+        self.publisher = publisher
+        self.year = year
+        self.genre = genre
+        self.region = region
+        self.language = language
+        self.hasCustomCover = hasCustomCover
     }
 }
 
@@ -1950,9 +1972,11 @@ public struct IcloudPreview: Codable, Equatable, Sendable {
     public var ready: Int
     public var alreadyHere: Int
     public var playedGames: Int?
+    public var detailsToBring: Int?
+    public var coversToBring: Int?
     public var unmatched: [IcloudUnmatchedGame]
 
-    public init(checkedAt: String, source: String? = nil, saves: Int, bytes: Int, games: Int, gamesHere: Int, ready: Int, alreadyHere: Int, playedGames: Int? = nil, unmatched: [IcloudUnmatchedGame]) {
+    public init(checkedAt: String, source: String? = nil, saves: Int, bytes: Int, games: Int, gamesHere: Int, ready: Int, alreadyHere: Int, playedGames: Int? = nil, detailsToBring: Int? = nil, coversToBring: Int? = nil, unmatched: [IcloudUnmatchedGame]) {
         self.checkedAt = checkedAt
         self.source = source
         self.saves = saves
@@ -1962,6 +1986,8 @@ public struct IcloudPreview: Codable, Equatable, Sendable {
         self.ready = ready
         self.alreadyHere = alreadyHere
         self.playedGames = playedGames
+        self.detailsToBring = detailsToBring
+        self.coversToBring = coversToBring
         self.unmatched = unmatched
     }
 }
@@ -1989,11 +2015,13 @@ public struct IcloudImport: Codable, Equatable, Sendable {
     public var skipped: Int
     public var failed: Int
     public var playsUpdated: Int?
+    public var detailsUpdated: Int?
+    public var coversUpdated: Int?
     public var startedAt: String
     public var finishedAt: String?
     public var message: String?
 
-    public init(state: String, source: String? = nil, total: Int, processed: Int, imported: Int, skipped: Int, failed: Int, playsUpdated: Int? = nil, startedAt: String, finishedAt: String? = nil, message: String? = nil) {
+    public init(state: String, source: String? = nil, total: Int, processed: Int, imported: Int, skipped: Int, failed: Int, playsUpdated: Int? = nil, detailsUpdated: Int? = nil, coversUpdated: Int? = nil, startedAt: String, finishedAt: String? = nil, message: String? = nil) {
         self.state = state
         self.source = source
         self.total = total
@@ -2002,6 +2030,8 @@ public struct IcloudImport: Codable, Equatable, Sendable {
         self.skipped = skipped
         self.failed = failed
         self.playsUpdated = playsUpdated
+        self.detailsUpdated = detailsUpdated
+        self.coversUpdated = coversUpdated
         self.startedAt = startedAt
         self.finishedAt = finishedAt
         self.message = message

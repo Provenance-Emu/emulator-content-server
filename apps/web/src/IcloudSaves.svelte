@@ -173,12 +173,12 @@
       {#if importing}
         <button type="button" disabled={working} onclick={() => void act(() => client.icloudCancelImport())}>Stop</button>
       {:else}
-        {#if status.preview?.ready || status.preview?.playedGames}
+        {#if status.preview?.ready || status.preview?.playedGames || status.preview?.detailsToBring}
           <button type="button" class="primary" disabled={working} onclick={() => void act(() => client.icloudImport())}>
-            {status.preview.ready ? 'Bring them in' : 'Bring in play history'}
+            {status.preview.ready ? 'Bring them in' : 'Bring in history and details'}
           </button>
         {/if}
-        <button type="button" class:primary={!status.preview?.ready && !status.preview?.playedGames} disabled={working}
+        <button type="button" class:primary={!status.preview?.ready && !status.preview?.playedGames && !status.preview?.detailsToBring} disabled={working}
           onclick={() => void act(() => client.icloudPreview())}>
           {status.preview ? 'Look again' : 'Look for saves'}
         </button>

@@ -10,7 +10,7 @@ import { createWriteStream } from 'node:fs';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { hashToken, issueToken, tokenHashesEqual } from '@ecs/auth';
-import type { CloudRom, CloudSave } from './cloudkit.js';
+import { CLOUD_DETAILS, type CloudRom, type CloudSave } from './cloudkit.js';
 
 export type ReaderAccount = 'available' | 'signedOut' | 'restricted' | 'unknown';
 export type ReaderState =
@@ -22,7 +22,10 @@ export type ReaderState =
   | 'working';
 export type ReaderWork =
   | { work: 'none' | 'list' | 'stop' }
-  | { work: 'fetch'; saves: Array<{ requestId: string; recordName: string }> };
+  | {
+      work: 'fetch';
+      saves: Array<{ requestId: string; recordName: string; file: 'save' | 'cover' }>;
+    };
 
 export const READER_FAILURES = [
   'missing',
@@ -48,7 +51,8 @@ export class ReaderError extends Error {
       | 'busy'
       | 'too-large'
       | 'account'
-      | 'not-allowed',
+      | 'not-allowed'
+      | 'no-file',
   ) {
     super(`The iCloud reader: ${failure}`);
     this.name = 'ReaderError';
@@ -65,6 +69,8 @@ interface Listing {
 
 interface Wanted {
   recordName: string;
+  file: 'save' | 'cover';
+  maxBytes: number;
   path: string;
   signal: AbortSignal;
   sent: boolean;
@@ -167,7 +173,10 @@ export class ReaderHub {
     for (const [requestId, wanted] of this.wanted) {
       if (wanted.sent) continue;
       wanted.sent = true;
-      return { work: 'fetch', saves: [{ requestId, recordName: wanted.recordName }] };
+      return {
+        work: 'fetch',
+        saves: [{ requestId, recordName: wanted.recordName, file: wanted.file }],
+      };
     }
     return null;
   }
@@ -223,12 +232,20 @@ export class ReaderHub {
   }
 
   /** Asks the reader for one save's bytes, written to `path`. Answers with how many arrived. */
-  fetch(recordName: string, path: string, signal: AbortSignal): Promise<number> {
+  fetch(
+    recordName: string,
+    path: string,
+    signal: AbortSignal,
+    file: 'save' | 'cover' = 'save',
+    maxBytes = this.limits.maxSaveBytes,
+  ): Promise<number> {
     const requestId = issueToken().token.slice(0, 22);
     const ended = new AbortController();
     return this.watched(signal, (resolve, reject) => {
       this.wanted.set(requestId, {
         recordName,
+        file,
+        maxBytes,
         path,
         signal,
         sent: false,
@@ -253,7 +270,7 @@ export class ReaderHub {
     if (!wanted?.sent || wanted.receiving) return false;
     wanted.receiving = true;
     let received = 0;
-    const max = this.limits.maxSaveBytes;
+    const max = wanted.maxBytes;
     const counted = new Transform({
       transform: (chunk: Buffer, _encoding, done) => {
         received += chunk.length;
@@ -276,10 +293,14 @@ export class ReaderHub {
     return true;
   }
 
-  failFetch(requestId: string): boolean {
+  /** The reader could not send a file. `reason` is one of `READER_FAILURES`. */
+  failFetch(requestId: string, reason = 'unexpected'): boolean {
     const wanted = this.wanted.get(requestId);
     if (!wanted?.sent || wanted.receiving) return false;
-    wanted.reject(new ReaderError('refused'));
+    // The record is there and has no such file: asking again would get the same answer.
+    wanted.reject(
+      new ReaderError(reason === 'noFile' || reason === 'missing' ? 'no-file' : 'refused'),
+    );
     return true;
   }
 
@@ -421,6 +442,17 @@ export function describedGame(raw: unknown): [string, CloudRom] | null {
   // A date from the future would sit at the top of the recently played list for ever.
   const lastPlayedAt =
     played === null ? null : new Date(Math.min(Date.parse(played), Date.now())).toISOString();
+  const details: NonNullable<CloudRom['details']> = {};
+  for (const key of CLOUD_DETAILS) {
+    const found = text(key, 2000);
+    if (found === undefined) return null;
+    if (found) details[key] = found.trim();
+  }
+  const recordName = text('recordName', 512);
+  const changeTag = text('changeTag', 128);
+  if (recordName === undefined || changeTag === undefined) return null;
+  const cover = value.hasCustomCover;
+  if (cover !== undefined && cover !== null && typeof cover !== 'boolean') return null;
   // A name is compared with file names here; one that tries to be a path is not a name.
   if (filename && /[\\/\0]/.test(filename)) return null;
   return [
@@ -433,6 +465,10 @@ export function describedGame(raw: unknown): [string, CloudRom] | null {
       lastPlayedAt,
       playCount,
       secondsPlayed,
+      recordName,
+      changeTag,
+      details,
+      hasCustomCover: cover === true,
     },
   ];
 }

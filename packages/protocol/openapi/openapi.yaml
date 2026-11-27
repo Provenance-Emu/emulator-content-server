@@ -4201,8 +4201,9 @@ components:
       type: object
       required: [requestId, recordName]
       properties:
-        requestId: { type: string, description: Where to send this save with icloudReaderSave. }
+        requestId: { type: string, description: Where to send this file with icloudReaderSave. }
         recordName: { type: string }
+        file: { type: string, enum: [save, cover], description: "Which file of the record to send. save, or absent: the save state. cover: the cover the person chose for the game in the app." }
     IcloudReaderAccount:
       type: object
       required: [state]
@@ -4234,6 +4235,16 @@ components:
         lastPlayedAt: { type: [string, 'null'], format: date-time, description: When the game was last played in the app. }
         playCount: { type: [integer, 'null'], minimum: 0 }
         secondsPlayed: { type: [integer, 'null'], minimum: 0 }
+        recordName: { type: [string, 'null'], maxLength: 512, description: "The game record's name, so the server can ask for its cover." }
+        changeTag: { type: [string, 'null'], maxLength: 128 }
+        description: { type: [string, 'null'], maxLength: 2000 }
+        developer: { type: [string, 'null'], maxLength: 2000 }
+        publisher: { type: [string, 'null'], maxLength: 2000 }
+        year: { type: [string, 'null'], maxLength: 16 }
+        genre: { type: [string, 'null'], maxLength: 2000 }
+        region: { type: [string, 'null'], maxLength: 2000 }
+        language: { type: [string, 'null'], maxLength: 2000 }
+        hasCustomCover: { type: [boolean, 'null'], description: The person chose their own cover for this game in the app. }
     IcloudReaderSaveDescription:
       type: object
       required: [recordName, changeTag, gameId, filename, size]
@@ -4275,6 +4286,8 @@ components:
         ready: { type: integer, description: Saves an import would copy now. }
         alreadyHere: { type: integer, description: Saves brought in before. }
         playedGames: { type: integer, description: "Games this server has that iCloud holds play history for. An import brings that in too. Absent when the source does not say." }
+        detailsToBring: { type: integer, description: "Games this server has whose details in iCloud have not been looked at yet. An import fills what this server does not know and never replaces what it does." }
+        coversToBring: { type: integer, description: "Of those, games with a cover the person chose in the app." }
         unmatched:
           type: array
           description: Games in iCloud this server does not have, largest first. At most 50.
@@ -4299,6 +4312,8 @@ components:
         skipped: { type: integer, description: "Saves with no game here, or brought in before." }
         failed: { type: integer, description: Saves that could not be downloaded. They are tried again next time. }
         playsUpdated: { type: integer, description: "Games whose play history was brought in: last played, and how often and how long where the app kept count." }
+        detailsUpdated: { type: integer, description: Games that gained a title or details this server did not have. }
+        coversUpdated: { type: integer, description: Games that gained the cover the person chose in the app. }
         startedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
         message: { type: [string, 'null'], description: "Why it stopped, in plain words." }

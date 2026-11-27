@@ -1,4 +1,7 @@
 import { createWriteStream } from 'node:fs';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { isLoopbackAddress } from '@ecs/auth';
@@ -12,11 +15,13 @@ import {
   CloudKitError,
   type CloudKitFetch,
   CloudKitSession,
+  type CloudRom,
   type CloudSave,
   parseCloudSave,
 } from './cloudkit.js';
 import type { ServerContext } from './context.js';
 import { jsonObject, requiredString, requireOwner } from './http.js';
+import { COVER_MAX_BYTES, coverRecord, planDetails, saveIfUnchanged } from './icloud-details.js';
 import {
   describedGame,
   describedSave,
@@ -76,6 +81,8 @@ interface Preview {
   ready: number;
   alreadyHere: number;
   playedGames?: number;
+  detailsToBring?: number;
+  coversToBring?: number;
   unmatched: Array<{
     gameId: string;
     systemIdentifier: string | null;
@@ -93,6 +100,8 @@ interface ImportProgress {
   skipped: number;
   failed: number;
   playsUpdated?: number;
+  detailsUpdated?: number;
+  coversUpdated?: number;
   startedAt: string;
   finishedAt: string | null;
   message: string | null;
@@ -214,16 +223,128 @@ export function registerIcloudRoutes(
     return locateGame(save.gameId, save.rom, save.systemIdentifier);
   }
 
+  /** Answers already worked out during the look or import under way. */
+  let located = new Map<string, ReturnType<typeof catalog.gameForMd5>>();
+
   function locateGame(
     gameId: string,
     rom: CloudSave['rom'],
     system: string | null = null,
   ): ReturnType<typeof catalog.gameForMd5> {
-    const found = catalog.gameForMd5(gameId);
-    if (found || !rom?.filename) return found;
-    const systemIdentifier = rom.systemIdentifier ?? system;
-    if (!systemIdentifier) return null;
-    return catalog.gameForRomFile({ systemIdentifier, filename: rom.filename, size: rom.size });
+    const key = `${gameId}\n${rom?.systemIdentifier ?? system ?? ''}\n${rom?.filename ?? ''}`;
+    const known = located.get(key);
+    if (known !== undefined) return known;
+    let found = catalog.gameForMd5(gameId);
+    const systemIdentifier = rom?.systemIdentifier ?? system;
+    if (!found && rom?.filename && systemIdentifier)
+      found = catalog.gameForRomFile({ systemIdentifier, filename: rom.filename, size: rom.size });
+    located.set(key, found);
+    return found;
+  }
+
+  /** Where it is remembered which game records have had their details looked at. */
+  const gamesOrigin = `${origin}:games`;
+
+  /**
+   * The scanned files here whose game record in iCloud has not been looked at since it last
+   * changed, with what that record would add. An uploaded game has nowhere to keep details,
+   * so it is not among them.
+   */
+  function detailsHere() {
+    const applied = catalog.importedSaveKeys(gamesOrigin);
+    const found = [];
+    for (const [gameId, rom] of reader.games) {
+      if (!rom.recordName || !rom.changeTag) continue;
+      if (applied.has(saveImportKey(rom.recordName, rom.changeTag))) continue;
+      const game = locateGame(gameId, rom);
+      if (!game) continue;
+      const sourceId =
+        'sourceId' in game ? game.sourceId : catalog.gameSourceCopies(game.itemId)[0]?.id;
+      const source = sourceId ? catalog.getSource(sourceId) : null;
+      if (!source) continue;
+      const plan = planDetails(
+        rom,
+        catalog.sourceMatches(source.id).matches,
+        source.title ?? source.displayName,
+      );
+      found.push({ source, rom, recordName: rom.recordName, changeTag: rom.changeTag, plan });
+    }
+    return found;
+  }
+
+  /**
+   * Fills what this server does not know about each game from the app's record, and brings the
+   * cover its owner chose there. A record is remembered once it has been dealt with, so a field
+   * the owner clears here later is not filled again until the record changes in iCloud.
+   */
+  async function bringDetails(actorId: string, state: ImportProgress, signal: AbortSignal) {
+    let details = 0;
+    let covers = 0;
+    // What a game needs is worked out again from what is saved at the moment of each write, and
+    // the write names the revision it was worked out from. Nothing waits between the two, so a
+    // change made here while the import runs is seen, never written over.
+    const fresh = (source: { id: string; title?: string; displayName: string }, rom: CloudRom) => {
+      const now = catalog.sourceMatches(source.id);
+      return {
+        revision: now.revision,
+        plan: planDetails(rom, now.matches, source.title ?? source.displayName),
+        title: now.matches.find((match) => match.kind === 'metadata')?.title,
+      };
+    };
+    for (const { source, rom, recordName, changeTag } of detailsHere()) {
+      if (signal.aborted) break;
+      let settled = true;
+      const first = fresh(source, rom);
+      if (first.plan.record) {
+        if (saveIfUnchanged(catalog, source.id, first.revision, first.plan.record, null, actorId))
+          details += 1;
+        else settled = false;
+      }
+      if (first.plan.wantsCover) {
+        const folder = await mkdtemp(join(tmpdir(), 'ecs-cover-'));
+        try {
+          const path = join(folder, 'cover');
+          await writeFile(path, Buffer.alloc(0));
+          const limited = AbortSignal.any([signal, AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)]);
+          await reader.fetch(recordName, path, limited, 'cover', COVER_MAX_BYTES);
+          const bytes = await readFile(path);
+          // The fetch took time: look again before putting a cover in place.
+          const after = fresh(source, rom);
+          const cover = after.plan.wantsCover
+            ? coverRecord(bytes, after.title ?? source.title ?? source.displayName)
+            : null;
+          // A file that is not a usable image is dropped and not asked for again.
+          if (cover) {
+            if (saveIfUnchanged(catalog, source.id, after.revision, cover, bytes, actorId))
+              covers += 1;
+            else settled = false;
+          }
+        } catch (error) {
+          if (signal.aborted) break;
+          if (error instanceof ReaderError && error.failure === 'gone') throw error;
+          // A record that names a cover and holds none, or holds one too large to take, is
+          // settled: asking again would end the same way. Any other failure is tried again.
+          const final =
+            error instanceof ReaderError && ['no-file', 'too-large'].includes(error.failure);
+          if (!final) settled = false;
+        } finally {
+          await rm(folder, { recursive: true, force: true });
+        }
+      }
+      if (settled)
+        catalog.recordSaveImport({
+          origin: gamesOrigin,
+          recordName,
+          changeTag,
+          assetId: null,
+          device: null,
+          modifiedAt: null,
+        });
+      state.detailsUpdated = details;
+      state.coversUpdated = covers;
+    }
+    state.detailsUpdated = details;
+    state.coversUpdated = covers;
   }
 
   /** The games here that the reader's listing holds play history for. */
@@ -247,7 +368,16 @@ export function registerIcloudRoutes(
     return found;
   }
 
+  function detailCounts(): { detailsToBring: number; coversToBring: number } {
+    const waiting = detailsHere().filter(({ plan }) => plan.record || plan.wantsCover);
+    return {
+      detailsToBring: waiting.length,
+      coversToBring: waiting.filter(({ plan }) => plan.wantsCover).length,
+    };
+  }
+
   function summarize(saves: CloudSave[], source: Source): Preview {
+    located = new Map();
     const imported = catalog.importedSaveKeys(origin);
     const games = new Map<
       string,
@@ -291,7 +421,7 @@ export function registerIcloudRoutes(
       gamesHere: games.size - unmatched.length,
       ready,
       alreadyHere,
-      ...(source === 'mac' ? { playedGames: playedHere().length } : {}),
+      ...(source === 'mac' ? { playedGames: playedHere().length, ...detailCounts() } : {}),
       unmatched: unmatched.slice(0, 50),
     };
   }
@@ -398,6 +528,7 @@ export function registerIcloudRoutes(
     const source = state.source;
     try {
       const saves = await listSaves(source, signal);
+      located = new Map();
       const imported = catalog.importedSaveKeys(origin);
       state.total = saves.length;
       for (const save of saves) {
@@ -433,6 +564,7 @@ export function registerIcloudRoutes(
             updated += 1;
         }
         state.playsUpdated = updated;
+        await bringDetails(actorId, state, signal);
       }
       state.state = signal.aborted ? 'cancelled' : 'completed';
       if (!signal.aborted && asked === generation) preview = summarize(saves, source);
@@ -640,8 +772,7 @@ export function registerIcloudRoutes(
     `${READER}/saves/:requestId/failed`,
     async (request, reply) => {
       ticket(request);
-      failure(request);
-      if (!reader.failFetch(request.params.requestId))
+      if (!reader.failFetch(request.params.requestId, failure(request)))
         throw new DomainError('not-found', 404, 'The server is not waiting for this save');
       return reply.status(204).send();
     },
