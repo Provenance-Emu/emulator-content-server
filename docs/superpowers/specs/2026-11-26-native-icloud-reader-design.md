@@ -55,6 +55,14 @@ The owner registered App ID `org.provenance.contentserver.icloud-reader` in the 
 - The two App Store Connect API key files on the laptop were rejected by Apple, so the App ID could not be made by Xcode from the command line. The portal by hand took a few minutes.
 - Still not done: a run of the real desktop app with the helper nested in it, and the launchd cases.
 
+### On the Mac Studio
+
+Checked over SSH after a restart with the owner logged in.
+
+- The nightly's desktop app carries the helper, and the helper launches there, so the nightly's certificate matches the profile.
+- The server is the **boot service**, running as the owner, started with `--host 0.0.0.0`. The desktop app runs in the owner's login session. This is the arrangement the design assumed: the server never needs an iCloud session of its own.
+- **The desktop app never attached.** It verifies the local server before reading the key, and that check refused any server listening beyond loopback. Fixed with a loopback listener the server holds itself; see `2026-11-20-local-owner-access-design.md`, "Servers on the home network". Not yet re-run on the Studio with that fix.
+
 ## Apple's other libraries, and why they do not help here
 
 Apple offers CloudKit JS for web pages and a server-to-server key for servers; open-source Swift packages (MistKit is one) wrap the same thing for server-side Swift.

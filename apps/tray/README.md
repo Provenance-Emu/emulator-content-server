@@ -45,7 +45,9 @@ macOS correlates the fixed LaunchAgent, numeric process owner and microsecond
 birth time from OS metadata, and a single exact loopback listener from bounded
 `lsof` output. Linux correlates the fixed user unit's MainPID, invocation and start
 generation, bounded `/proc/PID/stat` identity metadata and visible `ss` ownership.
-Missing tools, permission failures, wildcard or multiple listeners, malformed or
+A macOS server on the home network is verified by the `127.0.0.1` listener it holds beside its
+network one, on the same port. Missing tools, permission failures, a network listener with no
+loopback listener held, any further listeners, malformed or
 oversized output fail closed. Windows currently uses the server chooser because
 a running Scheduled Task does not prove ownership of the server listener.
 

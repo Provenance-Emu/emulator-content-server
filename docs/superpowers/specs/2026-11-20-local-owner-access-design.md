@@ -59,6 +59,15 @@ With an owner session the existing interface already does the rest, so no second
 - Guessing is limited to the sign-in limit per minute for loopback as a whole, and each wrong key is one audit row. Another local program can use that up, which sends this computer back to the password form for a minute; it cannot get in.
 - The status window's ten-second poll is what notices an expired session, so the library window can show its sign-in form for a few seconds before the new session arrives.
 
+## Servers on the home network, added 2026-11-26
+
+Found on the owner's Mac Studio: none of this worked there. That server is started with `--host 0.0.0.0`, the usual setup for a household, and the desktop app only verified a server whose single listener was on `127.0.0.1`. The check was right to refuse. A server that listens on every address does not own the loopback address, and another program on the same computer can bind `127.0.0.1` on that port and be handed the key (tried: a second process bound it without error).
+
+- **Server.** A server with local trust that listens beyond loopback also binds `127.0.0.1` on the same port itself (`apps/server/src/loopback-listener.ts`, called after `listen` and before the key is written). The same application answers there. Once it is held, another process's bind fails. If it cannot be bound, someone else has it; the server carries on and the desktop app's check fails, so nothing is offered.
+- **Desktop app.** `inspect` accepts a lone loopback listener, or a loopback listener plus one other listener on the same port, both belonging to the verified process. It then asks, by address, who listens on that loopback address and requires the answer to be that one process, as before. The key is still sent only there.
+- **The same computer by another name: not done, on purpose.** A window that shows the server as `localhost`, the Mac's host name or a network address is still not signed in this way; only `http://127.0.0.1:<port>` is. Recognising those names was built and then removed after review. The session is handed to the window, which sends it to the address the window uses, and the server holds only `127.0.0.1`. Another program on the computer could bind `127.0.0.2`, `[::1]` or the network address on that port and receive the owner session, and a name can resolve to this computer when checked and elsewhere when used. The safe way to serve those windows is to move them to the loopback address, which is a change to how the desktop app keeps its server list and is not designed here.
+- **Linux** keeps the old single-listener check for now, so a Linux server on the home network is still not verified by the desktop app there.
+
 ## Not in this design
 
 - **A privileged helper.** The login service and the boot service both run as the installing user, so the desktop app and the server are the same user and nothing needs raising. The administrator prompt is needed only to start or stop the boot job, which `service.rs` now does.

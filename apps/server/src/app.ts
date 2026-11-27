@@ -16,6 +16,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registerApiDocs } from './api-docs.js';
 import { stopLibraryJobs } from './library-jobs.js';
+import { closeLoopbackListener, holdLoopbackListener } from './loopback-listener.js';
 import { PlayerManager, registerPlayerManagement } from './player-manager.js';
 import { type PluginManagementBridge, registerPluginManagement } from './plugin-management.js';
 import './actor.js';
@@ -87,6 +88,12 @@ export async function openServer(options: OpenServerOptions): Promise<{
    * a server without local trust, Windows, or a folder that cannot take the file.
    */
   offerLocalOwnerSignIn: () => Promise<boolean>;
+  /**
+   * Call after `listen` and before `offerLocalOwnerSignIn`. When the server listens beyond
+   * loopback, also binds `127.0.0.1` on the same port so no other program can stand in for it
+   * there. False when there was nothing to hold, local trust is off, or it could not be bound.
+   */
+  holdLoopback: () => Promise<boolean>;
   /** Purges what is past its date and collects unreferenced bytes. Also runs hourly. */
   runRetention: (now?: Date) => Promise<RetentionResult>;
 }> {
@@ -174,9 +181,15 @@ export async function openServer(options: OpenServerOptions): Promise<{
   app.addHook('onClose', async () => {
     catalog.close();
   });
+  let loopback: import('node:http').Server | null = null;
   return {
     app,
     catalog,
+    holdLoopback: async () => {
+      if (!context.localTrust || loopback) return loopback !== null;
+      loopback = await holdLoopbackListener(app);
+      return loopback !== null;
+    },
     offerLocalOwnerSignIn: async () => {
       if (!context.localTrust || context.localOwnerKey) return !!context.localOwnerKey;
       context.localOwnerKey = await writeLocalOwnerKey(dataDir);
@@ -184,6 +197,8 @@ export async function openServer(options: OpenServerOptions): Promise<{
     },
     close: async () => {
       await context.localOwnerKey?.remove();
+      await closeLoopbackListener(loopback);
+      loopback = null;
       await app.close();
     },
     runRetention: (now) => app.runRetention(now),

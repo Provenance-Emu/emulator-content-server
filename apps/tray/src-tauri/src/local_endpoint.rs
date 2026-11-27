@@ -318,6 +318,75 @@ fn lsof_listener(text: &str, pid: u32, uid: u32) -> Result<String, String> {
     }
     name.ok_or_else(|| UNAVAILABLE.into())
 }
+/// The loopback listener among everything the server process listens on.
+///
+/// A server on the home network listens on every address and also holds `127.0.0.1` on the same
+/// port itself (see `apps/server/src/loopback-listener.ts`), so nobody else on this computer can
+/// answer there. That pair is accepted, and so is a lone loopback listener. Anything else is
+/// refused: no loopback listener, more than one, a third socket, or a second on another port.
+fn lsof_owned_listener(text: &str, pid: u32, uid: u32) -> Result<String, String> {
+    let mut found_pid = None;
+    let mut found_uid = None;
+    let mut sockets: Vec<(Option<&str>, bool)> = Vec::new();
+    for line in text.lines() {
+        if let Some(value) = line.strip_prefix('p') {
+            if found_pid.replace(positive(value)?).is_some() {
+                return Err(UNAVAILABLE.into());
+            }
+        } else if let Some(value) = line.strip_prefix('u') {
+            if found_uid.replace(positive(value)?).is_some() {
+                return Err(UNAVAILABLE.into());
+            }
+        } else if line.starts_with('f') {
+            sockets.push((None, false));
+        } else if let Some(value) = line.strip_prefix('n') {
+            let socket = sockets.last_mut().ok_or(UNAVAILABLE)?;
+            if socket.0.replace(value).is_some() {
+                return Err(UNAVAILABLE.into());
+            }
+        } else if line == "TST=LISTEN" {
+            let socket = sockets.last_mut().ok_or(UNAVAILABLE)?;
+            if socket.1 {
+                return Err(UNAVAILABLE.into());
+            }
+            socket.1 = true;
+        } else if !line.starts_with('T') {
+            return Err(UNAVAILABLE.into());
+        }
+    }
+    if found_pid != Some(pid.into())
+        || found_uid != Some(uid.into())
+        || sockets.is_empty()
+        || sockets.len() > 2
+        || sockets
+            .iter()
+            .any(|(name, listening)| name.is_none() || !listening)
+    {
+        return Err(UNAVAILABLE.into());
+    }
+    let names: Vec<&str> = sockets.iter().filter_map(|(name, _)| *name).collect();
+    let listener = single(
+        names
+            .iter()
+            .copied()
+            .filter(|name| loopback_listener(name).is_ok()),
+    )?;
+    let port = listener.rsplit_once(':').ok_or(UNAVAILABLE)?.1;
+    for other in names.iter().filter(|name| **name != listener) {
+        // The second socket must be the same server reaching the network: same port, and an
+        // address that is not loopback (two loopback listeners were refused above).
+        match other.rsplit_once(':') {
+            Some((host, other_port))
+                if other_port == port
+                    && !host.is_empty()
+                    && !host.starts_with("127.")
+                    && !host.contains("::1]")
+                    && !host.contains("127.0.0.") => {}
+            _ => return Err(UNAVAILABLE.into()),
+        }
+    }
+    Ok(listener.into())
+}
 fn ss_listener(text: &str, pid: u32, uid: u32) -> Result<String, String> {
     let mut candidate = None;
     let pid_marker = format!("pid={pid},");
@@ -383,7 +452,8 @@ fn listener_for(
             if text.is_empty() {
                 return Ok(None);
             }
-            let listener = lsof_listener(&text, pid, uid)?;
+            let listener = lsof_owned_listener(&text, pid, uid)?;
+            // Asked by address, only the one loopback socket may answer, and it must be ours.
             let filter = format!("-iTCP@{}", listener);
             let text = output(
                 runner,

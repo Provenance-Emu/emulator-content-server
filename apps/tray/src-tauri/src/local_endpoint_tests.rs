@@ -339,3 +339,44 @@ fn cancellation_stays_null_and_invalid_requests_never_open_a_dialog() {
     }
     assert!(!state.validate(&id, Some(&original)), "old IDs are bounded");
 }
+
+#[test]
+fn a_server_on_the_home_network_is_verified_by_the_loopback_listener_it_holds() {
+    let pair = format!("{SOCKET}f13\nn*:7878\nTST=LISTEN\n");
+    let with = |owned: &str| {
+        let mut f = mac(MAC, SOCKET);
+        f.replies[1] = owned.into();
+        f
+    };
+    let snapshot = inspect(Platform::Mac, 501, &mut with(&pair)).unwrap();
+    assert_eq!(snapshot.origin(), "http://127.0.0.1:7878");
+    // Listed the other way round, or bound to one network address, is the same pair.
+    for owned in [
+        "p123\nu501\nf12\nn*:7878\nTST=LISTEN\nf13\nn127.0.0.1:7878\nTST=LISTEN\n".to_string(),
+        format!("{SOCKET}f13\nn192.168.1.20:7878\nTST=LISTEN\n"),
+    ] {
+        assert!(inspect(Platform::Mac, 501, &mut with(&owned)).is_ok());
+    }
+    for owned in [
+        // Listening on the network without holding loopback: anyone could answer there.
+        SOCKET.replace("127.0.0.1", "*"),
+        // The second socket is on another port, so it is not this server's network side.
+        format!("{SOCKET}f13\nn*:9999\nTST=LISTEN\n"),
+        // A second loopback address under another spelling is not the network side.
+        format!("{SOCKET}f13\nn127.0.0.2:7878\nTST=LISTEN\n"),
+        format!("{SOCKET}f13\nn[::ffff:127.0.0.1]:7878\nTST=LISTEN\n"),
+        // Two loopback listeners, a third socket, or one that is not listening.
+        format!("{SOCKET}f13\nn[::1]:7878\nTST=LISTEN\n"),
+        format!("{pair}f14\nn*:7878\nTST=LISTEN\n"),
+        format!("{SOCKET}f13\nn*:7878\n"),
+    ] {
+        assert!(
+            inspect(Platform::Mac, 501, &mut with(&owned)).is_err(),
+            "{owned}"
+        );
+    }
+    // Someone else also answering on the loopback address is still refused.
+    let mut f = with(&pair);
+    f.replies[2] = format!("{SOCKET}p999\nu502\nf9\nn127.0.0.1:7878\nTST=LISTEN\n");
+    assert!(inspect(Platform::Mac, 501, &mut f).is_err());
+}

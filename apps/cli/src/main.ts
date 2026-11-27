@@ -272,6 +272,9 @@ async function serveOnTerminal(dataDir: string, daemon: boolean): Promise<void> 
       tlsTerminated: listen.tlsTerminated,
     });
     await server.app.listen({ host: listen.host, port: listen.port });
+    // On the home network the server also holds 127.0.0.1 itself, so the key below can only
+    // ever be sent to this process.
+    await server.holdLoopback();
     // Only the process that owns the listener writes the key the desktop app reads.
     await server.offerLocalOwnerSignIn();
   } catch (error) {
