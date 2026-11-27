@@ -36,11 +36,18 @@ public struct GameDescription: Codable, Equatable, Sendable {
   public var filename: String?
   public var size: Int64?
   public var title: String?
+  public var lastPlayedAt: String?
+  public var playCount: Int64?
+  public var secondsPlayed: Int64?
 
   public init(
     gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int64? = nil,
-    title: String? = nil
+    title: String? = nil, lastPlayedAt: String? = nil, playCount: Int64? = nil,
+    secondsPlayed: Int64? = nil
   ) {
+    self.lastPlayedAt = lastPlayedAt
+    self.playCount = playCount
+    self.secondsPlayed = secondsPlayed
     self.gameId = gameId
     self.systemIdentifier = systemIdentifier
     self.filename = filename
@@ -78,8 +85,9 @@ public protocol SaveStore: Sendable {
   func account() async -> AccountState
   /// Calls `page` with every save, a page at a time. Throws `ReadFailure`.
   func list(page: @Sendable ([SaveDescription]) async throws -> Void) async throws
-  /// What the app records about the games with these identifiers. Throws `ReadFailure`.
-  func games(for gameIds: Set<String>) async throws -> [GameDescription]
+  /// What the app records about each of the person's games: its file's name and size, and when
+  /// and how much it was played. Throws `ReadFailure`.
+  func games() async throws -> [GameDescription]
   /// A local file holding the save's bytes. Throws `ReadFailure`.
   func file(recordName: String) async throws -> URL
 }

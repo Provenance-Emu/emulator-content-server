@@ -27,6 +27,7 @@ import {
   browseSystemCounts,
   type ContentRootSummaryRecord,
   type PlayedRecord,
+  type PlayFacts,
   type RootSummaryFilter,
   recordPlay,
 } from './library-browse.js';
@@ -709,8 +710,9 @@ export class CatalogDatabase {
     actor: Actor,
     target: { entityType: 'item' | 'source'; id: string },
     playedAt = new Date().toISOString(),
+    facts: PlayFacts = {},
   ): boolean {
-    return this.transaction(() => recordPlay(this.db, actor, target, playedAt));
+    return this.transaction(() => recordPlay(this.db, actor, target, playedAt, facts));
   }
 
   browseLibrary(input: BrowseSelection): {
@@ -730,7 +732,15 @@ export class CatalogDatabase {
           )
         : undefined;
       const items: PlayedRecord[] = selected.map((key) => {
-        const played = key.played_at ? { playedAt: key.played_at } : {};
+        const played = key.played_at
+          ? {
+              playedAt: key.played_at,
+              ...(typeof key.play_count === 'number' ? { playCount: key.play_count } : {}),
+              ...(typeof key.seconds_played === 'number'
+                ? { secondsPlayed: key.seconds_played }
+                : {}),
+            }
+          : {};
         if (key.entity_type === 'item') {
           const item = this.getItem(key.id);
           if (!item) throw new DomainError('not-found', 404, 'Item not found');

@@ -15,8 +15,8 @@ struct FakeStore: SaveStore {
     if let listFailure { throw listFailure }
     try await page(saves)
   }
-  func games(for gameIds: Set<String>) async throws -> [GameDescription] {
-    gameIds.sorted().map { GameDescription(gameId: $0, filename: "game.nes", size: 9, title: "Game") }
+  func games() async throws -> [GameDescription] {
+    [GameDescription(gameId: "generated", filename: "game.nes", size: 9, title: "Game", playCount: 3)]
   }
   func file(recordName: String) async throws -> URL {
     if unreadable.contains(recordName) { throw ReadFailure.noFile }
@@ -37,7 +37,7 @@ final class BusyOnceStore: SaveStore, @unchecked Sendable {
   func list(page: @Sendable ([SaveDescription]) async throws -> Void) async throws {
     try await inner.list(page: page)
   }
-  func games(for gameIds: Set<String>) async throws -> [GameDescription] { [] }
+  func games() async throws -> [GameDescription] { [] }
   func file(recordName: String) async throws -> URL {
     let first = lock.withLock { seen.insert(recordName).inserted }
     if first { throw ReadFailure.busy }

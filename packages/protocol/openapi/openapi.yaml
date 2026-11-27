@@ -4149,6 +4149,8 @@ components:
         previewAsset: { $ref: '#/components/schemas/Asset' }
         romDownload: { $ref: '#/components/schemas/RomDownloadSummary' }
         lastPlayedAt: { type: string, format: date-time, description: 'Present on browse played=recent: when this account last started the game.' }
+        playCount: { type: integer, description: 'Present on browse played=recent when an app that kept count has told the server: how many times this account has played the game.' }
+        secondsPlayed: { type: integer, description: 'Present on browse played=recent when an app that kept count has told the server: how long this account has played the game.' }
     PlayRecordRequest:
       type: object
       properties:
@@ -4218,7 +4220,7 @@ components:
         games:
           type: array
           maxItems: 500
-          description: "What iCloud records about the games these saves belong to, from the app's ROM records. Send only games that have a save. Lets the server find a game by its file when the app's identifier is not the file's plain MD5."
+          description: "What iCloud records about the owner's games, from the app's ROM records: enough to find a game by its file when the app's identifier is not the file's plain MD5, and when and how much each was played. Never the game file."
           items: { $ref: '#/components/schemas/IcloudReaderGameDescription' }
     IcloudReaderGameDescription:
       type: object
@@ -4229,6 +4231,9 @@ components:
         filename: { type: [string, 'null'], maxLength: 512, description: "The game file's name as the app first saw it." }
         size: { type: [integer, 'null'], minimum: 0, description: Bytes of the game file. }
         title: { type: [string, 'null'], maxLength: 512 }
+        lastPlayedAt: { type: [string, 'null'], format: date-time, description: When the game was last played in the app. }
+        playCount: { type: [integer, 'null'], minimum: 0 }
+        secondsPlayed: { type: [integer, 'null'], minimum: 0 }
     IcloudReaderSaveDescription:
       type: object
       required: [recordName, changeTag, gameId, filename, size]
@@ -4269,6 +4274,7 @@ components:
         gamesHere: { type: integer, description: "Of those, games this server has." }
         ready: { type: integer, description: Saves an import would copy now. }
         alreadyHere: { type: integer, description: Saves brought in before. }
+        playedGames: { type: integer, description: "Games this server has that iCloud holds play history for. An import brings that in too. Absent when the source does not say." }
         unmatched:
           type: array
           description: Games in iCloud this server does not have, largest first. At most 50.
@@ -4292,6 +4298,7 @@ components:
         imported: { type: integer, description: Saves copied in. }
         skipped: { type: integer, description: "Saves with no game here, or brought in before." }
         failed: { type: integer, description: Saves that could not be downloaded. They are tried again next time. }
+        playsUpdated: { type: integer, description: "Games whose play history was brought in: last played, and how often and how long where the app kept count." }
         startedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
         message: { type: [string, 'null'], description: "Why it stopped, in plain words." }

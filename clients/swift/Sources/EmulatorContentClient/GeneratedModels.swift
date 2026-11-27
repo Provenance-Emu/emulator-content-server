@@ -1751,8 +1751,10 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
     public var previewAsset: Asset?
     public var romDownload: RomDownloadSummary?
     public var lastPlayedAt: String?
+    public var playCount: Int?
+    public var secondsPlayed: Int?
 
-    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil, romDownload: RomDownloadSummary? = nil, lastPlayedAt: String? = nil) {
+    public init(entityType: String, id: String, name: String, libraryId: String? = nil, systemId: String? = nil, canUpload: Bool, canAdopt: Bool, item: Item? = nil, asset: Asset? = nil, source: SourceFile? = nil, parentItem: Item? = nil, previewAsset: Asset? = nil, romDownload: RomDownloadSummary? = nil, lastPlayedAt: String? = nil, playCount: Int? = nil, secondsPlayed: Int? = nil) {
         self.entityType = entityType
         self.id = id
         self.name = name
@@ -1767,6 +1769,8 @@ public struct LibraryBrowseEntry: Codable, Equatable, Sendable {
         self.previewAsset = previewAsset
         self.romDownload = romDownload
         self.lastPlayedAt = lastPlayedAt
+        self.playCount = playCount
+        self.secondsPlayed = secondsPlayed
     }
 }
 
@@ -1872,13 +1876,19 @@ public struct IcloudReaderGameDescription: Codable, Equatable, Sendable {
     public var filename: String?
     public var size: Int?
     public var title: String?
+    public var lastPlayedAt: String?
+    public var playCount: Int?
+    public var secondsPlayed: Int?
 
-    public init(gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int? = nil, title: String? = nil) {
+    public init(gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int? = nil, title: String? = nil, lastPlayedAt: String? = nil, playCount: Int? = nil, secondsPlayed: Int? = nil) {
         self.gameId = gameId
         self.systemIdentifier = systemIdentifier
         self.filename = filename
         self.size = size
         self.title = title
+        self.lastPlayedAt = lastPlayedAt
+        self.playCount = playCount
+        self.secondsPlayed = secondsPlayed
     }
 }
 
@@ -1939,9 +1949,10 @@ public struct IcloudPreview: Codable, Equatable, Sendable {
     public var gamesHere: Int
     public var ready: Int
     public var alreadyHere: Int
+    public var playedGames: Int?
     public var unmatched: [IcloudUnmatchedGame]
 
-    public init(checkedAt: String, source: String? = nil, saves: Int, bytes: Int, games: Int, gamesHere: Int, ready: Int, alreadyHere: Int, unmatched: [IcloudUnmatchedGame]) {
+    public init(checkedAt: String, source: String? = nil, saves: Int, bytes: Int, games: Int, gamesHere: Int, ready: Int, alreadyHere: Int, playedGames: Int? = nil, unmatched: [IcloudUnmatchedGame]) {
         self.checkedAt = checkedAt
         self.source = source
         self.saves = saves
@@ -1950,6 +1961,7 @@ public struct IcloudPreview: Codable, Equatable, Sendable {
         self.gamesHere = gamesHere
         self.ready = ready
         self.alreadyHere = alreadyHere
+        self.playedGames = playedGames
         self.unmatched = unmatched
     }
 }
@@ -1976,11 +1988,12 @@ public struct IcloudImport: Codable, Equatable, Sendable {
     public var imported: Int
     public var skipped: Int
     public var failed: Int
+    public var playsUpdated: Int?
     public var startedAt: String
     public var finishedAt: String?
     public var message: String?
 
-    public init(state: String, source: String? = nil, total: Int, processed: Int, imported: Int, skipped: Int, failed: Int, startedAt: String, finishedAt: String? = nil, message: String? = nil) {
+    public init(state: String, source: String? = nil, total: Int, processed: Int, imported: Int, skipped: Int, failed: Int, playsUpdated: Int? = nil, startedAt: String, finishedAt: String? = nil, message: String? = nil) {
         self.state = state
         self.source = source
         self.total = total
@@ -1988,6 +2001,7 @@ public struct IcloudImport: Codable, Equatable, Sendable {
         self.imported = imported
         self.skipped = skipped
         self.failed = failed
+        self.playsUpdated = playsUpdated
         self.startedAt = startedAt
         self.finishedAt = finishedAt
         self.message = message

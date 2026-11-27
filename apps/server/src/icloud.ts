@@ -75,6 +75,7 @@ interface Preview {
   gamesHere: number;
   ready: number;
   alreadyHere: number;
+  playedGames?: number;
   unmatched: Array<{
     gameId: string;
     systemIdentifier: string | null;
@@ -91,6 +92,7 @@ interface ImportProgress {
   imported: number;
   skipped: number;
   failed: number;
+  playsUpdated?: number;
   startedAt: string;
   finishedAt: string | null;
   message: string | null;
@@ -209,15 +211,40 @@ export function registerIcloudRoutes(
    * name, same size, and only when exactly one file here answers.
    */
   function locate(save: CloudSave): ReturnType<typeof catalog.gameForMd5> {
-    const found = catalog.gameForMd5(save.gameId);
-    if (found || !save.rom?.filename) return found;
-    const systemIdentifier = save.rom.systemIdentifier ?? save.systemIdentifier;
+    return locateGame(save.gameId, save.rom, save.systemIdentifier);
+  }
+
+  function locateGame(
+    gameId: string,
+    rom: CloudSave['rom'],
+    system: string | null = null,
+  ): ReturnType<typeof catalog.gameForMd5> {
+    const found = catalog.gameForMd5(gameId);
+    if (found || !rom?.filename) return found;
+    const systemIdentifier = rom.systemIdentifier ?? system;
     if (!systemIdentifier) return null;
-    return catalog.gameForRomFile({
-      systemIdentifier,
-      filename: save.rom.filename,
-      size: save.rom.size,
-    });
+    return catalog.gameForRomFile({ systemIdentifier, filename: rom.filename, size: rom.size });
+  }
+
+  /** The games here that the reader's listing holds play history for. */
+  function playedHere(): Array<{
+    target: { entityType: 'item' | 'source'; id: string };
+    rom: NonNullable<CloudSave['rom']>;
+  }> {
+    const found = [];
+    for (const [gameId, rom] of reader.games) {
+      if (!rom.lastPlayedAt) continue;
+      const game = locateGame(gameId, rom);
+      if (!game) continue;
+      found.push({
+        target:
+          'itemId' in game
+            ? { entityType: 'item' as const, id: game.itemId }
+            : { entityType: 'source' as const, id: game.sourceId },
+        rom,
+      });
+    }
+    return found;
   }
 
   function summarize(saves: CloudSave[], source: Source): Preview {
@@ -264,6 +291,7 @@ export function registerIcloudRoutes(
       gamesHere: games.size - unmatched.length,
       ready,
       alreadyHere,
+      ...(source === 'mac' ? { playedGames: playedHere().length } : {}),
       unmatched: unmatched.slice(0, 50),
     };
   }
@@ -360,7 +388,12 @@ export function registerIcloudRoutes(
     }
   }
 
-  async function run(actorId: string, state: ImportProgress, signal: AbortSignal): Promise<void> {
+  async function run(
+    actor: ReturnType<typeof owner>,
+    state: ImportProgress,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const actorId = actor.userId;
     const asked = generation;
     const source = state.source;
     try {
@@ -384,6 +417,22 @@ export function registerIcloudRoutes(
           }
         }
         state.processed += 1;
+      }
+      // Play history comes with the saves: when each game here was last played in the app and
+      // the counts it kept. It only ever moves forward, so bringing it in again changes nothing.
+      if (source === 'mac' && !signal.aborted) {
+        let updated = 0;
+        for (const { target, rom } of playedHere()) {
+          if (
+            rom.lastPlayedAt &&
+            catalog.recordPlay(actor, target, rom.lastPlayedAt, {
+              playCount: rom.playCount ?? null,
+              secondsPlayed: rom.secondsPlayed ?? null,
+            })
+          )
+            updated += 1;
+        }
+        state.playsUpdated = updated;
       }
       state.state = signal.aborted ? 'cancelled' : 'completed';
       if (!signal.aborted && asked === generation) preview = summarize(saves, source);
@@ -463,7 +512,7 @@ export function registerIcloudRoutes(
       finishedAt: null,
       message: null,
     };
-    void run(actor.userId, progress, running.signal);
+    void run(actor, progress, running.signal);
     return reply.status(202).send(progress);
   });
 

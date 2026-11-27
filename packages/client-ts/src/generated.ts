@@ -882,6 +882,8 @@ export interface LibraryBrowseEntry {
   previewAsset?: Asset;
   romDownload?: RomDownloadSummary;
   lastPlayedAt?: string;
+  playCount?: number;
+  secondsPlayed?: number;
 }
 
 export interface PlayRecordRequest {
@@ -938,6 +940,9 @@ export interface IcloudReaderGameDescription {
   filename?: string | null;
   size?: number | null;
   title?: string | null;
+  lastPlayedAt?: string | null;
+  playCount?: number | null;
+  secondsPlayed?: number | null;
 }
 
 export interface IcloudReaderSaveDescription {
@@ -973,6 +978,7 @@ export interface IcloudPreview {
   gamesHere: number;
   ready: number;
   alreadyHere: number;
+  playedGames?: number;
   unmatched: IcloudUnmatchedGame[];
 }
 
@@ -991,6 +997,7 @@ export interface IcloudImport {
   imported: number;
   skipped: number;
   failed: number;
+  playsUpdated?: number;
   startedAt: string;
   finishedAt: string | null;
   message: string | null;

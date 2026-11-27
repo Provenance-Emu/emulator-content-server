@@ -515,3 +515,78 @@ test('a save whose game the app hashed differently is matched by the game file i
     await f.dispose();
   }
 });
+
+test('play history comes in with the saves and never goes backwards', { skip }, async () => {
+  const { f, owner, attach, reader, finished, game } = await fixture();
+  try {
+    const made = game();
+    const { ticket } = (await attach()).json();
+    await reader(ticket, 'PUT', '/account', { state: 'available' });
+    const recent = () =>
+      f.app
+        .inject({
+          url: `/api/v1/browse?libraryId=${f.library.id}&category=games&played=recent`,
+          headers: f.auth,
+        })
+        .then((answer) => answer.json().items as Array<Record<string, unknown>>);
+    const bring = async (games: object[]) => {
+      assert.equal((await owner('POST', '/import', { source: 'mac' })).statusCode, 202);
+      assert.equal((await reader(ticket, 'GET', '/work')).json().work, 'list');
+      await reader(ticket, 'POST', '/listing', { saves: [], done: true, games });
+      return finished();
+    };
+
+    assert.equal(
+      (
+        await reader(ticket, 'POST', '/listing', {
+          saves: [],
+          done: true,
+          games: [{ gameId: GAME, playCount: -1 }],
+        })
+      ).statusCode,
+      400,
+      'a count below zero is refused',
+    );
+    const first = await bring([
+      { gameId: GAME, lastPlayedAt: '2026-05-01T10:00:00.000Z', playCount: 7, secondsPlayed: 3600 },
+      // A game this server does not have is left alone.
+      { gameId: ABSENT, lastPlayedAt: '2026-05-02T10:00:00.000Z', playCount: 1, secondsPlayed: 60 },
+      // Never played in the app: nothing to bring.
+      { gameId: 'B'.repeat(32), playCount: 0 },
+    ]);
+    assert.deepEqual([first.state, first.playsUpdated], ['completed', 1]);
+    let listed = await recent();
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0]?.id, made.id);
+    assert.deepEqual(
+      [listed[0]?.lastPlayedAt, listed[0]?.playCount, listed[0]?.secondsPlayed],
+      ['2026-05-01T10:00:00.000Z', 7, 3600],
+    );
+    assert.equal((await owner('GET', '')).json().preview.playedGames, 1);
+
+    // An older record from another device changes nothing; a newer one moves it forward.
+    await bring([
+      { gameId: GAME, lastPlayedAt: '2026-01-01T10:00:00.000Z', playCount: 2, secondsPlayed: 10 },
+    ]);
+    listed = await recent();
+    assert.deepEqual(
+      [listed[0]?.lastPlayedAt, listed[0]?.playCount, listed[0]?.secondsPlayed],
+      ['2026-05-01T10:00:00.000Z', 7, 3600],
+    );
+    await bring([
+      { gameId: GAME, lastPlayedAt: '2026-06-01T10:00:00.000Z', playCount: 9, secondsPlayed: 5000 },
+    ]);
+    listed = await recent();
+    assert.deepEqual(
+      [listed[0]?.lastPlayedAt, listed[0]?.playCount, listed[0]?.secondsPlayed],
+      ['2026-06-01T10:00:00.000Z', 9, 5000],
+    );
+    // A date from the future is brought back to now.
+    await bring([{ gameId: GAME, lastPlayedAt: '2999-01-01T00:00:00.000Z' }]);
+    listed = await recent();
+    assert.ok(Date.parse(String(listed[0]?.lastPlayedAt)) <= Date.now());
+    assert.equal(listed[0]?.playCount, 9, 'a record without counts keeps the ones known');
+  } finally {
+    await f.dispose();
+  }
+});

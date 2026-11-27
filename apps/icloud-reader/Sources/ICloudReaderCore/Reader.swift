@@ -86,10 +86,8 @@ public actor Reader {
   private func sendListing() async {
     let link = self.link
     let size = pageSize
-    let seen = GameIds()
     do {
       try await store.list { saves in
-        await seen.add(saves.map(\.gameId))
         var rest = saves[...]
         while !rest.isEmpty {
           try Task.checkCancellation()
@@ -98,11 +96,11 @@ public actor Reader {
         }
       }
       try Task.checkCancellation()
-      // The games those saves belong to, so the server can find one by its file. Saves are
-      // still listed when this part cannot be read.
+      // What the app records about the person's games, so the server can find one by its file
+      // and bring its play history. Saves are still listed when this part cannot be read.
       var games: [GameDescription] = []
       do {
-        games = try await store.games(for: await seen.all)
+        games = try await store.games()
       } catch is CancellationError {
         throw CancellationError()
       } catch {
@@ -155,10 +153,4 @@ public actor Reader {
       try? await link.saveFailed(requestId: wanted.requestId, reason: .unexpected)
     }
   }
-}
-
-/// The identifiers of every game that has a save in the listing under way.
-private actor GameIds {
-  private(set) var all: Set<String> = []
-  func add(_ ids: [String]) { all.formUnion(ids) }
 }

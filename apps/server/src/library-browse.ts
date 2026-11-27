@@ -344,7 +344,7 @@ export function registerLibraryBrowse(
                 : {}),
               canUpload: canWrite(catalog, actor, row.item),
               canAdopt: false,
-              ...(row.playedAt ? { lastPlayedAt: row.playedAt } : {}),
+              ...playFacts(row),
             };
           }
           if (row.entityType === 'asset') {
@@ -379,7 +379,7 @@ export function registerLibraryBrowse(
             source: sources.get(row.source.id),
             canUpload: false,
             canAdopt: false,
-            ...(row.playedAt ? { lastPlayedAt: row.playedAt } : {}),
+            ...playFacts(row),
           };
         }),
       ),
@@ -462,4 +462,14 @@ export function registerLibraryBrowse(
       releaseRoots();
     }
   });
+}
+
+/** What is known of this account's time with a game: when it last played, and counts an app kept. */
+function playFacts(row: { playedAt?: string; playCount?: number; secondsPlayed?: number }) {
+  if (!row.playedAt) return {};
+  return {
+    lastPlayedAt: row.playedAt,
+    ...(row.playCount !== undefined ? { playCount: row.playCount } : {}),
+    ...(row.secondsPlayed !== undefined ? { secondsPlayed: row.secondsPlayed } : {}),
+  };
 }

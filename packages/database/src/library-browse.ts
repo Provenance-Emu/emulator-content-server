@@ -47,7 +47,17 @@ export type BrowseRecord =
     }
   | { entityType: 'asset'; asset: AssetRecord; item: ItemRecord }
   | { entityType: 'source'; source: SourceFileRecord };
-export type PlayedRecord = BrowseRecord & { playedAt?: string };
+export type PlayedRecord = BrowseRecord & {
+  playedAt?: string;
+  playCount?: number;
+  secondsPlayed?: number;
+};
+
+/** What an app that kept count knows about an account's time with a game. */
+export interface PlayFacts {
+  playCount?: number | null;
+  secondsPlayed?: number | null;
+}
 export interface RootSummaryFilter {
   actor: Actor;
   libraryId?: string | null;
@@ -197,6 +207,8 @@ export function browseKeys(
   id: string;
   preview_id: string | null;
   played_at?: string;
+  play_count?: number | null;
+  seconds_played?: number | null;
 }[] {
   const { projection, params } = projectionFor(input);
   if (input.played) {
@@ -205,12 +217,14 @@ export function browseKeys(
     const user = input.actor.kind === 'user' ? input.actor.userId : null;
     return db
       .prepare(`${projection}, played AS (
-        SELECT entity_type, entity_id AS id, played_at FROM play_history WHERE user_id = ?
+        SELECT entity_type, entity_id AS id, played_at, play_count, seconds_played
+        FROM play_history WHERE user_id = ?
         UNION ALL
-        SELECT 'item', g.item_id, p.played_at FROM play_history p
+        SELECT 'item', g.item_id, p.played_at, p.play_count, p.seconds_played FROM play_history p
         JOIN game_source_copies g ON g.source_id = p.entity_id
         WHERE p.user_id = ? AND p.entity_type = 'source')
-      SELECT e.entity_type, e.id, e.preview_id, MAX(p.played_at) AS played_at
+      SELECT e.entity_type, e.id, e.preview_id, MAX(p.played_at) AS played_at,
+        MAX(p.play_count) AS play_count, MAX(p.seconds_played) AS seconds_played
       FROM played p JOIN eligible e ON e.entity_type = p.entity_type AND e.id = p.id
       GROUP BY e.entity_type, e.id ORDER BY played_at DESC, e.id LIMIT ?`)
       .all(...params, user, user, input.limit) as Array<{
@@ -218,6 +232,8 @@ export function browseKeys(
       id: string;
       preview_id: string | null;
       played_at: string;
+      play_count: number | null;
+      seconds_played: number | null;
     }>;
   }
   // Both anchor and page use the same projection so revoked access or changed filters
@@ -296,6 +312,7 @@ export function recordPlay(
   actor: Actor,
   target: { entityType: 'item' | 'source'; id: string },
   playedAt: string,
+  facts: PlayFacts = {},
 ): boolean {
   if (actor.kind !== 'user') return false;
   let { entityType, id } = target;
@@ -332,10 +349,26 @@ export function recordPlay(
     .prepare(`${projection} SELECT 1 FROM eligible WHERE entity_type = ? AND id = ? LIMIT 1`)
     .get(...params, entityType, id);
   if (!listed) return false;
-  db.prepare(`INSERT INTO play_history (user_id, entity_type, entity_id, played_at)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT (user_id, entity_type, entity_id) DO UPDATE SET played_at = excluded.played_at
-    WHERE excluded.played_at > play_history.played_at`).run(actor.userId, entityType, id, playedAt);
+  // Nothing here ever goes backwards: the later date and the larger counts are kept, so a
+  // second import, or an older device's record, cannot undo what is already known.
+  const whole = (value: number | null | undefined) =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+  db.prepare(`INSERT INTO play_history
+      (user_id, entity_type, entity_id, played_at, play_count, seconds_played)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, entity_type, entity_id) DO UPDATE SET
+      played_at = MAX(play_history.played_at, excluded.played_at),
+      play_count = CASE WHEN excluded.play_count IS NULL THEN play_history.play_count
+        ELSE MAX(COALESCE(play_history.play_count, 0), excluded.play_count) END,
+      seconds_played = CASE WHEN excluded.seconds_played IS NULL THEN play_history.seconds_played
+        ELSE MAX(COALESCE(play_history.seconds_played, 0), excluded.seconds_played) END`).run(
+    actor.userId,
+    entityType,
+    id,
+    playedAt,
+    whole(facts.playCount),
+    whole(facts.secondsPlayed),
+  );
   db.prepare(`DELETE FROM play_history WHERE user_id = ? AND rowid NOT IN (
     SELECT rowid FROM play_history WHERE user_id = ? ORDER BY played_at DESC LIMIT ?)`).run(
     actor.userId,

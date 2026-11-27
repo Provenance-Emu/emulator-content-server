@@ -37,6 +37,10 @@ Sign in to the web interface as the owner and open **Settings → iCloud saves**
 
 The sign-in is held in memory. Restarting the server, or two weeks passing, means signing in again. The Mac route has no sign-in to run out; it is there whenever the desktop app is open and someone is logged in at that Mac.
 
+### Play history
+
+When saves are read on the Mac, **Bring them in** also brings play history from Provenance for every game this server has: when it was last played, how many times, and for how long. It goes to the owner's account and shows under recently played. It only moves forward: a later date and larger counts replace what is here, and an older record changes nothing, so bringing it in again is harmless. Recently played keeps the 200 most recent games. Favourites, ratings and edited details are not brought in.
+
 ### Reading on the Mac
 
 - The server and the desktop app must be on the same Mac, under the same macOS account, with the server installed as that account's service (`ecs service install`, or the installer). A server started with `--public` has no Mac route.

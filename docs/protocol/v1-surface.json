@@ -1857,8 +1857,10 @@
         "libraryId",
         "name",
         "parentItem",
+        "playCount",
         "previewAsset",
         "romDownload",
+        "secondsPlayed",
         "source",
         "systemId"
       ],
@@ -1962,6 +1964,9 @@
       "properties": [
         "filename",
         "gameId",
+        "lastPlayedAt",
+        "playCount",
+        "secondsPlayed",
         "size",
         "systemIdentifier",
         "title"
@@ -2021,6 +2026,7 @@
         "checkedAt",
         "games",
         "gamesHere",
+        "playedGames",
         "ready",
         "saves",
         "source",
@@ -2056,6 +2062,7 @@
         "finishedAt",
         "imported",
         "message",
+        "playsUpdated",
         "processed",
         "skipped",
         "source",

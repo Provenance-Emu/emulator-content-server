@@ -45,12 +45,15 @@ const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? on
 
 /** What a preview found, as one sentence. */
 export function previewSummary(preview: IcloudPreview): string {
-  if (!preview.saves) return 'No saves were found in iCloud.';
+  const plays = preview.playedGames
+    ? ` Play history for ${count(preview.playedGames, 'game')} here can be brought in.`
+    : '';
+  if (!preview.saves) return `No saves were found in iCloud.${plays}`;
   return `${count(preview.saves, 'save')} for ${count(preview.games, 'game')} in iCloud. ${
     preview.gamesHere === preview.games
       ? 'Every one of those games is in your library.'
       : `${count(preview.gamesHere, 'game')} of those ${preview.gamesHere === 1 ? 'is' : 'are'} in your library.`
-  }`;
+  }${plays}`;
 }
 
 /** How an import ended, as one sentence. */
@@ -60,9 +63,13 @@ export function importSummary(result: IcloudImport): string {
       ? `Copying saves: ${result.processed} of ${result.total}.`
       : 'Reading the list of saves from iCloud.';
   const copied = `${count(result.imported, 'save')} brought in`;
-  const failed = result.failed
-    ? ` ${count(result.failed, 'save')} could not be downloaded and will be tried next time.`
-    : '';
+  const failed =
+    (result.failed
+      ? ` ${count(result.failed, 'save')} could not be downloaded and will be tried next time.`
+      : '') +
+    (result.playsUpdated
+      ? ` Play history for ${count(result.playsUpdated, 'game')} brought in.`
+      : '');
   if (result.state === 'cancelled') return `Stopped. ${copied}.${failed}`;
   if (result.state === 'failed')
     return `${result.message ?? 'The import stopped.'} ${copied}.${failed}`;

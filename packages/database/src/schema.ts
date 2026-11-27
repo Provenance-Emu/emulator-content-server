@@ -546,6 +546,15 @@ export const MIGRATIONS: readonly Migration[] = [
     CREATE INDEX source_fingerprints_md5 ON source_fingerprints(md5);
   `,
   },
+  {
+    // How often and for how long an account has played a game, when an app that kept count
+    // (Provenance, through its iCloud records) has told the server. Absent when nobody has.
+    version: 29,
+    sql: `
+    ALTER TABLE play_history ADD COLUMN play_count INTEGER;
+    ALTER TABLE play_history ADD COLUMN seconds_played INTEGER;
+  `,
+  },
 ];
 
 export const SCHEMA_VERSION = Math.max(...MIGRATIONS.map((entry) => entry.version));

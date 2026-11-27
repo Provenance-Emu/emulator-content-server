@@ -81,6 +81,10 @@ export interface CloudRom {
   filename: string | null;
   size: number | null;
   title: string | null;
+  /** When the game was last played in the app, and the counts it kept. */
+  lastPlayedAt?: string | null;
+  playCount?: number | null;
+  secondsPlayed?: number | null;
 }
 
 const HOST = 'https://api.apple-cloudkit.com';

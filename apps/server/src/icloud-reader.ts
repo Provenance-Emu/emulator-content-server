@@ -83,6 +83,7 @@ export class ReaderHub {
   private readonly wanted = new Map<string, Wanted>();
   private stop = false;
   private wake: (() => void) | null = null;
+  private described = new Map<string, CloudRom>();
 
   constructor(
     private readonly limits: {
@@ -197,6 +198,7 @@ export class ReaderHub {
     if (listing.saves.length > this.limits.maxSaves) listing.reject(new ReaderError('too-many'));
     else if (done) {
       // A record named twice is taken once, so it cannot be copied in twice.
+      this.described = listing.games;
       const once = new Map(listing.saves.map((save) => [save.recordName, save]));
       listing.resolve(
         [...once.values()].map((save) => {
@@ -209,6 +211,11 @@ export class ReaderHub {
   }
 
   /** The reader could not list. `reason` is one of `READER_FAILURES`. */
+  /** What the last finished listing said about the owner's games, by the app's identifier. */
+  get games(): ReadonlyMap<string, CloudRom> {
+    return this.described;
+  }
+
   failListing(reason: string): void {
     const failure =
       reason === 'notAllowed' ? 'not-allowed' : reason === 'account' ? 'account' : 'refused';
@@ -399,10 +406,33 @@ export function describedGame(raw: unknown): [string, CloudRom] | null {
     (typeof size !== 'number' || !Number.isSafeInteger(size) || size < 0)
   )
     return null;
+  const count = (key: string) => {
+    const found = value[key];
+    if (found === null || found === undefined) return null;
+    return typeof found === 'number' && Number.isSafeInteger(found) && found >= 0
+      ? found
+      : undefined;
+  };
+  const playCount = count('playCount');
+  const secondsPlayed = count('secondsPlayed');
+  const played = text('lastPlayedAt', 64);
+  if (playCount === undefined || secondsPlayed === undefined || played === undefined) return null;
+  if (played !== null && Number.isNaN(Date.parse(played))) return null;
+  // A date from the future would sit at the top of the recently played list for ever.
+  const lastPlayedAt =
+    played === null ? null : new Date(Math.min(Date.parse(played), Date.now())).toISOString();
   // A name is compared with file names here; one that tries to be a path is not a name.
   if (filename && /[\\/\0]/.test(filename)) return null;
   return [
     gameId,
-    { systemIdentifier, filename, size: typeof size === 'number' ? size : null, title },
+    {
+      systemIdentifier,
+      filename,
+      size: typeof size === 'number' ? size : null,
+      title,
+      lastPlayedAt,
+      playCount,
+      secondsPlayed,
+    },
   ];
 }

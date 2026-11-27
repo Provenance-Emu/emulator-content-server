@@ -97,7 +97,13 @@ The first real look on the Studio found 258 saves for 71 games and matched none.
 
 Added: the reader also sends what Provenance's `ROM` records say about each game that has a save (file name, system, size, title; never the file). When the MD5 finds nothing, the server looks for exactly one file in the libraries with that system, name and size. On the laptop, with the iCloud Drive games folder added to a throwaway server, 12 of the 71 games matched and 36 saves were ready; the rest are games whose files are not in that folder. Unmatched games are now listed by title.
 
-Not done: computing Provenance's own MD5 for headered and disc formats on the server, which would match a renamed file too. Play counts, time played, last played and favourites are on the same `ROM` records and are not read yet.
+Not done: computing Provenance's own MD5 for headered and disc formats on the server, which would match a renamed file too.
+
+### Play history
+
+Added: the reader sends, for every game in the app's `ROM` records, when it was last played, how many times and for how long. An import records that for the owner on each game the server can find (migration 29 adds the two counts to `play_history`; the browse answer carries them on `played=recent`). Dates and counts only move forward. On the laptop, against the iCloud Drive games folder: 36 saves copied and play history for 21 games brought in.
+
+Not done, and why: **favourites and ratings** have nowhere to go, since the server has neither. **Edited details** (title, description, developer, publisher, genre, region, artwork) would be written into the server's own matching records, where a person's choices already live; filling blanks without overriding those needs its own short design. Most of those fields in Provenance come from the same game database the server matches against, so the gain is the owner's own edits and custom covers.
 
 ## Apple's other libraries, and why they do not help here
 

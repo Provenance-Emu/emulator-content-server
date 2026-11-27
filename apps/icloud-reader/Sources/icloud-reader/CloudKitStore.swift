@@ -41,11 +41,14 @@ struct CloudKitStore: SaveStore {
     }
   }
 
-  func games(for gameIds: Set<String>) async throws -> [GameDescription] {
-    let wanted = Set(gameIds.map { $0.uppercased() })
-    guard !wanted.isEmpty else { return [] }
+  func games() async throws -> [GameDescription] {
     // The game's file itself is never asked for: only what describes it.
-    let keys = ["md5", "systemIdentifier", "originalFilename", "fileSize", "title"]
+    let keys = [
+      "md5", "systemIdentifier", "originalFilename", "fileSize", "title", "lastPlayed", "playCount",
+      "timeSpentInGame",
+    ]
+    let stamp = ISO8601DateFormatter()
+    stamp.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     let query = CKQuery(recordType: "ROM", predicate: NSPredicate(value: true))
     var games: [GameDescription] = []
     do {
@@ -53,8 +56,11 @@ struct CloudKitStore: SaveStore {
       while true {
         for (_, result) in found.matchResults {
           guard case .success(let record) = result, let md5 = record["md5"] as? String,
-            wanted.contains(md5.uppercased())
+            !md5.isEmpty
           else { continue }
+          let count: (String) -> Int64? = { key in
+            (record[key] as? Int64).flatMap { $0 >= 0 ? $0 : nil }
+          }
           let text: (String) -> String? = { key in
             (record[key] as? String).flatMap { $0.isEmpty ? nil : $0 }
           }
@@ -64,7 +70,10 @@ struct CloudKitStore: SaveStore {
               systemIdentifier: text("systemIdentifier"),
               filename: text("originalFilename"),
               size: (record["fileSize"] as? Int64).flatMap { $0 > 0 ? $0 : nil },
-              title: text("title")))
+              title: text("title"),
+              lastPlayedAt: (record["lastPlayed"] as? Date).map(stamp.string(from:)),
+              playCount: count("playCount"),
+              secondsPlayed: count("timeSpentInGame")))
         }
         guard let cursor = found.queryCursor else { return games }
         found = try await database.records(
