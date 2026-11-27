@@ -1,4 +1,5 @@
-import { copyFile, cp, mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { copyFile, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
 const require = createRequire(new URL('../apps/server/package.json', import.meta.url));
@@ -51,7 +52,20 @@ const init = `window.ui = SwaggerUIBundle({
 });
 `;
 
-await cp(new URL('../docs/site/', import.meta.url), site, { recursive: true });
+const sourceSite = new URL('../docs/site/', import.meta.url);
+await cp(sourceSite, site, { recursive: true });
+
+// Give the landing page fresh asset URLs when its controls or styles change.
+let landing = await readFile(new URL('index.html', sourceSite), 'utf8');
+for (const file of ['site.css', 'api-link.js', 'gallery.js', 'site-actions.js']) {
+  const contents = await readFile(new URL(file, sourceSite));
+  const hash = createHash('sha256').update(contents).digest('hex').slice(0, 12);
+  const extension = file.lastIndexOf('.');
+  const versioned = `${file.slice(0, extension)}.${hash}${file.slice(extension)}`;
+  await writeFile(new URL(versioned, site), contents);
+  landing = landing.replace(`"./${file}"`, `"./${versioned}"`);
+}
+await writeFile(new URL('index.html', site), landing);
 await mkdir(output, { recursive: true });
 const outputPath = (file) => new URL(file, output);
 await Promise.all([
