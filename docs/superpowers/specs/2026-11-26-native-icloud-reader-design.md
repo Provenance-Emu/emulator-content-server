@@ -170,21 +170,17 @@ The server on the Mac Studio runs under launchd in one of two shapes (`docs/oper
 - **Login agent** (`~/Library/LaunchAgents`), in the owner's login session.
 - **Boot daemon** (`/Library/LaunchDaemons/app.emulator-content-server.plist`), in the system domain, running as the installing user.
 
-CloudKit calls are served by per-user system processes (`cloudd`, `accountsd`) that live in the user's session, and the account's keys are in the user's keychain, which is unlocked by logging in.
-
-- **Boot daemon: expected not to work.** A process in the system domain cannot reach per-user services even when it runs under that user's id, and before anyone logs in the keychain is locked. Expect `CKContainer.accountStatus` to report no account, or calls to fail. This is the main reason the server does not run the helper itself.
-- **Login agent: expected to work** while the owner is logged in. This is the same position as the desktop app.
-- **A session without the graphical login** (for example the user's background session reached over SSH, or a Mac that boots and nobody logs in): unknown.
+- **GUI LaunchAgent.** The signed probe read the production private database on the Studio and fetched an asset.
+- **System LaunchDaemon under the owner's UID.** The logged-in Studio run returned `serviceUnavailable` at `accountStatus()`. That result leaves the daemon's account state unknown.
+- **Before GUI login.** Both the daemon boot run and the separate SSH-session test are pending.
 
 The design therefore does not depend on which shape the server has. The helper always runs in the owner's graphical login session, started by the desktop app, and the server only receives uploads. On a Mac Studio that restarts unattended and waits at the login window, the server comes back (boot daemon) but iCloud reading waits until the owner logs in; with automatic login it comes back on its own. The interface says which.
-
-All three bullets are expectations to confirm; see experiment 2.
 
 ## How the helper hands saves to the server
 
 ### Why the helper calls the server and not the other way round
 
-The server is the long-lived, network-facing process. If it started a helper, it would need to find and trust an executable path, and under the boot daemon it could not give that helper an iCloud session anyway. If it read files the helper named, it would be opening paths chosen by another program. Both widen what the server trusts.
+The server is the long-lived, network-facing process. Starting a helper would require trusting an executable path. Opening files supplied by the helper would require trusting paths chosen by another process. The desktop app starts the helper in the GUI session, where the signed probe has demonstrated CloudKit access, and sends asset bytes through the import API.
 
 Instead the helper is one more HTTP client on loopback. The server's trust grows by exactly one thing: a new caller identity, "the reader on this Mac", which can do less than the owner can.
 
@@ -313,7 +309,7 @@ Experiment 1 passed on the owner’s laptop and in the Mac Studio’s desktop lo
 
 1. Two Apple Accounts are involved and only one matters for reading. The developer account signs the helper and owns the profile; it holds no saves. The account signed in to iCloud in System Settings on the Mac is the one whose private database is read. The probe found 258 saves, so the laptop is on the personal account that the devices use. Still to confirm by looking at System Settings: that this is the account the web sign-in refused, and that Advanced Data Protection is on for it.
 2. Answered: a Developer ID profile lasts 18 years. What happens to an installed helper when the certificate inside the profile is rotated is still unknown.
-3. Does a boot daemon running as the owner get any iCloud session? Believed no; experiment 2.
+3. Can the signed probe reach the production private database from the boot daemon before GUI login? Experiment 2(c) will record the console owner and probe output. If the first attempt returns `serviceUnavailable`, repeat before GUI login once the network is up to distinguish a startup timing issue from a persistent failure in that context.
 4. Is the framework's `recordChangeTag` the same string the web service returns? Experiment 4.
 5. Which shape is the Mac Studio's server installed in today, login agent or boot daemon, and does that Mac log in automatically? Decides what the owner sees after a restart. Ask the owner.
 6. Should the desktop app start at login so the reader is there without the owner opening anything? It does not appear to today. A product decision.
