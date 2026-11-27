@@ -79,7 +79,7 @@
           <p class="platforms">Nightly builds for macOS, Windows, and Linux · <a href="#share">Share</a></p>
         </div>
         <figure class="hero-figure">
-          <a class="hero-image" href="./assets/library.webp" data-gallery aria-label="Enlarge the game library screenshot">
+          <a class="hero-image" href="./assets/library.webp" data-gallery="screenshot-library" aria-label="Enlarge the game library screenshot">
             <img src="./assets/library.webp" width="1440" height="940" fetchpriority="high" alt="Emulation Server library with illustrated game covers, a search field, and filters for six console systems.">
           </a>
           <figcaption><span>Emulation Server web interface</span><span>Sample library</span></figcaption>
@@ -97,7 +97,7 @@
       </div>
       <div class="gallery">
         <article class="feature">
-          <a class="feature-image" href="./assets/library.webp" data-gallery aria-label="Enlarge the library and artwork screenshot">
+          <a class="feature-image" id="screenshot-library" href="./assets/library.webp" data-gallery="screenshot-library" aria-label="Enlarge the library and artwork screenshot">
             <img src="./assets/library.webp" width="1440" height="940" loading="lazy" alt="Illustrated game library with console filters, a cover size slider, and grid and list controls.">
             <span class="expand" aria-hidden="true">↗</span>
           </a>
@@ -108,7 +108,7 @@
           </div>
         </article>
         <article class="feature">
-          <a class="feature-image" href="./assets/game.webp" data-gallery aria-label="Enlarge the game detail screenshot">
+          <a class="feature-image" id="screenshot-game" href="./assets/game.webp" data-gallery="screenshot-game" aria-label="Enlarge the game detail screenshot">
             <img src="./assets/game.webp" width="1440" height="940" loading="lazy" alt="Starfall Rally game page with cover artwork, a Play button, and a list of its files.">
             <span class="expand" aria-hidden="true">↗</span>
           </a>
@@ -119,7 +119,7 @@
           </div>
         </article>
         <article class="feature">
-          <a class="feature-image" href="./assets/folders.webp" data-gallery aria-label="Enlarge the folder scans screenshot">
+          <a class="feature-image" id="screenshot-folders" href="./assets/folders.webp" data-gallery="screenshot-folders" aria-label="Enlarge the folder scans screenshot">
             <img src="./assets/folders.webp" width="1440" height="940" loading="lazy" alt="Scans and details settings with a registered folder, scan and artwork controls, and scan history.">
             <span class="expand" aria-hidden="true">↗</span>
           </a>
@@ -130,7 +130,7 @@
           </div>
         </article>
         <article class="feature">
-          <a class="feature-image" href="./assets/saves.webp" data-gallery aria-label="Enlarge the saved snapshots screenshot">
+          <a class="feature-image" id="screenshot-saves" href="./assets/saves.webp" data-gallery="screenshot-saves" aria-label="Enlarge the saved snapshots screenshot">
             <img src="./assets/saves.webp" width="1440" height="940" loading="lazy" alt="Game details with the Saved snapshot tab selected and a save state ready to download.">
             <span class="expand" aria-hidden="true">↗</span>
           </a>
@@ -140,7 +140,7 @@
           </div>
         </article>
         <article class="feature">
-          <a class="feature-image" href="./assets/icloud.webp" data-gallery aria-label="Enlarge the iCloud saves screenshot">
+          <a class="feature-image" id="screenshot-icloud" href="./assets/icloud.webp" data-gallery="screenshot-icloud" aria-label="Enlarge the iCloud saves screenshot">
             <img src="./assets/icloud.webp" width="1440" height="940" loading="lazy" alt="iCloud saves settings with a Connect iCloud button for importing Provenance save states.">
             <span class="expand" aria-hidden="true">↗</span>
           </a>
@@ -151,7 +151,7 @@
           </div>
         </article>
         <article class="feature">
-          <a class="feature-image" href="./assets/devices.webp" data-gallery aria-label="Enlarge the device settings screenshot">
+          <a class="feature-image" id="screenshot-devices" href="./assets/devices.webp" data-gallery="screenshot-devices" aria-label="Enlarge the device settings screenshot">
             <img src="./assets/devices.webp" width="1440" height="940" loading="lazy" alt="Device settings showing a pairing PIN prompt and two devices with different permissions.">
             <span class="expand" aria-hidden="true">↗</span>
           </a>
@@ -164,8 +164,20 @@
       </div>
       <dialog class="viewer" aria-label="Screenshot viewer">
         <div class="viewer-layout">
-          <button type="button" class="viewer-close" autofocus>Close <span aria-hidden="true">×</span></button>
+          <div class="viewer-bar">
+            <p id="viewer-caption" aria-live="polite"></p>
+            <button type="button" class="button secondary" id="viewer-close" autofocus>Close <span aria-hidden="true">×</span></button>
+          </div>
           <img alt="">
+          <div class="viewer-bar">
+            <div class="viewer-navigation" aria-label="Screenshot navigation" role="group">
+              <button type="button" class="button secondary" id="viewer-previous"><span aria-hidden="true">←</span> Previous</button>
+              <button type="button" class="button secondary" id="viewer-next">Next <span aria-hidden="true">→</span></button>
+            </div>
+            <button type="button" class="button secondary" data-copy="screenshot-url" hidden>Copy screenshot link</button>
+          </div>
+          <input class="source-field" id="screenshot-url" type="url" aria-label="Screenshot link" readonly hidden>
+          <p class="action-status" role="status"></p>
         </div>
       </dialog>
     </section>

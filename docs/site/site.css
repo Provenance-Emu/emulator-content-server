@@ -314,25 +314,29 @@ h3 {
 }
 .viewer-layout {
   display: grid;
-  justify-items: end;
   gap: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.65rem;
+}
+.viewer-bar,
+.viewer-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.viewer-bar {
+  justify-content: space-between;
+}
+.viewer-bar p {
+  margin: 0;
+  font-size: 0.9rem;
 }
 .viewer img {
   width: auto;
   height: auto;
-  max-height: calc(94dvh - 3.8rem);
+  max-height: max(9rem, calc(94dvh - 11rem));
+  margin-inline: auto;
   object-fit: contain;
-}
-.viewer-close {
-  min-height: 2.25rem;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid #766084;
-  border-radius: 0.35rem;
-  color: inherit;
-  background: #2b2337;
-  font: inherit;
-  cursor: pointer;
 }
 .install-banner {
   padding: clamp(1.6rem, 5.4vw, 4.5rem);

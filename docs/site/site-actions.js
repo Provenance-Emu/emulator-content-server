@@ -3,7 +3,9 @@ document.querySelector('#share-url').value = pageUrl;
 
 for (const button of document.querySelectorAll('[data-copy]')) {
   const source = document.getElementById(button.dataset.copy);
-  const status = button.closest('.quick-install, .share-panel').querySelector('[role="status"]');
+  const status = button
+    .closest('.quick-install, .share-panel, .viewer')
+    .querySelector('[role="status"]');
   button.hidden = false;
   button.addEventListener('click', async () => {
     const value = source.value ?? source.textContent;
