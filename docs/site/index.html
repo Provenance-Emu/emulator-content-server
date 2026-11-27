@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Emulation Server — Self-host your game library</title>
   <meta name="description" content="Self-host your emulator library with Emulation Server. Organize games, artwork and saves, play supported games in a browser, and share your library with compatible emulators.">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="theme-color" content="#121018">
   <link rel="canonical" href="https://provenance-emu.com/emulator-content-server/">
+  <link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48" href="./favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon.png">
-  <link rel="apple-touch-icon" href="./assets/server-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/server-icon.png">
   <meta property="og:site_name" content="Emulation Server">
+  <meta property="og:locale" content="en_US">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://provenance-emu.com/emulator-content-server/">
   <meta property="og:title" content="Emulation Server — Your games. Your network.">
@@ -23,7 +26,7 @@
   <meta name="twitter:site" content="@provenanceapp">
   <meta name="twitter:title" content="Emulation Server — Your games. Your network.">
   <meta name="twitter:description" content="A self-hosted home for your emulator library. Browse, play, and connect your devices.">
-  <meta name="twitter:image" content="https://provenance-emu.com/emulator-content-server/assets/social-card.jpg">
+  <meta name="twitter:image" content="https://provenance-emu.com/emulator-content-server/assets/x-card.jpg">
   <meta name="twitter:image:alt" content="Emulation Server alongside a screenshot of its game library with illustrated covers.">
   <script type="application/ld+json">
     {
@@ -36,6 +39,8 @@
       "operatingSystem": "macOS (Apple Silicon), Windows (x64), Linux (x64)",
       "downloadUrl": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly",
       "image": "https://provenance-emu.com/emulator-content-server/assets/social-card.jpg",
+      "screenshot": "https://provenance-emu.com/emulator-content-server/assets/library.webp",
+      "license": "https://github.com/Provenance-Emu/emulator-content-server/blob/main/LICENSE",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "publisher": { "@type": "Organization", "name": "Provenance Emu", "url": "https://provenance-emu.com/" }
     }
@@ -43,6 +48,7 @@
   <link rel="stylesheet" href="./site.css">
   <script defer src="./api-link.js"></script>
   <script defer src="./gallery.js"></script>
+  <script defer src="./site-actions.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -70,7 +76,7 @@
             <a class="button primary" href="#install">Get Emulation Server <span aria-hidden="true">↓</span></a>
             <a class="button secondary" href="#features">Explore features</a>
           </div>
-          <p class="platforms">Nightly builds for macOS, Windows, and Linux</p>
+          <p class="platforms">Nightly builds for macOS, Windows, and Linux · <a href="#share">Share</a></p>
         </div>
         <figure class="hero-figure">
           <a class="hero-image" href="./assets/library.webp" data-gallery aria-label="Enlarge the game library screenshot">
@@ -171,6 +177,29 @@
         <p>Choose the desktop app for your computer or run the standalone server on a machine that stays on.</p>
         <a class="button primary" href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/nightly-builds.md">Open the setup guide <span aria-hidden="true">↗</span></a>
       </div>
+      <div class="quick-install" id="quick-install">
+        <h3>Quick install</h3>
+        <p>Run the command for your system, then choose Nightly or Release when prompted.</p>
+        <div class="command-list">
+          <div class="command-row">
+            <div class="command-header">
+              <h4>Terminal <span>macOS (Apple Silicon) and Linux (x64)</span></h4>
+              <button type="button" class="button secondary" data-copy="install-shell" aria-label="Copy Terminal command" hidden>Copy command</button>
+            </div>
+            <pre><code id="install-shell">curl -qfsSL https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/scripts/install-server.sh | bash</code></pre>
+            <a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/scripts/install-server.sh">View shell script</a>
+          </div>
+          <div class="command-row">
+            <div class="command-header">
+              <h4>PowerShell <span>Windows (x64)</span></h4>
+              <button type="button" class="button secondary" data-copy="install-powershell" aria-label="Copy PowerShell command" hidden>Copy command</button>
+            </div>
+            <pre><code id="install-powershell">&amp; ([ScriptBlock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/Provenance-Emu/emulator-content-server/main/scripts/install-server.ps1')))</code></pre>
+            <a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/scripts/install-server.ps1">View PowerShell script</a>
+          </div>
+        </div>
+        <p class="action-status" role="status"></p>
+      </div>
       <div class="download-grid">
         <article>
           <h3>macOS</h3>
@@ -216,6 +245,7 @@
           <h3>Connect a client</h3>
           <ul>
             <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/compatibility/provenance.md">Provenance integration</a></li>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/protocol/jaguar-catalog.md">Virtual Jaguar integration</a></li>
             <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/webdav.md">WebDAV access</a></li>
             <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/romm-gateway.md">RomM gateway</a></li>
           </ul>
@@ -264,8 +294,35 @@
             <a href="https://ifly-emu.com/downloads/">Downloads</a>
           </div>
         </article>
+        <article>
+          <h3>Virtual Jaguar</h3>
+          <p>Atari Jaguar and Jaguar CD on macOS, Windows, and Linux. Browse and download from your Emulation Server in supported builds.</p>
+          <div class="app-links">
+            <a class="text-link" href="https://jaguar.provenance-emu.com/app.html">App and downloads <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
       </div>
       <p class="project-links">More from Provenance Emu <a href="https://provenance-emu.com/skins/">Controller skins</a> <a href="https://github.com/Provenance-Emu">Open-source projects <span aria-hidden="true">↗</span></a></p>
+    </section>
+    <section class="frame section" id="share" aria-labelledby="share-title">
+      <div class="share-panel">
+        <h2 id="share-title">Share Emulation Server</h2>
+        <div class="share-actions">
+          <button type="button" class="button primary" id="native-share" hidden>Share…</button>
+          <button type="button" class="button secondary" data-copy="share-url" hidden>Copy link</button>
+          <a class="button secondary" href="https://x.com/intent/tweet?text=Emulation%20Server&amp;url=https%3A%2F%2Fprovenance-emu.com%2Femulator-content-server%2F">Share on X</a>
+          <a class="button secondary" href="https://www.reddit.com/submit?title=Emulation%20Server&amp;url=https%3A%2F%2Fprovenance-emu.com%2Femulator-content-server%2F">Share on Reddit</a>
+        </div>
+        <input class="source-field" id="share-url" type="url" aria-label="Page link" readonly hidden>
+        <details class="embed">
+          <summary>Embed the preview card</summary>
+          <textarea class="source-field" id="embed-html" aria-label="HTML for the preview card" readonly rows="3" spellcheck="false">&lt;a href="https://provenance-emu.com/emulator-content-server/"&gt;
+  &lt;img src="https://provenance-emu.com/emulator-content-server/assets/social-card.jpg" width="1200" height="630" style="max-width:100%;height:auto" alt="Emulation Server — Self-host your game library"&gt;
+&lt;/a&gt;</textarea>
+          <button type="button" class="button secondary" data-copy="embed-html" hidden>Copy embed HTML</button>
+        </details>
+        <p class="action-status" role="status"></p>
+      </div>
     </section>
   </main>
 

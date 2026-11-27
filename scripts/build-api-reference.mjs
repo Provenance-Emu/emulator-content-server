@@ -11,6 +11,9 @@ const html = `<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
   <title>Emulator Content Server REST API</title>
+  <meta name="description" content="Browse the Emulation Server REST API operations and download the OpenAPI specification.">
+  <link rel="canonical" href="https://provenance-emu.com/emulator-content-server/api/">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon.png">
   <link rel="stylesheet" href="./swagger-ui.css">
   <script defer src="./swagger-ui-bundle.js"></script>
   <script defer src="./init.js"></script>

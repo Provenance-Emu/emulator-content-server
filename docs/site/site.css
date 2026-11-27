@@ -346,9 +346,15 @@ h3 {
   color: #e5dcee;
 }
 .download-grid,
-.guide-grid,
-.app-grid {
+.guide-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.app-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.app-grid article {
+  display: flex;
+  flex-direction: column;
 }
 .download-grid {
   margin-top: 1rem;
@@ -380,6 +386,9 @@ h3 {
   flex-wrap: wrap;
   gap: 0.45rem 1rem;
 }
+.app-grid .app-links {
+  margin-top: auto;
+}
 .site-footer {
   border-top: 1px solid var(--line);
   background: #17131e;
@@ -391,9 +400,102 @@ h3 {
   margin: 0.45rem 0 0;
   font-size: 0.82rem;
 }
+
+.quick-install,
+.share-panel {
+  margin-top: 1rem;
+  padding: clamp(1.05rem, 2.4vw, 1.6rem);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+}
+.quick-install p,
+.command-header span,
+.command-row > a {
+  color: var(--muted);
+}
+.command-list {
+  display: grid;
+  gap: 0.85rem;
+}
+.command-row {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: #15121b;
+}
+.command-header,
+.share-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+}
+.command-header {
+  justify-content: space-between;
+}
+.command-header h4 {
+  margin: 0;
+}
+.command-header span {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+.command-row pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.command-row > a {
+  font-size: 0.85rem;
+}
+button.button {
+  font-family: inherit;
+  cursor: pointer;
+}
+.button[hidden] {
+  display: none;
+}
+.share-panel h2 {
+  font-size: clamp(1.5rem, 3.4vw, 2.4rem);
+}
+.share-actions {
+  margin-block: 0.9rem;
+}
+.embed summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.source-field {
+  width: 100%;
+  margin-block: 0.6rem;
+  padding: 0.6rem;
+  border: 1px solid #766084;
+  border-radius: 0.35rem;
+  color: inherit;
+  background: #15121b;
+  font:
+    0.85rem / 1.5 ui-monospace,
+    monospace;
+}
+.action-status {
+  margin-block: 0.6rem 0;
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+.action-status:empty {
+  margin: 0;
+}
+
 @media (max-width: 56rem) {
   .hero-layout {
     grid-template-columns: 1fr;
+  }
+  .app-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .hero-figure {
     width: min(100%, 42rem);
