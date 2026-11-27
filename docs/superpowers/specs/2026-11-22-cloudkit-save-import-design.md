@@ -1,6 +1,6 @@
 # Bringing saves from iCloud to the server
 
-Status: first version built (connect, preview, import of save states from Provenance). Not yet run against Apple's service; see "Unverified". Dates: proposed 2026-11-22, revised 2026-11-25 after reading the apps' sync code and Apple's web service reference.
+Status: first version built (connect, preview, import of save states from Provenance). The first live sign-in was refused by Apple; see "Live check". Dates: proposed 2026-11-22, revised 2026-11-25 after reading the apps' sync code and Apple's web service reference.
 
 ## The situation
 
@@ -85,18 +85,29 @@ The record layout belongs in this repository beside the HTTP contract, and writi
 ## Order
 
 1. Done: reader, preview, import of Provenance save states, tests against a stand-in.
-2. **Live check** with a real API token and sign-in. This settles "Unverified" and is the first thing to do before trusting any of it.
+2. **Live check** with a real API token and sign-in. Started 2026-11-26; blocked at sign-in, see "Live check".
 3. Save-state screenshots, then battery saves through `ROM` records.
 4. iFly and iCube, or the shared zone if the apps move to it.
 5. Checking for new saves on a schedule. This needs the sign-in kept between restarts and so a reviewed way to store it; it is also bounded by Apple's two weeks.
 
+## Live check, 2026-11-26
+
+Run with the built-in API token and a real Apple Account.
+
+- Apple accepts the API token and serves its sign-in page, which names the app.
+- After sign-in Apple sends the window to `https://cdn.apple-cloudkit.com/ck-auth/`. That page asks `setup.apple-cloudkit.com/setup/ws/1/oauth/validateToken` to confirm, then posts its whole answer to the opening window. The message therefore comes from `cdn.apple-cloudkit.com`, not from the sign-in address, and the token is the `ckSession` field. The first build expected an `apple.com` sender and a `ckWebAuthToken` field and would have ignored a success. Fixed.
+- The page posts to any origin unless the token names an `https` origin, so a page on a home address can receive it.
+- The page's outcomes: status 0 is success, 7 asks for the iCloud terms, 11 waits for keys, 12 shows "iCloud Data Web Access is Off". Anything else shows "Authentication Error" and posts `{ errorMessage: 'unknownError' }`.
+- **The owner's account got status 13**, in two browsers. The only other report of status 13 ties it to Advanced Data Protection (brightdigit/MistKit issue 486). The owner's account has Advanced Data Protection on, which fits. Not checked against an account without it. If that holds, an account with Advanced Data Protection cannot be read through Apple's web service at all, and this design does not work for it.
+
+### If the web service stays closed
+
+Reading the private database with Apple's own framework on a Mac that is signed in to iCloud is not affected by Advanced Data Protection. That means a small signed helper with the container's entitlement on the computer that runs the server, handing records to the same import code. It was built on 2026-11-26 and read the owner's saves; see `2026-11-26-native-icloud-reader-design.md`. The apps syncing to this server directly remains the long-term answer.
+
 ## Unverified
 
-From Apple's reference (last revised 2016) and the app's source. None of it has been run against Apple:
-
-- That the sign-in window delivers the token by message to a page served from a home address, and the address the message comes from.
-- Where Apple returns the replacement token (this build reads `ckWebAuthToken` from the answer body).
-- That an account with Advanced Data Protection can be read at all. One unanswered report says a third-party container stays closed to the web even after web access is turned back on.
+- Whether status 13 is Advanced Data Protection, and whether an account without it completes sign-in.
+- Where Apple returns the replacement token on later calls (this build reads `ckWebAuthToken` from the answer body).
 - The host names save files are downloaded from, and how long a download address stays valid.
 - Rate limits. The reader stops and reports when Apple asks it to wait.
 

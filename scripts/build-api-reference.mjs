@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
 const require = createRequire(new URL('../apps/server/package.json', import.meta.url));
@@ -48,12 +48,10 @@ const init = `window.ui = SwaggerUIBundle({
 });
 `;
 
+await cp(new URL('../docs/site/', import.meta.url), site, { recursive: true });
 await mkdir(output, { recursive: true });
 const outputPath = (file) => new URL(file, output);
 await Promise.all([
-  ...['index.html', 'site.css', 'api-link.js'].map((file) =>
-    copyFile(new URL(`../docs/site/${file}`, import.meta.url), new URL(file, site)),
-  ),
   writeFile(outputPath('index.html'), html),
   writeFile(outputPath('init.js'), init),
   copyFile(

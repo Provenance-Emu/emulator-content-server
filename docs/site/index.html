@@ -3,42 +3,286 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Run a private game library for your emulators. Browse games, share saves, and manage your collection from one server.">
-  <title>Emulation Server · Your games, on your network</title>
+  <title>Emulation Server — Self-host your game library</title>
+  <meta name="description" content="Self-host your emulator library with Emulation Server. Organize games, artwork and saves, play supported games in a browser, and share your library with compatible emulators.">
+  <meta name="theme-color" content="#121018">
+  <link rel="canonical" href="https://provenance-emu.com/emulator-content-server/">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon.png">
+  <link rel="apple-touch-icon" href="./assets/server-icon.png">
+  <meta property="og:site_name" content="Emulation Server">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://provenance-emu.com/emulator-content-server/">
+  <meta property="og:title" content="Emulation Server — Your games. Your network.">
+  <meta property="og:description" content="A self-hosted home for your emulator library. Browse your collection, play supported games in your browser, and connect your devices.">
+  <meta property="og:image" content="https://provenance-emu.com/emulator-content-server/assets/social-card.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Emulation Server alongside a screenshot of its game library with illustrated covers.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@provenanceapp">
+  <meta name="twitter:title" content="Emulation Server — Your games. Your network.">
+  <meta name="twitter:description" content="A self-hosted home for your emulator library. Browse, play, and connect your devices.">
+  <meta name="twitter:image" content="https://provenance-emu.com/emulator-content-server/assets/social-card.jpg">
+  <meta name="twitter:image:alt" content="Emulation Server alongside a screenshot of its game library with illustrated covers.">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Emulation Server",
+      "url": "https://provenance-emu.com/emulator-content-server/",
+      "description": "A self-hosted library server for emulator games, artwork, saves, and system files.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "macOS (Apple Silicon), Windows (x64), Linux (x64)",
+      "downloadUrl": "https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly",
+      "image": "https://provenance-emu.com/emulator-content-server/assets/social-card.jpg",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "publisher": { "@type": "Organization", "name": "Provenance Emu", "url": "https://provenance-emu.com/" }
+    }
+  </script>
   <link rel="stylesheet" href="./site.css">
   <script defer src="./api-link.js"></script>
+  <script defer src="./gallery.js"></script>
 </head>
 <body>
-  <header class="frame top">
-    <a class="brand" href="./">Emulation Server</a>
-    <nav aria-label="Project">
-      <a href="./api/">API reference</a>
-      <a href="https://github.com/Provenance-Emu/emulator-content-server">GitHub</a>
-    </nav>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="frame header-layout">
+      <a class="brand" href="./"><img src="./assets/server-icon.png" width="34" height="34" alt="">Emulation Server</a>
+      <nav aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#docs">Docs</a>
+        <a href="#apps">Apps</a>
+        <a href="https://github.com/Provenance-Emu/emulator-content-server">GitHub</a>
+        <a class="nav-download" href="#install">Download <span aria-hidden="true">↓</span></a>
+      </nav>
+    </div>
   </header>
-  <main class="frame">
-    <section class="intro" aria-labelledby="hero">
-      <p class="status">In development · Nightly builds available</p>
-      <h1 id="hero">Your games,<br>on your network.</h1>
-      <p class="lede">Run a library server on a computer you own. Browse your games, artwork, saves, and system files from a browser or connect a compatible emulator.</p>
-      <div class="actions">
-        <a class="download" href="https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly">Get the nightly build</a>
-        <a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/nightly-builds.md">Read the install guide</a>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="frame hero-layout">
+        <div class="hero-copy">
+          <p class="eyebrow">Open-source · Self-hosted</p>
+          <h1 id="hero-title">Your games.<br><span>Your network.</span></h1>
+          <p class="lede">A home for the games, artwork, and saves you already own. Run Emulation Server on your computer, then browse your library from a browser or a compatible emulator.</p>
+          <div class="actions">
+            <a class="button primary" href="#install">Get Emulation Server <span aria-hidden="true">↓</span></a>
+            <a class="button secondary" href="#features">Explore features</a>
+          </div>
+          <p class="platforms">Nightly builds for macOS, Windows, and Linux</p>
+        </div>
+        <figure class="hero-figure">
+          <a class="hero-image" href="./assets/library.webp" data-gallery aria-label="Enlarge the game library screenshot">
+            <img src="./assets/library.webp" width="1440" height="940" fetchpriority="high" alt="Emulation Server library with illustrated game covers, a search field, and filters for six console systems.">
+          </a>
+          <figcaption><span>Emulation Server web interface</span><span>Sample library</span></figcaption>
+        </figure>
       </div>
-      <p class="platforms">Apple Silicon macOS · Windows x64 · Linux x64</p>
     </section>
-    <section aria-labelledby="features">
-      <h2 id="features">What you can do today</h2>
-      <div class="features">
-        <article><h3>Keep your folders</h3><p>Index existing game folders in place or upload files through the web interface.</p></article>
-        <article><h3>Browse and play</h3><p>Find games by system, view cover art, and play supported titles in your browser.</p></article>
-        <article><h3>Share access</h3><p>Pair compatible devices and manage who can browse or download from your libraries.</p></article>
+
+    <section class="frame section" id="features" aria-labelledby="features-title">
+      <div class="section-intro">
+        <div>
+          <p class="eyebrow">Feature gallery</p>
+          <h2 id="features-title">Inside your library.</h2>
+        </div>
+        <p>Browse by console, open a game’s files, keep track of progress, and decide which devices get access.</p>
       </div>
+      <div class="gallery">
+        <article class="feature">
+          <a class="feature-image" href="./assets/library.webp" data-gallery aria-label="Enlarge the library and artwork screenshot">
+            <img src="./assets/library.webp" width="1440" height="940" loading="lazy" alt="Illustrated game library with console filters, a cover size slider, and grid and list controls.">
+            <span class="expand" aria-hidden="true">↗</span>
+          </a>
+          <div class="feature-body">
+            <h3>Browse your collection</h3>
+            <p>Scan folders in place or upload games. Switch between covers and a list, search by name, and filter by system.</p>
+            <a class="text-link" href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/library-browser.md">Library guide <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+        <article class="feature">
+          <a class="feature-image" href="./assets/game.webp" data-gallery aria-label="Enlarge the game detail screenshot">
+            <img src="./assets/game.webp" width="1440" height="940" loading="lazy" alt="Starfall Rally game page with cover artwork, a Play button, and a list of its files.">
+            <span class="expand" aria-hidden="true">↗</span>
+          </a>
+          <div class="feature-body">
+            <h3>Play from your browser</h3>
+            <p>Open supported games from the library when a compatible browser core is installed. Browser cores are downloaded separately.</p>
+            <a class="text-link" href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/browser-playback.md">Browser playback guide <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+        <article class="feature">
+          <a class="feature-image" href="./assets/folders.webp" data-gallery aria-label="Enlarge the folder scans screenshot">
+            <img src="./assets/folders.webp" width="1440" height="940" loading="lazy" alt="Scans and details settings with a registered folder, scan and artwork controls, and scan history.">
+            <span class="expand" aria-hidden="true">↗</span>
+          </a>
+          <div class="feature-body">
+            <h3>Keep your existing folders</h3>
+            <p>Index the folders you already use and turn on folder watching to pick up new files. Review scans and look up missing details and artwork.</p>
+            <a class="text-link" href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/library-maintenance.md">Library maintenance guide <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+        <article class="feature">
+          <a class="feature-image" href="./assets/saves.webp" data-gallery aria-label="Enlarge the saved snapshots screenshot">
+            <img src="./assets/saves.webp" width="1440" height="940" loading="lazy" alt="Game details with the Saved snapshot tab selected and a save state ready to download.">
+            <span class="expand" aria-hidden="true">↗</span>
+          </a>
+          <div class="feature-body">
+            <h3>Keep saves with each game</h3>
+            <p>Manage in-game saves and save states on the game’s page alongside its artwork and downloadable files.</p>
+          </div>
+        </article>
+        <article class="feature">
+          <a class="feature-image" href="./assets/icloud.webp" data-gallery aria-label="Enlarge the iCloud saves screenshot">
+            <img src="./assets/icloud.webp" width="1440" height="940" loading="lazy" alt="iCloud saves settings with a Connect iCloud button for importing Provenance save states.">
+            <span class="expand" aria-hidden="true">↗</span>
+          </a>
+          <div class="feature-body">
+            <h3>Import Provenance saves</h3>
+            <p>Find the Provenance save states in your iCloud and copy them into matching games in your library. A server on a Mac reads them directly; elsewhere, sign in to Apple.</p>
+            <a class="text-link" href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/icloud-saves.md">iCloud saves guide <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+        <article class="feature">
+          <a class="feature-image" href="./assets/devices.webp" data-gallery aria-label="Enlarge the device settings screenshot">
+            <img src="./assets/devices.webp" width="1440" height="940" loading="lazy" alt="Device settings showing a pairing PIN prompt and two devices with different permissions.">
+            <span class="expand" aria-hidden="true">↗</span>
+          </a>
+          <div class="feature-body">
+            <h3>Share with your devices</h3>
+            <p>Pair a compatible app or give it a revocable device token. Choose read-only access or allow the device to write to your library.</p>
+            <a class="text-link" href="#apps">Explore compatible apps <span aria-hidden="true">↓</span></a>
+          </div>
+        </article>
+      </div>
+      <dialog class="viewer" aria-label="Screenshot viewer">
+        <div class="viewer-layout">
+          <button type="button" class="viewer-close" autofocus>Close <span aria-hidden="true">×</span></button>
+          <img alt="">
+        </div>
+      </dialog>
+    </section>
+
+    <section class="frame section" id="install" aria-labelledby="install-title">
+      <div class="install-banner">
+        <p class="eyebrow">Download the nightly</p>
+        <h2 id="install-title">Set up your server.</h2>
+        <p>Choose the desktop app for your computer or run the standalone server on a machine that stays on.</p>
+        <a class="button primary" href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/nightly-builds.md">Open the setup guide <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="download-grid">
+        <article>
+          <h3>macOS</h3>
+          <p>Apple Silicon</p>
+          <a class="text-link" href="https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly/Emulation-Server-nightly-macos-arm64.dmg">Desktop app (.dmg) <span aria-hidden="true">↓</span></a>
+          <a href="https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly/Emulation-Server-nightly-macos-arm64.tar.gz">Standalone server (.tar.gz)</a>
+        </article>
+        <article>
+          <h3>Windows</h3>
+          <p>x64</p>
+          <a class="text-link" href="https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly/Emulation-Server-nightly-windows-x64.msi">Desktop app (.msi) <span aria-hidden="true">↓</span></a>
+          <a href="https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly/Emulation-Server-nightly-windows-x64.zip">Standalone server (.zip)</a>
+        </article>
+        <article>
+          <h3>Linux</h3>
+          <p>x64</p>
+          <a class="text-link" href="https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly/Emulation-Server-nightly-linux-x64.deb">Desktop app (.deb) <span aria-hidden="true">↓</span></a>
+          <a href="https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly/Emulation-Server-nightly-linux-x64.AppImage">AppImage</a>
+          <a href="https://github.com/Provenance-Emu/emulator-content-server/releases/download/nightly/Emulation-Server-nightly-linux-x64.tar.gz">Standalone server (.tar.gz)</a>
+        </article>
+      </div>
+      <p class="download-notes">Nightlies are pre-release builds. <a href="https://github.com/Provenance-Emu/emulator-content-server/releases/tag/nightly">Release notes and checksums</a> · <a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/install.md">Docker and source installation</a></p>
+    </section>
+
+    <section class="frame section" id="docs" aria-labelledby="docs-title">
+      <div class="section-intro">
+        <div>
+          <p class="eyebrow">Documentation</p>
+          <h2 id="docs-title">Make it yours.</h2>
+        </div>
+        <p>Set up backups, connect from another network, or build a client for your own emulator.</p>
+      </div>
+      <div class="guide-grid">
+        <div>
+          <h3>Run a server</h3>
+          <ul>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/nightly-builds.md">Nightly installation</a></li>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/remote-access.md">Remote access</a></li>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/backup-restore.md">Backup and restore</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Connect a client</h3>
+          <ul>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/compatibility/provenance.md">Provenance integration</a></li>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/webdav.md">WebDAV access</a></li>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/operations/romm-gateway.md">RomM gateway</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Build with ECS</h3>
+          <ul>
+            <li><a href="./api/">REST API reference</a></li>
+            <li><a href="./api/openapi.yaml">OpenAPI specification</a></li>
+            <li><a href="https://github.com/Provenance-Emu/emulator-content-server/blob/main/docs/protocol/client-integration.md">Client integration and SDKs</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="frame section" id="apps" aria-labelledby="apps-title">
+      <div class="section-intro">
+        <div>
+          <p class="eyebrow">The Provenance family</p>
+          <h2 id="apps-title">Find your emulator.</h2>
+        </div>
+        <p>Server integration depends on the app and build. Check the app’s documentation for availability.</p>
+      </div>
+      <div class="app-grid">
+        <article>
+          <h3>Provenance</h3>
+          <p>Multi-system emulation for iPhone, iPad, and Apple TV.</p>
+          <div class="app-links">
+            <a class="text-link" href="https://provenance-emu.com/">Website <span aria-hidden="true">↗</span></a>
+            <a href="https://apps.apple.com/us/app/provenance-app/id1596862805">App Store</a>
+          </div>
+        </article>
+        <article>
+          <h3>iCube</h3>
+          <p>GameCube and Wii emulation powered by Dolphin.</p>
+          <div class="app-links">
+            <a class="text-link" href="https://icube-emu.com/">Website <span aria-hidden="true">↗</span></a>
+            <a href="https://icube-emu.com/downloads/">Downloads</a>
+          </div>
+        </article>
+        <article>
+          <h3>iFly</h3>
+          <p>Dedicated Dreamcast emulation powered by Flycast.</p>
+          <div class="app-links">
+            <a class="text-link" href="https://ifly-emu.com/">Website <span aria-hidden="true">↗</span></a>
+            <a href="https://ifly-emu.com/downloads/">Downloads</a>
+          </div>
+        </article>
+      </div>
+      <p class="project-links">More from Provenance Emu <a href="https://provenance-emu.com/skins/">Controller skins</a> <a href="https://github.com/Provenance-Emu">Open-source projects <span aria-hidden="true">↗</span></a></p>
     </section>
   </main>
-  <footer class="frame">
-    <a href="https://github.com/Provenance-Emu/emulator-content-server/wiki">Project wiki</a>
-    <a href="https://github.com/Provenance-Emu/emulator-content-server/issues">Report an issue</a>
+
+  <footer class="site-footer">
+    <div class="frame footer-layout">
+      <div>
+        <a class="brand" href="./"><img src="./assets/server-icon.png" width="34" height="34" alt="">Emulation Server</a>
+        <p>A project from Provenance Emu.</p>
+      </div>
+      <nav aria-label="Community and project links">
+        <a href="https://discord.gg/4TK7PU5">Discord</a>
+        <a href="https://x.com/provenanceapp">X</a>
+        <a href="https://www.reddit.com/r/Provenance/">Reddit</a>
+        <a href="https://github.com/Provenance-Emu/emulator-content-server/wiki">Wiki</a>
+        <a href="https://github.com/Provenance-Emu/emulator-content-server/issues">Report an issue</a>
+      </nav>
+    </div>
   </footer>
 </body>
 </html>
