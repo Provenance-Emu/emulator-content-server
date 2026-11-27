@@ -29,6 +29,26 @@ public struct SaveDescription: Codable, Equatable, Sendable {
   }
 }
 
+/// What the app records about a game's file. Mirrors `IcloudReaderGameDescription`.
+public struct GameDescription: Codable, Equatable, Sendable {
+  public var gameId: String
+  public var systemIdentifier: String?
+  public var filename: String?
+  public var size: Int64?
+  public var title: String?
+
+  public init(
+    gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int64? = nil,
+    title: String? = nil
+  ) {
+    self.gameId = gameId
+    self.systemIdentifier = systemIdentifier
+    self.filename = filename
+    self.size = size
+    self.title = title
+  }
+}
+
 public enum AccountState: String, Codable, Sendable {
   case available, signedOut, restricted, unknown
 }
@@ -58,6 +78,8 @@ public protocol SaveStore: Sendable {
   func account() async -> AccountState
   /// Calls `page` with every save, a page at a time. Throws `ReadFailure`.
   func list(page: @Sendable ([SaveDescription]) async throws -> Void) async throws
+  /// What the app records about the games with these identifiers. Throws `ReadFailure`.
+  func games(for gameIds: Set<String>) async throws -> [GameDescription]
   /// A local file holding the save's bytes. Throws `ReadFailure`.
   func file(recordName: String) async throws -> URL
 }
@@ -73,7 +95,7 @@ public enum LinkError: Error, Equatable {
 public protocol ServerLink: Sendable {
   func work() async throws -> Work
   func account(_ state: AccountState) async throws
-  func listing(_ saves: [SaveDescription], done: Bool) async throws
+  func listing(_ saves: [SaveDescription], done: Bool, games: [GameDescription]) async throws
   func listingFailed(_ reason: ReadFailure) async throws
   func upload(requestId: String, file: URL) async throws
   func saveFailed(requestId: String, reason: ReadFailure) async throws

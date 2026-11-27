@@ -1857,10 +1857,28 @@ public struct IcloudReaderAccount: Codable, Equatable, Sendable {
 public struct IcloudReaderListing: Codable, Equatable, Sendable {
     public var saves: [IcloudReaderSaveDescription]
     public var done: Bool
+    public var games: [IcloudReaderGameDescription]?
 
-    public init(saves: [IcloudReaderSaveDescription], done: Bool) {
+    public init(saves: [IcloudReaderSaveDescription], done: Bool, games: [IcloudReaderGameDescription]? = nil) {
         self.saves = saves
         self.done = done
+        self.games = games
+    }
+}
+
+public struct IcloudReaderGameDescription: Codable, Equatable, Sendable {
+    public var gameId: String
+    public var systemIdentifier: String?
+    public var filename: String?
+    public var size: Int?
+    public var title: String?
+
+    public init(gameId: String, systemIdentifier: String? = nil, filename: String? = nil, size: Int? = nil, title: String? = nil) {
+        self.gameId = gameId
+        self.systemIdentifier = systemIdentifier
+        self.filename = filename
+        self.size = size
+        self.title = title
     }
 }
 
@@ -1938,11 +1956,13 @@ public struct IcloudPreview: Codable, Equatable, Sendable {
 
 public struct IcloudUnmatchedGame: Codable, Equatable, Sendable {
     public var gameId: String
+    public var title: String?
     public var systemIdentifier: String?
     public var saves: Int
 
-    public init(gameId: String, systemIdentifier: String? = nil, saves: Int) {
+    public init(gameId: String, title: String? = nil, systemIdentifier: String? = nil, saves: Int) {
         self.gameId = gameId
+        self.title = title
         self.systemIdentifier = systemIdentifier
         self.saves = saves
     }

@@ -47,6 +47,43 @@ export function gameForMd5(db: DatabaseSync, md5: string): GameForDigest | null 
   return source.item_id ? { itemId: source.item_id } : { sourceId: source.source_id };
 }
 
+/**
+ * Finds the game one scanned file is, by what an app recorded about that file: its system, its
+ * name and, when known, its size. Used when the app's identifier for the game is not the file's
+ * plain MD5. Answers only when exactly one file in the libraries fits; two files that fit could
+ * be two different games, and a save is never attached on a guess.
+ */
+export function gameForRomFile(
+  db: DatabaseSync,
+  input: { systemIdentifier: string; filename: string; size: number | null },
+): GameForDigest | null {
+  const wanted = input.filename.toLowerCase();
+  if (!wanted || /[\\/]/.test(wanted)) return null;
+  const rows = db
+    .prepare(`SELECT s.id AS source_id, s.relative_path AS path, s.size AS size,
+        (SELECT g.item_id FROM game_source_copies g JOIN items i ON i.id = g.item_id
+         WHERE g.source_id = s.id AND i.deleted_at IS NULL AND i.library_id = r.library_id) AS item_id
+      FROM live_source_files s JOIN content_roots r ON r.id = s.root_id
+      WHERE s.system_id = ? AND s.kind = 'rom' AND s.group_anchor IS NULL
+        AND r.library_id IS NOT NULL`)
+    .all(input.systemIdentifier) as Array<{
+    source_id: string;
+    path: string;
+    size: number;
+    item_id: string | null;
+  }>;
+  const fits = rows.filter(
+    (row) =>
+      (row.path.split('/').pop() ?? '').toLowerCase() === wanted &&
+      (input.size === null || input.size === 0 || row.size === input.size),
+  );
+  // The same game file kept in two folders is one game when both belong to the same entry.
+  const games = new Set(fits.map((row) => row.item_id ?? `source:${row.source_id}`));
+  const only = fits[0];
+  if (!only || games.size !== 1) return null;
+  return only.item_id ? { itemId: only.item_id } : { sourceId: only.source_id };
+}
+
 /** Every record already brought in from one origin, as `recordName` + newline + `changeTag`. */
 export function importedSaveKeys(db: DatabaseSync, origin: string): Set<string> {
   const rows = db

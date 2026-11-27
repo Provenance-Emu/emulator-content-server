@@ -407,3 +407,111 @@ test('stopping an import while the Mac is fetching ends it and tells the Mac to 
     await f.dispose();
   }
 });
+
+test('a save whose game the app hashed differently is matched by the game file it recorded', {
+  skip,
+}, async () => {
+  const { f, owner, attach, reader, finished } = await fixture();
+  try {
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    const shelf = join(f.base, 'shelf');
+    await mkdir(join(shelf, 'copies'), { recursive: true });
+    await writeFile(join(shelf, 'Headered Game.nes'), 'generated');
+    await writeFile(join(shelf, 'Twice.nes'), 'generated one');
+    await writeFile(join(shelf, 'copies', 'Twice.nes'), 'generated two');
+    const root = f.catalog.createContentRoot({
+      path: shelf,
+      label: 'shelf',
+      libraryId: f.library.id,
+      actorId: f.owner.id,
+    });
+    await f.app.inject({ method: 'POST', url: `/api/v1/roots/${root.id}/scan`, headers: f.auth });
+    const scanned = f.catalog
+      .listSources(root.id)
+      .find((source) => source.relativePath === 'Headered Game.nes');
+    assert.ok(scanned?.systemId, 'the scan knows which system the file is for');
+
+    // None of these identifiers is the MD5 of a file here.
+    const headered = 'D'.repeat(32);
+    const twice = 'E'.repeat(32);
+    const resized = 'F'.repeat(32);
+    const saves = [
+      described(headered, 'one.svs'),
+      described(twice, 'two.svs'),
+      described(resized, 'three.svs'),
+    ];
+    const games = [
+      {
+        gameId: headered,
+        systemIdentifier: scanned.systemId,
+        filename: 'headered game.NES',
+        size: 9,
+        title: 'Headered Game',
+      },
+      // Two files here carry this name, so which game it is would be a guess.
+      {
+        gameId: twice,
+        systemIdentifier: scanned.systemId,
+        filename: 'Twice.nes',
+        size: null,
+        title: 'Twice',
+      },
+      // The right name and the wrong size is another file.
+      {
+        gameId: resized,
+        systemIdentifier: scanned.systemId,
+        filename: 'Headered Game.nes',
+        size: 4096,
+        title: 'Resized',
+      },
+    ];
+    const { ticket } = (await attach()).json();
+    await reader(ticket, 'PUT', '/account', { state: 'available' });
+    const asking = owner('POST', '/preview', { source: 'mac' });
+    for (let attempt = 0; attempt < 50; attempt += 1)
+      if ((await reader(ticket, 'GET', '/work')).json().work === 'list') break;
+    assert.equal(
+      (
+        await reader(ticket, 'POST', '/listing', {
+          saves: [],
+          done: false,
+          games: [{ gameId: headered, filename: '../x.nes' }],
+        })
+      ).statusCode,
+      400,
+      'a name that tries to be a path is refused',
+    );
+    assert.equal(
+      (await reader(ticket, 'POST', '/listing', { saves, done: true, games })).statusCode,
+      204,
+    );
+    const preview = (await asking).json();
+    assert.deepEqual(
+      [preview.saves, preview.games, preview.gamesHere, preview.ready],
+      [3, 3, 1, 1],
+    );
+    assert.deepEqual(
+      preview.unmatched.map((game: { title: string }) => game.title).sort(),
+      ['Resized', 'Twice'],
+      'games not found are named, not shown as a hash',
+    );
+
+    assert.equal((await owner('POST', '/import', { source: 'mac' })).statusCode, 202);
+    assert.equal((await reader(ticket, 'GET', '/work')).json().work, 'list');
+    await reader(ticket, 'POST', '/listing', { saves, done: true, games });
+    const work = (await reader(ticket, 'GET', '/work')).json();
+    assert.equal(
+      work.saves[0].recordName,
+      saves[0]?.recordName,
+      'only the matched save is asked for',
+    );
+    await reader(ticket, 'PUT', `/saves/${work.saves[0].requestId}`, Buffer.from('generated save'));
+    const done = await finished();
+    assert.deepEqual([done.imported, done.skipped, done.failed], [1, 2, 0]);
+    const made = f.catalog.gameForSource(scanned.id);
+    assert.ok(made, 'the scanned file got a game entry to hold its save');
+    assert.equal(f.catalog.manifest(made.id)?.files.length, 1);
+  } finally {
+    await f.dispose();
+  }
+});

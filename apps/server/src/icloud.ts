@@ -18,6 +18,7 @@ import {
 import type { ServerContext } from './context.js';
 import { jsonObject, requiredString, requireOwner } from './http.js';
 import {
+  describedGame,
   describedSave,
   READER_ACCOUNTS,
   READER_FAILURES,
@@ -74,7 +75,12 @@ interface Preview {
   gamesHere: number;
   ready: number;
   alreadyHere: number;
-  unmatched: Array<{ gameId: string; systemIdentifier: string | null; saves: number }>;
+  unmatched: Array<{
+    gameId: string;
+    systemIdentifier: string | null;
+    title: string | null;
+    saves: number;
+  }>;
 }
 
 interface ImportProgress {
@@ -195,11 +201,30 @@ export function registerIcloudRoutes(
     return saves;
   }
 
+  /**
+   * The game a save belongs to. First by the identifier the app filed it under, which is the
+   * game file's MD5 for most games. The app does not hash every file whole (it skips a
+   * cartridge header, reorders an N64 image, hashes a disc's data track), so when that finds
+   * nothing the game is looked for by the file the app recorded for it: same system, same file
+   * name, same size, and only when exactly one file here answers.
+   */
+  function locate(save: CloudSave): ReturnType<typeof catalog.gameForMd5> {
+    const found = catalog.gameForMd5(save.gameId);
+    if (found || !save.rom?.filename) return found;
+    const systemIdentifier = save.rom.systemIdentifier ?? save.systemIdentifier;
+    if (!systemIdentifier) return null;
+    return catalog.gameForRomFile({
+      systemIdentifier,
+      filename: save.rom.filename,
+      size: save.rom.size,
+    });
+  }
+
   function summarize(saves: CloudSave[], source: Source): Preview {
     const imported = catalog.importedSaveKeys(origin);
     const games = new Map<
       string,
-      { here: boolean; systemIdentifier: string | null; saves: number }
+      { here: boolean; systemIdentifier: string | null; title: string | null; saves: number }
     >();
     let ready = 0;
     let alreadyHere = 0;
@@ -209,8 +234,9 @@ export function registerIcloudRoutes(
       let game = games.get(save.gameId);
       if (!game) {
         game = {
-          here: catalog.gameForMd5(save.gameId) !== null,
+          here: locate(save) !== null,
           systemIdentifier: save.systemIdentifier,
+          title: save.rom?.title ?? null,
           saves: 0,
         };
         games.set(save.gameId, game);
@@ -225,6 +251,7 @@ export function registerIcloudRoutes(
       .map(([gameId, game]) => ({
         gameId,
         systemIdentifier: game.systemIdentifier,
+        title: game.title,
         saves: game.saves,
       }))
       .sort((a, b) => b.saves - a.saves || a.gameId.localeCompare(b.gameId));
@@ -243,7 +270,7 @@ export function registerIcloudRoutes(
 
   /** The library a save's game is in, or null when the server does not have the game. */
   function libraryFor(save: CloudSave): string | null {
-    const found = catalog.gameForMd5(save.gameId);
+    const found = locate(save);
     if (!found) return null;
     if ('itemId' in found) return catalog.getItem(found.itemId)?.libraryId ?? null;
     const source = catalog.getSource(found.sourceId);
@@ -255,7 +282,7 @@ export function registerIcloudRoutes(
    * once the save's bytes are in hand, so a failed download leaves no empty game behind.
    */
   function gameFor(save: CloudSave, actorId: string): { id: string; libraryId: string } | null {
-    const found = catalog.gameForMd5(save.gameId);
+    const found = locate(save);
     if (!found) return null;
     if ('itemId' in found) return catalog.getItem(found.itemId);
     const source = catalog.getSource(found.sourceId);
@@ -518,7 +545,17 @@ export function registerIcloudRoutes(
       if (!save) throw new DomainError('invalid-body', 400, 'A save is described wrongly');
       saves.push(save);
     }
-    if (!reader.addListing(saves, body.done))
+    const games: Array<[string, NonNullable<CloudSave['rom']>]> = [];
+    if (body.games !== undefined) {
+      if (!Array.isArray(body.games) || body.games.length > READER_PAGE_LIMIT)
+        throw new DomainError('invalid-body', 400, 'games must be a list of at most 500');
+      for (const raw of body.games) {
+        const game = describedGame(raw);
+        if (!game) throw new DomainError('invalid-body', 400, 'A game is described wrongly');
+        games.push(game);
+      }
+    }
+    if (!reader.addListing(saves, body.done, games))
       throw new DomainError('conflict', 409, 'The server did not ask for a listing');
     return reply.status(204).send();
   });

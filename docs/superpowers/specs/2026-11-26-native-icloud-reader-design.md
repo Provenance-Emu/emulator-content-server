@@ -88,6 +88,17 @@ Checked over SSH after a restart with the owner logged in.
 - The server is the **boot service**, running as the owner, started with `--host 0.0.0.0`. The desktop app runs in the owner's login session. This is the arrangement the design assumed: the server never needs an iCloud session of its own.
 - **The desktop app never attached.** It verifies the local server before reading the key, and that check refused any server listening beyond loopback. Fixed with a loopback listener the server holds itself; see `2026-11-20-local-owner-access-design.md`, "Servers on the home network". Not yet re-run on the Studio with that fix.
 
+### Matching, found on the Mac Studio
+
+The first real look on the Studio found 258 saves for 71 games and matched none. Two causes:
+
+- Provenance's identifier for a game is not always the file's MD5. It skips a cartridge header (NES, SNES `.smc`, Atari 7800, Lynx), reorders an N64 image, and hashes a disc's data track.
+- The games were not in a library folder there. Most of the owner's games are in iCloud Drive, which the folder chooser could not reach; it now lists those folders, and the files have to be downloaded to the Mac before the server will read them.
+
+Added: the reader also sends what Provenance's `ROM` records say about each game that has a save (file name, system, size, title; never the file). When the MD5 finds nothing, the server looks for exactly one file in the libraries with that system, name and size. On the laptop, with the iCloud Drive games folder added to a throwaway server, 12 of the 71 games matched and 36 saves were ready; the rest are games whose files are not in that folder. Unmatched games are now listed by title.
+
+Not done: computing Provenance's own MD5 for headered and disc formats on the server, which would match a renamed file too. Play counts, time played, last played and favourites are on the same `ROM` records and are not read yet.
+
 ## Apple's other libraries, and why they do not help here
 
 Apple offers CloudKit JS for web pages and a server-to-server key for servers; open-source Swift packages (MistKit is one) wrap the same thing for server-side Swift.

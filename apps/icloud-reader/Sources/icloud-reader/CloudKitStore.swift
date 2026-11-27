@@ -41,6 +41,40 @@ struct CloudKitStore: SaveStore {
     }
   }
 
+  func games(for gameIds: Set<String>) async throws -> [GameDescription] {
+    let wanted = Set(gameIds.map { $0.uppercased() })
+    guard !wanted.isEmpty else { return [] }
+    // The game's file itself is never asked for: only what describes it.
+    let keys = ["md5", "systemIdentifier", "originalFilename", "fileSize", "title"]
+    let query = CKQuery(recordType: "ROM", predicate: NSPredicate(value: true))
+    var games: [GameDescription] = []
+    do {
+      var found = try await database.records(matching: query, desiredKeys: keys, resultsLimit: 200)
+      while true {
+        for (_, result) in found.matchResults {
+          guard case .success(let record) = result, let md5 = record["md5"] as? String,
+            wanted.contains(md5.uppercased())
+          else { continue }
+          let text: (String) -> String? = { key in
+            (record[key] as? String).flatMap { $0.isEmpty ? nil : $0 }
+          }
+          games.append(
+            GameDescription(
+              gameId: md5,
+              systemIdentifier: text("systemIdentifier"),
+              filename: text("originalFilename"),
+              size: (record["fileSize"] as? Int64).flatMap { $0 > 0 ? $0 : nil },
+              title: text("title")))
+        }
+        guard let cursor = found.queryCursor else { return games }
+        found = try await database.records(
+          continuingMatchFrom: cursor, desiredKeys: keys, resultsLimit: 200)
+      }
+    } catch let error as CKError {
+      throw Self.failure(error)
+    }
+  }
+
   func file(recordName: String) async throws -> URL {
     do {
       let results = try await database.records(

@@ -71,6 +71,16 @@ export interface CloudSave {
   downloadUrl: string | null;
   device: string | null;
   modifiedAt: string | null;
+  /** What the app records about the game's file, when a reader supplied it. */
+  rom?: CloudRom;
+}
+
+/** A game as the app's own ROM record describes it. */
+export interface CloudRom {
+  systemIdentifier: string | null;
+  filename: string | null;
+  size: number | null;
+  title: string | null;
 }
 
 const HOST = 'https://api.apple-cloudkit.com';

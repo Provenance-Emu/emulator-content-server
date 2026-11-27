@@ -929,6 +929,15 @@ export interface IcloudReaderAccount {
 export interface IcloudReaderListing {
   saves: IcloudReaderSaveDescription[];
   done: boolean;
+  games?: IcloudReaderGameDescription[];
+}
+
+export interface IcloudReaderGameDescription {
+  gameId: string;
+  systemIdentifier?: string | null;
+  filename?: string | null;
+  size?: number | null;
+  title?: string | null;
 }
 
 export interface IcloudReaderSaveDescription {
@@ -969,6 +978,7 @@ export interface IcloudPreview {
 
 export interface IcloudUnmatchedGame {
   gameId: string;
+  title?: string | null;
   systemIdentifier: string | null;
   saves: number;
 }

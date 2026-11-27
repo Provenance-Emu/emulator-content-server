@@ -86,17 +86,35 @@ public actor Reader {
   private func sendListing() async {
     let link = self.link
     let size = pageSize
+    let seen = GameIds()
     do {
       try await store.list { saves in
+        await seen.add(saves.map(\.gameId))
         var rest = saves[...]
         while !rest.isEmpty {
           try Task.checkCancellation()
-          try await link.listing(Array(rest.prefix(size)), done: false)
+          try await link.listing(Array(rest.prefix(size)), done: false, games: [])
           rest = rest.dropFirst(size)
         }
       }
       try Task.checkCancellation()
-      try await link.listing([], done: true)
+      // The games those saves belong to, so the server can find one by its file. Saves are
+      // still listed when this part cannot be read.
+      var games: [GameDescription] = []
+      do {
+        games = try await store.games(for: await seen.all)
+      } catch is CancellationError {
+        throw CancellationError()
+      } catch {
+        log("games not listed: \((error as? ReadFailure)?.rawValue ?? "unexpected")")
+      }
+      var rest = games[...]
+      while rest.count > size {
+        try Task.checkCancellation()
+        try await link.listing([], done: false, games: Array(rest.prefix(size)))
+        rest = rest.dropFirst(size)
+      }
+      try await link.listing([], done: true, games: Array(rest))
     } catch is CancellationError {
     } catch let failure as ReadFailure {
       log("listing failed: \(failure.rawValue)")
@@ -137,4 +155,10 @@ public actor Reader {
       try? await link.saveFailed(requestId: wanted.requestId, reason: .unexpected)
     }
   }
+}
+
+/// The identifiers of every game that has a save in the listing under way.
+private actor GameIds {
+  private(set) var all: Set<String> = []
+  func add(_ ids: [String]) { all.formUnion(ids) }
 }

@@ -15,6 +15,9 @@ struct FakeStore: SaveStore {
     if let listFailure { throw listFailure }
     try await page(saves)
   }
+  func games(for gameIds: Set<String>) async throws -> [GameDescription] {
+    gameIds.sorted().map { GameDescription(gameId: $0, filename: "game.nes", size: 9, title: "Game") }
+  }
   func file(recordName: String) async throws -> URL {
     if unreadable.contains(recordName) { throw ReadFailure.noFile }
     guard saves.contains(where: { $0.recordName == recordName }) else { throw ReadFailure.missing }
@@ -34,6 +37,7 @@ final class BusyOnceStore: SaveStore, @unchecked Sendable {
   func list(page: @Sendable ([SaveDescription]) async throws -> Void) async throws {
     try await inner.list(page: page)
   }
+  func games(for gameIds: Set<String>) async throws -> [GameDescription] { [] }
   func file(recordName: String) async throws -> URL {
     let first = lock.withLock { seen.insert(recordName).inserted }
     if first { throw ReadFailure.busy }
@@ -56,8 +60,9 @@ actor FakeLink: ServerLink {
     return script.removeFirst()
   }
   func account(_ state: AccountState) { events.append("account \(state.rawValue)") }
-  func listing(_ saves: [SaveDescription], done: Bool) {
-    events.append("listing \(saves.map(\.filename).joined(separator: ",")) \(done)")
+  func listing(_ saves: [SaveDescription], done: Bool, games: [GameDescription]) {
+    let about = games.isEmpty ? "" : " games=\(games.count)"
+    events.append("listing \(saves.map(\.filename).joined(separator: ",")) \(done)\(about)")
   }
   func listingFailed(_ reason: ReadFailure) { events.append("listing failed \(reason.rawValue)") }
   func upload(requestId: String, file: URL) throws {
@@ -96,7 +101,7 @@ final class ReaderTests: XCTestCase {
       events,
       [
         "account available",
-        "listing one.svs,two.svs false", "listing three.svs false", "listing  true",
+        "listing one.svs,two.svs false", "listing three.svs false", "listing  true games=1",
         "save r1 bytes of savestate_two",
       ])
   }

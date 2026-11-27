@@ -10,7 +10,7 @@ import { createWriteStream } from 'node:fs';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { hashToken, issueToken, tokenHashesEqual } from '@ecs/auth';
-import type { CloudSave } from './cloudkit.js';
+import type { CloudRom, CloudSave } from './cloudkit.js';
 
 export type ReaderAccount = 'available' | 'signedOut' | 'restricted' | 'unknown';
 export type ReaderState =
@@ -58,6 +58,7 @@ export class ReaderError extends Error {
 interface Listing {
   sent: boolean;
   saves: CloudSave[];
+  games: Map<string, CloudRom>;
   resolve(saves: CloudSave[]): void;
   reject(error: Error): void;
 }
@@ -179,7 +180,7 @@ export class ReaderHub {
       AbortSignal.timeout(this.limits.listMs),
     ]);
     return this.watched(limited, (resolve, reject) => {
-      this.listing = { sent: false, saves: [], resolve, reject };
+      this.listing = { sent: false, saves: [], games: new Map(), resolve, reject };
       return () => {
         this.listing = null;
       };
@@ -187,15 +188,22 @@ export class ReaderHub {
   }
 
   /** Takes one page of the listing. False when no listing was asked for. */
-  addListing(saves: CloudSave[], done: boolean): boolean {
+  addListing(saves: CloudSave[], done: boolean, games: Array<[string, CloudRom]> = []): boolean {
     const listing = this.listing;
     if (!listing?.sent) return false;
     listing.saves.push(...saves);
+    for (const [gameId, rom] of games)
+      if (listing.games.size < this.limits.maxSaves) listing.games.set(gameId.toUpperCase(), rom);
     if (listing.saves.length > this.limits.maxSaves) listing.reject(new ReaderError('too-many'));
     else if (done) {
       // A record named twice is taken once, so it cannot be copied in twice.
       const once = new Map(listing.saves.map((save) => [save.recordName, save]));
-      listing.resolve([...once.values()]);
+      listing.resolve(
+        [...once.values()].map((save) => {
+          const rom = listing.games.get(save.gameId.toUpperCase());
+          return rom ? { ...save, rom } : save;
+        }),
+      );
     }
     return true;
   }
@@ -368,3 +376,33 @@ export function describedSave(raw: unknown, maxSaveBytes: number): CloudSave | n
 }
 
 export const READER_PAGE_LIMIT = PAGE_LIMIT;
+
+/** Checks one game description from the reader. Null when it is not usable. */
+export function describedGame(raw: unknown): [string, CloudRom] | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const text = (key: string, max: number) => {
+    const found = value[key];
+    if (found === null || found === undefined || found === '') return null;
+    return typeof found === 'string' && found.length <= max ? found : undefined;
+  };
+  const gameId = text('gameId', 128);
+  const systemIdentifier = text('systemIdentifier', 256);
+  const filename = text('filename', 512);
+  const title = text('title', 512);
+  const size = value.size;
+  if (!gameId || systemIdentifier === undefined || filename === undefined || title === undefined)
+    return null;
+  if (
+    size !== null &&
+    size !== undefined &&
+    (typeof size !== 'number' || !Number.isSafeInteger(size) || size < 0)
+  )
+    return null;
+  // A name is compared with file names here; one that tries to be a path is not a name.
+  if (filename && /[\\/\0]/.test(filename)) return null;
+  return [
+    gameId,
+    { systemIdentifier, filename, size: typeof size === 'number' ? size : null, title },
+  ];
+}

@@ -34,6 +34,7 @@ import { LibraryJobRepository } from './library-jobs.js';
 import {
   type GameForDigest,
   gameForMd5,
+  gameForRomFile,
   importedSaveKeys,
   liveSaveWithDigest,
   recordSaveImport,
@@ -2817,6 +2818,14 @@ export class CatalogDatabase {
   /** The game a ROM digest names, or a scanned file with that digest and no game entry yet. */
   gameForMd5(md5: string): GameForDigest | null {
     return gameForMd5(this.db, md5);
+  }
+
+  gameForRomFile(input: {
+    systemIdentifier: string;
+    filename: string;
+    size: number | null;
+  }): GameForDigest | null {
+    return gameForRomFile(this.db, input);
   }
 
   importedSaveKeys(origin: string): Set<string> {

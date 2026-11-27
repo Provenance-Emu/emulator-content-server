@@ -94,10 +94,11 @@ public final class HTTPLink: NSObject, ServerLink, URLSessionTaskDelegate, @unch
   private struct Listing: Encodable {
     var saves: [SaveDescription]
     var done: Bool
+    var games: [GameDescription]
   }
 
-  public func listing(_ saves: [SaveDescription], done: Bool) async throws {
-    try await post("POST", "listing", Listing(saves: saves, done: done))
+  public func listing(_ saves: [SaveDescription], done: Bool, games: [GameDescription]) async throws {
+    try await post("POST", "listing", Listing(saves: saves, done: done, games: games))
   }
 
   public func listingFailed(_ reason: ReadFailure) async throws {

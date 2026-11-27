@@ -1950,11 +1950,24 @@
     "IcloudReaderListing": {
       "properties": [
         "done",
+        "games",
         "saves"
       ],
       "required": [
         "done",
         "saves"
+      ]
+    },
+    "IcloudReaderGameDescription": {
+      "properties": [
+        "filename",
+        "gameId",
+        "size",
+        "systemIdentifier",
+        "title"
+      ],
+      "required": [
+        "gameId"
       ]
     },
     "IcloudReaderSaveDescription": {
@@ -2028,7 +2041,8 @@
       "properties": [
         "gameId",
         "saves",
-        "systemIdentifier"
+        "systemIdentifier",
+        "title"
       ],
       "required": [
         "gameId",

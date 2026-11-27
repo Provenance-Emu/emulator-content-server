@@ -4215,6 +4215,20 @@ components:
           maxItems: 500
           items: { $ref: '#/components/schemas/IcloudReaderSaveDescription' }
         done: { type: boolean, description: True on the last page. }
+        games:
+          type: array
+          maxItems: 500
+          description: "What iCloud records about the games these saves belong to, from the app's ROM records. Send only games that have a save. Lets the server find a game by its file when the app's identifier is not the file's plain MD5."
+          items: { $ref: '#/components/schemas/IcloudReaderGameDescription' }
+    IcloudReaderGameDescription:
+      type: object
+      required: [gameId]
+      properties:
+        gameId: { type: string, minLength: 1, maxLength: 128, description: "The identifier saves are filed under: the ROM record's md5." }
+        systemIdentifier: { type: [string, 'null'], maxLength: 256 }
+        filename: { type: [string, 'null'], maxLength: 512, description: "The game file's name as the app first saw it." }
+        size: { type: [integer, 'null'], minimum: 0, description: Bytes of the game file. }
+        title: { type: [string, 'null'], maxLength: 512 }
     IcloudReaderSaveDescription:
       type: object
       required: [recordName, changeTag, gameId, filename, size]
@@ -4264,6 +4278,7 @@ components:
       required: [gameId, systemIdentifier, saves]
       properties:
         gameId: { type: string, description: "The identifier the app filed the saves under, usually the game's MD5." }
+        title: { type: [string, 'null'], description: "The game's name in the app, when iCloud records one." }
         systemIdentifier: { type: [string, 'null'] }
         saves: { type: integer }
     IcloudImport:

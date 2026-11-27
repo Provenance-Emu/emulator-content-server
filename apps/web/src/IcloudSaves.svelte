@@ -160,7 +160,10 @@
           <p class="dim">These are not copied. Add the game to a library folder, let it be checked, and look again.</p>
           <ul class="icloud-unmatched">
             {#each status.preview.unmatched as game (game.gameId)}
-              <li><code>{game.gameId}</code> · {game.saves} {game.saves === 1 ? 'save' : 'saves'}</li>
+              <li>
+                {#if game.title}{game.title}{:else}<code>{game.gameId}</code>{/if}
+                · {game.saves} {game.saves === 1 ? 'save' : 'saves'}
+              </li>
             {/each}
           </ul>
         </details>
