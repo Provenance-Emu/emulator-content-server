@@ -29,6 +29,18 @@ const MOUNT_POINTS: readonly FolderPlace[] = [
 ];
 
 /**
+ * Where iCloud Drive keeps its folders on a Mac that is signed in to iCloud. It sits under the
+ * hidden `Library` folder, so nobody finds it by browsing. Each app's folder is offered by name,
+ * pointing at its games where it keeps them apart from saves and system files.
+ */
+const ICLOUD_FOLDERS: ReadonlyArray<{ label: string; folder: string; games?: string }> = [
+  { label: 'iCloud Drive', folder: 'com~apple~CloudDocs' },
+  { label: 'Provenance in iCloud', folder: 'iCloud~org~provenance-emu~provenance', games: 'ROMs' },
+  { label: 'iCube in iCloud', folder: 'iCloud~com~joemattiello~iCube' },
+  { label: 'iFly in iCloud', folder: 'iCloud~com~joemattiello~iFly' },
+];
+
+/**
  * Lists the directories inside one directory on the machine running the server.
  *
  * This exists because a folder to register lives on the server, which is not
@@ -68,13 +80,20 @@ export async function listFolders(candidate: string | null): Promise<FolderListi
  * directory is always offered and the usual mount points are offered when they
  * exist, which is where an external drive or a network share shows up.
  */
-export async function startingPlaces(): Promise<FolderPlace[]> {
-  const places: FolderPlace[] = [{ label: 'Home', path: homedir() }];
-  const root = parse(homedir()).root;
+export async function startingPlaces(home = homedir()): Promise<FolderPlace[]> {
+  const places: FolderPlace[] = [{ label: 'Home', path: home }];
+  const root = parse(home).root;
   if (root) places.push({ label: 'Root', path: root });
   for (const mount of MOUNT_POINTS) {
-    const found = await stat(mount.path).catch(() => null);
-    if (found?.isDirectory()) places.push(mount);
+    if (await isDirectory(mount.path)) places.push(mount);
+  }
+  // Present only on a Mac signed in to iCloud, and only for apps that have put something there.
+  const drive = join(home, 'Library', 'Mobile Documents');
+  for (const { label, folder, games } of ICLOUD_FOLDERS) {
+    const base = join(drive, folder);
+    const preferred = games ? join(base, games) : base;
+    if (await isDirectory(preferred)) places.push({ label, path: preferred });
+    else if (games && (await isDirectory(base))) places.push({ label, path: base });
   }
   return places;
 }

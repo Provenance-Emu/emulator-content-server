@@ -66,3 +66,32 @@ test('the root of the filesystem has no parent to climb to', async () => {
   const listing = await listFolders('/');
   assert.equal(listing.parent, null);
 });
+
+test('iCloud Drive folders are offered by name on a Mac that has them', async () => {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'ecs-home-')));
+  const labels = async () => (await startingPlaces(home)).map((place) => place.label);
+  assert.ok(!(await labels()).some((label) => label.includes('iCloud')), 'nothing to offer yet');
+
+  const drive = join(home, 'Library', 'Mobile Documents');
+  await mkdir(join(drive, 'com~apple~CloudDocs'), { recursive: true });
+  await mkdir(join(drive, 'iCloud~org~provenance-emu~provenance', 'ROMs'), { recursive: true });
+  await mkdir(join(drive, 'iCloud~com~joemattiello~iFly'), { recursive: true });
+  // A file where a folder is expected is not a place.
+  await writeFile(join(drive, 'iCloud~com~joemattiello~iCube'), 'generated', 'utf8');
+
+  const places = await startingPlaces(home);
+  const named = (label: string) => places.find((place) => place.label === label)?.path;
+  assert.equal(named('iCloud Drive'), join(drive, 'com~apple~CloudDocs'));
+  assert.equal(
+    named('Provenance in iCloud'),
+    join(drive, 'iCloud~org~provenance-emu~provenance', 'ROMs'),
+    'points at the games, not at saves and system files beside them',
+  );
+  assert.equal(named('iFly in iCloud'), join(drive, 'iCloud~com~joemattiello~iFly'));
+  assert.equal(named('iCube in iCloud'), undefined);
+  assert.equal(places[0]?.label, 'Home');
+
+  // The place can be opened like any other folder.
+  const listing = await listFolders(named('Provenance in iCloud') ?? '');
+  assert.deepEqual(listing.entries, []);
+});

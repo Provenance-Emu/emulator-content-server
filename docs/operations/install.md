@@ -69,6 +69,8 @@ ecs roots list --data ./content-data
 ecs roots remove --data ./content-data --id <rootId>
 ```
 
+On a Mac signed in to iCloud, the folder chooser lists **iCloud Drive** and **Provenance in iCloud**, **iCube in iCloud** and **iFly in iCloud** when those apps have put files there. They are ordinary folders under `~/Library/Mobile Documents`, which is hidden and hard to reach by browsing. A game that iCloud has not downloaded to that Mac is listed but is only a placeholder: the server will not read it, so it cannot be played, checked or matched to saves until macOS has the file. In Finder, choose **Download Now** or **Keep Downloaded** on the folder, or turn off **Optimise Mac Storage**.
+
 A root must be an absolute path to an existing directory, must sit outside the data directory, and may not overlap a root already saved. The real path is recorded, so the listed path can differ from what you typed when the folder is reached through a symlink. Local changes appear in the audit log as the `cli` actor; the same operations over HTTP are owner-only at `/api/v1/roots`.
 
 ## Upgrades
