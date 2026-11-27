@@ -18,6 +18,27 @@ A throwaway probe (about 50 lines of Swift in an app-shaped bundle, kept outside
 
 What this settles: a Developer ID program that is not the app that wrote the records can read them with the framework, on a Mac logged in to iCloud, with the query the design plans to use. What it does not settle: that this laptop's Apple Account is the one with Advanced Data Protection that was refused on the web (the owner should confirm it is the same account), the launchd shapes, nesting inside the desktop app, and notarization.
 
+### Mac Studio standalone probe, 2026-11-27
+
+The owner extracted a separate Swift probe signed with Developer ID using the reader’s App ID and embedded provisioning profile. In Terminal on the Studio, `codesign --verify --strict --verbose=2` reported that the bundle was valid on disk and satisfied its designated requirement.
+
+The initial launch through `open` produced no captured probe output. The owner then invoked `"$probe_app/Contents/MacOS/icloud-reader" 2>&1` directly from Terminal in the Studio’s desktop login session:
+
+```text
+accountStatus=available
+SaveState count=258
+asset bytes=13678
+exit status: 0
+```
+
+The Developer ID–signed probe completed a read-only CloudKit operation from the Studio’s logged-in session. It queried all 258 matching `SaveState` records in the production private database’s default zone, fetched one `fileData` asset, and measured its local file at 13,678 bytes. This passes the standalone Studio experiment with the reader’s own App ID and profile. The output does not independently identify the Apple Account or report its Advanced Data Protection setting. The owner’s later transcript showed the same three values in the log captured by `open`.
+
+### Mac Studio launchd probe, 2026-11-27
+
+An SSH inspection found the probe’s LaunchAgent in the owner’s `gui/<uid>` domain. `launchctl print` reported one run, exit code 0, and the stdout log path. That log recorded `accountStatus=available`, 258 production private `SaveState` records, and one 13,678-byte asset. This confirms that a LaunchAgent in the Studio’s GUI login session can read the production container using the signed probe.
+
+The supplied transcript shows `Permission denied` during signature verification of the copy under `/Library/Application Support`. The SSH inspection found neither the probe’s system LaunchDaemon registration nor its plist, and no daemon output was available. The daemon’s iCloud access remains unverified both while a GUI session exists and before GUI login. The permission failure supplies no CloudKit result.
+
 ## As built so far, 2026-11-26
 
 Built and tested, not committed: the contract, the server side, the helper, starting it from the desktop app, the signing step, and the Settings screen. Not done: the helper's own App ID and Developer ID profile (made in the developer portal by the account holder; steps in `docs/operations/nightly-builds.md`), and a run of the real desktop app with the helper nested in it.
@@ -254,7 +275,7 @@ CloudKit does not exist there, and neither does the helper. The framework is clo
 
 ## Try on real hardware first
 
-Experiment 1 passed on the owner's laptop (see "What was tried"). The rest are still to do; each is small and throwaway. The Mac Studio is only needed for experiment 2's boot-daemon cases, and those can be run on any Mac with an administrator password.
+Experiment 1 passed on the owner’s laptop and in the Mac Studio’s desktop login session. Experiment 2(a) passed on the Studio. The remaining launchd cases still need results.
 
 1. **Done. Smallest first experiment: can a Developer ID helper read the container at all?** As first written: in a scratch folder outside this repository: register the App ID, assign the container, create the Developer ID profile, and build a 40-line Swift app bundle that prints `accountStatus` and the count of `SaveState` records in the private database, plus the size of one `fileData` asset after fetching it. Sign with the existing Developer ID certificate and the entitlements above, notarize, and run it from Terminal on the Mac Studio while logged in, with Advanced Data Protection on. Pass: a non-zero count and a readable asset. This single run answers the profile question, the Advanced Data Protection question, the index question and whether macOS shows any prompt.
 2. **Which launchd shapes have an iCloud session.** Run the same binary (a) from a LaunchAgent in the login session, (b) from a LaunchDaemon with `UserName` set to the owner, (c) as (b) after a restart with nobody logged in, (d) over SSH with nobody logged in at the screen. Record `accountStatus` and the first error for each.
