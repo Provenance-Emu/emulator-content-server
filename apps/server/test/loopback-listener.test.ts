@@ -8,7 +8,10 @@ import test from 'node:test';
 import { issueToken } from '@ecs/auth';
 import { openServer } from '../src/index.js';
 
-const skip = process.platform === 'win32';
+// These describe macOS, where the gap exists: a listener on every address leaves 127.0.0.1 free
+// for another program to take. On Linux the wildcard listener already excludes that, the extra
+// bind is refused, and the server carries on without it, so there is nothing to hold or to test.
+const skip = process.platform !== 'darwin';
 
 /** Whether another listener can take 127.0.0.1 on `port`. */
 function canTakeLoopback(port: number): Promise<boolean> {
