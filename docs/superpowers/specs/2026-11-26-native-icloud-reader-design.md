@@ -39,6 +39,8 @@ An SSH inspection found the probe’s LaunchAgent in the owner’s `gui/<uid>` d
 
 The supplied transcript shows `Permission denied` during signature verification of the copy under `/Library/Application Support`. The SSH inspection found neither the probe’s system LaunchDaemon registration nor its plist, and no daemon output was available. The daemon’s iCloud access remains unverified both while a GUI session exists and before GUI login. The permission failure supplies no CloudKit result.
 
+A follow-up SSH inspection found that the system copy’s embedded provisioning profile was owned by `root:wheel` with mode `0600`. The bundle directories and executable were accessible to the owner, but signature verification as the owner still returned `Permission denied`. The next attempt needs an administrator to make that profile readable by the daemon’s configured user, verify the bundle as that user, and load the system job. For the boot case, capture the console owner at probe start alongside the CloudKit result so a run before GUI login can be distinguished from one after login.
+
 ## As built so far, 2026-11-26
 
 Built and tested, not committed: the contract, the server side, the helper, starting it from the desktop app, the signing step, and the Settings screen. Not done: the helper's own App ID and Developer ID profile (made in the developer portal by the account holder; steps in `docs/operations/nightly-builds.md`), and a run of the real desktop app with the helper nested in it.
