@@ -281,6 +281,9 @@ export async function buildApp(
       request.investigator = investigator;
       return;
     }
+    // The iCloud reader's ticket is not a catalog token. Its routes check it themselves and take
+    // no other identity, so nothing here admits the caller as anyone.
+    if (request.routeOptions.url?.startsWith('/api/v1/icloud/reader/')) return;
     if (header) {
       const match = /^Bearer\s+(\S+)$/.exec(header);
       if (!match?.[1]) throw new DomainError('unauthorized', 401, 'Bearer token is required');

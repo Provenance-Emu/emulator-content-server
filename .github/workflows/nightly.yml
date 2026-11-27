@@ -143,6 +143,8 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ECS_MACOS_NOTARY_KEY }}
           ASC_KEY_ID: ${{ secrets.ECS_MACOS_NOTARY_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ECS_MACOS_NOTARY_ISSUER_ID }}
+          # Optional. Without it the desktop app is built without the iCloud reader.
+          ICLOUD_PROFILE_BASE64: ${{ secrets.ECS_MACOS_ICLOUD_PROFILE }}
         run: |
           set -euo pipefail
           : "${P12_BASE64:?Missing ECS_MACOS_SIGNING_P12}"
@@ -190,7 +192,12 @@ jobs:
           (cd "$RUNNER_TEMP/ecs-unsigned" && shasum -a 256 --check SHA256SUMS-desktop-darwin-arm64.txt)
           name=Emulation-Server-nightly-macos-arm64.dmg
           mkdir "$RUNNER_TEMP/ecs-signed"
-          APPLE_SIGNING_IDENTITY="$identity" \
+          icloud_profile=
+          if [[ -n "${ICLOUD_PROFILE_BASE64:-}" ]]; then
+            icloud_profile="$credentials/icloud-reader.provisionprofile"
+            printf '%s' "$ICLOUD_PROFILE_BASE64" | base64 -D > "$icloud_profile"
+          fi
+          APPLE_SIGNING_IDENTITY="$identity" ECS_MACOS_ICLOUD_PROFILE_PATH="$icloud_profile" \
             ASC_KEY_PATH="$credentials/notary.p8" bash scripts/sign-nightly-macos.sh \
             "$RUNNER_TEMP/ecs-unsigned/$name" "$RUNNER_TEMP/ecs-signed/$name"
       - name: Stage notarized installer and checksum

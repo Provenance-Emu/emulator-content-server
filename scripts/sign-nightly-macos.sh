@@ -43,6 +43,13 @@ if [[ ${GITHUB_SHA:-} =~ ^[0-9a-f]{40}$ && ${GITHUB_RUN_NUMBER:-} =~ ^[1-9][0-9]
   plutil -insert ECSNightlyCommit -string "$GITHUB_SHA" "$app/Contents/Info.plist"
   plutil -insert ECSNightlyRun -integer "$GITHUB_RUN_NUMBER" "$app/Contents/Info.plist"
 fi
+# The iCloud reader is added only when its provisioning profile was supplied. Without it the app
+# ships with no helper, and the server reports that no reader is there.
+if [[ -n "${ECS_MACOS_ICLOUD_PROFILE_PATH:-}" ]]; then
+  bash scripts/embed-icloud-reader.sh "$app" "$ECS_MACOS_ICLOUD_PROFILE_PATH"
+else
+  echo 'No iCloud reader profile supplied; building without the iCloud reader.'
+fi
 echo 'Signing macOS app bundle'
 codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$app"
 node scripts/package-macos.mjs "$bundle"

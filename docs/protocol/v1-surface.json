@@ -34,6 +34,7 @@
     "GET /api/v1/folders",
     "GET /api/v1/guest-grants",
     "GET /api/v1/icloud",
+    "GET /api/v1/icloud/reader/work",
     "GET /api/v1/investigator/diagnostics",
     "GET /api/v1/investigator/libraries",
     "GET /api/v1/investigator/libraries/:libraryId/sources",
@@ -130,6 +131,10 @@
     "POST /api/v1/icloud/import",
     "POST /api/v1/icloud/import/cancel",
     "POST /api/v1/icloud/preview",
+    "POST /api/v1/icloud/reader/attach",
+    "POST /api/v1/icloud/reader/listing",
+    "POST /api/v1/icloud/reader/listing/failed",
+    "POST /api/v1/icloud/reader/saves/:requestId/failed",
     "POST /api/v1/icloud/sign-in",
     "POST /api/v1/investigator/runs",
     "POST /api/v1/investigator/runs/:runId/cancel",
@@ -181,6 +186,8 @@
     "POST /api/v1/workflow-workers/runs/:runId/sources/:sourceId/catalog",
     "POST /api/v1/workflow-workers/runs/:runId/suggestions",
     "PUT /api/v1/access",
+    "PUT /api/v1/icloud/reader/account",
+    "PUT /api/v1/icloud/reader/saves/:requestId",
     "PUT /api/v1/icloud/session",
     "PUT /api/v1/items/:itemId/access/:userId",
     "PUT /api/v1/libraries/:libraryId/members/:userId",
@@ -1877,11 +1884,105 @@
         "connected",
         "container",
         "import",
-        "preview"
+        "preview",
+        "reader"
       ],
       "required": [
         "connected",
         "container"
+      ]
+    },
+    "IcloudReader": {
+      "properties": [
+        "lastSeenAt",
+        "offered",
+        "state"
+      ],
+      "required": [
+        "lastSeenAt",
+        "offered",
+        "state"
+      ]
+    },
+    "IcloudSourceChoice": {
+      "properties": [
+        "source"
+      ],
+      "required": []
+    },
+    "IcloudReaderTicket": {
+      "properties": [
+        "idleSeconds",
+        "ticket"
+      ],
+      "required": [
+        "idleSeconds",
+        "ticket"
+      ]
+    },
+    "IcloudReaderWork": {
+      "properties": [
+        "saves",
+        "work"
+      ],
+      "required": [
+        "work"
+      ]
+    },
+    "IcloudReaderFetch": {
+      "properties": [
+        "recordName",
+        "requestId"
+      ],
+      "required": [
+        "recordName",
+        "requestId"
+      ]
+    },
+    "IcloudReaderAccount": {
+      "properties": [
+        "state"
+      ],
+      "required": [
+        "state"
+      ]
+    },
+    "IcloudReaderListing": {
+      "properties": [
+        "done",
+        "saves"
+      ],
+      "required": [
+        "done",
+        "saves"
+      ]
+    },
+    "IcloudReaderSaveDescription": {
+      "properties": [
+        "changeTag",
+        "coreIdentifier",
+        "device",
+        "filename",
+        "gameId",
+        "modifiedAt",
+        "recordName",
+        "size",
+        "systemIdentifier"
+      ],
+      "required": [
+        "changeTag",
+        "filename",
+        "gameId",
+        "recordName",
+        "size"
+      ]
+    },
+    "IcloudReaderFailure": {
+      "properties": [
+        "reason"
+      ],
+      "required": [
+        "reason"
       ]
     },
     "IcloudSignIn": {
@@ -1909,6 +2010,7 @@
         "gamesHere",
         "ready",
         "saves",
+        "source",
         "unmatched"
       ],
       "required": [
@@ -1942,6 +2044,7 @@
         "message",
         "processed",
         "skipped",
+        "source",
         "startedAt",
         "state",
         "total"

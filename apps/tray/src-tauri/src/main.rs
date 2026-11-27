@@ -6,6 +6,7 @@ mod companion_apps;
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod desktop_update;
 mod downloads;
+mod icloud_reader;
 mod local_endpoint;
 mod local_owner;
 mod navigation;
@@ -414,6 +415,7 @@ fn main() {
             app.manage(companion_apps::State::new(app.handle()));
             install_startup_menu(app)?;
             companion_apps::refresh(app.handle());
+            icloud_reader::supervise();
             // Build only the two configured windows, with explicit denial of popup inheritance.
             for config in app.config().app.windows.clone() {
                 tauri::WebviewWindowBuilder::from_config(app, &config)?

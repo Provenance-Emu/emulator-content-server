@@ -756,7 +756,13 @@ paths:
     post:
       operationId: icloudPreview
       tags: [Server and plugins]
-      description: Actual owner only. Lists the saves in iCloud and counts which belong to games in this server's libraries. Copies nothing.
+      description: Actual owner only. Lists the saves in iCloud and counts which belong to games in this server's libraries. Copies nothing. Without a source, the reader on this Mac is used when icloudStatus.reader.state is ready, otherwise the Apple sign-in.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            example: {"source": "mac"}
+            schema: { $ref: '#/components/schemas/IcloudSourceChoice' }
       responses:
         '200':
           description: What was found.
@@ -770,7 +776,13 @@ paths:
     post:
       operationId: icloudImport
       tags: [Server and plugins]
-      description: Actual owner only. Starts copying saves for games this server has. Runs in the background; read progress from icloudStatus. A save is added beside what is there and never replaces a game's live save. A record brought in before is skipped.
+      description: Actual owner only. Starts copying saves for games this server has. Runs in the background; read progress from icloudStatus. A save is added beside what is there and never replaces a game's live save. A record brought in before is skipped. Without a source, the reader on this Mac is used when icloudStatus.reader.state is ready, otherwise the Apple sign-in.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            example: {"source": "mac"}
+            schema: { $ref: '#/components/schemas/IcloudSourceChoice' }
       responses:
         '202':
           description: Started.
@@ -787,6 +799,135 @@ paths:
       responses:
         '204': { description: "Stopping, or nothing was running." }
         '403': { description: Only the server owner can use iCloud saves. }
+  /api/v1/icloud/reader/attach:
+    post:
+      operationId: icloudReaderAttach
+      tags: [Server and plugins]
+      summary: Let the iCloud reader on this Mac hand saves to the server.
+      description: >-
+        For the desktop app on the computer that runs the server. Exchanges the key in
+        `local-owner.key` for a reader ticket. The ticket is accepted only by the other
+        icloud reader operations, only from this computer, and is forgotten when the server
+        restarts or after ten quiet minutes. It is not a session and reaches nothing else.
+        Offered while icloudStatus.reader.offered is true. A new ticket replaces the last one.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"key": "REPLACE_WITH_LOCAL_OWNER_KEY"}
+            schema: { $ref: '#/components/schemas/LocalSignInRequest' }
+      responses:
+        '200':
+          description: Ticket issued.
+          content:
+            application/json:
+              example: {"ticket": "REPLACE_WITH_RETURNED_TICKET", "idleSeconds": 600}
+              schema: { $ref: '#/components/schemas/IcloudReaderTicket' }
+        '401': { description: The key is not this server's current key. }
+        '403': { description: The connection is not from this computer. }
+        '404': { description: iCloud saves are not set up on this server. }
+        '409': { description: "A local reader is unavailable, or no owner account exists yet." }
+        '429': { description: Too many attempts. }
+  /api/v1/icloud/reader/work:
+    get:
+      operationId: icloudReaderWork
+      tags: [Server and plugins]
+      description: Reader ticket only. Asks what the server wants next. Held open for up to 25 seconds when there is nothing to do, so call it again as soon as it answers. Calling it is also how the server knows the reader is there.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: What to do now.
+          content:
+            application/json:
+              example: {"work": "fetch", "saves": [{"requestId": "req-demo", "recordName": "savestate_demo"}]}
+              schema: { $ref: '#/components/schemas/IcloudReaderWork' }
+        '401': { description: "The ticket is missing, replaced or has run out. Attach again." }
+        '403': { description: The connection is not from this computer. }
+  /api/v1/icloud/reader/account:
+    put:
+      operationId: icloudReaderAccount
+      tags: [Server and plugins]
+      description: Reader ticket only. Says whether this Mac can read iCloud right now. No account name or identifier is sent.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"state": "available"}
+            schema: { $ref: '#/components/schemas/IcloudReaderAccount' }
+      responses:
+        '204': { description: Noted. }
+        '400': { description: state is not one of the listed values. }
+        '401': { description: "The ticket is missing, replaced or has run out." }
+  /api/v1/icloud/reader/listing:
+    post:
+      operationId: icloudReaderListing
+      tags: [Server and plugins]
+      description: Reader ticket only. One page of the saves found in iCloud, described but not sent, in answer to work `list`. Mark the last page done. At most 500 saves a page.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"saves": [{"recordName": "savestate_demo", "changeTag": "abc12345", "gameId": "0123456789ABCDEF0123456789ABCDEF", "filename": "demo.svs", "size": 13678}], "done": true}
+            schema: { $ref: '#/components/schemas/IcloudReaderListing' }
+      responses:
+        '204': { description: Taken. }
+        '400': { description: A save is described wrongly. }
+        '401': { description: "The ticket is missing, replaced or has run out." }
+        '409': { description: The server did not ask for a listing. }
+  /api/v1/icloud/reader/listing/failed:
+    post:
+      operationId: icloudReaderListingFailed
+      tags: [Server and plugins]
+      description: Reader ticket only. The reader could not list the saves in iCloud.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"reason": "busy"}
+            schema: { $ref: '#/components/schemas/IcloudReaderFailure' }
+      responses:
+        '204': { description: Noted. }
+        '401': { description: "The ticket is missing, replaced or has run out." }
+  /api/v1/icloud/reader/saves/{requestId}:
+    put:
+      operationId: icloudReaderSave
+      tags: [Server and plugins]
+      description: Reader ticket only. The bytes of one save the server asked for in work `fetch`. A request the server did not make, or already has an answer to, is refused. The server decides which game the save belongs to and files it beside what is there.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: requestId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        '204': { description: Received. }
+        '401': { description: "The ticket is missing, replaced or has run out." }
+        '404': { description: The server is not waiting for this save. }
+        '413': { description: The save is larger than the server takes. }
+  /api/v1/icloud/reader/saves/{requestId}/failed:
+    post:
+      operationId: icloudReaderSaveFailed
+      tags: [Server and plugins]
+      description: Reader ticket only. The reader could not read the save the server asked for. It is counted as failed and tried again next time.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: requestId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: {"reason": "missing"}
+            schema: { $ref: '#/components/schemas/IcloudReaderFailure' }
+      responses:
+        '204': { description: Noted. }
+        '401': { description: "The ticket is missing, replaced or has run out." }
+        '404': { description: The server is not waiting for this save. }
   /api/v1/browse/find:
     get:
       operationId: findLibraryROM
@@ -4021,6 +4162,77 @@ components:
         container: { type: string }
         preview: { $ref: '#/components/schemas/IcloudPreview', description: The last look at iCloud since connecting. Absent before one. }
         import: { $ref: '#/components/schemas/IcloudImport', description: The running or last import since the server started. Absent before one. }
+        reader: { $ref: '#/components/schemas/IcloudReader', description: The reader on the computer that runs the server. Absent on a server too old to know of one. }
+    IcloudReader:
+      type: object
+      required: [offered, state, lastSeenAt]
+      properties:
+        offered: { type: boolean, description: "This server can take saves from a reader on its own computer. False on Windows and on a server started with --public." }
+        state:
+          type: string
+          enum: [absent, ready, signedOut, restricted, unavailable, working]
+          description: "absent: no reader has called in the last minute. ready: it can read iCloud now. signedOut: that Mac is not signed in to iCloud. restricted: iCloud is switched off for it. unavailable: it could not tell. working: it is listing or sending saves."
+        lastSeenAt: { type: [string, 'null'], format: date-time }
+    IcloudSourceChoice:
+      type: object
+      properties:
+        source: { type: string, enum: [web, mac], description: "web: the Apple sign-in held by the server. mac: the reader on the computer that runs the server." }
+    IcloudReaderTicket:
+      type: object
+      required: [ticket, idleSeconds]
+      properties:
+        ticket: { type: string, description: Send as a bearer token to the icloud reader operations only. }
+        idleSeconds: { type: integer, description: The ticket runs out after this long without a call. }
+    IcloudReaderWork:
+      type: object
+      required: [work]
+      properties:
+        work:
+          type: string
+          enum: [none, list, fetch, stop]
+          description: "none: ask again. list: send every save's description with icloudReaderListing. fetch: send the bytes of each save in saves. stop: drop what you are doing."
+        saves:
+          type: array
+          description: Present for fetch.
+          items: { $ref: '#/components/schemas/IcloudReaderFetch' }
+    IcloudReaderFetch:
+      type: object
+      required: [requestId, recordName]
+      properties:
+        requestId: { type: string, description: Where to send this save with icloudReaderSave. }
+        recordName: { type: string }
+    IcloudReaderAccount:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, enum: [available, signedOut, restricted, unknown] }
+    IcloudReaderListing:
+      type: object
+      required: [saves, done]
+      properties:
+        saves:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/IcloudReaderSaveDescription' }
+        done: { type: boolean, description: True on the last page. }
+    IcloudReaderSaveDescription:
+      type: object
+      required: [recordName, changeTag, gameId, filename, size]
+      properties:
+        recordName: { type: string, minLength: 1, maxLength: 512 }
+        changeTag: { type: string, maxLength: 128 }
+        gameId: { type: string, minLength: 1, maxLength: 128, description: "The record's gameID field." }
+        filename: { type: string, minLength: 1, maxLength: 512 }
+        systemIdentifier: { type: [string, 'null'], maxLength: 256 }
+        coreIdentifier: { type: [string, 'null'], maxLength: 256 }
+        size: { type: integer, minimum: 0, description: Bytes of the save file. }
+        device: { type: [string, 'null'], maxLength: 128 }
+        modifiedAt: { type: [string, 'null'], format: date-time }
+    IcloudReaderFailure:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, enum: [missing, noFile, account, notAllowed, busy, network, unexpected], description: "notAllowed: iCloud refused this reader for the container, which is a fault in how the reader was built or registered, not something the owner did." }
     IcloudSignIn:
       type: object
       required: [signInUrl]
@@ -4036,6 +4248,7 @@ components:
       required: [checkedAt, saves, bytes, games, gamesHere, ready, alreadyHere, unmatched]
       properties:
         checkedAt: { type: string, format: date-time }
+        source: { type: string, enum: [web, mac], description: "web: the Apple sign-in held by the server. mac: the reader on the computer that runs the server." }
         saves: { type: integer, description: Save states found in iCloud. }
         bytes: { type: integer, description: Their size together. }
         games: { type: integer, description: Games those saves belong to. }
@@ -4058,6 +4271,7 @@ components:
       required: [state, total, processed, imported, skipped, failed, startedAt, finishedAt, message]
       properties:
         state: { type: string, enum: [running, completed, failed, cancelled] }
+        source: { type: string, enum: [web, mac], description: "web: the Apple sign-in held by the server. mac: the reader on the computer that runs the server." }
         total: { type: integer }
         processed: { type: integer }
         imported: { type: integer, description: Saves copied in. }

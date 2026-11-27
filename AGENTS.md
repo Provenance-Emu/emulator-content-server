@@ -32,6 +32,7 @@ This repository is the emulator content server. Keep changes inside the package 
 | `apps/mcp` | `ecs-mcp` stdio adapter over the scoped investigator API |
 | `examples/plugins` | Sample feeds and connectors other developers copy |
 | `apps/tray` | Tauri menu-bar status, one application for macOS, Windows, and Linux |
+| `apps/icloud-reader` | Swift helper for macOS that reads Provenance's CloudKit container and uploads to the icloud reader operations. Read only; an API client like the tray |
 | `docs/workstreams` | Follow-on briefs. Do not implement those briefs in an unrelated PR |
 
 ## Dependency direction

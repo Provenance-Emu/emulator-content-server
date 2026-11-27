@@ -894,6 +894,57 @@ export interface IcloudStatus {
   container: string;
   preview?: IcloudPreview;
   import?: IcloudImport;
+  reader?: IcloudReader;
+}
+
+export interface IcloudReader {
+  offered: boolean;
+  state: string;
+  lastSeenAt: string | null;
+}
+
+export interface IcloudSourceChoice {
+  source?: string;
+}
+
+export interface IcloudReaderTicket {
+  ticket: string;
+  idleSeconds: number;
+}
+
+export interface IcloudReaderWork {
+  work: string;
+  saves?: IcloudReaderFetch[];
+}
+
+export interface IcloudReaderFetch {
+  requestId: string;
+  recordName: string;
+}
+
+export interface IcloudReaderAccount {
+  state: string;
+}
+
+export interface IcloudReaderListing {
+  saves: IcloudReaderSaveDescription[];
+  done: boolean;
+}
+
+export interface IcloudReaderSaveDescription {
+  recordName: string;
+  changeTag: string;
+  gameId: string;
+  filename: string;
+  systemIdentifier?: string | null;
+  coreIdentifier?: string | null;
+  size: number;
+  device?: string | null;
+  modifiedAt?: string | null;
+}
+
+export interface IcloudReaderFailure {
+  reason: string;
 }
 
 export interface IcloudSignIn {
@@ -906,6 +957,7 @@ export interface IcloudConnect {
 
 export interface IcloudPreview {
   checkedAt: string;
+  source?: string;
   saves: number;
   bytes: number;
   games: number;
@@ -923,6 +975,7 @@ export interface IcloudUnmatchedGame {
 
 export interface IcloudImport {
   state: string;
+  source?: string;
   total: number;
   processed: number;
   imported: number;

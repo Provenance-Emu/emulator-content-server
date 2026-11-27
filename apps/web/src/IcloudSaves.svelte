@@ -3,7 +3,14 @@
   import { onDestroy, onMount } from 'svelte';
   import InlineNotice from './components/InlineNotice.svelte';
   import { bytes } from './lib/format';
-  import { importSummary, previewSummary, signInToken } from './lib/icloud';
+  import {
+    importSummary,
+    macReads,
+    previewSummary,
+    readerNote,
+    signInFailure,
+    signInToken,
+  } from './lib/icloud';
   import { explain, isForbidden, isUnauthorized } from './lib/problems';
 
   let {
@@ -23,6 +30,8 @@
   let popup: Window | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const importing = $derived(status?.import?.state === 'running');
+  const mac = $derived(macReads(status?.reader));
+  const note = $derived(readerNote(status?.reader));
 
   function failed(error: unknown) {
     if (isUnauthorized(error)) onrejected(401);
@@ -35,7 +44,11 @@
       const before = status?.import?.state;
       status = await client.icloudStatus();
       if (status.import?.state === 'running') timer = setTimeout(() => void refresh(), 1000);
-      else if (before === 'running') onchanged();
+      else {
+        if (before === 'running') onchanged();
+        // The Mac's reader comes and goes with the desktop app; keep what is shown true.
+        if (status.reader?.offered) timer = setTimeout(() => void refresh(), 5000);
+      }
     } catch (error) {
       failed(error);
     }
@@ -62,7 +75,15 @@
     // Only the sign-in window this page opened may answer.
     if (!waiting || !popup || event.source !== popup) return;
     const token = signInToken(event.origin, event.data);
-    if (!token) return;
+    if (!token) {
+      // Apple's window stays open showing its own message; say here what happened too.
+      const reason = signInFailure(event.origin, event.data);
+      if (reason) {
+        waiting = false;
+        failure = reason;
+      }
+      return;
+    }
     waiting = false;
     popup?.close();
     popup = null;
@@ -110,7 +131,8 @@
   {#if failure}<InlineNotice kind="error">{failure}</InlineNotice>{/if}
   {#if !status}
     {#if !failure}<InlineNotice kind="status">Loading…</InlineNotice>{/if}
-  {:else if !status.connected}
+  {:else if !status.connected && !mac}
+    {#if note}<p>{note}</p>{/if}
     {#if waiting}<InlineNotice kind="status">Finish signing in to Apple in the window that opened.</InlineNotice>{/if}
     <div class="icloud-actions">
       <button type="button" class="primary" disabled={working} onclick={() => void connect()}>Connect iCloud</button>
@@ -118,6 +140,7 @@
     <p class="dim">The sign-in is kept only until the server restarts, and Apple ends it after two weeks at most.</p>
     {#if status.import && status.import.state !== 'running'}<p>{importSummary(status.import)}</p>{/if}
   {:else}
+    {#if mac && note}<p>{note}</p>{/if}
     {#if status.import}
       <InlineNotice kind="status">{importSummary(status.import)}</InlineNotice>
       {#if importing && status.import.total}
@@ -157,7 +180,9 @@
           {status.preview ? 'Look again' : 'Look for saves'}
         </button>
       {/if}
-      <button type="button" disabled={working} onclick={() => void act(() => client.icloudDisconnect())}>Disconnect</button>
+      {#if status.connected}
+        <button type="button" disabled={working} onclick={() => void act(() => client.icloudDisconnect())}>Disconnect</button>
+      {/if}
     </div>
   {/if}
 </section>
