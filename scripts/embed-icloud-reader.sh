@@ -32,8 +32,10 @@ if [[ "$allowed" != *".$identifier" ]]; then
   echo "The provisioning profile is for $allowed, not for $identifier." >&2
   exit 1
 fi
-if ! plutil -extract Entitlements.com\\.apple\\.developer\\.icloud-container-identifiers json -o - \
-  "$scratch/profile.plist" | grep -q "\"$container\""; then
+# Read into a variable first: with pipefail, a grep that stops reading early fails the pipeline.
+containers=$(plutil -extract Entitlements.com\\.apple\\.developer\\.icloud-container-identifiers json -o - \
+  "$scratch/profile.plist")
+if [[ "$containers" != *"\"$container\""* ]]; then
   echo "The provisioning profile does not include $container." >&2
   exit 1
 fi
@@ -59,4 +61,8 @@ codesign --force --options runtime --timestamp \
   --entitlements "$package/Bundle/icloud-reader.entitlements" \
   --sign "$APPLE_SIGNING_IDENTITY" "$helper"
 codesign --verify --strict "$helper"
-codesign -d --entitlements - "$helper" 2>/dev/null | grep -q "$container"
+signed=$(codesign -d --entitlements - "$helper" 2>/dev/null)
+if [[ "$signed" != *"$container"* ]]; then
+  echo 'The signed iCloud reader does not carry the container entitlement.' >&2
+  exit 1
+fi
